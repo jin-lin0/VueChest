@@ -6,38 +6,38 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../views/Home.vue')
-    },
-    {
-      path: '/weather',
-      name: 'weather',
-      component: () => import('../views/Weather.vue')
+      component: () => import('../views/Home.vue'),
     },
     {
       path: '/todo',
       name: 'todo',
-      component: () => import('../views/Todo.vue')
-    },
-    {
-      path: '/calculator',
-      name: 'calculator',
-      component: () => import('../views/Calculator.vue')
+      component: () => import('../views/Todo.vue'),
     },
     {
       path: '/notes',
       name: 'notes',
-      component: () => import('../views/Notes.vue')
+      component: () => import('../views/Notes.vue'),
     },
     {
-      path: '/gallery',
-      name: 'gallery',
-      component: () => import('../views/Gallery.vue')
+      path: '/bookmark',
+      name: 'bookmark',
+      component: () => import('../views/Bookmark.vue'),
     },
     {
-      path: '/music',
-      name: 'music',
-      component: () => import('../views/Music.vue')
-    }
+      path: '/pomodoro',
+      name: 'pomodoro',
+      component: () => import('../views/Pomodoro.vue'),
+    },
+    {
+      path: '/expense',
+      name: 'expense',
+      component: () => import('../views/Expense.vue'),
+    },
+    {
+      path: '/api-manager',
+      name: 'api-manager',
+      component: () => import('../views/ApiManager.vue'),
+    },
   ],
 })
 
