@@ -161,18 +161,20 @@ const closeContextMenu = () => {
 }
 
 const hideApp = (appId: number) => {
-  hiddenIds.value.add(appId)
+  hiddenIds.value = new Set([...hiddenIds.value, appId])
   saveHidden()
   closeContextMenu()
 }
 
 const showApp = (appId: number) => {
-  hiddenIds.value.delete(appId)
+  const next = new Set(hiddenIds.value)
+  next.delete(appId)
+  hiddenIds.value = next
   saveHidden()
 }
 
 const showAllApps = () => {
-  hiddenIds.value.clear()
+  hiddenIds.value = new Set()
   saveHidden()
 }
 
@@ -747,15 +749,16 @@ const navigateToApp = (route: string) => {
 }
 
 .is-dragging {
-  opacity: 0.4;
+  opacity: 0.35;
   transform: scale(0.95) !important;
   box-shadow: none !important;
+  border: 2px dashed rgba(102, 126, 234, 0.3) !important;
 }
 
 .is-over {
   border-color: #667eea !important;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
-  transform: scale(1.02) !important;
+  transform: scale(1.03) !important;
 }
 
 .footer {
