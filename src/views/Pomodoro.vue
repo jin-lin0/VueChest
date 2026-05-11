@@ -6,6 +6,7 @@ import { debounce } from '@/utils'
 defineOptions({ name: 'PomodoroView' })
 
 type SessionType = 'work' | 'break' | 'longBreak'
+type SoundType = 'chime' | 'bell' | 'alert' | 'gentle'
 
 interface HistoryRecord {
   id: number
@@ -14,16 +15,24 @@ interface HistoryRecord {
   completedAt: string
 }
 
+interface Settings {
+  work: number
+  break: number
+  longBreak: number
+  sound: SoundType
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  work: 25,
+  break: 5,
+  longBreak: 15,
+  sound: 'chime',
+}
+
 const router = useRouter()
 
 const goBack = () => {
   router.push('/')
-}
-
-const DURATIONS: Record<SessionType, number> = {
-  work: 25 * 60,
-  break: 5 * 60,
-  longBreak: 15 * 60,
 }
 
 const LABELS: Record<SessionType, string> = {
@@ -32,18 +41,46 @@ const LABELS: Record<SessionType, string> = {
   longBreak: '长休息',
 }
 
+const SOUND_OPTIONS: { key: SoundType; label: string }[] = [
+  { key: 'chime', label: '清脆' },
+  { key: 'bell', label: '铃声' },
+  { key: 'alert', label: '警示' },
+  { key: 'gentle', label: '柔和' },
+]
+
 const sessionOptions: { key: SessionType; label: string }[] = [
   { key: 'work', label: '专注' },
   { key: 'break', label: '短休息' },
   { key: 'longBreak', label: '长休息' },
 ]
 
+const settings = ref<Settings>({ ...DEFAULT_SETTINGS })
+const showSettings = ref(false)
 const sessionType = ref<SessionType>('work')
-const timeLeft = ref(DURATIONS.work)
 const isRunning = ref(false)
 const pomodoroCount = ref(0)
 const history = ref<HistoryRecord[]>([])
 let timer: ReturnType<typeof setInterval> | null = null
+
+const durations = computed<Record<SessionType, number>>(() => ({
+  work: settings.value.work * 60,
+  break: settings.value.break * 60,
+  longBreak: settings.value.longBreak * 60,
+}))
+
+const timeLeft = ref(durations.value.work)
+
+const loadSettings = (): Settings => {
+  const saved = localStorage.getItem('pomodoro-settings')
+  if (saved) {
+    try {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
+    } catch {
+      return { ...DEFAULT_SETTINGS }
+    }
+  }
+  return { ...DEFAULT_SETTINGS }
+}
 
 const loadHistory = (): HistoryRecord[] => {
   const saved = localStorage.getItem('pomodoro-history')
@@ -62,9 +99,15 @@ const saveHistory = () => {
   localStorage.setItem('pomodoro-history', JSON.stringify(history.value))
 }
 
+const saveSettings = () => {
+  localStorage.setItem('pomodoro-settings', JSON.stringify(settings.value))
+}
+
 onMounted(() => {
+  settings.value = loadSettings()
   history.value = loadHistory()
   pomodoroCount.value = history.value.filter((r) => r.type === 'work').length
+  timeLeft.value = durations.value[sessionType.value]
 })
 
 onUnmounted(() => {
@@ -74,6 +117,8 @@ onUnmounted(() => {
 const debouncedSaveHistory = debounce(() => saveHistory(), 500)
 watch(history, debouncedSaveHistory, { deep: true })
 
+watch(settings, saveSettings, { deep: true })
+
 const timeDisplay = computed(() => {
   const mins = Math.floor(timeLeft.value / 60)
   const secs = timeLeft.value % 60
@@ -81,7 +126,7 @@ const timeDisplay = computed(() => {
 })
 
 const progress = computed(() => {
-  const total = DURATIONS[sessionType.value]
+  const total = durations.value[sessionType.value]
   return ((total - timeLeft.value) / total) * 100
 })
 
@@ -113,16 +158,17 @@ const pauseTimer = () => {
 
 const resetTimer = () => {
   pauseTimer()
-  timeLeft.value = DURATIONS[sessionType.value]
+  timeLeft.value = durations.value[sessionType.value]
 }
 
 const completeSession = () => {
   pauseTimer()
+  playNotificationSound()
 
   history.value.unshift({
     id: Date.now(),
     type: sessionType.value,
-    duration: DURATIONS[sessionType.value],
+    duration: durations.value[sessionType.value],
     completedAt: new Date().toISOString(),
   })
 
@@ -139,19 +185,28 @@ const switchSession = () => {
   } else {
     sessionType.value = 'work'
   }
-  timeLeft.value = DURATIONS[sessionType.value]
+  timeLeft.value = durations.value[sessionType.value]
 }
 
 const setSession = (type: SessionType) => {
   if (isRunning.value) return
   sessionType.value = type
-  timeLeft.value = DURATIONS[type]
+  timeLeft.value = durations.value[type]
+}
+
+const toggleSettings = () => {
+  showSettings.value = !showSettings.value
+}
+
+const applySettings = () => {
+  if (isRunning.value) return
+  timeLeft.value = durations.value[sessionType.value]
 }
 
 const todayCount = computed(() => {
   const today = new Date().toDateString()
   return history.value.filter(
-    (r) => r.type === 'work' && new Date(r.completedAt).toDateString() === today,
+    (r) => new Date(r.completedAt).toDateString() === today && r.type === 'work',
   ).length
 })
 
@@ -176,6 +231,99 @@ const clearHistory = () => {
     pomodoroCount.value = 0
   }
 }
+
+let audioCtx: AudioContext | null = null
+
+const getAudioContext = () => {
+  if (!audioCtx) {
+    audioCtx = new AudioContext()
+  }
+  return audioCtx
+}
+
+const playTone = (
+  frequency: number,
+  startTime: number,
+  duration: number,
+  type: OscillatorType = 'sine',
+  volume = 0.3,
+) => {
+  const ctx = getAudioContext()
+  const oscillator = ctx.createOscillator()
+  const gainNode = ctx.createGain()
+
+  oscillator.connect(gainNode)
+  gainNode.connect(ctx.destination)
+
+  oscillator.type = type
+  oscillator.frequency.setValueAtTime(frequency, startTime)
+
+  gainNode.gain.setValueAtTime(volume, startTime)
+  gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration)
+
+  oscillator.start(startTime)
+  oscillator.stop(startTime + duration)
+}
+
+const SOUND_PRESETS: Record<SoundType, () => void> = {
+  chime: () => {
+    const ctx = getAudioContext()
+    const now = ctx.currentTime
+    playTone(523.25, now, 0.2, 'sine', 0.3)
+    playTone(659.25, now + 0.2, 0.2, 'sine', 0.3)
+    playTone(783.99, now + 0.4, 0.35, 'sine', 0.3)
+  },
+  bell: () => {
+    const ctx = getAudioContext()
+    const now = ctx.currentTime
+    playTone(880, now, 0.15, 'sine', 0.3)
+    playTone(1108.73, now + 0.15, 0.15, 'sine', 0.25)
+    playTone(1318.51, now + 0.3, 0.4, 'sine', 0.3)
+  },
+  alert: () => {
+    const ctx = getAudioContext()
+    const now = ctx.currentTime
+    playTone(800, now, 0.15, 'square', 0.15)
+    playTone(800, now + 0.2, 0.15, 'square', 0.15)
+    playTone(1000, now + 0.4, 0.4, 'square', 0.2)
+  },
+  gentle: () => {
+    const ctx = getAudioContext()
+    const now = ctx.currentTime
+    playTone(392, now, 0.3, 'sine', 0.2)
+    playTone(440, now + 0.3, 0.3, 'sine', 0.2)
+    playTone(523.25, now + 0.6, 0.5, 'sine', 0.2)
+  },
+}
+
+const playNotificationSound = () => {
+  try {
+    const ctx = getAudioContext()
+    if (ctx.state === 'suspended') {
+      ctx.resume()
+    }
+    SOUND_PRESETS[settings.value.sound]()
+  } catch (e) {
+    console.error('播放提示音失败:', e)
+  }
+}
+
+const previewSound = (sound: SoundType) => {
+  try {
+    const ctx = getAudioContext()
+    if (ctx.state === 'suspended') {
+      ctx.resume()
+    }
+    SOUND_PRESETS[sound]()
+  } catch (e) {
+    console.error('播放提示音失败:', e)
+  }
+}
+
+const selectSound = (sound: SoundType) => {
+  settings.value.sound = sound
+  previewSound(sound)
+}
 </script>
 
 <template>
@@ -197,7 +345,76 @@ const clearHistory = () => {
           >
             {{ opt.label }}
           </button>
+          <button
+            class="session-tab settings-toggle"
+            :class="{ active: showSettings }"
+            @click="toggleSettings"
+          >
+            ⚙️ 设置
+          </button>
         </div>
+
+        <Teleport to="body">
+          <div v-if="showSettings" class="settings-overlay" @click.self="toggleSettings">
+            <div class="settings-modal">
+              <div class="settings-modal-header">
+                <h3>设置</h3>
+                <button class="settings-close-btn" @click="toggleSettings">&times;</button>
+              </div>
+              <div class="settings-modal-body">
+                <h4 class="settings-title">时间设置（分钟）</h4>
+                <div class="settings-grid">
+                  <label class="setting-item">
+                    <span>专注时长</span>
+                    <input
+                      v-model.number="settings.work"
+                      type="number"
+                      min="1"
+                      max="120"
+                      :disabled="isRunning"
+                      @change="applySettings"
+                    />
+                  </label>
+                  <label class="setting-item">
+                    <span>短休息</span>
+                    <input
+                      v-model.number="settings.break"
+                      type="number"
+                      min="1"
+                      max="30"
+                      :disabled="isRunning"
+                      @change="applySettings"
+                    />
+                  </label>
+                  <label class="setting-item">
+                    <span>长休息</span>
+                    <input
+                      v-model.number="settings.longBreak"
+                      type="number"
+                      min="1"
+                      max="60"
+                      :disabled="isRunning"
+                      @change="applySettings"
+                    />
+                  </label>
+                </div>
+
+                <h4 class="settings-title">提示音</h4>
+                <div class="sound-options">
+                  <button
+                    v-for="opt in SOUND_OPTIONS"
+                    :key="opt.key"
+                    class="sound-btn"
+                    :class="{ active: settings.sound === opt.key }"
+                    @click="selectSound(opt.key)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Teleport>
 
         <div class="timer-ring-container">
           <svg class="timer-ring" viewBox="0 0 260 260">
@@ -355,6 +572,158 @@ const clearHistory = () => {
 .session-tab.disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.settings-toggle {
+  margin-left: 0.5rem;
+  background-color: #f8f9fa;
+  color: #2c3e50;
+}
+
+.settings-toggle.active {
+  background-color: #3498db;
+  color: white;
+}
+
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.settings-modal {
+  background-color: #fff;
+  border-radius: 16px;
+  padding: 0;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: modalIn 0.25s ease-out;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.settings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.settings-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2c3e50;
+}
+
+.settings-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.settings-close-btn:hover {
+  color: #333;
+}
+
+.settings-modal-body {
+  padding: 1.2rem 1.5rem 1.5rem;
+}
+
+.settings-title {
+  margin: 0 0 0.8rem;
+  font-size: 0.95rem;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.settings-title:not(:first-child) {
+  margin-top: 1.2rem;
+}
+
+.settings-grid {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.setting-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.setting-item input {
+  width: 80px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  text-align: center;
+  background-color: white;
+  color: #2c3e50;
+}
+
+.setting-item input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.setting-item input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sound-options {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.sound-btn {
+  padding: 0.45rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #555;
+  transition: all 0.2s;
+}
+
+.sound-btn:hover {
+  border-color: #3498db;
+  color: #3498db;
+}
+
+.sound-btn.active {
+  background-color: #3498db;
+  border-color: #3498db;
+  color: white;
 }
 
 .timer-ring-container {
