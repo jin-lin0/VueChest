@@ -356,42 +356,52 @@ const navigateToApp = (route: string) => {
   bottom: 0;
   pointer-events: none;
   z-index: -1;
-  filter: blur(60px);
   contain: strict;
-  will-change: transform;
-  transform: translateZ(0);
 }
 
 .blob {
   position: absolute;
   border-radius: 50%;
-  opacity: 0.4;
-  will-change: transform;
   transform: translateZ(0);
 }
 
 .blob-1 {
-  width: 400px;
-  height: 400px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(
+    circle,
+    rgba(102, 126, 234, 0.5) 0%,
+    rgba(118, 75, 162, 0.2) 40%,
+    rgba(118, 75, 162, 0) 70%
+  );
   top: -100px;
   right: -100px;
   animation: float1 20s ease-in-out infinite;
 }
 
 .blob-2 {
-  width: 350px;
-  height: 350px;
-  background: linear-gradient(135deg, #f093fb, #f5576c);
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(
+    circle,
+    rgba(240, 147, 251, 0.5) 0%,
+    rgba(245, 87, 108, 0.2) 40%,
+    rgba(245, 87, 108, 0) 70%
+  );
   bottom: -50px;
   left: -80px;
   animation: float2 24s ease-in-out infinite;
 }
 
 .blob-3 {
-  width: 250px;
-  height: 250px;
-  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(
+    circle,
+    rgba(79, 172, 254, 0.5) 0%,
+    rgba(0, 242, 254, 0.2) 40%,
+    rgba(0, 242, 254, 0) 70%
+  );
   top: 50%;
   left: 50%;
   animation: float3 28s ease-in-out infinite;
@@ -400,39 +410,39 @@ const navigateToApp = (route: string) => {
 @keyframes float1 {
   0%,
   100% {
-    transform: translate(0, 0) scale(1);
+    transform: translate(0, 0);
   }
   33% {
-    transform: translate(-30px, 20px) scale(1.05);
+    transform: translate(-30px, 20px);
   }
   66% {
-    transform: translate(20px, -15px) scale(0.95);
+    transform: translate(20px, -15px);
   }
 }
 
 @keyframes float2 {
   0%,
   100% {
-    transform: translate(0, 0) scale(1);
+    transform: translate(0, 0);
   }
   33% {
-    transform: translate(25px, -20px) scale(1.08);
+    transform: translate(25px, -20px);
   }
   66% {
-    transform: translate(-15px, 25px) scale(0.92);
+    transform: translate(-15px, 25px);
   }
 }
 
 @keyframes float3 {
   0%,
   100% {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%);
   }
   33% {
-    transform: translate(-45%, -55%) scale(1.1);
+    transform: translate(-45%, -55%);
   }
   66% {
-    transform: translate(-55%, -45%) scale(0.9);
+    transform: translate(-55%, -45%);
   }
 }
 
@@ -513,7 +523,6 @@ const navigateToApp = (route: string) => {
     border-color 0.3s ease,
     box-shadow 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  will-change: box-shadow;
   contain: layout style;
 }
 
@@ -611,13 +620,11 @@ const navigateToApp = (route: string) => {
   padding: 2rem 1.5rem;
   cursor: pointer;
   overflow: hidden;
-  will-change: transform, opacity;
   contain: layout style;
   transform: translateZ(0);
   transition:
     transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.3s ease;
-  animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .app-card:hover {
@@ -627,17 +634,6 @@ const navigateToApp = (route: string) => {
 
 .app-card:active {
   transform: translateY(-2px) scale(0.99) translateZ(0);
-}
-
-@keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px) translateZ(0);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) translateZ(0);
-  }
 }
 
 .card-glow {
@@ -650,7 +646,6 @@ const navigateToApp = (route: string) => {
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: -1;
-  will-change: opacity;
   contain: strict;
 }
 
