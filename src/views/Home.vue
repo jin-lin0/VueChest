@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, defineComponent, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-defineComponent({
-  name: 'HomeView',
-})
+defineOptions({ name: 'HomeView' })
 
 interface AppItem {
   id: number
@@ -277,7 +275,7 @@ const navigateToApp = (route: string) => {
         @click="navigateToApp(app.route)"
       >
         <div class="drag-handle">⠿</div>
-        <div class="card-glow" :class="`glow-${index}`"></div>
+        <div class="card-glow" :class="`glow-${index % 6}`"></div>
         <div class="card-content">
           <div class="app-icon">{{ app.icon }}</div>
           <h2 class="app-name">{{ app.name }}</h2>
@@ -358,13 +356,18 @@ const navigateToApp = (route: string) => {
   bottom: 0;
   pointer-events: none;
   z-index: -1;
+  filter: blur(60px);
+  contain: strict;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
   opacity: 0.4;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .blob-1 {
@@ -373,7 +376,7 @@ const navigateToApp = (route: string) => {
   background: linear-gradient(135deg, #667eea, #764ba2);
   top: -100px;
   right: -100px;
-  animation: float1 12s ease-in-out infinite;
+  animation: float1 20s ease-in-out infinite;
 }
 
 .blob-2 {
@@ -382,7 +385,7 @@ const navigateToApp = (route: string) => {
   background: linear-gradient(135deg, #f093fb, #f5576c);
   bottom: -50px;
   left: -80px;
-  animation: float2 10s ease-in-out infinite;
+  animation: float2 24s ease-in-out infinite;
 }
 
 .blob-3 {
@@ -391,7 +394,7 @@ const navigateToApp = (route: string) => {
   background: linear-gradient(135deg, #4facfe, #00f2fe);
   top: 50%;
   left: 50%;
-  animation: float3 14s ease-in-out infinite;
+  animation: float3 28s ease-in-out infinite;
 }
 
 @keyframes float1 {
@@ -464,6 +467,7 @@ const navigateToApp = (route: string) => {
   background: linear-gradient(135deg, #667eea, #764ba2);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
   flex-shrink: 0;
+  contain: layout style;
 }
 
 .logo-icon {
@@ -501,14 +505,16 @@ const navigateToApp = (route: string) => {
   display: flex;
   align-items: center;
   flex: 0 1 320px;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 12px;
   padding: 0.5rem 0.9rem;
-  transition: all 0.3s ease;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  will-change: box-shadow;
+  contain: layout style;
 }
 
 .search-bar:focus-within {
@@ -599,39 +605,38 @@ const navigateToApp = (route: string) => {
 
 .app-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 16px;
   padding: 2rem 1.5rem;
   cursor: pointer;
   overflow: hidden;
+  will-change: transform, opacity;
+  contain: layout style;
+  transform: translateZ(0);
   transition:
     transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.3s ease;
   animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .app-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  transform: translateY(-6px) scale(1.02) translateZ(0);
   border-color: rgba(102, 126, 234, 0.3);
 }
 
 .app-card:active {
-  transform: translateY(-2px) scale(0.99);
+  transform: translateY(-2px) scale(0.99) translateZ(0);
 }
 
 @keyframes cardIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(20px) translateZ(0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) translateZ(0);
   }
 }
 
@@ -645,6 +650,8 @@ const navigateToApp = (route: string) => {
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: -1;
+  will-change: opacity;
+  contain: strict;
 }
 
 .glow-0 {
@@ -750,15 +757,14 @@ const navigateToApp = (route: string) => {
 
 .is-dragging {
   opacity: 0.35;
-  transform: scale(0.95) !important;
+  transform: scale(0.95) translateZ(0) !important;
   box-shadow: none !important;
   border: 2px dashed rgba(102, 126, 234, 0.3) !important;
 }
 
 .is-over {
   border-color: #667eea !important;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
-  transform: scale(1.03) !important;
+  transform: scale(1.03) translateZ(0) !important;
 }
 
 .footer {
@@ -771,15 +777,14 @@ const navigateToApp = (route: string) => {
 .context-menu {
   position: fixed;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   padding: 0.4rem;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
   min-width: 160px;
   animation: menuFadeIn 0.15s ease;
+  contain: layout style;
 }
 
 @keyframes menuFadeIn {
@@ -841,15 +846,14 @@ const navigateToApp = (route: string) => {
   transform: translateX(-50%);
   width: 90%;
   max-width: 480px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   padding: 1.2rem;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
   z-index: 999;
   animation: panelSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  contain: layout style;
 }
 
 @keyframes panelSlideUp {

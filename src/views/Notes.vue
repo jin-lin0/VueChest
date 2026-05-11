@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref, defineComponent, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { debounce } from '@/utils'
 
-// 定义多词组件名称
-defineComponent({
-  name: 'NotesView'
-})
+defineOptions({ name: 'NotesView' })
 
 interface Note {
   id: number
@@ -63,9 +61,8 @@ onMounted(() => {
 })
 
 // 监听notes变化，自动保存
-watch(notes, () => {
-  saveNotes()
-}, { deep: true })
+const debouncedSaveNotes = debounce(() => saveNotes(), 500)
+watch(notes, debouncedSaveNotes, { deep: true })
 
 const selectedNoteId = ref<number | null>(notes.value.length > 0 ? notes.value[0].id : null)
 const isEditing = ref(false)

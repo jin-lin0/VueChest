@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, defineComponent, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { debounce } from '@/utils'
 
-defineComponent({
-  name: 'ExpenseView',
-})
+defineOptions({ name: 'ExpenseView' })
 
 interface ExpenseItem {
   id: number
@@ -55,13 +54,8 @@ onMounted(() => {
   records.value = loadRecords()
 })
 
-watch(
-  records,
-  () => {
-    saveRecords()
-  },
-  { deep: true },
-)
+const debouncedSaveRecords = debounce(() => saveRecords(), 500)
+watch(records, debouncedSaveRecords, { deep: true })
 
 const currentCategories = computed(() => {
   return formType.value === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES

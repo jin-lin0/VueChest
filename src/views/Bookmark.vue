@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, defineComponent, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { debounce } from '@/utils'
 
-defineComponent({
-  name: 'BookmarkView',
-})
+defineOptions({ name: 'BookmarkView' })
 
 interface Bookmark {
   id: number
@@ -71,13 +70,8 @@ onMounted(() => {
   bookmarks.value = loadBookmarks()
 })
 
-watch(
-  bookmarks,
-  () => {
-    saveBookmarks()
-  },
-  { deep: true },
-)
+const debouncedSaveBookmarks = debounce(() => saveBookmarks(), 500)
+watch(bookmarks, debouncedSaveBookmarks, { deep: true })
 
 const categories = computed(() => {
   const cats = new Set(bookmarks.value.map((b) => b.category).filter(Boolean))

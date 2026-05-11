@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, defineComponent, computed, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { debounce } from '@/utils'
 
-defineComponent({
-  name: 'PomodoroView',
-})
+defineOptions({ name: 'PomodoroView' })
 
 type SessionType = 'work' | 'break' | 'longBreak'
 
@@ -72,13 +71,8 @@ onUnmounted(() => {
   if (timer) clearInterval(timer)
 })
 
-watch(
-  history,
-  () => {
-    saveHistory()
-  },
-  { deep: true },
-)
+const debouncedSaveHistory = debounce(() => saveHistory(), 500)
+watch(history, debouncedSaveHistory, { deep: true })
 
 const timeDisplay = computed(() => {
   const mins = Math.floor(timeLeft.value / 60)

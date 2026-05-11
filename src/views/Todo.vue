@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref, defineComponent, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { debounce } from '@/utils'
 
-// 定义多词组件名称
-defineComponent({
-  name: 'TodoView'
-})
+defineOptions({ name: 'TodoView' })
 
 interface TodoItem {
   id: number
@@ -67,9 +65,8 @@ onMounted(() => {
 })
 
 // 监听todos变化，自动保存
-watch(todos, () => {
-  saveTodos()
-}, { deep: true })
+const debouncedSaveTodos = debounce(() => saveTodos(), 500)
+watch(todos, debouncedSaveTodos, { deep: true })
 
 const addTodo = () => {
   if (newTodo.value.trim()) {
