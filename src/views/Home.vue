@@ -100,7 +100,6 @@ interface SpecialDay {
   solarDay: number
   lunarMonth: number
   lunarDay: number
-  isLeapMonth: boolean
   emoji: string
   createdAt: string
 }
@@ -127,7 +126,7 @@ const getDaysUntil = (day: SpecialDay): number => {
     const lunar = solarToLunar(now.getFullYear(), now.getMonth() + 1, now.getDate())
     for (let y = lunar.year; y <= lunar.year + 2; y++) {
       try {
-        const solar = lunarToSolar(y, day.lunarMonth, day.lunarDay, day.isLeapMonth)
+        const solar = lunarToSolar(y, day.lunarMonth, day.lunarDay)
         const candidate = new Date(solar.year, solar.month - 1, solar.day)
         candidate.setHours(0, 0, 0, 0)
         if (candidate >= now) {
@@ -160,7 +159,7 @@ const getNextOccurrenceDate = (day: SpecialDay): string => {
 
 const getDisplayDate = (day: SpecialDay): string => {
   if (day.calendarType === 'lunar') {
-    return `农历${getLunarMonthName(day.lunarMonth, day.isLeapMonth)}${getLunarDayName(day.lunarDay)}`
+    return `农历${getLunarMonthName(day.lunarMonth, false)}${getLunarDayName(day.lunarDay)}`
   }
   return `阳历${day.solarMonth}月${day.solarDay}日`
 }

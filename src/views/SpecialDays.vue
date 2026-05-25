@@ -15,7 +15,6 @@ interface SpecialDay {
   solarDay: number
   lunarMonth: number
   lunarDay: number
-  isLeapMonth: boolean
   emoji: string
   createdAt: string
 }
@@ -29,7 +28,6 @@ interface EditForm {
   solarDay: number
   lunarMonth: number
   lunarDay: number
-  isLeapMonth: boolean
   emoji: string
 }
 
@@ -97,7 +95,6 @@ const defaultForm = (): EditForm => ({
   solarDay: new Date().getDate(),
   lunarMonth: 1,
   lunarDay: 1,
-  isLeapMonth: false,
   emoji: '🎉',
 })
 
@@ -148,7 +145,6 @@ const openEditForm = (day: SpecialDay) => {
     solarDay: day.solarDay,
     lunarMonth: day.lunarMonth,
     lunarDay: day.lunarDay,
-    isLeapMonth: day.isLeapMonth,
     emoji: day.emoji,
   }
   showForm.value = true
@@ -170,12 +166,7 @@ const saveDay = () => {
   let solarDay = form.value.solarDay
   if (form.value.calendarType === 'lunar') {
     const targetYear = year || new Date().getFullYear()
-    const solar = lunarToSolar(
-      targetYear,
-      form.value.lunarMonth,
-      form.value.lunarDay,
-      form.value.isLeapMonth,
-    )
+    const solar = lunarToSolar(targetYear, form.value.lunarMonth, form.value.lunarDay)
     year = solar.year
     solarMonth = solar.month
     solarDay = solar.day
@@ -195,7 +186,6 @@ const saveDay = () => {
         solarDay,
         lunarMonth: form.value.lunarMonth,
         lunarDay: form.value.lunarDay,
-        isLeapMonth: form.value.isLeapMonth,
         emoji: form.value.emoji,
       })
     }
@@ -210,7 +200,6 @@ const saveDay = () => {
       solarDay,
       lunarMonth: form.value.lunarMonth,
       lunarDay: form.value.lunarDay,
-      isLeapMonth: form.value.isLeapMonth,
       emoji: form.value.emoji,
       createdAt: new Date().toISOString(),
     })
@@ -242,7 +231,7 @@ const getDaysUntil = (day: SpecialDay): number => {
 
     for (let y = lunar.year; y <= lunar.year + 2; y++) {
       try {
-        const solar = lunarToSolar(y, day.lunarMonth, day.lunarDay, day.isLeapMonth)
+        const solar = lunarToSolar(y, day.lunarMonth, day.lunarDay)
         const candidate = new Date(solar.year, solar.month - 1, solar.day)
         candidate.setHours(0, 0, 0, 0)
         if (candidate >= now) {
@@ -277,7 +266,7 @@ const getNextOccurrenceDate = (day: SpecialDay): string => {
 
 const getDisplayDate = (day: SpecialDay): string => {
   if (day.calendarType === 'lunar') {
-    const lunarStr = `农历${getLunarMonthName(day.lunarMonth, day.isLeapMonth)}${getLunarDayName(day.lunarDay)}`
+    const lunarStr = `农历${getLunarMonthName(day.lunarMonth, false)}${getLunarDayName(day.lunarDay)}`
     if (day.repeatType === 'once' && day.solarYear) {
       return `${day.solarYear}年 ${lunarStr}`
     }
@@ -311,10 +300,11 @@ watch(
 )
 
 watch(
-  () => form.value.calendarType,
-  (type) => {
-    if (type === 'lunar') {
-      form.value.isLeapMonth = false
+  () => form.value.solarMonth,
+  (newMonth) => {
+    const maxDay = getMaxSolarDay(newMonth)
+    if (form.value.solarDay > maxDay) {
+      form.value.solarDay = maxDay
     }
   },
 )
@@ -490,19 +480,6 @@ watch(
                 <option v-for="d in lunarDayOptions" :key="d" :value="d">{{ d }}日</option>
               </select>
             </div>
-            <div class="leap-month-toggle" @click="form.isLeapMonth = !form.isLeapMonth">
-              <div class="toggle-switch" :class="{ active: form.isLeapMonth }">
-                <div class="toggle-knob"></div>
-              </div>
-              <div class="toggle-label">
-                <span class="toggle-text">闰月</span>
-                <span class="toggle-hint">仅当日期在闰月时开启</span>
-              </div>
-            </div>
-            <p class="leap-month-hint">
-              闰月是农历中为了协调阴阳历而增加的月份，大约每2-3年出现一次。
-              如果不确定是否为闰月，通常选择"否"即可。
-            </p>
           </div>
         </div>
 
