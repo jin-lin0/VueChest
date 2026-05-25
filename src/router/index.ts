@@ -38,6 +38,11 @@ const router = createRouter({
       name: 'api-manager',
       component: () => import('../views/ApiManager.vue'),
     },
+    {
+      path: '/special-days',
+      name: 'special-days',
+      component: () => import('../views/SpecialDays.vue'),
+    },
   ],
 })
 

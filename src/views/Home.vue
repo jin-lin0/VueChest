@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils'
 
 defineOptions({ name: 'HomeView' })
 
@@ -65,6 +66,13 @@ const defaultAppList: AppItem[] = [
     route: '/expense',
     description: '记录收入支出，管理个人财务',
   },
+  {
+    id: 7,
+    name: '特殊日子',
+    icon: '🎉',
+    route: '/special-days',
+    description: '记录生日、纪念日等重要日子',
+  },
 ]
 
 const router = useRouter()
@@ -81,6 +89,107 @@ const contextMenu = ref<ContextMenuState>({
 const dragIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 const isDragging = ref(false)
+
+interface SpecialDay {
+  id: number
+  name: string
+  repeatType: 'yearly' | 'once'
+  calendarType: 'solar' | 'lunar'
+  solarYear: number | null
+  solarMonth: number
+  solarDay: number
+  lunarMonth: number
+  lunarDay: number
+  isLeapMonth: boolean
+  emoji: string
+  createdAt: string
+}
+
+const SPECIAL_DAYS_KEY = 'special_days'
+
+const loadSpecialDays = (): SpecialDay[] => {
+  const saved = localStorage.getItem(SPECIAL_DAYS_KEY)
+  if (saved) {
+    try {
+      return JSON.parse(saved)
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+const getDaysUntil = (day: SpecialDay): number => {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+
+  if (day.calendarType === 'lunar') {
+    const lunar = solarToLunar(now.getFullYear(), now.getMonth() + 1, now.getDate())
+    for (let y = lunar.year; y <= lunar.year + 2; y++) {
+      try {
+        const solar = lunarToSolar(y, day.lunarMonth, day.lunarDay, day.isLeapMonth)
+        const candidate = new Date(solar.year, solar.month - 1, solar.day)
+        candidate.setHours(0, 0, 0, 0)
+        if (candidate >= now) {
+          return Math.ceil((candidate.getTime() - now.getTime()) / 86400000)
+        }
+      } catch {
+        continue
+      }
+    }
+    return -1
+  } else {
+    const targetYear = now.getFullYear()
+    let target = new Date(targetYear, day.solarMonth - 1, day.solarDay)
+    target.setHours(0, 0, 0, 0)
+    if (target < now) {
+      target = new Date(targetYear + 1, day.solarMonth - 1, day.solarDay)
+      target.setHours(0, 0, 0, 0)
+    }
+    return Math.ceil((target.getTime() - now.getTime()) / 86400000)
+  }
+}
+
+const getNextOccurrenceDate = (day: SpecialDay): string => {
+  const daysUntil = getDaysUntil(day)
+  if (daysUntil < 0) return ''
+  const now = new Date()
+  const target = new Date(now.getTime() + daysUntil * 86400000)
+  return `${target.getMonth() + 1}月${target.getDate()}日`
+}
+
+const getDisplayDate = (day: SpecialDay): string => {
+  if (day.calendarType === 'lunar') {
+    return `农历${getLunarMonthName(day.lunarMonth, day.isLeapMonth)}${getLunarDayName(day.lunarDay)}`
+  }
+  return `阳历${day.solarMonth}月${day.solarDay}日`
+}
+
+const nearestSpecialDay = computed(() => {
+  const days = loadSpecialDays()
+  if (days.length === 0) return null
+
+  let nearest: SpecialDay | null = null
+  let minDays = Infinity
+
+  for (const day of days) {
+    const d = getDaysUntil(day)
+    if (d >= 0 && d < minDays) {
+      minDays = d
+      nearest = day
+    }
+  }
+
+  if (nearest) {
+    return {
+      ...nearest,
+      daysUntil: minDays,
+      dateLabel: getDisplayDate(nearest),
+      nextDate: getNextOccurrenceDate(nearest),
+    }
+  }
+  return null
+})
 
 const appList = computed(() => {
   const visible = allApps.value.filter((app) => !hiddenIds.value.has(app.id))
@@ -254,6 +363,26 @@ const navigateToApp = (route: string) => {
         <button v-if="searchQuery" class="search-clear" @click="searchQuery = ''">✕</button>
       </div>
     </header>
+
+    <div
+      v-if="nearestSpecialDay && !searchQuery"
+      class="countdown-banner"
+      @click="navigateToApp('/special-days')"
+    >
+      <div class="countdown-emoji">{{ nearestSpecialDay.emoji }}</div>
+      <div class="countdown-info">
+        <div class="countdown-name">{{ nearestSpecialDay.name }}</div>
+        <div class="countdown-detail">
+          {{ nearestSpecialDay.dateLabel }}
+        </div>
+      </div>
+      <div class="countdown-days">
+        <div class="countdown-number">{{ nearestSpecialDay.daysUntil }}</div>
+        <div class="countdown-label">
+          {{ nearestSpecialDay.daysUntil === 0 ? '就是今天' : '天后' }}
+        </div>
+      </div>
+    </div>
 
     <main v-if="appList.length > 0" class="app-grid">
       <div
@@ -967,5 +1096,80 @@ const navigateToApp = (route: string) => {
 .restore-btn:hover {
   background: rgba(102, 126, 234, 0.08);
   border-color: rgba(102, 126, 234, 0.5);
+}
+
+.countdown-banner {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+  cursor: pointer;
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+  border: 1px solid rgba(102, 126, 234, 0.15);
+}
+
+.countdown-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
+}
+
+.countdown-emoji {
+  font-size: 2.5rem;
+  margin-right: 1.2rem;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.countdown-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.countdown-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 0.2rem;
+}
+
+.countdown-detail {
+  font-size: 0.85rem;
+  color: #8e99a4;
+}
+
+.countdown-days {
+  text-align: center;
+  margin-left: 1.5rem;
+  padding-left: 1.5rem;
+  border-left: 1px solid rgba(102, 126, 234, 0.15);
+}
+
+.countdown-number {
+  font-size: 2.2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+.countdown-label {
+  font-size: 0.8rem;
+  color: #8e99a4;
+  font-weight: 500;
 }
 </style>
