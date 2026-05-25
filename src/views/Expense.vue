@@ -707,4 +707,86 @@ const getDayTotal = (items: ExpenseItem[]) => {
 .submit-btn:hover {
   background-color: #27ae60;
 }
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .back-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .summary-card {
+    padding: 0.8rem;
+  }
+
+  .summary-label {
+    font-size: 0.78rem;
+  }
+
+  .summary-value {
+    font-size: 1.1rem;
+  }
+
+  .add-btn {
+    width: 100%;
+    padding: 0.7rem;
+  }
+
+  .record-item {
+    padding: 0.6rem 0.8rem;
+  }
+
+  .record-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+    margin-right: 0.6rem;
+  }
+
+  .record-main {
+    flex-wrap: wrap;
+  }
+
+  .record-category {
+    font-size: 0.9rem;
+  }
+
+  .record-amount {
+    font-size: 0.9rem;
+  }
+
+  .record-actions {
+    opacity: 1;
+    margin-left: 0.5rem;
+  }
+
+  .date-header {
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .date-summary {
+    font-size: 0.78rem;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .modal-content {
+    padding: 1.2rem;
+  }
+}
 </style>

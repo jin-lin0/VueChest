@@ -499,4 +499,75 @@ const formatDate = (dateString: string) => {
   color: #7f8c8d;
   font-style: italic;
 }
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .back-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .notes-content {
+    flex-direction: column;
+    height: auto;
+    min-height: auto;
+    gap: 1rem;
+  }
+
+  .notes-sidebar {
+    flex: none;
+    max-height: 240px;
+  }
+
+  .sidebar-header {
+    padding: 0.8rem;
+  }
+
+  .sidebar-header h2 {
+    font-size: 1rem;
+  }
+
+  .new-note-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .note-item {
+    padding: 0.8rem;
+  }
+
+  .note-detail {
+    padding: 1.2rem;
+  }
+
+  .detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .detail-dates {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .form-group textarea {
+    rows: 8;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}
 </style>

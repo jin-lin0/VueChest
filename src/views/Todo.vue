@@ -285,4 +285,51 @@ const formatDate = (dateString: string) => {
   color: #7f8c8d;
   font-style: italic;
 }
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .back-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .add-todo {
+    flex-direction: column;
+  }
+
+  .add-todo input {
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  .add-todo button {
+    border-radius: 4px;
+    padding: 0.7rem;
+  }
+
+  .todo-item {
+    padding: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .todo-details {
+    min-width: 0;
+  }
+
+  .todo-text {
+    font-size: 1rem;
+  }
+
+  .delete-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+  }
+}
 </style>

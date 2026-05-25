@@ -1292,4 +1292,112 @@ const selectCategory = (cat: string) => {
 .feature-icon {
   font-size: 1.5rem;
 }
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.4rem;
+    order: 1;
+  }
+
+  .back-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    order: 0;
+  }
+
+  .add-api-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    order: 2;
+    margin-left: auto;
+  }
+
+  .api-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 300px;
+  }
+
+  .api-actions {
+    opacity: 1;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .param-row {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .param-name {
+    flex: 1 1 100%;
+  }
+
+  .param-type {
+    flex: 1;
+  }
+
+  .param-default {
+    flex: 1;
+  }
+
+  .param-required {
+    flex-shrink: 0;
+  }
+
+  .detail-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .detail-url code {
+    font-size: 0.8rem;
+  }
+
+  .response-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .response-meta {
+    gap: 0.5rem;
+  }
+
+  .welcome-panel {
+    padding: 1.5rem 1rem;
+  }
+
+  .welcome-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .welcome-panel h2 {
+    font-size: 1.2rem;
+  }
+
+  .feature-item {
+    font-size: 1rem;
+  }
+}
 </style>

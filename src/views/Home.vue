@@ -1171,4 +1171,108 @@ const navigateToApp = (route: string) => {
   color: #8e99a4;
   font-weight: 500;
 }
+
+@media (max-width: 768px) {
+  .home-container {
+    padding: 1rem 1rem 0.8rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .header h1 {
+    font-size: 1.3rem;
+  }
+
+  .search-bar {
+    flex: 1 1 100%;
+  }
+
+  .app-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .app-card {
+    padding: 1.2rem 1rem;
+  }
+
+  .app-icon {
+    font-size: 2rem;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    margin-bottom: 0.6rem;
+  }
+
+  .app-name {
+    font-size: 1rem;
+  }
+
+  .app-description {
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .countdown-banner {
+    padding: 0.8rem 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .countdown-emoji {
+    font-size: 1.8rem;
+    width: 42px;
+    height: 42px;
+    margin-right: 0.8rem;
+    border-radius: 10px;
+  }
+
+  .countdown-name {
+    font-size: 0.95rem;
+  }
+
+  .countdown-detail {
+    font-size: 0.78rem;
+  }
+
+  .countdown-days {
+    margin-left: 1rem;
+    padding-left: 1rem;
+  }
+
+  .countdown-number {
+    font-size: 1.6rem;
+  }
+
+  .footer {
+    font-size: 0.78rem;
+    padding: 1rem 0 0.4rem;
+  }
+
+  .manage-panel {
+    width: 95%;
+    max-width: none;
+    bottom: 1rem;
+  }
+
+  .blob-1 {
+    width: 300px;
+    height: 300px;
+  }
+
+  .blob-2 {
+    width: 250px;
+    height: 250px;
+  }
+
+  .blob-3 {
+    width: 200px;
+    height: 200px;
+  }
+}
 </style>

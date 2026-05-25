@@ -1039,4 +1039,120 @@ watch(
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .back-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .add-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .day-card {
+    flex-wrap: wrap;
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+
+  .day-emoji {
+    font-size: 1.8rem;
+    width: 44px;
+    height: 44px;
+    margin-right: 0.8rem;
+    border-radius: 10px;
+  }
+
+  .day-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .day-name {
+    font-size: 1rem;
+  }
+
+  .day-date {
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .day-next {
+    font-size: 0.75rem;
+  }
+
+  .day-countdown {
+    margin: 0 0.8rem;
+    min-width: 50px;
+  }
+
+  .countdown-number {
+    font-size: 1.5rem;
+  }
+
+  .countdown-text {
+    font-size: 0.7rem;
+  }
+
+  .day-actions {
+    margin-left: auto;
+    gap: 0.4rem;
+  }
+
+  .edit-btn,
+  .delete-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .calendar-type-picker {
+    gap: 0.5rem;
+  }
+
+  .type-btn {
+    padding: 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .emoji-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+
+  .date-select {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .modal {
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .form-body {
+    padding: 1rem;
+  }
+
+  .modal-footer {
+    padding: 0.8rem 1rem;
+  }
+}
 </style>

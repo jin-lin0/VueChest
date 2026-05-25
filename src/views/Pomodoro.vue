@@ -922,4 +922,92 @@ const selectSound = (sound: SoundType) => {
   color: #7f8c8d;
   font-style: italic;
 }
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .back-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .pomodoro-content {
+    gap: 1.2rem;
+  }
+
+  .timer-section {
+    padding: 1.2rem;
+  }
+
+  .session-tabs {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .session-tab {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .settings-toggle {
+    margin-left: 0;
+  }
+
+  .timer-ring-container {
+    width: 200px;
+    height: 200px;
+    margin-bottom: 1.2rem;
+  }
+
+  .time-text {
+    font-size: 2.2rem;
+  }
+
+  .session-label {
+    font-size: 0.85rem;
+  }
+
+  .timer-controls {
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .control-btn {
+    padding: 0.7rem 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .stats-row {
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .history-section {
+    padding: 1rem;
+  }
+
+  .history-header h2 {
+    font-size: 1rem;
+  }
+
+  .settings-modal {
+    width: 95%;
+  }
+}
 </style>

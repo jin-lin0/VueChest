@@ -484,4 +484,73 @@ const formatDate = (dateString: string) => {
   color: #7f8c8d;
   font-style: italic;
 }
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .back-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .add-section {
+    padding: 1rem;
+  }
+
+  .form-row input {
+    min-width: 100%;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .add-btn,
+  .cancel-btn {
+    width: 100%;
+    padding: 0.7rem;
+  }
+
+  .bookmark-item {
+    padding: 0.6rem 0.8rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .bookmark-link {
+    flex: 1 0 0%;
+    min-width: 0;
+    gap: 0.5rem;
+  }
+
+  .bookmark-info {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .bookmark-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bookmark-meta {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .bookmark-actions {
+    margin-left: 0;
+    justify-content: flex-end;
+    opacity: 1;
+    flex-shrink: 0;
+  }
+}
 </style>
