@@ -160,12 +160,6 @@ const getSessionTitle = (session: ChatSession) => {
 const sendMessage = async () => {
   if (!canSend.value) return
 
-  if (!apiKey.value) {
-    error.value = '请先在设置中配置 API Key'
-    showSettings.value = true
-    return
-  }
-
   error.value = ''
 
   let session = currentSession.value
@@ -196,12 +190,15 @@ const sendMessage = async () => {
   scrollToBottom()
 
   try {
-    const apiMessages = session.messages
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
+    const isDefaultKey = apiKey.value === defaultApiKey
+    const apiMessages = isDefaultKey
+      ? [{ role: userMessage.role, content: userMessage.content }]
+      : session.messages
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => ({
+            role: m.role,
+            content: m.content,
+          }))
 
     session.messages.push({
       id: generateId(),
