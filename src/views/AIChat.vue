@@ -52,7 +52,6 @@ const DEFAULT_API_URL = 'https://api.siliconflow.cn/v1/chat/completions'
 const availableModels = [
   { id: 'deepseek-ai/DeepSeek-V3.2', name: 'DeepSeek V3.2' },
   { id: 'deepseek-ai/DeepSeek-R1', name: 'DeepSeek R1' },
-  { id: 'Qwen/Qwen3.6-35B-A3B', name: 'Qwen3.6 35B' },
 ]
 
 const sessions = ref<ChatSession[]>([])
