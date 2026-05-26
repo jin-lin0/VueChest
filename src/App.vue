@@ -1,9 +1,28 @@
 <script setup lang="ts">
-// App.vue 作为应用的根组件，负责渲染路由视图
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import RouteLoadingBar from './components/RouteLoadingBar.vue'
+
+const router = useRouter()
+const isRouteLoading = ref(false)
+
+router.beforeEach((to, from, next) => {
+  if (to.path !== from.path) {
+    isRouteLoading.value = true
+  }
+  next()
+})
+
+router.afterEach(() => {
+  setTimeout(() => {
+    isRouteLoading.value = false
+  }, 100)
+})
 </script>
 
 <template>
   <div class="app">
+    <RouteLoadingBar :loading="isRouteLoading" />
     <RouterView v-slot="{ Component }">
       <transition name="fade" mode="out-in">
         <component :is="Component" />
