@@ -7,7 +7,7 @@
  * @param key 键名
  * @param value 值
  */
-export function setStorage(key: string, value: any): void {
+export function setStorage(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch (error) {

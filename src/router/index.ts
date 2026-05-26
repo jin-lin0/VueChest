@@ -43,6 +43,11 @@ const router = createRouter({
       name: 'special-days',
       component: () => import('../views/SpecialDays.vue'),
     },
+    {
+      path: '/ai-chat',
+      name: 'ai-chat',
+      component: () => import('../views/AIChat.vue'),
+    },
   ],
 })
 

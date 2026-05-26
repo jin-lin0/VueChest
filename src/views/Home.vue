@@ -73,6 +73,13 @@ const defaultAppList: AppItem[] = [
     route: '/special-days',
     description: '记录生日、纪念日等重要日子',
   },
+  {
+    id: 8,
+    name: 'AI 对话',
+    icon: '🤖',
+    route: '/ai-chat',
+    description: '基于大模型的智能对话助手',
+  },
 ]
 
 const router = useRouter()
