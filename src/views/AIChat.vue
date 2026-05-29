@@ -415,6 +415,31 @@ const handleResize = () => {
   }
 }
 
+const copiedMessageId = ref<number | null>(null)
+
+const copyMessage = async (content: string, messageId: number) => {
+  try {
+    await navigator.clipboard.writeText(content)
+    copiedMessageId.value = messageId
+    setTimeout(() => {
+      copiedMessageId.value = null
+    }, 2000)
+  } catch {
+    const textarea = document.createElement('textarea')
+    textarea.value = content
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+    copiedMessageId.value = messageId
+    setTimeout(() => {
+      copiedMessageId.value = null
+    }, 2000)
+  }
+}
+
 onMounted(() => {
   loadSessions()
   if (sessions.value.length === 0) {
@@ -625,7 +650,40 @@ onUnmounted(() => {
                 </div>
               </template>
               <div v-else class="message-content">{{ msg.content }}</div>
-              <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
+              <div class="message-meta">
+                <span class="message-time">{{ formatTime(msg.timestamp) }}</span>
+                <button
+                  v-if="msg.role === 'assistant' && msg.content"
+                  class="copy-btn"
+                  :class="{ copied: copiedMessageId === msg.id }"
+                  @click="copyMessage(msg.content, msg.id)"
+                  :title="copiedMessageId === msg.id ? '已复制' : '复制'"
+                >
+                  <svg
+                    v-if="copiedMessageId !== msg.id"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  <svg
+                    v-else
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </template>
@@ -1209,11 +1267,42 @@ onUnmounted(() => {
   border-radius: 8px;
 }
 
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
 .message-time {
   font-size: 11px;
   color: #9ca3af;
-  margin-top: 4px;
-  padding: 0 4px;
+}
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  color: #6366f1;
+}
+
+.copy-btn.copied {
+  color: #059669;
+}
+
+.copy-btn svg {
+  flex-shrink: 0;
 }
 
 .typing-indicator {
