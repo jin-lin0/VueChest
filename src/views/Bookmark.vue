@@ -1,121 +1,38 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce, getStorage, setStorage } from '@/utils'
+import { useBookmarkStore } from '@/stores'
 
 defineOptions({ name: 'BookmarkView' })
 
-interface Bookmark {
-  id: number
-  title: string
-  url: string
-  category: string
-  createdAt: string
-}
-
 const router = useRouter()
+const bookmarkStore = useBookmarkStore()
 
 const goBack = () => {
   router.push('/')
 }
 
-const bookmarks = ref<Bookmark[]>([])
 const newTitle = ref('')
 const newUrl = ref('')
 const newCategory = ref('')
-const searchQuery = ref('')
-const selectedCategory = ref<string | null>(null)
 const editingId = ref<number | null>(null)
 
-const defaultBookmarks: Bookmark[] = [
-  {
-    id: 1,
-    title: 'Vue.js 官方文档',
-    url: 'https://vuejs.org',
-    category: '开发',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    title: 'TypeScript 文档',
-    url: 'https://www.typescriptlang.org',
-    category: '开发',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    title: 'GitHub',
-    url: 'https://github.com',
-    category: '工具',
-    createdAt: new Date().toISOString(),
-  },
-]
-
-const loadBookmarks = (): Bookmark[] => {
-  return getStorage<Bookmark[]>('bookmarks', defaultBookmarks) || defaultBookmarks
-}
-
-const saveBookmarks = () => {
-  setStorage('bookmarks', bookmarks.value)
-}
-
 onMounted(() => {
-  bookmarks.value = loadBookmarks()
-})
-
-const debouncedSaveBookmarks = debounce(() => saveBookmarks(), 500)
-watch(bookmarks, debouncedSaveBookmarks, { deep: true })
-
-const categories = computed(() => {
-  const cats = new Set(bookmarks.value.map((b) => b.category).filter(Boolean))
-  return Array.from(cats).sort()
-})
-
-const filteredBookmarks = computed(() => {
-  let result = bookmarks.value
-
-  if (selectedCategory.value) {
-    result = result.filter((b) => b.category === selectedCategory.value)
-  }
-
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase()
-    result = result.filter(
-      (b) =>
-        b.title.toLowerCase().includes(q) ||
-        b.url.toLowerCase().includes(q) ||
-        b.category.toLowerCase().includes(q),
-    )
-  }
-
-  return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  bookmarkStore.init()
 })
 
 const addBookmark = () => {
   const title = newTitle.value.trim()
-  let url = newUrl.value.trim()
-  const category = newCategory.value.trim() || '未分类'
+  const url = newUrl.value.trim()
+  const category = newCategory.value.trim()
 
   if (!title || !url) return
 
-  if (!/^https?:\/\//i.test(url)) {
-    url = 'https://' + url
-  }
-
   if (editingId.value !== null) {
-    const index = bookmarks.value.findIndex((b) => b.id === editingId.value)
-    if (index !== -1) {
-      bookmarks.value[index] = { ...bookmarks.value[index], title, url, category }
-    }
+    bookmarkStore.updateBookmark(editingId.value, title, url, category)
     editingId.value = null
   } else {
-    bookmarks.value.push({
-      id: Date.now(),
-      title,
-      url,
-      category,
-      createdAt: new Date().toISOString(),
-    })
+    bookmarkStore.addBookmark(title, url, category)
   }
 
   newTitle.value = ''
@@ -123,7 +40,7 @@ const addBookmark = () => {
   newCategory.value = ''
 }
 
-const editBookmark = (bookmark: Bookmark) => {
+const editBookmark = (bookmark: { id: number; title: string; url: string; category: string }) => {
   editingId.value = bookmark.id
   newTitle.value = bookmark.title
   newUrl.value = bookmark.url
@@ -138,12 +55,12 @@ const cancelEdit = () => {
 }
 
 const deleteBookmark = (id: number) => {
-  bookmarks.value = bookmarks.value.filter((b) => b.id !== id)
+  bookmarkStore.deleteBookmark(id)
   if (editingId.value === id) cancelEdit()
 }
 
 const selectCategory = (cat: string) => {
-  selectedCategory.value = selectedCategory.value === cat ? null : cat
+  bookmarkStore.selectedCategory = bookmarkStore.selectedCategory === cat ? null : cat
 }
 
 const getDomain = (url: string) => {
@@ -200,13 +117,18 @@ const formatDate = (dateString: string) => {
       </div>
 
       <div class="toolbar">
-        <input v-model="searchQuery" type="text" placeholder="搜索书签..." class="search-input" />
+        <input
+          v-model="bookmarkStore.searchQuery"
+          type="text"
+          placeholder="搜索书签..."
+          class="search-input"
+        />
         <div class="category-tags">
           <button
-            v-for="cat in categories"
+            v-for="cat in bookmarkStore.categories"
             :key="cat"
             class="tag-btn"
-            :class="{ active: selectedCategory === cat }"
+            :class="{ active: bookmarkStore.selectedCategory === cat }"
             @click="selectCategory(cat)"
           >
             {{ cat }}
@@ -215,7 +137,11 @@ const formatDate = (dateString: string) => {
       </div>
 
       <div class="bookmark-list">
-        <div v-for="bookmark in filteredBookmarks" :key="bookmark.id" class="bookmark-item">
+        <div
+          v-for="bookmark in bookmarkStore.filteredBookmarks"
+          :key="bookmark.id"
+          class="bookmark-item"
+        >
           <a :href="bookmark.url" target="_blank" rel="noopener noreferrer" class="bookmark-link">
             <img
               :src="getFaviconUrl(bookmark.url)"
@@ -239,8 +165,8 @@ const formatDate = (dateString: string) => {
           </div>
         </div>
 
-        <div v-if="filteredBookmarks.length === 0" class="empty-state">
-          {{ bookmarks.length === 0 ? '还没有书签，添加一个吧！' : '没有匹配的书签' }}
+        <div v-if="bookmarkStore.filteredBookmarks.length === 0" class="empty-state">
+          {{ bookmarkStore.bookmarks.length === 0 ? '还没有书签，添加一个吧！' : '没有匹配的书签' }}
         </div>
       </div>
     </main>

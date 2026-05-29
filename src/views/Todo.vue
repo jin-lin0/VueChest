@@ -1,85 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce, getStorage, setStorage } from '@/utils'
+import { useTodoStore } from '@/stores'
 
 defineOptions({ name: 'TodoView' })
 
-interface TodoItem {
-  id: number
-  text: string
-  completed: boolean
-  createdAt: string // 改为字符串类型，方便JSON序列化
-}
-
 const router = useRouter()
+const todoStore = useTodoStore()
 
 const goBack = () => {
   router.push('/')
 }
 
 const newTodo = ref('')
-const todos = ref<TodoItem[]>([])
 
-const defaultTodos: TodoItem[] = [
-  {
-    id: 1,
-    text: '完成Vue项目',
-    completed: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    text: '学习TypeScript',
-    completed: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    text: '购买生活用品',
-    completed: false,
-    createdAt: new Date().toISOString(),
-  },
-]
-
-const loadTodos = (): TodoItem[] => {
-  return getStorage<TodoItem[]>('todos', defaultTodos) || defaultTodos
-}
-
-const saveTodos = () => {
-  setStorage('todos', todos.value)
-}
-
-// 组件挂载时加载数据
 onMounted(() => {
-  todos.value = loadTodos()
+  todoStore.init()
 })
-
-// 监听todos变化，自动保存
-const debouncedSaveTodos = debounce(() => saveTodos(), 500)
-watch(todos, debouncedSaveTodos, { deep: true })
 
 const addTodo = () => {
   if (newTodo.value.trim()) {
-    todos.value.push({
-      id: Date.now(),
-      text: newTodo.value,
-      completed: false,
-      createdAt: new Date().toISOString(),
-    })
+    todoStore.addTodo(newTodo.value)
     newTodo.value = ''
   }
-}
-
-const toggleTodo = (id: number) => {
-  const todo = todos.value.find((item) => item.id === id)
-  if (todo) {
-    todo.completed = !todo.completed
-  }
-}
-
-const removeTodo = (id: number) => {
-  todos.value = todos.value.filter((item) => item.id !== id)
 }
 
 const formatDate = (dateString: string) => {
@@ -113,22 +56,28 @@ const formatDate = (dateString: string) => {
 
       <div class="todo-list">
         <div
-          v-for="todo in todos"
+          v-for="todo in todoStore.todos"
           :key="todo.id"
           class="todo-item"
           :class="{ completed: todo.completed }"
         >
           <div class="todo-checkbox">
-            <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" />
+            <input
+              type="checkbox"
+              :checked="todo.completed"
+              @change="todoStore.toggleTodo(todo.id)"
+            />
           </div>
           <div class="todo-details">
             <div class="todo-text">{{ todo.text }}</div>
             <div class="todo-date">{{ formatDate(todo.createdAt) }}</div>
           </div>
-          <button class="delete-btn" @click="removeTodo(todo.id)">删除</button>
+          <button class="delete-btn" @click="todoStore.removeTodo(todo.id)">删除</button>
         </div>
 
-        <div v-if="todos.length === 0" class="empty-state">没有待办事项，添加一个吧！</div>
+        <div v-if="todoStore.todos.length === 0" class="empty-state">
+          没有待办事项，添加一个吧！
+        </div>
       </div>
     </main>
   </div>

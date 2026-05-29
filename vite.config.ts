@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
+import { APP_CONFIG } from './src/config/app'
 
 export default defineConfig({
   plugins: [
@@ -13,13 +14,13 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-mask-512.png'],
       manifest: {
-        name: 'VueChest - 轻量实用工具集',
-        short_name: 'VueChest',
-        description: '一站式个人效率工具箱，包含待办事项、笔记、番茄钟、记账本、AI对话等实用工具',
-        theme_color: '#667eea',
-        background_color: '#f5f7fa',
-        display: 'standalone',
-        orientation: 'portrait-primary',
+        name: APP_CONFIG.fullName,
+        short_name: APP_CONFIG.pwa.shortName,
+        description: APP_CONFIG.description,
+        theme_color: APP_CONFIG.pwa.themeColor,
+        background_color: APP_CONFIG.pwa.backgroundColor,
+        display: APP_CONFIG.pwa.display,
+        orientation: APP_CONFIG.pwa.orientation,
         scope: '/',
         start_url: '/',
         icons: [
@@ -41,8 +42,8 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
-        categories: ['productivity', 'utilities'],
-        lang: 'zh-CN',
+        categories: [...APP_CONFIG.pwa.categories],
+        lang: APP_CONFIG.pwa.lang,
         dir: 'ltr',
       },
       workbox: {
@@ -71,7 +72,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
       },
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
     }),
   ],
