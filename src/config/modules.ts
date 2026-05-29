@@ -8,6 +8,13 @@ export interface AppModule {
 
 export const APP_MODULES: AppModule[] = [
   {
+    id: 8,
+    name: 'AI 对话',
+    icon: '🤖',
+    route: '/ai-chat',
+    description: '基于大模型的智能对话助手',
+  },
+  {
     id: 1,
     name: 'API管理器',
     icon: '🔗',
@@ -56,13 +63,6 @@ export const APP_MODULES: AppModule[] = [
     route: '/special-days',
     description: '记录生日、纪念日等重要日子',
   },
-  {
-    id: 8,
-    name: 'AI 对话',
-    icon: '🤖',
-    route: '/ai-chat',
-    description: '基于大模型的智能对话助手',
-  },
 ]
 
 export const DEFAULT_TODOS = [
@@ -90,7 +90,8 @@ export const DEFAULT_NOTES = [
   {
     id: 1,
     title: '欢迎使用笔记本',
-    content: '这是一个简单的笔记应用，您可以在这里记录您的想法和灵感。\n\n支持 **Markdown** 语法，可以轻松创建格式丰富的笔记！',
+    content:
+      '这是一个简单的笔记应用，您可以在这里记录您的想法和灵感。\n\n支持 **Markdown** 语法，可以轻松创建格式丰富的笔记！',
     isMarkdown: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -98,7 +99,8 @@ export const DEFAULT_NOTES = [
   {
     id: 2,
     title: 'Markdown 示例',
-    content: '# Markdown 功能演示\n\n## 基础语法\n\n- **粗体文本**\n- *斜体文本*\n- ~~删除线~~\n- `行内代码`\n\n## 代码块\n\n```javascript\nfunction hello() {\n  console.log("Hello, Markdown!")\n}\n```\n\n## 列表\n\n1. 第一项\n2. 第二项\n3. 第三项\n\n> 这是一段引用文本\n\n---\n\n[链接示例](https://vuejs.org)',
+    content:
+      '# Markdown 功能演示\n\n## 基础语法\n\n- **粗体文本**\n- *斜体文本*\n- ~~删除线~~\n- `行内代码`\n\n## 代码块\n\n```javascript\nfunction hello() {\n  console.log("Hello, Markdown!")\n}\n```\n\n## 列表\n\n1. 第一项\n2. 第二项\n3. 第三项\n\n> 这是一段引用文本\n\n---\n\n[链接示例](https://vuejs.org)',
     isMarkdown: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -227,6 +229,8 @@ export const DEFAULT_APIS = [
     createdAt: new Date().toISOString(),
   },
 ]
+
+export const DEFAULT_APP_ORDER = APP_MODULES.map((app) => app.id)
 
 export const AI_CHAT_CONFIG = {
   defaultApiUrl: 'https://api.siliconflow.cn/v1/chat/completions',

@@ -11,16 +11,12 @@ import {
   getStorage,
   setStorage,
 } from '@/utils'
+import { APP_MODULES, STORAGE_KEYS } from '@/config'
+import type { AppModule } from '@/config'
 
 defineOptions({ name: 'HomeView' })
 
-interface AppItem {
-  id: number
-  name: string
-  icon: string
-  route: string
-  description: string
-}
+type AppItem = AppModule
 
 interface ContextMenuState {
   visible: boolean
@@ -29,67 +25,7 @@ interface ContextMenuState {
   appId: number | null
 }
 
-const ORDER_STORAGE_KEY = 'home_app_order'
-const HIDDEN_STORAGE_KEY = 'home_app_hidden'
-
-const defaultAppList: AppItem[] = [
-  {
-    id: 1,
-    name: 'API管理器',
-    icon: '🔗',
-    route: '/api-manager',
-    description: '管理免费API，配置参数，在线执行',
-  },
-  {
-    id: 2,
-    name: '书签管理',
-    icon: '🔖',
-    route: '/bookmark',
-    description: '收藏和管理常用网站链接',
-  },
-  {
-    id: 3,
-    name: '待办事项',
-    icon: '📝',
-    route: '/todo',
-    description: '管理您的日常任务和待办事项',
-  },
-  {
-    id: 4,
-    name: '笔记本',
-    icon: '📓',
-    route: '/notes',
-    description: '记录和保存您的想法和笔记',
-  },
-  {
-    id: 5,
-    name: '番茄钟',
-    icon: '🍅',
-    route: '/pomodoro',
-    description: '专注工作计时，提升效率',
-  },
-  {
-    id: 6,
-    name: '记账本',
-    icon: '💰',
-    route: '/expense',
-    description: '记录收入支出，管理个人财务',
-  },
-  {
-    id: 7,
-    name: '特殊日子',
-    icon: '🎉',
-    route: '/special-days',
-    description: '记录生日、纪念日等重要日子',
-  },
-  {
-    id: 8,
-    name: 'AI 对话',
-    icon: '🤖',
-    route: '/ai-chat',
-    description: '基于大模型的智能对话助手',
-  },
-]
+const defaultAppList: AppItem[] = APP_MODULES
 
 const router = useRouter()
 const searchQuery = ref('')
@@ -214,16 +150,16 @@ const appList = computed(() => {
 const hiddenApps = computed(() => defaultAppList.filter((app) => hiddenIds.value.has(app.id)))
 
 const loadHidden = () => {
-  const ids = getStorage<number[]>(HIDDEN_STORAGE_KEY, [])
+  const ids = getStorage<number[]>(STORAGE_KEYS.HOME_APP_HIDDEN, [])
   hiddenIds.value = new Set(ids || [])
 }
 
 const saveHidden = () => {
-  setStorage(HIDDEN_STORAGE_KEY, [...hiddenIds.value])
+  setStorage(STORAGE_KEYS.HOME_APP_HIDDEN, [...hiddenIds.value])
 }
 
 const loadOrder = () => {
-  const order = getStorage<number[]>(ORDER_STORAGE_KEY)
+  const order = getStorage<number[]>(STORAGE_KEYS.HOME_APP_ORDER)
   if (order) {
     const sorted = order
       .map((id) => defaultAppList.find((app) => app.id === id))
@@ -240,7 +176,7 @@ const loadOrder = () => {
 
 const saveOrder = () => {
   const order = allApps.value.map((app) => app.id)
-  setStorage(ORDER_STORAGE_KEY, order)
+  setStorage(STORAGE_KEYS.HOME_APP_ORDER, order)
 }
 
 const handleLogoClick = (e: MouseEvent) => {
