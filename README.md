@@ -1,39 +1,54 @@
-# vue3-project
+# VueChest
 
-This template should help get you started developing with Vue 3 in Vite.
+基于Vue 3的现代Web应用，提供Markdown编辑、日历功能等实用工具。
 
-## Recommended IDE Setup
+## 技术栈
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- **前端框架**: Vue 3 + TypeScript
+- **构建工具**: Vite
+- **状态管理**: Pinia
+- **路由**: Vue Router
+- **工具库**: highlight.js (代码高亮), marked (Markdown解析), lunar-javascript (农历支持)
+- **本地存储**: IndexedDB (通过idb库)
+- **代码质量**: ESLint + Prettier
 
-## Type Support for `.vue` Imports in TS
+## 推荐开发环境
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+- [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (请禁用Vetur)
+- Node.js: ^20.19.0 || >=22.12.0
 
-## Customize configuration
+## 快速开始
 
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+### 安装依赖
 
 ```sh
 pnpm install
 ```
 
-### Compile and Hot-Reload for Development
+### 开发环境
 
 ```sh
 pnpm dev
 ```
 
-### Type-Check, Compile and Minify for Production
+### 生产构建
 
 ```sh
 pnpm build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+### 代码检查
 
 ```sh
 pnpm lint
 ```
+
+### 代码格式化
+
+```sh
+pnpm format
+```
+
+## 配置参考
+
+详见 [Vite配置文档](https://vite.dev/config/)。
