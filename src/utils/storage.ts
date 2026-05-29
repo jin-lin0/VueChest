@@ -55,9 +55,13 @@ export const initStorage = async (): Promise<void> => {
   return initPromise
 }
 
+const toPlainObject = <T>(value: T): T => {
+  return JSON.parse(JSON.stringify(value))
+}
+
 export function setStorage(key: string, value: unknown): void {
   cache.set(key, value)
-  dbSet(key, value).catch((error) => {
+  dbSet(key, toPlainObject(value)).catch((error) => {
     console.error('IndexedDB 写入失败:', error)
   })
 }
@@ -100,5 +104,5 @@ export const importAllData = async (data: Record<string, unknown>): Promise<void
   Object.entries(data).forEach(([key, value]) => {
     cache.set(key, value)
   })
-  await dbImportAll(data)
+  await dbImportAll(toPlainObject(data))
 }
