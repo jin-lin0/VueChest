@@ -714,6 +714,7 @@ const navigateToApp = (route: string) => {
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
   flex-shrink: 0;
   contain: layout style;
+  user-select: none;
 }
 
 .logo-icon {
