@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce } from '@/utils'
+import { debounce, getStorage, setStorage } from '@/utils'
 
 defineOptions({ name: 'BookmarkView' })
 
@@ -27,43 +27,36 @@ const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
 const editingId = ref<number | null>(null)
 
+const defaultBookmarks: Bookmark[] = [
+  {
+    id: 1,
+    title: 'Vue.js 官方文档',
+    url: 'https://vuejs.org',
+    category: '开发',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    title: 'TypeScript 文档',
+    url: 'https://www.typescriptlang.org',
+    category: '开发',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 3,
+    title: 'GitHub',
+    url: 'https://github.com',
+    category: '工具',
+    createdAt: new Date().toISOString(),
+  },
+]
+
 const loadBookmarks = (): Bookmark[] => {
-  const saved = localStorage.getItem('bookmarks')
-  if (saved) {
-    try {
-      return JSON.parse(saved)
-    } catch (e) {
-      console.error('解析书签数据失败:', e)
-      return []
-    }
-  }
-  return [
-    {
-      id: 1,
-      title: 'Vue.js 官方文档',
-      url: 'https://vuejs.org',
-      category: '开发',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      title: 'TypeScript 文档',
-      url: 'https://www.typescriptlang.org',
-      category: '开发',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 3,
-      title: 'GitHub',
-      url: 'https://github.com',
-      category: '工具',
-      createdAt: new Date().toISOString(),
-    },
-  ]
+  return getStorage<Bookmark[]>('bookmarks', defaultBookmarks) || defaultBookmarks
 }
 
 const saveBookmarks = () => {
-  localStorage.setItem('bookmarks', JSON.stringify(bookmarks.value))
+  setStorage('bookmarks', bookmarks.value)
 }
 
 onMounted(() => {

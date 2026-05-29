@@ -1,64 +1,104 @@
-/**
- * 本地存储工具函数
- */
+import { dbSet, dbRemove, dbClear, dbGetAll, dbImportAll } from './db'
 
-/**
- * 设置本地存储
- * @param key 键名
- * @param value 值
- */
+const cache = new Map<string, unknown>()
+let initialized = false
+let initPromise: Promise<void> | null = null
+
+export const initStorage = async (): Promise<void> => {
+  if (initialized) return
+  if (initPromise) return initPromise
+
+  initPromise = (async () => {
+    try {
+      const allData = await dbGetAll()
+      const hasDbData = Object.keys(allData).length > 0
+
+      if (hasDbData) {
+        Object.entries(allData).forEach(([key, value]) => {
+          cache.set(key, value)
+        })
+      } else {
+        const keys: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key) keys.push(key)
+        }
+
+        for (const key of keys) {
+          const raw = localStorage.getItem(key)
+          if (raw !== null) {
+            try {
+              cache.set(key, JSON.parse(raw))
+            } catch {
+              cache.set(key, raw)
+            }
+          }
+        }
+
+        if (cache.size > 0) {
+          const data: Record<string, unknown> = {}
+          cache.forEach((value, key) => {
+            data[key] = value
+          })
+          await dbImportAll(data)
+          localStorage.clear()
+        }
+      }
+
+      initialized = true
+    } catch (error) {
+      console.error('初始化存储失败:', error)
+      initialized = true
+    }
+  })()
+
+  return initPromise
+}
+
 export function setStorage(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch (error) {
-    console.error('设置本地存储失败:', error)
-  }
+  cache.set(key, value)
+  dbSet(key, value).catch((error) => {
+    console.error('IndexedDB 写入失败:', error)
+  })
 }
 
-/**
- * 获取本地存储
- * @param key 键名
- * @param defaultValue 默认值
- * @returns 存储的值或默认值
- */
 export function getStorage<T>(key: string, defaultValue?: T): T | null {
-  try {
-    const item = localStorage.getItem(key)
-    return item ? JSON.parse(item) : defaultValue || null
-  } catch (error) {
-    console.error('获取本地存储失败:', error)
-    return defaultValue || null
-  }
+  const value = cache.get(key)
+  if (value !== undefined) return value as T
+  return defaultValue ?? null
 }
 
-/**
- * 删除本地存储
- * @param key 键名
- */
 export function removeStorage(key: string): void {
-  try {
-    localStorage.removeItem(key)
-  } catch (error) {
-    console.error('删除本地存储失败:', error)
-  }
+  cache.delete(key)
+  dbRemove(key).catch((error) => {
+    console.error('IndexedDB 删除失败:', error)
+  })
 }
 
-/**
- * 清空所有本地存储
- */
 export function clearStorage(): void {
-  try {
-    localStorage.clear()
-  } catch (error) {
-    console.error('清空本地存储失败:', error)
-  }
+  cache.clear()
+  dbClear().catch((error) => {
+    console.error('IndexedDB 清空失败:', error)
+  })
 }
 
-/**
- * 检查本地存储中是否存在指定键
- * @param key 键名
- * @returns 是否存在
- */
 export function hasStorage(key: string): boolean {
-  return localStorage.getItem(key) !== null
+  return cache.has(key)
+}
+
+export const exportAllData = async (): Promise<Record<string, unknown>> => {
+  if (!initialized) await initStorage()
+  const data: Record<string, unknown> = {}
+  cache.forEach((value, key) => {
+    data[key] = value
+  })
+  return data
+}
+
+export const importAllData = async (data: Record<string, unknown>): Promise<void> => {
+  cache.clear()
+  Object.entries(data).forEach(([key, value]) => {
+    cache.set(key, value)
+  })
+  await dbImportAll(data)
 }

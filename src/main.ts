@@ -3,10 +3,13 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import { initStorage } from './utils'
 
-const app = createApp(App)
+initStorage().then(() => {
+  const app = createApp(App)
 
-app.use(createPinia())
-app.use(router)
+  app.use(createPinia())
+  app.use(router)
 
-app.mount('#app')
+  app.mount('#app')
+})

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce } from '@/utils'
+import { debounce, getStorage, setStorage } from '@/utils'
 
 defineOptions({ name: 'TodoView' })
 
@@ -21,42 +21,33 @@ const goBack = () => {
 const newTodo = ref('')
 const todos = ref<TodoItem[]>([])
 
-// 从localStorage加载数据
+const defaultTodos: TodoItem[] = [
+  {
+    id: 1,
+    text: '完成Vue项目',
+    completed: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    text: '学习TypeScript',
+    completed: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 3,
+    text: '购买生活用品',
+    completed: false,
+    createdAt: new Date().toISOString(),
+  },
+]
+
 const loadTodos = (): TodoItem[] => {
-  const savedTodos = localStorage.getItem('todos')
-  if (savedTodos) {
-    try {
-      return JSON.parse(savedTodos)
-    } catch (e) {
-      console.error('解析待办事项数据失败:', e)
-      return []
-    }
-  }
-  return [
-    {
-      id: 1,
-      text: '完成Vue项目',
-      completed: false,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 2,
-      text: '学习TypeScript',
-      completed: true,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 3,
-      text: '购买生活用品',
-      completed: false,
-      createdAt: new Date().toISOString()
-    }
-  ]
+  return getStorage<TodoItem[]>('todos', defaultTodos) || defaultTodos
 }
 
-// 保存数据到localStorage
 const saveTodos = () => {
-  localStorage.setItem('todos', JSON.stringify(todos.value))
+  setStorage('todos', todos.value)
 }
 
 // 组件挂载时加载数据
@@ -74,21 +65,21 @@ const addTodo = () => {
       id: Date.now(),
       text: newTodo.value,
       completed: false,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     })
     newTodo.value = ''
   }
 }
 
 const toggleTodo = (id: number) => {
-  const todo = todos.value.find(item => item.id === id)
+  const todo = todos.value.find((item) => item.id === id)
   if (todo) {
     todo.completed = !todo.completed
   }
 }
 
 const removeTodo = (id: number) => {
-  todos.value = todos.value.filter(item => item.id !== id)
+  todos.value = todos.value.filter((item) => item.id !== id)
 }
 
 const formatDate = (dateString: string) => {
@@ -97,7 +88,7 @@ const formatDate = (dateString: string) => {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   }).format(date)
 }
 </script>
@@ -108,44 +99,36 @@ const formatDate = (dateString: string) => {
       <button class="back-button" @click="goBack">返回</button>
       <h1>待办事项</h1>
     </header>
-    
+
     <main class="todo-content">
       <div class="add-todo">
-        <input 
-          v-model="newTodo" 
-          type="text" 
+        <input
+          v-model="newTodo"
+          type="text"
           placeholder="添加新的待办事项..."
           @keyup.enter="addTodo"
-        >
+        />
         <button @click="addTodo">添加</button>
       </div>
-      
+
       <div class="todo-list">
-        <div 
-          v-for="todo in todos" 
-          :key="todo.id" 
+        <div
+          v-for="todo in todos"
+          :key="todo.id"
           class="todo-item"
-          :class="{ 'completed': todo.completed }"
+          :class="{ completed: todo.completed }"
         >
           <div class="todo-checkbox">
-            <input 
-              type="checkbox" 
-              :checked="todo.completed"
-              @change="toggleTodo(todo.id)"
-            >
+            <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" />
           </div>
           <div class="todo-details">
             <div class="todo-text">{{ todo.text }}</div>
             <div class="todo-date">{{ formatDate(todo.createdAt) }}</div>
           </div>
-          <button class="delete-btn" @click="removeTodo(todo.id)">
-            删除
-          </button>
+          <button class="delete-btn" @click="removeTodo(todo.id)">删除</button>
         </div>
-        
-        <div v-if="todos.length === 0" class="empty-state">
-          没有待办事项，添加一个吧！
-        </div>
+
+        <div v-if="todos.length === 0" class="empty-state">没有待办事项，添加一个吧！</div>
       </div>
     </main>
   </div>

@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils'
+import {
+  solarToLunar,
+  lunarToSolar,
+  getLunarMonthName,
+  getLunarDayName,
+  exportAllData,
+  importAllData,
+  getStorage,
+  setStorage,
+} from '@/utils'
 
 defineOptions({ name: 'HomeView' })
 
@@ -97,6 +106,11 @@ const dragIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 const isDragging = ref(false)
 
+const showBackdoorModal = ref(false)
+const importText = ref('')
+const importStatus = ref('')
+const lastClickTime = ref(0)
+
 interface SpecialDay {
   id: number
   name: string
@@ -114,15 +128,7 @@ interface SpecialDay {
 const SPECIAL_DAYS_KEY = 'special_days'
 
 const loadSpecialDays = (): SpecialDay[] => {
-  const saved = localStorage.getItem(SPECIAL_DAYS_KEY)
-  if (saved) {
-    try {
-      return JSON.parse(saved)
-    } catch {
-      return []
-    }
-  }
-  return []
+  return getStorage<SpecialDay[]>(SPECIAL_DAYS_KEY, []) || []
 }
 
 const getDaysUntil = (day: SpecialDay): number => {
@@ -208,45 +214,88 @@ const appList = computed(() => {
 const hiddenApps = computed(() => defaultAppList.filter((app) => hiddenIds.value.has(app.id)))
 
 const loadHidden = () => {
-  const saved = localStorage.getItem(HIDDEN_STORAGE_KEY)
-  if (saved) {
-    try {
-      const ids: number[] = JSON.parse(saved)
-      hiddenIds.value = new Set(ids)
-    } catch {
-      hiddenIds.value = new Set()
-    }
-  }
+  const ids = getStorage<number[]>(HIDDEN_STORAGE_KEY, [])
+  hiddenIds.value = new Set(ids || [])
 }
 
 const saveHidden = () => {
-  localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify([...hiddenIds.value]))
+  setStorage(HIDDEN_STORAGE_KEY, [...hiddenIds.value])
 }
 
 const loadOrder = () => {
-  const saved = localStorage.getItem(ORDER_STORAGE_KEY)
-  if (saved) {
-    try {
-      const order: number[] = JSON.parse(saved)
-      const sorted = order
-        .map((id) => defaultAppList.find((app) => app.id === id))
-        .filter((app): app is AppItem => !!app)
-      const existingIds = new Set(order)
-      defaultAppList.forEach((app) => {
-        if (!existingIds.has(app.id)) {
-          sorted.push(app)
-        }
-      })
-      allApps.value = sorted
-    } catch {
-      allApps.value = [...defaultAppList]
-    }
+  const order = getStorage<number[]>(ORDER_STORAGE_KEY)
+  if (order) {
+    const sorted = order
+      .map((id) => defaultAppList.find((app) => app.id === id))
+      .filter((app): app is AppItem => !!app)
+    const existingIds = new Set(order)
+    defaultAppList.forEach((app) => {
+      if (!existingIds.has(app.id)) {
+        sorted.push(app)
+      }
+    })
+    allApps.value = sorted
   }
 }
 
 const saveOrder = () => {
   const order = allApps.value.map((app) => app.id)
-  localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(order))
+  setStorage(ORDER_STORAGE_KEY, order)
+}
+
+const handleLogoClick = (e: MouseEvent) => {
+  if (!e.metaKey && !e.ctrlKey) return
+
+  const now = Date.now()
+  if (now - lastClickTime.value < 400) {
+    showBackdoorModal.value = true
+    importText.value = ''
+    importStatus.value = ''
+  }
+  lastClickTime.value = now
+}
+
+const handleExport = async () => {
+  const data = await exportAllData()
+  const json = JSON.stringify(data, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+const handleImport = async () => {
+  importStatus.value = ''
+  try {
+    const data = JSON.parse(importText.value)
+    if (typeof data !== 'object' || data === null) {
+      importStatus.value = '数据格式错误：应为 JSON 对象'
+      return
+    }
+    await importAllData(data as Record<string, unknown>)
+    importStatus.value = '导入成功，刷新页面后生效'
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
+  } catch {
+    importStatus.value = 'JSON 解析失败，请检查格式'
+  }
+}
+
+const handleFileImport = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    importText.value = reader.result as string
+    handleImport()
+  }
+  reader.readAsText(file)
+  input.value = ''
 }
 
 onMounted(() => {
@@ -355,7 +404,7 @@ const navigateToApp = (route: string) => {
 
     <header class="header">
       <div class="header-left">
-        <div class="logo-area">
+        <div class="logo-area" @click="handleLogoClick">
           <span class="logo-icon">⚡</span>
         </div>
         <div class="header-text">
@@ -467,6 +516,58 @@ const navigateToApp = (route: string) => {
             <span class="hidden-name">{{ app.name }}</span>
           </div>
           <button class="restore-btn" @click="showApp(app.id)">恢复显示</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showBackdoorModal" class="backdoor-overlay" @click.self="showBackdoorModal = false">
+      <div class="backdoor-modal">
+        <div class="backdoor-header">
+          <h3>数据管理</h3>
+          <button class="backdoor-close" @click="showBackdoorModal = false">✕</button>
+        </div>
+        <div class="backdoor-body">
+          <div class="backdoor-section">
+            <h4>导出数据</h4>
+            <p class="backdoor-desc">将所有应用数据导出为 JSON 文件</p>
+            <button class="backdoor-btn export-btn" @click="handleExport">导出全部数据</button>
+          </div>
+          <div class="backdoor-divider"></div>
+          <div class="backdoor-section">
+            <h4>导入数据</h4>
+            <p class="backdoor-desc">从 JSON 文件或粘贴 JSON 文本导入数据</p>
+            <div class="backdoor-import-actions">
+              <label class="backdoor-btn import-file-btn">
+                选择文件导入
+                <input
+                  type="file"
+                  accept=".json"
+                  @change="handleFileImport"
+                  style="display: none"
+                />
+              </label>
+            </div>
+            <textarea
+              v-model="importText"
+              class="backdoor-textarea"
+              placeholder="或粘贴 JSON 数据到这里..."
+              rows="6"
+            ></textarea>
+            <button
+              class="backdoor-btn import-btn"
+              :disabled="!importText.trim()"
+              @click="handleImport"
+            >
+              导入数据
+            </button>
+            <p
+              v-if="importStatus"
+              class="backdoor-status"
+              :class="{ success: importStatus.includes('成功') }"
+            >
+              {{ importStatus }}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -1281,5 +1382,179 @@ const navigateToApp = (route: string) => {
     width: 200px;
     height: 200px;
   }
+}
+
+.backdoor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+
+.backdoor-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 520px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.backdoor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.backdoor-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #2c3e50;
+}
+
+.backdoor-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #8e99a4;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.backdoor-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #2c3e50;
+}
+
+.backdoor-body {
+  padding: 1.5rem;
+}
+
+.backdoor-section h4 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: #2c3e50;
+}
+
+.backdoor-desc {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: #8e99a4;
+}
+
+.backdoor-divider {
+  height: 1px;
+  background: #eee;
+  margin: 1.5rem 0;
+}
+
+.backdoor-import-actions {
+  margin-bottom: 1rem;
+}
+
+.backdoor-btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.export-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.import-file-btn {
+  background: #f5f7fa;
+  color: #667eea;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  display: inline-block;
+}
+
+.import-file-btn:hover {
+  background: rgba(102, 126, 234, 0.08);
+}
+
+.import-btn {
+  background: #43e97b;
+  color: white;
+  width: 100%;
+}
+
+.import-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.import-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.backdoor-textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: 'Monaco', 'Menlo', monospace;
+  resize: vertical;
+  margin-bottom: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.backdoor-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.backdoor-status {
+  margin: 0.8rem 0 0;
+  font-size: 0.85rem;
+  color: #e74c3c;
+}
+
+.backdoor-status.success {
+  color: #27ae60;
 }
 </style>

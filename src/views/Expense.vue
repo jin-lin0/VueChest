@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce } from '@/utils'
+import { debounce, getStorage, setStorage } from '@/utils'
 
 defineOptions({ name: 'ExpenseView' })
 
@@ -34,20 +34,11 @@ const formDate = ref(new Date().toISOString().slice(0, 10))
 const editingId = ref<number | null>(null)
 
 const loadRecords = (): ExpenseItem[] => {
-  const saved = localStorage.getItem('expenses')
-  if (saved) {
-    try {
-      return JSON.parse(saved)
-    } catch (e) {
-      console.error('解析账单数据失败:', e)
-      return []
-    }
-  }
-  return []
+  return getStorage<ExpenseItem[]>('expenses', []) || []
 }
 
 const saveRecords = () => {
-  localStorage.setItem('expenses', JSON.stringify(records.value))
+  setStorage('expenses', records.value)
 }
 
 onMounted(() => {

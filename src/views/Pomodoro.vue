@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce } from '@/utils'
+import { debounce, getStorage, setStorage } from '@/utils'
 
 defineOptions({ name: 'PomodoroView' })
 
@@ -71,36 +71,19 @@ const durations = computed<Record<SessionType, number>>(() => ({
 const timeLeft = ref(durations.value.work)
 
 const loadSettings = (): Settings => {
-  const saved = localStorage.getItem('pomodoro-settings')
-  if (saved) {
-    try {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
-    } catch {
-      return { ...DEFAULT_SETTINGS }
-    }
-  }
-  return { ...DEFAULT_SETTINGS }
+  return { ...DEFAULT_SETTINGS, ...(getStorage<Partial<Settings>>('pomodoro-settings') || {}) }
 }
 
 const loadHistory = (): HistoryRecord[] => {
-  const saved = localStorage.getItem('pomodoro-history')
-  if (saved) {
-    try {
-      return JSON.parse(saved)
-    } catch (e) {
-      console.error('解析番茄钟历史失败:', e)
-      return []
-    }
-  }
-  return []
+  return getStorage<HistoryRecord[]>('pomodoro-history', []) || []
 }
 
 const saveHistory = () => {
-  localStorage.setItem('pomodoro-history', JSON.stringify(history.value))
+  setStorage('pomodoro-history', history.value)
 }
 
 const saveSettings = () => {
-  localStorage.setItem('pomodoro-settings', JSON.stringify(settings.value))
+  setStorage('pomodoro-settings', settings.value)
 }
 
 onMounted(() => {

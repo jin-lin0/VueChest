@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce, solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils'
+import {
+  debounce,
+  solarToLunar,
+  lunarToSolar,
+  getLunarMonthName,
+  getLunarDayName,
+  getStorage,
+  setStorage,
+} from '@/utils'
 
 defineOptions({ name: 'SpecialDaysView' })
 
@@ -101,20 +109,11 @@ const defaultForm = (): EditForm => ({
 const form = ref<EditForm>(defaultForm())
 
 const loadSpecialDays = (): SpecialDay[] => {
-  const saved = localStorage.getItem(STORAGE_KEY)
-  if (saved) {
-    try {
-      return JSON.parse(saved)
-    } catch (e) {
-      console.error('解析纪念日数据失败:', e)
-      return []
-    }
-  }
-  return []
+  return getStorage<SpecialDay[]>(STORAGE_KEY, []) || []
 }
 
 const saveSpecialDays = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(specialDays.value))
+  setStorage(STORAGE_KEY, specialDays.value)
 }
 
 onMounted(() => {

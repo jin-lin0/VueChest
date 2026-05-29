@@ -1,5 +1,6 @@
 // 工具函数统一导出入口
 export * from './format'
+export * from './db'
 export * from './storage'
 export * from './validate'
 export * from './lunar'
