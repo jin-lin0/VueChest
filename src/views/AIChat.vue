@@ -67,6 +67,55 @@ const error = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const messagesContainer = ref<HTMLDivElement | null>(null)
 const isMobile = ref(window.innerWidth <= 768)
+const isUserScrolled = ref(false)
+const showScrollToBottom = ref(false)
+
+const suggestionPool = [
+  {
+    text: 'AI 前端项目架构',
+    message: '设计一个AI聊天应用的前端架构，包含消息流、状态管理和会话管理',
+  },
+  { text: 'Vue3 AI 聊天界面', message: '使用Vue3 + TypeScript实现一个现代化AI聊天界面' },
+  { text: 'AI 流式输出实现', message: '前端如何实现AI回答的流式输出效果' },
+  { text: 'Markdown 渲染方案', message: '前端如何优雅渲染AI返回的Markdown内容' },
+  { text: '代码高亮组件', message: '实现一个支持多语言的代码高亮组件，适用于AI聊天场景' },
+  { text: '聊天记录持久化', message: 'AI聊天应用如何实现本地聊天记录持久化' },
+  { text: 'SSE 与 WebSocket 对比', message: 'AI聊天为什么常用SSE而不是WebSocket，详细对比一下' },
+  { text: 'AI 输入框交互设计', message: '设计一个类似ChatGPT的输入框交互体验' },
+  { text: 'OpenAI 接口封装', message: '使用TypeScript封装一个优雅的OpenAI请求SDK' },
+  { text: 'AI 打字机效果', message: '前端如何实现AI逐字输出的打字机动画效果' },
+  { text: 'AI 聊天性能优化', message: 'AI聊天页面有哪些性能优化技巧' },
+  { text: '虚拟列表聊天优化', message: '聊天消息很多时，如何使用虚拟列表优化渲染性能' },
+  { text: 'AI 多轮对话实现', message: '前端如何管理AI多轮上下文对话' },
+  { text: 'Prompt 管理系统', message: '设计一个前端Prompt管理与收藏功能' },
+  { text: 'AI 聊天主题切换', message: '实现一个支持暗黑模式和主题切换的AI聊天UI' },
+  { text: '消息撤回与重试', message: 'AI聊天中如何实现消息重试、撤回与重新生成功能' },
+  { text: 'Vue3 组合式封装', message: '使用Composition API封装一个AI聊天hooks' },
+  { text: 'AI 聊天动画设计', message: '推荐一些适合AI聊天界面的前端动画效果' },
+  { text: '大模型 Token 计算', message: '前端如何估算和统计AI对话Token消耗' },
+  { text: 'AI 文件上传解析', message: '实现一个支持拖拽上传和AI文件解析的前端方案' },
+  { text: 'AI 图片生成界面', message: '设计一个AI绘图应用的前端交互界面' },
+  { text: 'RAG 前端展示方案', message: 'AI知识库问答中，前端如何展示引用来源和上下文' },
+  { text: 'AI 聊天移动端适配', message: 'AI聊天页面在移动端有哪些适配细节' },
+  { text: 'Tailwind 聊天UI', message: '使用Tailwind CSS实现一个高级感AI聊天界面' },
+  { text: 'AI Agent 前端设计', message: 'AI Agent产品的前端交互应该如何设计' },
+  { text: '聊天消息懒加载', message: '实现聊天记录分页加载与无限滚动' },
+  { text: 'AI 应用权限系统', message: 'AI SaaS系统如何设计前端权限管理' },
+  { text: '前端 AI SDK 对比', message: '对比OpenAI SDK、Vercel AI SDK和LangChain.js的使用场景' },
+  { text: 'AI 对话分享功能', message: '实现一个类似ChatGPT的对话分享页面' },
+  { text: 'AI 聊天错误处理', message: 'AI请求失败、超时、限流时前端如何处理用户体验' },
+]
+
+const getRandomSuggestions = (count: number = 4) => {
+  const shuffled = [...suggestionPool].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, count)
+}
+
+const randomSuggestions = ref(getRandomSuggestions())
+
+const refreshSuggestions = () => {
+  randomSuggestions.value = getRandomSuggestions()
+}
 
 const currentSession = computed(
   () => sessions.value.find((s) => s.id === currentSessionId.value) || null,
@@ -125,10 +174,31 @@ const loadSessions = () => {
   }
 }
 
+const isAtBottom = () => {
+  if (!messagesContainer.value) return true
+  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+  return scrollHeight - scrollTop - clientHeight < 50
+}
+
 const scrollToBottom = () => {
-  if (messagesContainer.value) {
+  if (!isUserScrolled.value && messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
+}
+
+const scrollToBottomForce = () => {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    isUserScrolled.value = false
+    showScrollToBottom.value = false
+  }
+}
+
+const handleScroll = () => {
+  if (!messagesContainer.value) return
+  const atBottom = isAtBottom()
+  isUserScrolled.value = !atBottom
+  showScrollToBottom.value = !atBottom && isLoading.value
 }
 
 const formatTime = (ts: number) => {
@@ -497,31 +567,36 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div ref="messagesContainer" class="messages-area">
+      <div ref="messagesContainer" class="messages-area" @scroll="handleScroll">
         <div v-if="!currentSession || currentSession.messages.length === 0" class="welcome">
           <div class="welcome-icon">🤖</div>
           <h2>AI 智能助手</h2>
           <p>基于 DeepSeek 大模型，随时为你解答问题</p>
           <div class="welcome-suggestions">
             <button
+              v-for="(suggestion, index) in randomSuggestions"
+              :key="index"
               class="suggestion-btn"
-              @click="inputMessage = '帮我解释一下什么是Vue 3的Composition API'"
+              @click="inputMessage = suggestion.message"
             >
-              解释 Vue 3 的 Composition API
-            </button>
-            <button class="suggestion-btn" @click="inputMessage = '用Python写一个快速排序算法'">
-              Python 快速排序算法
-            </button>
-            <button class="suggestion-btn" @click="inputMessage = '帮我写一首关于编程的诗'">
-              写一首关于编程的诗
-            </button>
-            <button
-              class="suggestion-btn"
-              @click="inputMessage = '请解释一下RESTful API的设计原则'"
-            >
-              RESTful API 设计原则
+              {{ suggestion.text }}
             </button>
           </div>
+          <button class="refresh-btn" @click="refreshSuggestions" title="换一批">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            <span>换一批</span>
+          </button>
         </div>
 
         <template v-else>
@@ -555,6 +630,26 @@ onUnmounted(() => {
           </div>
         </template>
       </div>
+
+      <Transition name="fade">
+        <button
+          v-if="showScrollToBottom"
+          class="scroll-to-bottom-btn"
+          @click="scrollToBottomForce"
+          title="滚动到底部"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </Transition>
 
       <div v-if="error" class="error-bar">
         <span>{{ error }}</span>
@@ -904,6 +999,28 @@ onUnmounted(() => {
   color: #4f46e5;
 }
 
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+  background: #eef2ff;
+}
+
 .message {
   display: flex;
   gap: 12px;
@@ -1153,6 +1270,47 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
+}
+
+.scroll-to-bottom-btn {
+  position: absolute;
+  bottom: 100px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.scroll-to-bottom-btn:hover {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.chat-main {
+  position: relative;
 }
 
 .input-area {
