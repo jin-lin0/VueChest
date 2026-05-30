@@ -188,33 +188,16 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     return todayRecords.reduce((sum, r) => sum + r.duration / 60, 0)
   })
 
+  let playSoundCallback: (() => void) | null = null
+
+  const setPlaySoundCallback = (callback: () => void) => {
+    playSoundCallback = callback
+  }
+
   const playNotificationSound = () => {
-    const audioContext = new AudioContext()
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
-
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
-
-    const soundConfigs: Record<SoundType, { frequencies: number[]; durations: number[] }> = {
-      chime: { frequencies: [523, 659, 784], durations: [0.15, 0.15, 0.3] },
-      bell: { frequencies: [440, 880, 440], durations: [0.2, 0.3, 0.2] },
-      alert: { frequencies: [800, 600, 800], durations: [0.1, 0.1, 0.1] },
-      gentle: { frequencies: [330, 392, 440], durations: [0.3, 0.3, 0.5] },
+    if (playSoundCallback) {
+      playSoundCallback()
     }
-
-    const config = soundConfigs[settings.value.sound]
-    let startTime = audioContext.currentTime
-
-    config.frequencies.forEach((freq, i) => {
-      oscillator.frequency.setValueAtTime(freq, startTime)
-      gainNode.gain.setValueAtTime(0.3, startTime)
-      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + config.durations[i])
-      startTime += config.durations[i]
-    })
-
-    oscillator.start(audioContext.currentTime)
-    oscillator.stop(startTime)
   }
 
   const debouncedSaveHistory = debounce(() => saveHistory(), 500)
@@ -247,5 +230,6 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     setSession,
     toggleSettings,
     applySettings,
+    setPlaySoundCallback,
   }
 })

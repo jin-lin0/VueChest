@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce, getStorage, setStorage } from '@/utils'
+import { useNotesStore } from '@/stores'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
@@ -26,156 +26,16 @@ const renderMarkdown = (content: string): string => {
   return marked.parse(content) as string
 }
 
-interface Note {
-  id: number
-  title: string
-  content: string
-  isMarkdown: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 const router = useRouter()
+const notesStore = useNotesStore()
 
 const goBack = () => {
   router.push('/')
 }
 
-const notes = ref<Note[]>([])
-
-const defaultNotes: Note[] = [
-  {
-    id: 1,
-    title: '欢迎使用笔记本',
-    content: '这是一个简单的笔记应用，您可以在这里记录您的想法和灵感。\n\n支持 **Markdown** 语法，可以轻松创建格式丰富的笔记！',
-    isMarkdown: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    title: 'Markdown 示例',
-    content: '# Markdown 功能演示\n\n## 基础语法\n\n- **粗体文本**\n- *斜体文本*\n- ~~删除线~~\n- `行内代码`\n\n## 代码块\n\n```javascript\nfunction hello() {\n  console.log("Hello, Markdown!")\n}\n```\n\n## 列表\n\n1. 第一项\n2. 第二项\n3. 第三项\n\n> 这是一段引用文本\n\n---\n\n[链接示例](https://vuejs.org)',
-    isMarkdown: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
-const loadNotes = (): Note[] => {
-  const loaded = getStorage<Note[]>('notes', defaultNotes) || defaultNotes
-  return loaded.map(note => ({
-    ...note,
-    isMarkdown: note.isMarkdown ?? false,
-  }))
-}
-
-const saveNotes = () => {
-  setStorage('notes', notes.value)
-}
-
 onMounted(() => {
-  notes.value = loadNotes()
+  notesStore.init()
 })
-
-const debouncedSaveNotes = debounce(() => saveNotes(), 500)
-watch(notes, debouncedSaveNotes, { deep: true })
-
-const selectedNoteId = ref<number | null>(notes.value.length > 0 ? notes.value[0].id : null)
-const isEditing = ref(false)
-const editingNote = ref<Note | null>(null)
-const isNewNote = ref(false)
-const showPreview = ref(false)
-
-const selectedNote = computed(() => {
-  if (selectedNoteId.value === null) return null
-  return notes.value.find((note) => note.id === selectedNoteId.value) || null
-})
-
-const selectNote = (id: number) => {
-  selectedNoteId.value = id
-  isEditing.value = false
-  isNewNote.value = false
-  showPreview.value = false
-}
-
-const createNewNote = () => {
-  const newNote: Note = {
-    id: Date.now(),
-    title: '新笔记',
-    content: '',
-    isMarkdown: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  isNewNote.value = true
-  isEditing.value = true
-  editingNote.value = newNote
-  selectedNoteId.value = null
-  showPreview.value = false
-}
-
-const startEditing = () => {
-  if (selectedNote.value) {
-    editingNote.value = { ...selectedNote.value }
-    isEditing.value = true
-    showPreview.value = false
-  }
-}
-
-const saveNote = () => {
-  if (!editingNote.value) return
-
-  editingNote.value.updatedAt = new Date().toISOString()
-
-  if (isNewNote.value) {
-    notes.value.push({ ...editingNote.value })
-    selectedNoteId.value = editingNote.value.id
-    isNewNote.value = false
-  } else {
-    const index = notes.value.findIndex((note) => note.id === editingNote.value?.id)
-    if (index !== -1) {
-      notes.value[index] = { ...editingNote.value }
-    }
-  }
-
-  isEditing.value = false
-  editingNote.value = null
-  showPreview.value = false
-}
-
-const cancelEditing = () => {
-  if (isNewNote.value) {
-    isNewNote.value = false
-    selectedNoteId.value = notes.value.length > 0 ? notes.value[0].id : null
-  }
-
-  isEditing.value = false
-  editingNote.value = null
-  showPreview.value = false
-}
-
-const deleteNote = () => {
-  if (!selectedNote.value) return
-
-  if (confirm('确定要删除这个笔记吗？')) {
-    notes.value = notes.value.filter((note) => note.id !== selectedNote.value?.id)
-    selectedNoteId.value = notes.value.length > 0 ? notes.value[0].id : null
-    isEditing.value = false
-    showPreview.value = false
-  }
-}
-
-const toggleMarkdown = () => {
-  if (editingNote.value) {
-    editingNote.value.isMarkdown = !editingNote.value.isMarkdown
-  }
-}
-
-const togglePreview = () => {
-  showPreview.value = !showPreview.value
-}
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -188,11 +48,18 @@ const formatDate = (dateString: string) => {
   }).format(date)
 }
 
-const getNotePreview = (note: Note): string => {
+const getNotePreview = (note: { content: string }): string => {
   const content = note.content
   if (!content) return '空笔记'
   const plainText = content.replace(/[#*\[\]`~_>-]/g, '').trim()
   return plainText.length > 60 ? plainText.substring(0, 60) + '...' : plainText
+}
+
+const deleteNote = () => {
+  if (!notesStore.selectedNote) return
+  if (confirm('确定要删除这个笔记吗？')) {
+    notesStore.deleteNote(notesStore.selectedNote.id)
+  }
 }
 </script>
 
@@ -207,16 +74,16 @@ const getNotePreview = (note: Note): string => {
       <div class="notes-sidebar">
         <div class="sidebar-header">
           <h2>我的笔记</h2>
-          <button class="new-note-btn" @click="createNewNote">新建笔记</button>
+          <button class="new-note-btn" @click="notesStore.createNewNote">新建笔记</button>
         </div>
 
         <div class="notes-list">
           <div
-            v-for="note in notes"
+            v-for="note in notesStore.notes"
             :key="note.id"
             class="note-item"
-            :class="{ active: selectedNoteId === note.id }"
-            @click="selectNote(note.id)"
+            :class="{ active: notesStore.selectedNoteId === note.id }"
+            @click="notesStore.selectNote(note.id)"
           >
             <div class="note-item-header">
               <span class="note-title">{{ note.title }}</span>
@@ -226,78 +93,101 @@ const getNotePreview = (note: Note): string => {
             <div class="note-date">{{ formatDate(note.updatedAt) }}</div>
           </div>
 
-          <div v-if="notes.length === 0" class="empty-state">没有笔记，创建一个吧！</div>
+          <div v-if="notesStore.notes.length === 0" class="empty-state">没有笔记，创建一个吧！</div>
         </div>
       </div>
 
       <div class="note-detail">
-        <template v-if="selectedNote && !isEditing">
+        <template v-if="notesStore.selectedNote && !notesStore.isEditing">
           <div class="detail-header">
             <div class="detail-title-row">
-              <h2>{{ selectedNote.title }}</h2>
-              <span v-if="selectedNote.isMarkdown" class="md-badge-lg">Markdown</span>
+              <h2>{{ notesStore.selectedNote.title }}</h2>
+              <span v-if="notesStore.selectedNote.isMarkdown" class="md-badge-lg">Markdown</span>
             </div>
             <div class="note-actions">
-              <button class="edit-btn" @click="startEditing">编辑</button>
+              <button class="edit-btn" @click="notesStore.startEditing">编辑</button>
               <button class="delete-btn" @click="deleteNote">删除</button>
             </div>
           </div>
 
           <div class="detail-dates">
-            <span>创建于: {{ formatDate(selectedNote.createdAt) }}</span>
-            <span>更新于: {{ formatDate(selectedNote.updatedAt) }}</span>
+            <span>创建于: {{ formatDate(notesStore.selectedNote.createdAt) }}</span>
+            <span>更新于: {{ formatDate(notesStore.selectedNote.updatedAt) }}</span>
           </div>
 
-          <div v-if="selectedNote.isMarkdown" class="note-content markdown-body" v-html="renderMarkdown(selectedNote.content)"></div>
-          <div v-else class="note-content">{{ selectedNote.content }}</div>
+          <div
+            v-if="notesStore.selectedNote.isMarkdown"
+            class="note-content markdown-body"
+            v-html="renderMarkdown(notesStore.selectedNote.content)"
+          ></div>
+          <div v-else class="note-content">{{ notesStore.selectedNote.content }}</div>
         </template>
 
-        <template v-else-if="isEditing && editingNote">
+        <template v-else-if="notesStore.isEditing && notesStore.editingNote">
           <div class="edit-form">
             <div class="form-group">
               <label for="title">标题</label>
-              <input type="text" id="title" v-model="editingNote.title" placeholder="输入标题" />
+              <input
+                type="text"
+                id="title"
+                v-model="notesStore.editingNote.title"
+                placeholder="输入标题"
+              />
             </div>
 
             <div class="editor-toolbar">
               <button
                 class="toolbar-btn"
-                :class="{ active: editingNote.isMarkdown }"
-                @click="toggleMarkdown"
+                :class="{ active: notesStore.editingNote.isMarkdown }"
+                @click="
+                  notesStore.editingNote &&
+                  (notesStore.editingNote.isMarkdown = !notesStore.editingNote.isMarkdown)
+                "
                 title="切换 Markdown 模式"
               >
-                {{ editingNote.isMarkdown ? '📝 Markdown' : '📄 纯文本' }}
+                {{ notesStore.editingNote.isMarkdown ? '📝 Markdown' : '📄 纯文本' }}
               </button>
               <button
-                v-if="editingNote.isMarkdown"
+                v-if="notesStore.editingNote.isMarkdown"
                 class="toolbar-btn preview-btn"
-                :class="{ active: showPreview }"
-                @click="togglePreview"
+                :class="{ active: notesStore.showPreview }"
+                @click="notesStore.showPreview = !notesStore.showPreview"
               >
-                {{ showPreview ? '✏️ 编辑' : '👁️ 预览' }}
+                {{ notesStore.showPreview ? '✏️ 编辑' : '👁️ 预览' }}
               </button>
             </div>
 
             <div class="form-group editor-area">
-              <div v-if="showPreview && editingNote.isMarkdown" class="markdown-preview">
-                <div class="markdown-body" v-html="renderMarkdown(editingNote.content)"></div>
+              <div
+                v-if="notesStore.showPreview && notesStore.editingNote.isMarkdown"
+                class="markdown-preview"
+              >
+                <div
+                  class="markdown-body"
+                  v-html="renderMarkdown(notesStore.editingNote.content)"
+                ></div>
               </div>
               <textarea
                 v-else
                 id="content"
-                v-model="editingNote.content"
-                :placeholder="editingNote.isMarkdown ? '输入 Markdown 内容...' : '输入笔记内容...'"
+                v-model="notesStore.editingNote.content"
+                :placeholder="
+                  notesStore.editingNote.isMarkdown ? '输入 Markdown 内容...' : '输入笔记内容...'
+                "
                 rows="16"
               ></textarea>
             </div>
 
-            <div class="markdown-hint" v-if="editingNote.isMarkdown && !showPreview">
+            <div
+              class="markdown-hint"
+              v-if="notesStore.editingNote.isMarkdown && !notesStore.showPreview"
+            >
               <span>提示：支持 **粗体**、*斜体*、`代码`、# 标题、- 列表、> 引用等语法</span>
             </div>
 
             <div class="form-actions">
-              <button class="save-btn" @click="saveNote">保存</button>
-              <button class="cancel-btn" @click="cancelEditing">取消</button>
+              <button class="save-btn" @click="notesStore.saveNote">保存</button>
+              <button class="cancel-btn" @click="notesStore.cancelEditing">取消</button>
             </div>
           </div>
         </template>

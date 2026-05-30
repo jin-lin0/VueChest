@@ -1,161 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce, getStorage, setStorage } from '@/utils'
+import { useExpenseStore } from '@/stores'
 
 defineOptions({ name: 'ExpenseView' })
 
-interface ExpenseItem {
-  id: number
-  type: 'income' | 'expense'
-  amount: number
-  category: string
-  note: string
-  date: string
-}
-
 const router = useRouter()
+const expenseStore = useExpenseStore()
 
 const goBack = () => {
   router.push('/')
 }
 
-const EXPENSE_CATEGORIES = ['餐饮', '交通', '购物', '娱乐', '住房', '医疗', '教育', '其他']
-const INCOME_CATEGORIES = ['工资', '奖金', '兼职', '理财', '红包', '其他']
-
-const records = ref<ExpenseItem[]>([])
-const showForm = ref(false)
-
-const formType = ref<'income' | 'expense'>('expense')
-const formAmount = ref('')
-const formCategory = ref('')
-const formNote = ref('')
-const formDate = ref(new Date().toISOString().slice(0, 10))
-const editingId = ref<number | null>(null)
-
-const loadRecords = (): ExpenseItem[] => {
-  return getStorage<ExpenseItem[]>('expenses', []) || []
-}
-
-const saveRecords = () => {
-  setStorage('expenses', records.value)
-}
-
 onMounted(() => {
-  records.value = loadRecords()
+  expenseStore.init()
 })
-
-const debouncedSaveRecords = debounce(() => saveRecords(), 500)
-watch(records, debouncedSaveRecords, { deep: true })
-
-const currentCategories = computed(() => {
-  return formType.value === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
-})
-
-const sortedRecords = computed(() => {
-  return [...records.value].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || b.id - a.id,
-  )
-})
-
-const groupedRecords = computed(() => {
-  const groups: Record<string, ExpenseItem[]> = {}
-  for (const record of sortedRecords.value) {
-    const dateKey = record.date
-    if (!groups[dateKey]) groups[dateKey] = []
-    groups[dateKey].push(record)
-  }
-  return groups
-})
-
-const totalIncome = computed(() => {
-  return records.value.filter((r) => r.type === 'income').reduce((sum, r) => sum + r.amount, 0)
-})
-
-const totalExpense = computed(() => {
-  return records.value.filter((r) => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0)
-})
-
-const balance = computed(() => totalIncome.value - totalExpense.value)
-
-const monthlyIncome = computed(() => {
-  const now = new Date()
-  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  return records.value
-    .filter((r) => r.type === 'income' && r.date.startsWith(monthStr))
-    .reduce((sum, r) => sum + r.amount, 0)
-})
-
-const monthlyExpense = computed(() => {
-  const now = new Date()
-  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  return records.value
-    .filter((r) => r.type === 'expense' && r.date.startsWith(monthStr))
-    .reduce((sum, r) => sum + r.amount, 0)
-})
-
-const switchType = (type: 'income' | 'expense') => {
-  formType.value = type
-  formCategory.value = ''
-}
-
-const openForm = (record?: ExpenseItem) => {
-  if (record) {
-    editingId.value = record.id
-    formType.value = record.type
-    formAmount.value = String(record.amount)
-    formCategory.value = record.category
-    formNote.value = record.note
-    formDate.value = record.date
-  } else {
-    editingId.value = null
-    formType.value = 'expense'
-    formAmount.value = ''
-    formCategory.value = ''
-    formNote.value = ''
-    formDate.value = new Date().toISOString().slice(0, 10)
-  }
-  showForm.value = true
-}
-
-const closeForm = () => {
-  showForm.value = false
-}
-
-const submitForm = () => {
-  const amount = parseFloat(formAmount.value)
-  if (!amount || amount <= 0) return
-  if (!formCategory.value) return
-
-  if (editingId.value !== null) {
-    const index = records.value.findIndex((r) => r.id === editingId.value)
-    if (index !== -1) {
-      records.value[index] = {
-        ...records.value[index],
-        type: formType.value,
-        amount,
-        category: formCategory.value,
-        note: formNote.value.trim(),
-        date: formDate.value,
-      }
-    }
-  } else {
-    records.value.push({
-      id: Date.now(),
-      type: formType.value,
-      amount,
-      category: formCategory.value,
-      note: formNote.value.trim(),
-      date: formDate.value,
-    })
-  }
-
-  showForm.value = false
-}
-
-const deleteRecord = (id: number) => {
-  records.value = records.value.filter((r) => r.id !== id)
-}
 
 const formatMoney = (amount: number) => {
   return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
@@ -177,7 +36,7 @@ const formatDateHeader = (dateStr: string) => {
   }).format(d)
 }
 
-const getDayTotal = (items: ExpenseItem[]) => {
+const getDayTotal = (items: { type: string; amount: number }[]) => {
   const income = items.filter((r) => r.type === 'income').reduce((s, r) => s + r.amount, 0)
   const expense = items.filter((r) => r.type === 'expense').reduce((s, r) => s + r.amount, 0)
   return { income, expense }
@@ -195,29 +54,29 @@ const getDayTotal = (items: ExpenseItem[]) => {
       <div class="summary-cards">
         <div class="summary-card balance">
           <div class="summary-label">结余</div>
-          <div class="summary-value" :class="{ negative: balance < 0 }">
-            ¥{{ formatMoney(balance) }}
+          <div class="summary-value" :class="{ negative: expenseStore.balance < 0 }">
+            ¥{{ formatMoney(expenseStore.balance) }}
           </div>
         </div>
         <div class="summary-card income">
           <div class="summary-label">本月收入</div>
-          <div class="summary-value">¥{{ formatMoney(monthlyIncome) }}</div>
+          <div class="summary-value">¥{{ formatMoney(expenseStore.monthlyIncome) }}</div>
         </div>
         <div class="summary-card expense">
           <div class="summary-label">本月支出</div>
-          <div class="summary-value">¥{{ formatMoney(monthlyExpense) }}</div>
+          <div class="summary-value">¥{{ formatMoney(expenseStore.monthlyExpense) }}</div>
         </div>
       </div>
 
       <div class="toolbar">
-        <button class="add-btn" @click="openForm()">+ 记一笔</button>
+        <button class="add-btn" @click="expenseStore.openForm()">+ 记一笔</button>
       </div>
 
       <div class="records-section">
-        <template v-for="(items, dateKey) in groupedRecords" :key="dateKey">
+        <template v-for="(items, dateKey) in expenseStore.groupedRecords" :key="dateKey">
           <div class="date-group">
             <div class="date-header">
-              <span class="date-text">{{ formatDateHeader(dateKey) }}</span>
+              <span class="date-text">{{ formatDateHeader(dateKey as string) }}</span>
               <span class="date-summary">
                 <template v-if="getDayTotal(items).income > 0">
                   收 ¥{{ formatMoney(getDayTotal(items).income) }}
@@ -242,37 +101,39 @@ const getDayTotal = (items: ExpenseItem[]) => {
                 <div class="record-sub" v-if="record.note">{{ record.note }}</div>
               </div>
               <div class="record-actions">
-                <button class="action-btn edit" @click="openForm(record)">编辑</button>
-                <button class="action-btn delete" @click="deleteRecord(record.id)">删除</button>
+                <button class="action-btn edit" @click="expenseStore.openForm(record)">编辑</button>
+                <button class="action-btn delete" @click="expenseStore.deleteRecord(record.id)">
+                  删除
+                </button>
               </div>
             </div>
           </div>
         </template>
 
-        <div v-if="records.length === 0" class="empty-state">
+        <div v-if="expenseStore.records.length === 0" class="empty-state">
           还没有账单记录，点击"记一笔"开始吧！
         </div>
       </div>
 
-      <div v-if="showForm" class="modal-overlay" @click.self="closeForm">
+      <div v-if="expenseStore.showForm" class="modal-overlay" @click.self="expenseStore.closeForm">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>{{ editingId !== null ? '编辑记录' : '记一笔' }}</h2>
-            <button class="close-btn" @click="closeForm">&times;</button>
+            <h2>{{ expenseStore.editingId !== null ? '编辑记录' : '记一笔' }}</h2>
+            <button class="close-btn" @click="expenseStore.closeForm">&times;</button>
           </div>
 
           <div class="type-tabs">
             <button
               class="type-tab"
-              :class="{ active: formType === 'expense' }"
-              @click="switchType('expense')"
+              :class="{ active: expenseStore.formType === 'expense' }"
+              @click="expenseStore.switchType('expense')"
             >
               支出
             </button>
             <button
               class="type-tab"
-              :class="{ active: formType === 'income' }"
-              @click="switchType('income')"
+              :class="{ active: expenseStore.formType === 'income' }"
+              @click="expenseStore.switchType('income')"
             >
               收入
             </button>
@@ -280,18 +141,24 @@ const getDayTotal = (items: ExpenseItem[]) => {
 
           <div class="form-group">
             <label>金额</label>
-            <input v-model="formAmount" type="number" placeholder="0.00" step="0.01" min="0" />
+            <input
+              v-model="expenseStore.formAmount"
+              type="number"
+              placeholder="0.00"
+              step="0.01"
+              min="0"
+            />
           </div>
 
           <div class="form-group">
             <label>分类</label>
             <div class="category-grid">
               <button
-                v-for="cat in currentCategories"
+                v-for="cat in expenseStore.currentCategories"
                 :key="cat"
                 class="category-btn"
-                :class="{ active: formCategory === cat }"
-                @click="formCategory = cat"
+                :class="{ active: expenseStore.formCategory === cat }"
+                @click="expenseStore.formCategory = cat"
               >
                 {{ cat }}
               </button>
@@ -300,16 +167,16 @@ const getDayTotal = (items: ExpenseItem[]) => {
 
           <div class="form-group">
             <label>日期</label>
-            <input v-model="formDate" type="date" />
+            <input v-model="expenseStore.formDate" type="date" />
           </div>
 
           <div class="form-group">
             <label>备注</label>
-            <input v-model="formNote" type="text" placeholder="添加备注（可选）" />
+            <input v-model="expenseStore.formNote" type="text" placeholder="添加备注（可选）" />
           </div>
 
-          <button class="submit-btn" @click="submitForm">
-            {{ editingId !== null ? '更新' : '保存' }}
+          <button class="submit-btn" @click="expenseStore.submitForm">
+            {{ expenseStore.editingId !== null ? '更新' : '保存' }}
           </button>
         </div>
       </div>

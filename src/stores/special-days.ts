@@ -177,6 +177,8 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
     init,
     solarDayOptions,
     lunarDayOptions,
+    getMaxSolarDay,
+    getMaxLunarDay,
     openAddForm,
     openEditForm,
     closeForm,

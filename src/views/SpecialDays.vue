@@ -1,215 +1,89 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useSpecialDaysStore } from '@/stores'
 import {
-  debounce,
   solarToLunar,
   lunarToSolar,
   getLunarMonthName,
   getLunarDayName,
-  getStorage,
-  setStorage,
 } from '@/utils'
+import type { SpecialDay } from '@/stores'
 
 defineOptions({ name: 'SpecialDaysView' })
 
-interface SpecialDay {
-  id: number
-  name: string
-  repeatType: 'yearly' | 'once'
-  calendarType: 'solar' | 'lunar'
-  solarYear: number | null
-  solarMonth: number
-  solarDay: number
-  lunarMonth: number
-  lunarDay: number
-  emoji: string
-  createdAt: string
-}
-
-interface EditForm {
-  name: string
-  repeatType: 'yearly' | 'once'
-  calendarType: 'solar' | 'lunar'
-  solarYear: number | null
-  solarMonth: number
-  solarDay: number
-  lunarMonth: number
-  lunarDay: number
-  emoji: string
-}
-
 const router = useRouter()
+const specialDaysStore = useSpecialDaysStore()
 
 const goBack = () => {
   router.push('/')
 }
 
-const STORAGE_KEY = 'special_days'
-const specialDays = ref<SpecialDay[]>([])
-const showForm = ref(false)
-const editingId = ref<number | null>(null)
-
-const emojiOptions = [
-  '🎂',
-  '💕',
-  '🎉',
-  '🎄',
-  '🧧',
-  '🌸',
-  '🎓',
-  '💼',
-  '🏠',
-  '✈️',
-  '⭐',
-  '🎯',
-  '📅',
-  '🗓️',
-  '💝',
-  '🎊',
-]
-
-const solarMonthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
-const lunarMonthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
-
-const getMaxSolarDay = (month: number): number => {
-  const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-  return daysInMonth[month - 1] || 31
-}
-
-const getMaxLunarDay = (): number => {
-  return 30
-}
+onMounted(() => {
+  specialDaysStore.init()
+})
 
 const solarDayOptions = computed(() => {
-  const max = getMaxSolarDay(form.value.solarMonth)
+  const max = specialDaysStore.getMaxSolarDay(specialDaysStore.form.solarMonth)
   return Array.from({ length: max }, (_, i) => i + 1)
 })
 
 const lunarDayOptions = computed(() => {
-  const max = getMaxLunarDay()
+  const max = specialDaysStore.getMaxLunarDay()
   return Array.from({ length: max }, (_, i) => i + 1)
 })
 
-const currentYear = new Date().getFullYear()
-const yearOptions = Array.from({ length: 50 }, (_, i) => currentYear - 10 + i)
-
-const defaultForm = (): EditForm => ({
-  name: '',
-  repeatType: 'yearly',
-  calendarType: 'solar',
-  solarYear: null,
-  solarMonth: new Date().getMonth() + 1,
-  solarDay: new Date().getDate(),
-  lunarMonth: 1,
-  lunarDay: 1,
-  emoji: '🎉',
-})
-
-const form = ref<EditForm>(defaultForm())
-
-const loadSpecialDays = (): SpecialDay[] => {
-  return getStorage<SpecialDay[]>(STORAGE_KEY, []) || []
-}
-
-const saveSpecialDays = () => {
-  setStorage(STORAGE_KEY, specialDays.value)
-}
-
-onMounted(() => {
-  specialDays.value = loadSpecialDays()
-})
-
-const debouncedSave = debounce(() => saveSpecialDays(), 500)
-watch(specialDays, debouncedSave, { deep: true })
-
-const resetForm = () => {
-  form.value = defaultForm()
-  editingId.value = null
-}
-
-const openAddForm = () => {
-  resetForm()
-  showForm.value = true
-}
-
-const openEditForm = (day: SpecialDay) => {
-  editingId.value = day.id
-  form.value = {
-    name: day.name,
-    repeatType: day.repeatType || 'yearly',
-    calendarType: day.calendarType,
-    solarYear: day.solarYear || null,
-    solarMonth: day.solarMonth,
-    solarDay: day.solarDay,
-    lunarMonth: day.lunarMonth,
-    lunarDay: day.lunarDay,
-    emoji: day.emoji,
-  }
-  showForm.value = true
-}
-
-const closeForm = () => {
-  showForm.value = false
-  resetForm()
-}
-
 const saveDay = () => {
-  if (!form.value.name.trim()) return
+  if (!specialDaysStore.form.name.trim()) return
 
   const solarYear =
-    form.value.repeatType === 'once' ? form.value.solarYear || new Date().getFullYear() : null
+    specialDaysStore.form.repeatType === 'once' ? specialDaysStore.form.solarYear || new Date().getFullYear() : null
 
   let year = solarYear
-  let solarMonth = form.value.solarMonth
-  let solarDay = form.value.solarDay
-  if (form.value.calendarType === 'lunar') {
+  let solarMonth = specialDaysStore.form.solarMonth
+  let solarDay = specialDaysStore.form.solarDay
+  if (specialDaysStore.form.calendarType === 'lunar') {
     const targetYear = year || new Date().getFullYear()
-    const solar = lunarToSolar(targetYear, form.value.lunarMonth, form.value.lunarDay)
+    const solar = lunarToSolar(targetYear, specialDaysStore.form.lunarMonth, specialDaysStore.form.lunarDay)
     year = solar.year
     solarMonth = solar.month
     solarDay = solar.day
   }
 
-  if (editingId.value) {
-    const index = specialDays.value.findIndex((d) => d.id === editingId.value)
+  if (specialDaysStore.editingId !== null) {
+    const index = specialDaysStore.specialDays.findIndex((d) => d.id === specialDaysStore.editingId)
     if (index !== -1) {
-      const old = specialDays.value[index]
-      specialDays.value.splice(index, 1, {
+      const old = specialDaysStore.specialDays[index]
+      specialDaysStore.specialDays.splice(index, 1, {
         ...old,
-        name: form.value.name,
-        repeatType: form.value.repeatType,
-        calendarType: form.value.calendarType,
+        name: specialDaysStore.form.name,
+        repeatType: specialDaysStore.form.repeatType,
+        calendarType: specialDaysStore.form.calendarType,
         solarYear: year,
         solarMonth,
         solarDay,
-        lunarMonth: form.value.lunarMonth,
-        lunarDay: form.value.lunarDay,
-        emoji: form.value.emoji,
+        lunarMonth: specialDaysStore.form.lunarMonth,
+        lunarDay: specialDaysStore.form.lunarDay,
+        emoji: specialDaysStore.form.emoji,
       })
     }
   } else {
-    specialDays.value.push({
+    specialDaysStore.specialDays.push({
       id: Date.now(),
-      name: form.value.name,
-      repeatType: form.value.repeatType,
-      calendarType: form.value.calendarType,
+      name: specialDaysStore.form.name,
+      repeatType: specialDaysStore.form.repeatType,
+      calendarType: specialDaysStore.form.calendarType,
       solarYear: year,
       solarMonth,
       solarDay,
-      lunarMonth: form.value.lunarMonth,
-      lunarDay: form.value.lunarDay,
-      emoji: form.value.emoji,
+      lunarMonth: specialDaysStore.form.lunarMonth,
+      lunarDay: specialDaysStore.form.lunarDay,
+      emoji: specialDaysStore.form.emoji,
       createdAt: new Date().toISOString(),
     })
   }
 
-  saveSpecialDays()
-  closeForm()
-}
-
-const deleteDay = (id: number) => {
-  specialDays.value = specialDays.value.filter((d) => d.id !== id)
+  specialDaysStore.closeForm()
 }
 
 const getDaysUntil = (day: SpecialDay): number => {
@@ -222,8 +96,6 @@ const getDaysUntil = (day: SpecialDay): number => {
     const diff = Math.ceil((target.getTime() - now.getTime()) / 86400000)
     return diff
   }
-
-  const targetYear = now.getFullYear()
 
   if (day.calendarType === 'lunar') {
     const lunar = solarToLunar(now.getFullYear(), now.getMonth() + 1, now.getDate())
@@ -242,6 +114,7 @@ const getDaysUntil = (day: SpecialDay): number => {
     }
     return -1
   } else {
+    const targetYear = now.getFullYear()
     let target = new Date(targetYear, day.solarMonth - 1, day.solarDay)
     target.setHours(0, 0, 0, 0)
 
@@ -285,25 +158,15 @@ const getDaysUntilText = (days: number): string => {
 }
 
 const sortedDays = computed(() => {
-  return [...specialDays.value].sort((a, b) => getDaysUntil(a) - getDaysUntil(b))
+  return [...specialDaysStore.specialDays].sort((a, b) => getDaysUntil(a) - getDaysUntil(b))
 })
 
 watch(
-  () => form.value.solarMonth,
+  () => specialDaysStore.form.solarMonth,
   (newMonth) => {
-    const maxDay = getMaxSolarDay(newMonth)
-    if (form.value.solarDay > maxDay) {
-      form.value.solarDay = maxDay
-    }
-  },
-)
-
-watch(
-  () => form.value.solarMonth,
-  (newMonth) => {
-    const maxDay = getMaxSolarDay(newMonth)
-    if (form.value.solarDay > maxDay) {
-      form.value.solarDay = maxDay
+    const maxDay = specialDaysStore.getMaxSolarDay(newMonth)
+    if (specialDaysStore.form.solarDay > maxDay) {
+      specialDaysStore.form.solarDay = maxDay
     }
   },
 )
@@ -314,7 +177,7 @@ watch(
     <header class="app-header">
       <button class="back-button" @click="goBack">返回</button>
       <h1>🎉 特殊日子</h1>
-      <button class="add-button" @click="openAddForm">+ 添加</button>
+      <button class="add-button" @click="specialDaysStore.openAddForm()">+ 添加</button>
     </header>
 
     <main class="content">
@@ -351,25 +214,25 @@ watch(
             <div class="countdown-text">{{ getDaysUntilText(getDaysUntil(day)) }}</div>
           </div>
           <div class="day-actions">
-            <button class="edit-btn" @click="openEditForm(day)">编辑</button>
-            <button class="delete-btn" @click="deleteDay(day.id)">删除</button>
+            <button class="edit-btn" @click="specialDaysStore.openEditForm(day)">编辑</button>
+            <button class="delete-btn" @click="specialDaysStore.deleteSpecialDay(day.id)">删除</button>
           </div>
         </div>
       </div>
     </main>
 
-    <div v-if="showForm" class="modal-overlay" @click.self="closeForm">
+    <div v-if="specialDaysStore.showForm" class="modal-overlay" @click.self="specialDaysStore.closeForm">
       <div class="modal">
         <div class="modal-header">
-          <h2>{{ editingId ? '编辑纪念日' : '添加纪念日' }}</h2>
-          <button class="close-btn" @click="closeForm">✕</button>
+          <h2>{{ specialDaysStore.editingId ? '编辑纪念日' : '添加纪念日' }}</h2>
+          <button class="close-btn" @click="specialDaysStore.closeForm">✕</button>
         </div>
 
         <div class="form-body">
           <div class="form-group">
             <label>名称</label>
             <input
-              v-model="form.name"
+              v-model="specialDaysStore.form.name"
               type="text"
               placeholder="例如：生日、结婚纪念日..."
               maxlength="20"
@@ -380,11 +243,11 @@ watch(
             <label>表情</label>
             <div class="emoji-picker">
               <button
-                v-for="e in emojiOptions"
+                v-for="e in specialDaysStore.emojiOptions"
                 :key="e"
                 class="emoji-btn"
-                :class="{ active: form.emoji === e }"
-                @click="form.emoji = e"
+                :class="{ active: specialDaysStore.form.emoji === e }"
+                @click="specialDaysStore.form.emoji = e"
               >
                 {{ e }}
               </button>
@@ -396,15 +259,15 @@ watch(
             <div class="calendar-type-picker">
               <button
                 class="type-btn"
-                :class="{ active: form.calendarType === 'solar' }"
-                @click="form.calendarType = 'solar'"
+                :class="{ active: specialDaysStore.form.calendarType === 'solar' }"
+                @click="specialDaysStore.form.calendarType = 'solar'"
               >
                 ☀️ 阳历
               </button>
               <button
                 class="type-btn"
-                :class="{ active: form.calendarType === 'lunar' }"
-                @click="form.calendarType = 'lunar'"
+                :class="{ active: specialDaysStore.form.calendarType === 'lunar' }"
+                @click="specialDaysStore.form.calendarType = 'lunar'"
               >
                 🌙 农历
               </button>
@@ -416,36 +279,36 @@ watch(
             <div class="calendar-type-picker">
               <button
                 class="type-btn"
-                :class="{ active: form.repeatType === 'yearly' }"
-                @click="form.repeatType = 'yearly'"
+                :class="{ active: specialDaysStore.form.repeatType === 'yearly' }"
+                @click="specialDaysStore.form.repeatType = 'yearly'"
               >
                 🔄 每年重复
               </button>
               <button
                 class="type-btn"
-                :class="{ active: form.repeatType === 'once' }"
-                @click="form.repeatType = 'once'"
+                :class="{ active: specialDaysStore.form.repeatType === 'once' }"
+                @click="specialDaysStore.form.repeatType = 'once'"
               >
                 📌 一次性
               </button>
             </div>
           </div>
 
-          <div v-if="form.repeatType === 'once'" class="form-group">
+          <div v-if="specialDaysStore.form.repeatType === 'once'" class="form-group">
             <label>年份</label>
-            <select v-model.number="form.solarYear" class="date-select year-select">
+            <select v-model.number="specialDaysStore.form.solarYear" class="date-select year-select">
               <option :value="null" disabled>请选择年份</option>
-              <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}年</option>
+              <option v-for="y in specialDaysStore.yearOptions" :key="y" :value="y">{{ y }}年</option>
             </select>
           </div>
 
-          <div v-if="form.calendarType === 'solar'" class="form-group">
+          <div v-if="specialDaysStore.form.calendarType === 'solar'" class="form-group">
             <label>阳历日期</label>
             <div class="date-picker">
-              <select v-model.number="form.solarMonth" class="date-select">
-                <option v-for="m in solarMonthOptions" :key="m" :value="m">{{ m }}月</option>
+              <select v-model.number="specialDaysStore.form.solarMonth" class="date-select">
+                <option v-for="m in specialDaysStore.solarMonthOptions" :key="m" :value="m">{{ m }}月</option>
               </select>
-              <select v-model.number="form.solarDay" class="date-select">
+              <select v-model.number="specialDaysStore.form.solarDay" class="date-select">
                 <option v-for="d in solarDayOptions" :key="d" :value="d">{{ d }}日</option>
               </select>
             </div>
@@ -454,28 +317,12 @@ watch(
           <div v-else class="form-group">
             <label>农历日期</label>
             <div class="date-picker">
-              <select v-model.number="form.lunarMonth" class="date-select">
-                <option v-for="m in lunarMonthOptions" :key="m" :value="m">
-                  {{
-                    [
-                      '',
-                      '正月',
-                      '二月',
-                      '三月',
-                      '四月',
-                      '五月',
-                      '六月',
-                      '七月',
-                      '八月',
-                      '九月',
-                      '十月',
-                      '冬月',
-                      '腊月',
-                    ][m]
-                  }}
+              <select v-model.number="specialDaysStore.form.lunarMonth" class="date-select">
+                <option v-for="m in specialDaysStore.lunarMonthOptions" :key="m" :value="m">
+                  {{ ['', '正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月'][m] }}
                 </option>
               </select>
-              <select v-model.number="form.lunarDay" class="date-select">
+              <select v-model.number="specialDaysStore.form.lunarDay" class="date-select">
                 <option v-for="d in lunarDayOptions" :key="d" :value="d">{{ d }}日</option>
               </select>
             </div>
@@ -483,9 +330,9 @@ watch(
         </div>
 
         <div class="modal-footer">
-          <button class="cancel-btn" @click="closeForm">取消</button>
-          <button class="save-btn" @click="saveDay" :disabled="!form.name.trim()">
-            {{ editingId ? '保存' : '添加' }}
+          <button class="cancel-btn" @click="specialDaysStore.closeForm">取消</button>
+          <button class="save-btn" @click="saveDay" :disabled="!specialDaysStore.form.name.trim()">
+            {{ specialDaysStore.editingId ? '保存' : '添加' }}
           </button>
         </div>
       </div>
@@ -583,9 +430,7 @@ watch(
   border-radius: 12px;
   padding: 1.2rem 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .day-card:hover {
@@ -920,78 +765,6 @@ watch(
 
 .year-select {
   width: 100%;
-}
-
-.leap-month-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  margin-top: 0.8rem;
-  padding: 0.6rem 0.8rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.leap-month-toggle:hover {
-  background: #f0f1f3;
-}
-
-.toggle-switch {
-  width: 44px;
-  height: 24px;
-  background: #ddd;
-  border-radius: 12px;
-  position: relative;
-  transition: background 0.3s;
-  flex-shrink: 0;
-}
-
-.toggle-switch.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-}
-
-.toggle-knob {
-  width: 20px;
-  height: 20px;
-  background: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.3s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-switch.active .toggle-knob {
-  transform: translateX(20px);
-}
-
-.toggle-label {
-  display: flex;
-  flex-direction: column;
-}
-
-.toggle-text {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.toggle-hint {
-  font-size: 0.75rem;
-  color: #8e99a4;
-}
-
-.leap-month-hint {
-  margin-top: 0.6rem;
-  padding: 0.6rem 0.8rem;
-  background: #fff8e1;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  color: #8d6e00;
-  line-height: 1.5;
 }
 
 .modal-footer {

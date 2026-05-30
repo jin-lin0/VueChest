@@ -1,204 +1,25 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { debounce, getStorage, setStorage } from '@/utils'
+import { usePomodoroStore } from '@/stores'
+import type { SoundType } from '@/stores'
 
 defineOptions({ name: 'PomodoroView' })
 
-type SessionType = 'work' | 'break' | 'longBreak'
-type SoundType = 'chime' | 'bell' | 'alert' | 'gentle'
-
-interface HistoryRecord {
-  id: number
-  type: SessionType
-  duration: number
-  completedAt: string
-}
-
-interface Settings {
-  work: number
-  break: number
-  longBreak: number
-  sound: SoundType
-}
-
-const DEFAULT_SETTINGS: Settings = {
-  work: 25,
-  break: 5,
-  longBreak: 15,
-  sound: 'chime',
-}
-
 const router = useRouter()
+const pomodoroStore = usePomodoroStore()
 
 const goBack = () => {
   router.push('/')
 }
 
-const LABELS: Record<SessionType, string> = {
-  work: '专注',
-  break: '短休息',
-  longBreak: '长休息',
-}
-
-const SOUND_OPTIONS: { key: SoundType; label: string }[] = [
-  { key: 'chime', label: '清脆' },
-  { key: 'bell', label: '铃声' },
-  { key: 'alert', label: '警示' },
-  { key: 'gentle', label: '柔和' },
-]
-
-const sessionOptions: { key: SessionType; label: string }[] = [
-  { key: 'work', label: '专注' },
-  { key: 'break', label: '短休息' },
-  { key: 'longBreak', label: '长休息' },
-]
-
-const settings = ref<Settings>({ ...DEFAULT_SETTINGS })
-const showSettings = ref(false)
-const sessionType = ref<SessionType>('work')
-const isRunning = ref(false)
-const pomodoroCount = ref(0)
-const history = ref<HistoryRecord[]>([])
-let timer: ReturnType<typeof setInterval> | null = null
-
-const durations = computed<Record<SessionType, number>>(() => ({
-  work: settings.value.work * 60,
-  break: settings.value.break * 60,
-  longBreak: settings.value.longBreak * 60,
-}))
-
-const timeLeft = ref(durations.value.work)
-
-const loadSettings = (): Settings => {
-  return { ...DEFAULT_SETTINGS, ...(getStorage<Partial<Settings>>('pomodoro-settings') || {}) }
-}
-
-const loadHistory = (): HistoryRecord[] => {
-  return getStorage<HistoryRecord[]>('pomodoro-history', []) || []
-}
-
-const saveHistory = () => {
-  setStorage('pomodoro-history', history.value)
-}
-
-const saveSettings = () => {
-  setStorage('pomodoro-settings', settings.value)
-}
-
 onMounted(() => {
-  settings.value = loadSettings()
-  history.value = loadHistory()
-  pomodoroCount.value = history.value.filter((r) => r.type === 'work').length
-  timeLeft.value = durations.value[sessionType.value]
+  pomodoroStore.init()
+  pomodoroStore.setPlaySoundCallback(playNotificationSound)
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
-})
-
-const debouncedSaveHistory = debounce(() => saveHistory(), 500)
-watch(history, debouncedSaveHistory, { deep: true })
-
-watch(settings, saveSettings, { deep: true })
-
-const timeDisplay = computed(() => {
-  const mins = Math.floor(timeLeft.value / 60)
-  const secs = timeLeft.value % 60
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-})
-
-const progress = computed(() => {
-  const total = durations.value[sessionType.value]
-  return ((total - timeLeft.value) / total) * 100
-})
-
-const circumference = 2 * Math.PI * 120
-
-const strokeDashoffset = computed(() => {
-  return circumference - (progress.value / 100) * circumference
-})
-
-const startTimer = () => {
-  if (isRunning.value) return
-  isRunning.value = true
-  timer = setInterval(() => {
-    if (timeLeft.value > 0) {
-      timeLeft.value--
-    } else {
-      completeSession()
-    }
-  }, 1000)
-}
-
-const pauseTimer = () => {
-  isRunning.value = false
-  if (timer) {
-    clearInterval(timer)
-    timer = null
-  }
-}
-
-const resetTimer = () => {
-  pauseTimer()
-  timeLeft.value = durations.value[sessionType.value]
-}
-
-const completeSession = () => {
-  pauseTimer()
-  playNotificationSound()
-
-  history.value.unshift({
-    id: Date.now(),
-    type: sessionType.value,
-    duration: durations.value[sessionType.value],
-    completedAt: new Date().toISOString(),
-  })
-
-  if (sessionType.value === 'work') {
-    pomodoroCount.value++
-  }
-
-  switchSession()
-}
-
-const switchSession = () => {
-  if (sessionType.value === 'work') {
-    sessionType.value = pomodoroCount.value % 4 === 0 ? 'longBreak' : 'break'
-  } else {
-    sessionType.value = 'work'
-  }
-  timeLeft.value = durations.value[sessionType.value]
-}
-
-const setSession = (type: SessionType) => {
-  if (isRunning.value) return
-  sessionType.value = type
-  timeLeft.value = durations.value[type]
-}
-
-const toggleSettings = () => {
-  showSettings.value = !showSettings.value
-}
-
-const applySettings = () => {
-  if (isRunning.value) return
-  timeLeft.value = durations.value[sessionType.value]
-}
-
-const todayCount = computed(() => {
-  const today = new Date().toDateString()
-  return history.value.filter(
-    (r) => new Date(r.completedAt).toDateString() === today && r.type === 'work',
-  ).length
-})
-
-const totalFocusMinutes = computed(() => {
-  const today = new Date().toDateString()
-  const todayRecords = history.value.filter(
-    (r) => r.type === 'work' && new Date(r.completedAt).toDateString() === today,
-  )
-  return Math.round(todayRecords.reduce((sum, r) => sum + r.duration, 0) / 60)
+  pomodoroStore.cleanup()
 })
 
 const formatTime = (dateString: string) => {
@@ -210,8 +31,8 @@ const formatTime = (dateString: string) => {
 
 const clearHistory = () => {
   if (confirm('确定要清除所有历史记录吗？')) {
-    history.value = []
-    pomodoroCount.value = 0
+    pomodoroStore.history = []
+    pomodoroStore.pomodoroCount = 0
   }
 }
 
@@ -279,18 +100,6 @@ const SOUND_PRESETS: Record<SoundType, () => void> = {
   },
 }
 
-const playNotificationSound = () => {
-  try {
-    const ctx = getAudioContext()
-    if (ctx.state === 'suspended') {
-      ctx.resume()
-    }
-    SOUND_PRESETS[settings.value.sound]()
-  } catch (e) {
-    console.error('播放提示音失败:', e)
-  }
-}
-
 const previewSound = (sound: SoundType) => {
   try {
     const ctx = getAudioContext()
@@ -303,8 +112,20 @@ const previewSound = (sound: SoundType) => {
   }
 }
 
+const playNotificationSound = () => {
+  try {
+    const ctx = getAudioContext()
+    if (ctx.state === 'suspended') {
+      ctx.resume()
+    }
+    SOUND_PRESETS[pomodoroStore.settings.sound]()
+  } catch (e) {
+    console.error('播放提示音失败:', e)
+  }
+}
+
 const selectSound = (sound: SoundType) => {
-  settings.value.sound = sound
+  pomodoroStore.settings.sound = sound
   previewSound(sound)
 }
 </script>
@@ -320,29 +141,38 @@ const selectSound = (sound: SoundType) => {
       <div class="timer-section">
         <div class="session-tabs">
           <button
-            v-for="opt in sessionOptions"
+            v-for="opt in pomodoroStore.sessionOptions"
             :key="opt.key"
             class="session-tab"
-            :class="{ active: sessionType === opt.key, disabled: isRunning }"
-            @click="setSession(opt.key)"
+            :class="{
+              active: pomodoroStore.sessionType === opt.key,
+              disabled: pomodoroStore.isRunning,
+            }"
+            @click="pomodoroStore.setSession(opt.key)"
           >
             {{ opt.label }}
           </button>
           <button
             class="session-tab settings-toggle"
-            :class="{ active: showSettings }"
-            @click="toggleSettings"
+            :class="{ active: pomodoroStore.showSettings }"
+            @click="pomodoroStore.toggleSettings"
           >
             ⚙️ 设置
           </button>
         </div>
 
         <Teleport to="body">
-          <div v-if="showSettings" class="settings-overlay" @click.self="toggleSettings">
+          <div
+            v-if="pomodoroStore.showSettings"
+            class="settings-overlay"
+            @click.self="pomodoroStore.toggleSettings"
+          >
             <div class="settings-modal">
               <div class="settings-modal-header">
                 <h3>设置</h3>
-                <button class="settings-close-btn" @click="toggleSettings">&times;</button>
+                <button class="settings-close-btn" @click="pomodoroStore.toggleSettings">
+                  &times;
+                </button>
               </div>
               <div class="settings-modal-body">
                 <h4 class="settings-title">时间设置（分钟）</h4>
@@ -350,34 +180,34 @@ const selectSound = (sound: SoundType) => {
                   <label class="setting-item">
                     <span>专注时长</span>
                     <input
-                      v-model.number="settings.work"
+                      v-model.number="pomodoroStore.settings.work"
                       type="number"
                       min="1"
                       max="120"
-                      :disabled="isRunning"
-                      @change="applySettings"
+                      :disabled="pomodoroStore.isRunning"
+                      @change="pomodoroStore.applySettings"
                     />
                   </label>
                   <label class="setting-item">
                     <span>短休息</span>
                     <input
-                      v-model.number="settings.break"
+                      v-model.number="pomodoroStore.settings.break"
                       type="number"
                       min="1"
                       max="30"
-                      :disabled="isRunning"
-                      @change="applySettings"
+                      :disabled="pomodoroStore.isRunning"
+                      @change="pomodoroStore.applySettings"
                     />
                   </label>
                   <label class="setting-item">
                     <span>长休息</span>
                     <input
-                      v-model.number="settings.longBreak"
+                      v-model.number="pomodoroStore.settings.longBreak"
                       type="number"
                       min="1"
                       max="60"
-                      :disabled="isRunning"
-                      @change="applySettings"
+                      :disabled="pomodoroStore.isRunning"
+                      @change="pomodoroStore.applySettings"
                     />
                   </label>
                 </div>
@@ -385,10 +215,10 @@ const selectSound = (sound: SoundType) => {
                 <h4 class="settings-title">提示音</h4>
                 <div class="sound-options">
                   <button
-                    v-for="opt in SOUND_OPTIONS"
+                    v-for="opt in pomodoroStore.SOUND_OPTIONS"
                     :key="opt.key"
                     class="sound-btn"
-                    :class="{ active: settings.sound === opt.key }"
+                    :class="{ active: pomodoroStore.settings.sound === opt.key }"
                     @click="selectSound(opt.key)"
                   >
                     {{ opt.label }}
@@ -404,37 +234,43 @@ const selectSound = (sound: SoundType) => {
             <circle class="ring-bg" cx="130" cy="130" r="120" />
             <circle
               class="ring-progress"
-              :class="sessionType"
+              :class="pomodoroStore.sessionType"
               cx="130"
               cy="130"
               r="120"
-              :stroke-dasharray="circumference"
-              :stroke-dashoffset="strokeDashoffset"
+              :stroke-dasharray="pomodoroStore.circumference"
+              :stroke-dashoffset="pomodoroStore.strokeDashoffset"
             />
           </svg>
           <div class="timer-display">
-            <div class="time-text">{{ timeDisplay }}</div>
-            <div class="session-label">{{ LABELS[sessionType] }}</div>
+            <div class="time-text">{{ pomodoroStore.timeDisplay }}</div>
+            <div class="session-label">{{ pomodoroStore.LABELS[pomodoroStore.sessionType] }}</div>
           </div>
         </div>
 
         <div class="timer-controls">
-          <button v-if="!isRunning" class="control-btn start" @click="startTimer">开始</button>
-          <button v-else class="control-btn pause" @click="pauseTimer">暂停</button>
-          <button class="control-btn reset" @click="resetTimer">重置</button>
+          <button
+            v-if="!pomodoroStore.isRunning"
+            class="control-btn start"
+            @click="pomodoroStore.startTimer"
+          >
+            开始
+          </button>
+          <button v-else class="control-btn pause" @click="pomodoroStore.pauseTimer">暂停</button>
+          <button class="control-btn reset" @click="pomodoroStore.resetTimer">重置</button>
         </div>
 
         <div class="stats-row">
           <div class="stat-item">
-            <div class="stat-value">{{ todayCount }}</div>
+            <div class="stat-value">{{ pomodoroStore.todayCount }}</div>
             <div class="stat-label">今日完成</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">{{ totalFocusMinutes }}</div>
+            <div class="stat-value">{{ pomodoroStore.totalFocusMinutes }}</div>
             <div class="stat-label">今日专注（分钟）</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">{{ pomodoroCount }}</div>
+            <div class="stat-value">{{ pomodoroStore.pomodoroCount }}</div>
             <div class="stat-label">累计番茄</div>
           </div>
         </div>
@@ -443,14 +279,14 @@ const selectSound = (sound: SoundType) => {
       <div class="history-section">
         <div class="history-header">
           <h2>今日记录</h2>
-          <button v-if="history.length > 0" class="clear-btn" @click="clearHistory">
+          <button v-if="pomodoroStore.history.length > 0" class="clear-btn" @click="clearHistory">
             清除记录
           </button>
         </div>
 
         <div class="history-list">
           <div
-            v-for="record in history.slice(0, 20)"
+            v-for="record in pomodoroStore.history.slice(0, 20)"
             :key="record.id"
             class="history-item"
             :class="record.type"
@@ -459,7 +295,7 @@ const selectSound = (sound: SoundType) => {
               {{ record.type === 'work' ? '🍅' : '☕' }}
             </span>
             <span class="history-label">
-              {{ LABELS[record.type] }}
+              {{ pomodoroStore.LABELS[record.type] }}
               ({{ Math.round(record.duration / 60) }}分钟)
             </span>
             <span class="history-time">
@@ -467,7 +303,7 @@ const selectSound = (sound: SoundType) => {
             </span>
           </div>
 
-          <div v-if="history.length === 0" class="empty-state">
+          <div v-if="pomodoroStore.history.length === 0" class="empty-state">
             还没有记录，开始你的第一个番茄钟吧！
           </div>
         </div>
