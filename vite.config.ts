@@ -76,6 +76,15 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    proxy: {
+      '/api/stock': {
+        target: 'http://qt.gtimg.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/stock/, ''),
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

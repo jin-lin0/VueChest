@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   AI_CHAT_SESSIONS: 'ai-chat-sessions',
   AI_CHAT_API_KEY: 'ai-chat-api-key',
   AI_CHAT_MODEL: 'ai-chat-model',
+  STOCK_FAVORITES: 'stock-favorites',
 } as const
 
 export type StorageKeyType = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]

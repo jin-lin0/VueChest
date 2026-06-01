@@ -8,6 +8,13 @@ export interface AppModule {
 
 export const APP_MODULES: AppModule[] = [
   {
+    id: 9,
+    name: '股票查询',
+    icon: '📈',
+    route: '/stock',
+    description: '查询A股历史行情，分析开盘收盘价',
+  },
+  {
     id: 8,
     name: 'AI 对话',
     icon: '🤖',

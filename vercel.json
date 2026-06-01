@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "rewrites": [
+    { "source": "/api/stock/:path*", "destination": "http://qt.gtimg.cn/:path*" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
 }
