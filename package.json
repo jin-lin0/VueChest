@@ -16,8 +16,10 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@vuepic/vue-datepicker": "^13.0.0",
     "highlight.js": "^11.11.1",
     "idb": "^8.0.3",
+    "lightweight-charts": "^5.2.0",
     "lunar-javascript": "^1.7.7",
     "marked": "^18.0.4",
     "pinia": "^3.0.3",

@@ -31,6 +31,15 @@ export interface StockResult {
   volume: string
 }
 
+export interface KlineData {
+  date: string
+  open: string
+  close: string
+  high: string
+  low: string
+  volume: string
+}
+
 const getMarketId = (code: string): number => {
   if (code.startsWith('6') || code.startsWith('688')) return 1
   return 0
@@ -38,9 +47,12 @@ const getMarketId = (code: string): number => {
 
 export const useStockStore = defineStore('stock', () => {
   const stockCode = ref('')
+  const selectedDate = ref('')
   const isLoading = ref(false)
   const error = ref('')
   const result = ref<StockResult | null>(null)
+  const klineResult = ref<KlineData | null>(null)
+  const klineChartData = ref<KlineData[]>([])
   const favorites = ref<FavoriteStock[]>(
     getStorage<FavoriteStock[]>(STORAGE_KEYS.STOCK_FAVORITES, []) || [],
   )
@@ -244,22 +256,103 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
+  const fetchKlineData = async (
+    code: string,
+    type: 'day' | 'week' | 'month' = 'day',
+    count: number = 30,
+  ): Promise<KlineData[]> => {
+    const marketPrefix = getMarketId(code) === 1 ? 'sh' : 'sz'
+    const symbol = `${marketPrefix}${code}`
+    const varName = `kline_${type}qfq`
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=${varName}&param=${symbol},${type},,,${count},qfqa`
+
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`请求失败: ${response.status}`)
+    }
+
+    const text = await response.text()
+    const jsonStr = text.split('=')[1]
+    if (!jsonStr) {
+      throw new Error('数据格式异常')
+    }
+
+    const data = JSON.parse(jsonStr)
+    if (data.code !== 0 || !data.data?.[symbol]?.[type]) {
+      throw new Error('未找到K线数据')
+    }
+
+    const klineArray = data.data[symbol][type]
+    return klineArray.map((item: string[]) => ({
+      date: item[0],
+      open: item[1],
+      close: item[2],
+      high: item[3],
+      low: item[4],
+      volume: item[5],
+    }))
+  }
+
+  const queryStockByDate = async () => {
+    const code = stockCode.value.trim()
+    if (!code) {
+      error.value = '请输入股票代码'
+      return
+    }
+
+    if (!/^\d{6}$/.test(code)) {
+      error.value = '请输入6位数字股票代码'
+      return
+    }
+
+    if (!selectedDate.value) {
+      error.value = '请选择查询日期'
+      return
+    }
+
+    isLoading.value = true
+    error.value = ''
+    klineResult.value = null
+    klineChartData.value = []
+
+    try {
+      const klineData = await fetchKlineData(code, 'day', 120)
+      const foundIndex = klineData.findIndex((item) => item.date === selectedDate.value)
+
+      if (foundIndex !== -1) {
+        klineResult.value = klineData[foundIndex]
+        klineChartData.value = klineData
+      } else {
+        error.value = '未找到该日期的交易数据，可能为非交易日'
+      }
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '查询失败，请稍后重试'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     stockCode,
+    selectedDate,
     isLoading,
     error,
     result,
+    klineResult,
+    klineChartData,
     favorites,
     favoritesData,
     isFavoritesLoading,
     stockName,
     formattedCode,
     queryStock,
+    queryStockByDate,
     clearResult,
     isFavorite,
     addFavorite,
     removeFavorite,
     toggleFavorite,
     fetchFavoritesData,
+    fetchKlineData,
   }
 })

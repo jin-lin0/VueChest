@@ -83,6 +83,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/stock/, ''),
       },
+      '/api/stock-kline': {
+        target: 'https://web.ifzq.gtimg.cn',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/stock-kline/, ''),
+      },
     },
   },
   resolve: {
