@@ -40,9 +40,20 @@ export interface KlineData {
   volume: string
 }
 
+export interface SearchResult {
+  code: string
+  name: string
+  market: string
+}
+
 const getMarketId = (code: string): number => {
   if (code.startsWith('6') || code.startsWith('688')) return 1
   return 0
+}
+
+// 解码 Unicode 编码字符串（如 \u8d35\u5dde\u8305\u53f0 -> 贵州茅台）
+const decodeUnicode = (str: string): string => {
+  return str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
 }
 
 export const useStockStore = defineStore('stock', () => {
@@ -58,6 +69,10 @@ export const useStockStore = defineStore('stock', () => {
   )
   const favoritesData = ref<FavoriteStockData[]>([])
   const isFavoritesLoading = ref(false)
+  const searchQuery = ref('')
+  const searchResults = ref<SearchResult[]>([])
+  const isSearching = ref(false)
+  const showSearchResults = ref(false)
 
   const stockName = computed(() => {
     if (!stockCode.value) return ''
@@ -146,6 +161,89 @@ export const useStockStore = defineStore('stock', () => {
   const clearResult = () => {
     result.value = null
     error.value = ''
+  }
+
+  const searchStocks = async (query: string) => {
+    if (!query.trim()) {
+      searchResults.value = []
+      showSearchResults.value = false
+      return
+    }
+
+    isSearching.value = true
+    showSearchResults.value = true
+
+    try {
+      // 使用腾讯股票smartbox接口进行模糊搜索（通过代理）
+      const url = `/api/stock-search?v=2&q=${query}&t=all&c=1`
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        throw new Error(`搜索请求失败: ${response.status}`)
+      }
+
+      const text = await response.text()
+      // 解析返回的数据格式：v_hint="市场~代码~名称~拼音缩写~类型"
+      const match = text.match(/v_hint="([^"]+)"/)
+      if (!match) {
+        searchResults.value = []
+        return
+      }
+
+      const items = match[1].split('^')
+      const results: SearchResult[] = []
+
+      for (const item of items) {
+        const fields = item.split('~')
+        if (fields.length >= 3) {
+          const market = fields[0] // sh=上海, sz=深圳
+          const code = fields[1]
+          const name = decodeUnicode(fields[2])
+
+          // 只显示A股股票（沪市和深市）
+          if (market === 'sh' || market === 'sz') {
+            results.push({
+              code,
+              name,
+              market,
+            })
+          }
+        }
+      }
+
+      searchResults.value = results.slice(0, 10) // 限制最多显示10个结果
+    } catch (e) {
+      console.error('搜索股票失败:', e)
+      searchResults.value = []
+    } finally {
+      isSearching.value = false
+    }
+  }
+
+  const selectSearchResult = async (result: SearchResult) => {
+    stockCode.value = result.code
+    searchQuery.value = ''
+    searchResults.value = []
+    showSearchResults.value = false
+    // 自动查询选中的股票
+    queryStock()
+    // 获取历史K线数据
+    try {
+      const klineData = await fetchKlineData(result.code, 'day', 120)
+      klineChartData.value = klineData
+      // 设置最近一个交易日的K线数据作为默认显示
+      if (klineData.length > 0) {
+        klineResult.value = klineData[klineData.length - 1]
+      }
+    } catch (e) {
+      console.error('获取K线数据失败:', e)
+    }
+  }
+
+  const clearSearch = () => {
+    searchQuery.value = ''
+    searchResults.value = []
+    showSearchResults.value = false
   }
 
   const isFavorite = (code: string) => {
@@ -343,11 +441,18 @@ export const useStockStore = defineStore('stock', () => {
     favorites,
     favoritesData,
     isFavoritesLoading,
+    searchQuery,
+    searchResults,
+    isSearching,
+    showSearchResults,
     stockName,
     formattedCode,
     queryStock,
     queryStockByDate,
     clearResult,
+    searchStocks,
+    selectSearchResult,
+    clearSearch,
     isFavorite,
     addFavorite,
     removeFavorite,

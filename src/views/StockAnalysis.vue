@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStockStore } from '@/stores'
 import type { KlineData } from '@/stores/stock'
@@ -13,6 +13,7 @@ const router = useRouter()
 const stockStore = useStockStore()
 const activeKline = ref<KlineData | null>(null)
 const selectedDate = ref<Date | null>(null)
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 const displayKline = computed(() => activeKline.value ?? stockStore.klineResult)
 
@@ -64,6 +65,58 @@ const getChangeInfo = (open: string, close: string) => {
   const percent = (((c - o) / o) * 100).toFixed(2)
   return { percent, isUp: c >= o }
 }
+
+// 防抖搜索函数
+const debouncedSearch = (query: string) => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  searchTimeout = setTimeout(() => {
+    stockStore.searchStocks(query)
+  }, 300) // 300ms防抖延迟
+}
+
+// 监听搜索输入变化
+watch(
+  () => stockStore.searchQuery,
+  (val) => {
+    if (val.trim()) {
+      debouncedSearch(val)
+    } else {
+      stockStore.clearSearch()
+    }
+  },
+)
+
+// 延迟隐藏搜索结果（避免点击结果时立即消失）
+const hideSearchResults = () => {
+  setTimeout(() => {
+    stockStore.showSearchResults = false
+  }, 200)
+}
+
+// 查询按钮点击事件
+const handleQuery = async () => {
+  await stockStore.queryStock()
+  if (stockStore.stockCode) {
+    try {
+      const klineData = await stockStore.fetchKlineData(stockStore.stockCode, 'day', 120)
+      stockStore.klineChartData = klineData
+      if (klineData.length > 0) {
+        stockStore.klineResult = klineData[klineData.length - 1]
+      }
+    } catch (e) {
+      console.error('获取K线数据失败:', e)
+    }
+  }
+}
+
+// 清理定时器
+onUnmounted(() => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+})
 </script>
 
 <template>
@@ -77,25 +130,59 @@ const getChangeInfo = (open: string, close: string) => {
       <aside class="sidebar">
         <div class="query-card">
           <h2>查询股票行情</h2>
-          <p class="query-desc">输入股票代码，查询实时行情</p>
+          <p class="query-desc">输入股票名称或代码，查询实时行情</p>
 
           <div class="query-form">
             <div class="form-group">
-              <label>股票代码</label>
-              <div class="code-input-wrapper">
+              <label>搜索股票</label>
+              <div class="search-input-wrapper">
                 <input
-                  v-model="stockStore.stockCode"
+                  v-model="stockStore.searchQuery"
                   type="text"
-                  placeholder="请输入6位股票代码"
-                  maxlength="6"
-                  class="code-input"
-                  @keyup.enter="stockStore.queryStock()"
+                  placeholder="输入股票名称或代码"
+                  class="search-input"
+                  @focus="stockStore.showSearchResults = true"
+                  @blur="hideSearchResults"
                 />
-                <span v-if="stockStore.stockName" class="stock-name-tag">
-                  {{ stockStore.stockName }}
-                </span>
+                <span v-if="stockStore.isSearching" class="search-loading">搜索中...</span>
+                <span
+                  v-if="stockStore.searchQuery"
+                  class="clear-search"
+                  @click="stockStore.clearSearch()"
+                  >×</span
+                >
+
+                <!-- 搜索结果下拉框 -->
+                <div
+                  v-if="stockStore.showSearchResults && stockStore.searchResults.length > 0"
+                  class="search-results"
+                >
+                  <div
+                    v-for="result in stockStore.searchResults"
+                    :key="result.code"
+                    class="search-result-item"
+                    @mousedown="stockStore.selectSearchResult(result)"
+                  >
+                    <div class="result-info">
+                      <span class="result-name">{{ result.name }}</span>
+                      <span class="result-code">{{ result.code }}</span>
+                    </div>
+                    <span class="result-market">{{ result.market === 'sh' ? '沪' : '深' }}</span>
+                  </div>
+                </div>
+
+                <div
+                  v-if="
+                    stockStore.showSearchResults &&
+                    stockStore.searchQuery &&
+                    !stockStore.isSearching &&
+                    stockStore.searchResults.length === 0
+                  "
+                  class="no-results"
+                >
+                  未找到相关股票
+                </div>
               </div>
-              <div class="code-hint">沪市: 6开头 | 深市: 0/3开头</div>
             </div>
 
             <div class="form-group">
@@ -111,11 +198,7 @@ const getChangeInfo = (open: string, close: string) => {
               />
             </div>
 
-            <button
-              class="query-btn"
-              :disabled="stockStore.isLoading"
-              @click="stockStore.queryStock()"
-            >
+            <button class="query-btn" :disabled="stockStore.isLoading" @click="handleQuery">
               <span v-if="stockStore.isLoading" class="loading-spinner"></span>
               {{ stockStore.isLoading ? '查询中...' : '查询' }}
             </button>
@@ -386,11 +469,6 @@ const getChangeInfo = (open: string, close: string) => {
   font-weight: 600;
 }
 
-.code-input-wrapper {
-  position: relative;
-}
-
-.code-input,
 .date-input {
   width: 100%;
   padding: 0.6rem;
@@ -401,29 +479,125 @@ const getChangeInfo = (open: string, close: string) => {
   transition: border-color 0.2s;
 }
 
-.code-input:focus,
 .date-input:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
-.stock-name-tag {
+.search-input-wrapper {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.6rem 2rem 0.6rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.search-loading {
   position: absolute;
   right: 0.5rem;
   top: 50%;
   transform: translateY(-50%);
-  background-color: #e3f2fd;
-  color: #1976d2;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  color: #7f8c8d;
 }
 
-.code-hint {
-  margin-top: 0.2rem;
+.clear-search {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  color: #bbb;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.3rem;
+}
+
+.clear-search:hover {
+  color: #e74c3c;
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background-color: #f5f5f5;
+}
+
+.result-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.result-name {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9rem;
+}
+
+.result-code {
+  font-size: 0.8rem;
+  color: #7f8c8d;
+  font-family: monospace;
+  margin-top: 0.1rem;
+}
+
+.result-market {
   font-size: 0.75rem;
-  color: #95a5a6;
+  color: #fff;
+  background-color: #3498db;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.no-results {
+  padding: 0.8rem;
+  text-align: center;
+  color: #7f8c8d;
+  font-size: 0.85rem;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
 }
 
 .query-btn {
