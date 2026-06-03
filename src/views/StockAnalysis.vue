@@ -6,6 +6,7 @@ import type { KlineData } from '@/stores/stock'
 import StockChart from '@/components/StockChart.vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import draggable from 'vuedraggable'
 
 defineOptions({ name: 'StockAnalysisView' })
 
@@ -100,6 +101,18 @@ const hideSearchResults = () => {
   setTimeout(() => {
     stockStore.showSearchResults = false
   }, 200)
+}
+
+// 拖拽结束后的处理函数
+const onDragEnd = () => {
+  // 更新 favorites 顺序（根据 favoritesData 的新顺序）
+  const newOrder = stockStore.favoritesData.map((item) => ({
+    code: item.code,
+    name: item.name,
+  }))
+  stockStore.favorites = newOrder
+  // 保存到 localStorage
+  localStorage.setItem('stock_favorites', JSON.stringify(newOrder))
 }
 
 // 查询按钮点击事件
@@ -227,30 +240,37 @@ onUnmounted(() => {
                 <th></th>
               </tr>
             </thead>
-            <tbody>
-              <tr
-                v-for="stock in stockStore.favoritesData"
-                :key="stock.code"
-                @click="selectFavorite(stock.code)"
-              >
-                <td>
-                  <div class="stock-name">{{ stock.name }}</div>
-                  <div class="stock-code">{{ stock.code }}</div>
-                </td>
-                <td class="stock-price">¥{{ formatPrice(stock.price) }}</td>
-                <td :class="['stock-change', Number(stock.changePercent) >= 0 ? 'up' : 'down']">
-                  {{ Number(stock.changePercent) >= 0 ? '+' : '' }}{{ stock.changePercent }}%
-                </td>
-                <td>
-                  <button
-                    class="remove-fav-btn"
-                    @click.stop="stockStore.removeFavorite(stock.code)"
-                  >
-                    ×
-                  </button>
-                </td>
-              </tr>
-            </tbody>
+            <draggable
+              v-model="stockStore.favoritesData"
+              tag="tbody"
+              item-key="code"
+              handle=".drag-handle"
+              @end="onDragEnd"
+            >
+              <template #item="{ element: stock }">
+                <tr @click="selectFavorite(stock.code)">
+                  <td>
+                    <div class="stock-name">
+                      <span class="drag-handle">⠿</span>
+                      {{ stock.name }}
+                    </div>
+                    <div class="stock-code">{{ stock.code }}</div>
+                  </td>
+                  <td class="stock-price">¥{{ formatPrice(stock.price) }}</td>
+                  <td :class="['stock-change', Number(stock.changePercent) >= 0 ? 'up' : 'down']">
+                    {{ Number(stock.changePercent) >= 0 ? '+' : '' }}{{ stock.changePercent }}%
+                  </td>
+                  <td>
+                    <button
+                      class="remove-fav-btn"
+                      @click.stop="stockStore.removeFavorite(stock.code)"
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              </template>
+            </draggable>
           </table>
         </div>
       </aside>
@@ -757,6 +777,18 @@ onUnmounted(() => {
 
 .remove-fav-btn:hover {
   color: #e74c3c;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: #bbb;
+  margin-right: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: #3498db;
 }
 
 .error-message {
