@@ -88,6 +88,13 @@ watch(
   },
 )
 
+// 聚焦时，如果有已有搜索结果则显示下拉框
+const onSearchFocus = () => {
+  if (stockStore.searchResults.length > 0) {
+    stockStore.showSearchResults = true
+  }
+}
+
 // 延迟隐藏搜索结果（避免点击结果时立即消失）
 const hideSearchResults = () => {
   setTimeout(() => {
@@ -141,7 +148,7 @@ onUnmounted(() => {
                   type="text"
                   placeholder="输入股票名称或代码"
                   class="search-input"
-                  @focus="stockStore.showSearchResults = true"
+                  @focus="onSearchFocus"
                   @blur="hideSearchResults"
                 />
                 <span v-if="stockStore.isSearching" class="search-loading">搜索中...</span>
