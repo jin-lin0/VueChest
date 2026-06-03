@@ -244,16 +244,12 @@ onUnmounted(() => {
               v-model="stockStore.favoritesData"
               tag="tbody"
               item-key="code"
-              handle=".drag-handle"
               @end="onDragEnd"
             >
               <template #item="{ element: stock }">
                 <tr @click="selectFavorite(stock.code)">
                   <td>
-                    <div class="stock-name">
-                      <span class="drag-handle">⠿</span>
-                      {{ stock.name }}
-                    </div>
+                    <div class="stock-name">{{ stock.name }}</div>
                     <div class="stock-code">{{ stock.code }}</div>
                   </td>
                   <td class="stock-price">¥{{ formatPrice(stock.price) }}</td>
@@ -731,8 +727,12 @@ onUnmounted(() => {
 }
 
 .favorites-table tbody tr {
-  cursor: pointer;
+  cursor: grab;
   transition: background-color 0.2s;
+}
+
+.favorites-table tbody tr:active {
+  cursor: grabbing;
 }
 
 .favorites-table tbody tr:hover {
@@ -777,18 +777,6 @@ onUnmounted(() => {
 
 .remove-fav-btn:hover {
   color: #e74c3c;
-}
-
-.drag-handle {
-  cursor: grab;
-  color: #bbb;
-  margin-right: 0.3rem;
-  font-size: 0.9rem;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-  color: #3498db;
 }
 
 .error-message {
