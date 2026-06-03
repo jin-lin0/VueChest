@@ -434,6 +434,7 @@ onUnmounted(() => {
 .main-content {
   flex: 1;
   min-width: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -931,7 +932,21 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .app-container {
-    padding: 1rem;
+    padding: 0.8rem;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .back-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
   }
 
   .stock-layout {
@@ -943,8 +958,71 @@ onUnmounted(() => {
     position: static;
   }
 
+  .query-card {
+    padding: 1rem;
+  }
+
+  .query-card h2 {
+    font-size: 1rem;
+  }
+
+  .query-form {
+    gap: 0.6rem;
+  }
+
+  .form-group label {
+    font-size: 0.8rem;
+  }
+
+  .search-input,
+  .date-input {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .query-btn {
+    width: 100%;
+    padding: 0.6rem;
+  }
+
+  .favorites-table {
+    font-size: 0.75rem;
+  }
+
+  .favorites-table th,
+  .favorites-table td {
+    padding: 0.3rem 0.4rem;
+  }
+
+  .stock-name {
+    font-size: 0.8rem;
+  }
+
+  .stock-code {
+    font-size: 0.65rem;
+  }
+
+  .result-card {
+    padding: 1rem;
+  }
+
+  .result-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
   .price-cards {
     grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .price-card {
+    padding: 0.6rem;
+  }
+
+  .price-value {
+    font-size: 1rem;
   }
 
   .summary-row {
@@ -956,8 +1034,16 @@ onUnmounted(() => {
     flex-wrap: wrap;
   }
 
+  .stock-title {
+    font-size: 1rem;
+  }
+
   .empty-state {
     padding: 2rem 1rem;
+  }
+
+  .search-results {
+    max-height: 200px;
   }
 }
 </style>
