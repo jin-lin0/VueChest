@@ -457,7 +457,6 @@ defineExpose({})
   --radius-lg: 18px;
 }
 
-/* ===== Player Bar ===== */
 .player-bar {
   position: fixed;
   bottom: 0;
@@ -470,7 +469,6 @@ defineExpose({})
   -webkit-backdrop-filter: blur(24px) saturate(1.5);
   box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.4);
   z-index: 200;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   border-top: 1px solid var(--border);
 }
 
