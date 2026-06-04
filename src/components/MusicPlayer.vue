@@ -818,7 +818,7 @@ defineExpose({})
 .lyrics-body {
   flex: 1;
   overflow-y: auto;
-  padding: calc(25vh) 24px calc(25vh + 8px);
+  padding: calc(4vh) 24px calc(25vh + 8px);
   text-align: center;
   mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
   -webkit-mask-image: linear-gradient(
