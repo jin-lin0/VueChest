@@ -53,6 +53,11 @@ const router = createRouter({
       name: 'stock',
       component: () => import('../views/StockAnalysis.vue'),
     },
+    {
+      path: '/music',
+      name: 'music',
+      component: () => import('../views/Music.vue'),
+    },
   ],
 })
 

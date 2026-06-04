@@ -15,6 +15,13 @@ export const APP_MODULES: AppModule[] = [
     description: '查询A股历史行情，分析开盘收盘价',
   },
   {
+    id: 10,
+    name: '音乐播放',
+    icon: '🎵',
+    route: '/music',
+    description: '搜索歌曲，在线播放，歌词同步显示',
+  },
+  {
     id: 8,
     name: 'AI 对话',
     icon: '🤖',

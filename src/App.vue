@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import RouteLoadingBar from './components/RouteLoadingBar.vue'
+import MusicPlayer from './components/MusicPlayer.vue'
 
 const router = useRouter()
 const isRouteLoading = ref(false)
@@ -28,6 +29,7 @@ router.afterEach(() => {
         <component :is="Component" />
       </transition>
     </RouterView>
+    <MusicPlayer />
   </div>
 </template>
 
