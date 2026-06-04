@@ -303,8 +303,35 @@ defineExpose({})
           </button>
           <button class="ctrl-btn" @click="music.playPrev()">⏮</button>
           <button class="play-btn" @click="togglePlayPause" :disabled="music.isLoadingUrl">
-            <span v-if="music.isLoadingUrl">⏳</span>
-            <span v-else>{{ music.isPlaying ? '⏸' : '▶' }}</span>
+            <!-- Loading spinner -->
+            <svg
+              v-if="music.isLoadingUrl"
+              class="spin-icon"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            <!-- Pause icon -->
+            <svg
+              v-else-if="music.isPlaying"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <rect x="5" y="3" width="5" height="18" rx="1" />
+              <rect x="14" y="3" width="5" height="18" rx="1" />
+            </svg>
+            <!-- Play icon (triangle, centroid-centered) -->
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="8,4 8,20 20,12" />
+            </svg>
           </button>
           <button class="ctrl-btn" @click="music.playNext()">⏭</button>
           <button
@@ -328,8 +355,28 @@ defineExpose({})
           >
             词
           </button>
-          <button class="list-btn" @click="music.showPlaylist = !music.showPlaylist">
-            列表({{ music.playlist.length }})
+          <button
+            class="list-btn"
+            @click="music.showPlaylist = !music.showPlaylist"
+            :title="`播放列表(${music.playlist.length})`"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
           </button>
           <div class="volume-control" @click="changeVolume">
             <div class="volume-bar-bg">
@@ -558,6 +605,16 @@ defineExpose({})
   cursor: default;
 }
 
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .fav-btn.favorited {
   color: #fd79a8;
 }
@@ -606,9 +663,11 @@ defineExpose({})
 }
 
 .list-btn {
-  font-size: 12px;
-  white-space: nowrap;
-  padding: 5px 10px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: 1px solid var(--border);
   cursor: pointer;
