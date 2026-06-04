@@ -127,6 +127,11 @@ export const useMusicStore = defineStore('music', () => {
     saveSearchHistory()
   }
 
+  const removeSearchHistory = (keyword: string) => {
+    searchHistory.value = searchHistory.value.filter((s) => s !== keyword)
+    saveSearchHistory()
+  }
+
   const clearSearchHistory = () => {
     searchHistory.value = []
     saveSearchHistory()
@@ -456,6 +461,7 @@ export const useMusicStore = defineStore('music', () => {
     cyclePlayMode,
     removeSongFromPlaylist,
     formatDuration,
+    removeSearchHistory,
     clearSearchHistory,
   }
 })

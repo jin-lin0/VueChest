@@ -272,11 +272,12 @@ defineExpose({})
               <path d="M21 13v2a4 4 0 0 1-4 4H3" />
               <text
                 x="12"
-                y="15"
+                y="12"
                 text-anchor="middle"
+                dominant-baseline="central"
                 fill="currentColor"
                 stroke="none"
-                font-size="10"
+                font-size="9"
                 font-weight="700"
               >
                 1

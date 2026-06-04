@@ -154,6 +154,9 @@ onMounted(() => {
               @click="searchFromHistory(item)"
             >
               {{ item }}
+              <button class="history-remove" @click.stop="music.removeSearchHistory(item)">
+                &times;
+              </button>
             </span>
           </div>
         </div>
@@ -561,12 +564,29 @@ onMounted(() => {
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
 }
 
 .history-tag:hover {
   background: rgba(108, 92, 231, 0.12);
   color: var(--accent-light);
   border-color: rgba(108, 92, 231, 0.3);
+}
+
+.history-remove {
+  margin-left: 6px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.history-remove:hover {
+  color: #fd79a8;
 }
 
 /* ===== Empty / Loading ===== */
