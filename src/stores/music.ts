@@ -52,6 +52,7 @@ export const useMusicStore = defineStore('music', () => {
   const playMode = ref<'list' | 'single' | 'random'>('list')
   const songUrl = ref('')
   const showPlaylist = ref(false)
+  const playerBarVisible = ref(false)
   const lyrics = ref<LyricLine[]>([])
   const isLoadingUrl = ref(false)
 
@@ -310,6 +311,7 @@ export const useMusicStore = defineStore('music', () => {
 
     isLoadingUrl.value = true
     activeSong.value = song
+    playerBarVisible.value = true
     // song.url 是 Meting-API 的 url 端点，<audio> 标签会跟随 302 重定向到实际 MP3
     if (song.url) {
       songUrl.value = song.url
@@ -325,6 +327,17 @@ export const useMusicStore = defineStore('music', () => {
 
   const togglePlay = () => {
     isPlaying.value = !isPlaying.value
+  }
+
+  const closePlayer = () => {
+    playerBarVisible.value = false
+    isPlaying.value = false
+    activeSong.value = null
+    songUrl.value = ''
+    currentIndex.value = -1
+    lyrics.value = []
+    currentTime.value = 0
+    duration.value = 0
   }
 
   const playNext = () => {
@@ -436,6 +449,7 @@ export const useMusicStore = defineStore('music', () => {
     playMode,
     songUrl,
     showPlaylist,
+    playerBarVisible,
     lyrics,
     isLoadingUrl,
     recommendPlaylists,
@@ -450,6 +464,7 @@ export const useMusicStore = defineStore('music', () => {
     loadPlaylistTracks,
     playSong,
     togglePlay,
+    closePlayer,
     playNext,
     playPrev,
     setVolume,

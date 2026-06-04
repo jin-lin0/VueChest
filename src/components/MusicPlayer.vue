@@ -210,7 +210,7 @@ defineExpose({})
     </div>
   </Transition>
 
-  <template v-if="music.activeSong">
+  <template v-if="music.playerBarVisible && music.activeSong">
     <!-- Player bar -->
     <div class="player-bar">
       <!-- Progress bar -->
@@ -384,6 +384,20 @@ defineExpose({})
               <div class="volume-bar" :style="{ width: music.volume * 100 + '%' }"></div>
             </div>
           </div>
+          <button class="close-btn" @click="music.closePlayer()" title="关闭播放器">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -699,6 +713,24 @@ defineExpose({})
   height: 100%;
   background: var(--accent-gradient);
   border-radius: 2px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  color: #fd79a8;
+  background: rgba(253, 121, 168, 0.1);
 }
 
 /* ===== Lyrics Overlay ===== */
@@ -1033,6 +1065,11 @@ defineExpose({})
     display: none;
   }
 
+  .player-cover,
+  .player-cover-placeholder {
+    display: none;
+  }
+
   .player-song-text {
     max-width: 110px;
   }
@@ -1047,14 +1084,19 @@ defineExpose({})
   }
 
   .player-controls {
-    padding: 8px 14px;
-    gap: 10px;
+    padding: 8px 10px;
+    gap: 6px;
   }
 
   .play-btn {
     width: 38px;
     height: 38px;
     font-size: 15px;
+  }
+
+  .mode-btn,
+  .fav-btn {
+    padding: 6px;
   }
 }
 </style>
