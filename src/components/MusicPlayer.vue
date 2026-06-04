@@ -1070,8 +1070,9 @@ defineExpose({})
     display: none;
   }
 
-  .player-song-text {
-    max-width: 110px;
+  .player-song-info {
+    flex: 1;
+    min-width: 0;
   }
 
   .playlist-drawer {
@@ -1086,6 +1087,10 @@ defineExpose({})
   .player-controls {
     padding: 8px 10px;
     gap: 6px;
+  }
+
+  .center-controls {
+    gap: 0;
   }
 
   .play-btn {
