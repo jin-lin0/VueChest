@@ -276,12 +276,9 @@ export const useMusicStore = defineStore('music', () => {
       const cacheKey = `lrc:${song.server}:${song.id}`
       let text = getCached<string>(cacheKey)
       if (!text) {
-        const res = await fetch(`${SERVER_API}/netease/lyric?id=${song.id}`)
-        if (!res.ok) throw new Error(`Server API error: ${res.status}`)
-        const data = await res.json()
-        text = (data as Record<string, unknown>).lrc
-          ? (((data as Record<string, unknown>).lrc as Record<string, unknown>).lyric as string)
-          : ''
+        const res = await fetch(`/meting-api?server=${song.server}&type=lrc&id=${song.id}`)
+        if (!res.ok) throw new Error(`Meting API error: ${res.status}`)
+        text = await res.text()
         setCache(cacheKey, text)
       }
       lyrics.value = parseLyrics(text!)
