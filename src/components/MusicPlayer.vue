@@ -33,6 +33,12 @@ const onAudioPause = () => {
   music.isPlaying = false
 }
 
+const onAudioLoaded = () => {
+  if (audioRef.value && music.isPlaying) {
+    audioRef.value.play().catch(() => {})
+  }
+}
+
 const togglePlayPause = () => {
   if (!audioRef.value) return
   if (music.isPlaying) {
@@ -83,7 +89,7 @@ watch(
     await nextTick()
     if (audioRef.value) {
       audioRef.value.volume = music.volume
-      audioRef.value.play().catch(() => {})
+      // 不在这里调用 play()，等待 @loadeddata 事件触发后再播放
     }
   },
 )
@@ -410,6 +416,7 @@ defineExpose({})
       @ended="onAudioEnded"
       @play="onAudioPlay"
       @pause="onAudioPause"
+      @loadeddata="onAudioLoaded"
     ></audio>
 
     <!-- Lyrics overlay -->

@@ -11,6 +11,10 @@ export interface Song {
   coverUrl: string
   url: string
   server: string
+  duration?: number
+  fee?: number
+  mvId?: number
+  sq?: boolean
 }
 
 export interface LyricLine {
@@ -128,6 +132,26 @@ export const useMusicStore = defineStore('music', () => {
     saveSearchHistory()
   }
 
+  // 从 url 字段提取歌曲 ID
+  const extractId = (url: string): string => {
+    const match = url.match(/[?&]id=(\d+)/)
+    return match ? match[1] : ''
+  }
+
+  // 解析 meting-api 返回的数据（包含 url）
+  const parseMetingSong = (raw: Record<string, unknown>): Song => {
+    const apiUrl = (raw.url as string) || ''
+    return {
+      id: extractId(apiUrl),
+      name: (raw.title as string) || '未知',
+      artists: (raw.author as string) || '未知',
+      album: (raw.album as string) || '未知',
+      coverUrl: (raw.pic as string) || '',
+      url: apiUrl,
+      server: 'netease',
+    }
+  }
+
   // 解析网易云搜索结果
   const parseNeteaseSong = (song: Record<string, unknown>): Song => {
     const artists =
@@ -140,8 +164,12 @@ export const useMusicStore = defineStore('music', () => {
       artists: artists.map((a) => a.name as string).join(' / ') || '未知',
       album: (album.name as string) || '未知',
       coverUrl: (album.picUrl as string) || '',
-      url: `https://music.163.com/song/media/outer/url?id=${song.id}.mp3`,
+      url: '',
       server: 'netease',
+      duration: song.dt as number | undefined,
+      fee: song.fee as number | undefined,
+      mvId: song.mv as number | undefined,
+      sq: !!song.sq,
     }
   }
 
@@ -202,7 +230,7 @@ export const useMusicStore = defineStore('music', () => {
           const playlistId = String(item.id)
           const cacheKey = `playlist:netease:${playlistId}`
           if (!getCached(cacheKey)) {
-            fetch(`${SERVER_API}/netease/playlist/detail?id=${playlistId}`)
+            fetch(`/meting-api?server=netease&type=playlist&id=${playlistId}`)
               .then((res) => res.json())
               .then((data) => setCache(cacheKey, data))
               .catch(() => {})
@@ -220,17 +248,14 @@ export const useMusicStore = defineStore('music', () => {
   const loadPlaylistTracks = async (playlistId: string, server = 'netease') => {
     try {
       const cacheKey = `playlist:${server}:${playlistId}`
-      let data = getCached<Record<string, unknown>>(cacheKey)
+      let data = getCached<Record<string, unknown>[]>(cacheKey)
       if (!data) {
-        const res = await fetch(`${SERVER_API}/netease/playlist/detail?id=${playlistId}`)
-        if (!res.ok) throw new Error(`Server API error: ${res.status}`)
+        const res = await fetch(`/meting-api?server=${server}&type=playlist&id=${playlistId}`)
+        if (!res.ok) throw new Error(`Meting API error: ${res.status}`)
         data = await res.json()
         setCache(cacheKey, data)
       }
-      const result = data as Record<string, unknown>
-      const tracks =
-        ((result.playlist as Record<string, unknown>)?.tracks as Record<string, unknown>[]) || []
-      const newPlaylist = tracks.map(parseNeteaseSong)
+      const newPlaylist = (data || []).map(parseMetingSong)
       const playingSongId = activeSong.value?.id
       playlist.value = newPlaylist
 
@@ -298,15 +323,27 @@ export const useMusicStore = defineStore('music', () => {
     isLoadingUrl.value = true
     activeSong.value = song
     playerBarVisible.value = true
-    // song.url 是网易云音乐外链，<audio> 标签会跟随 302 重定向到实际 MP3
-    if (song.url) {
-      songUrl.value = song.url
-      isPlaying.value = true
-      // 异步加载歌词
-      getLyrics(song)
-      isLoadingUrl.value = false
-      return true
+
+    try {
+      const cacheKey = `songurl:${song.id}`
+      let url = getCached<string>(cacheKey)
+      if (!url) {
+        // 优先使用 meting-api（直接返回音频流，稳定可靠）
+        url = `/meting-api?server=netease&type=url&id=${song.id}`
+        setCache(cacheKey, url)
+      }
+
+      if (url) {
+        songUrl.value = url
+        isPlaying.value = true
+        getLyrics(song)
+        isLoadingUrl.value = false
+        return true
+      }
+    } catch (e) {
+      console.error('Get song url failed:', e)
     }
+
     isLoadingUrl.value = false
     return false
   }

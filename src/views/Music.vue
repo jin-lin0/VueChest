@@ -36,6 +36,13 @@ const searchFromHistory = (keyword: string) => {
   activeTab.value = 'search'
 }
 
+const formatDuration = (ms: number): string => {
+  const seconds = Math.floor(ms / 1000)
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
 // --- Play a song from search results ---
 const playFromResults = (song: (typeof music.searchResults)[0]) => {
   music.playSong(song, music.searchResults)
@@ -125,9 +132,17 @@ onMounted(() => {
             >
               <span class="song-index">{{ index + 1 }}</span>
               <div class="song-info">
-                <div class="song-name">{{ song.name }}</div>
+                <div class="song-name">
+                  {{ song.name }}
+                  <span v-if="song.sq" class="tag-sq">SQ</span>
+                  <span v-if="song.fee === 1" class="tag-vip">VIP</span>
+                  <span v-if="song.mvId" class="tag-mv">MV</span>
+                </div>
                 <div class="song-artist">{{ song.artists }} - {{ song.album }}</div>
               </div>
+              <span v-if="song.duration" class="song-duration">{{
+                formatDuration(song.duration)
+              }}</span>
               <button
                 class="fav-btn-small"
                 :class="{ favorited: music.isFavoriteSong(song.id) }"
@@ -472,15 +487,6 @@ onMounted(() => {
   min-width: 0;
 }
 
-.song-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .song-artist {
   font-size: 12px;
   color: var(--text-secondary);
@@ -488,6 +494,47 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.song-duration {
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.song-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.tag-sq,
+.tag-vip,
+.tag-mv {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.tag-sq {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  color: #fff;
+}
+
+.tag-vip {
+  background: linear-gradient(135deg, #f6d365, #fda085);
+  color: #7c3aed;
+}
+
+.tag-mv {
+  background: rgba(108, 92, 231, 0.15);
+  color: var(--accent-light);
 }
 
 .fav-btn-small {
