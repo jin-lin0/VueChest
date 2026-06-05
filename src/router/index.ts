@@ -58,6 +58,11 @@ const router = createRouter({
       name: 'music',
       component: () => import('../views/Music.vue'),
     },
+    {
+      path: '/racing',
+      name: 'racing',
+      component: () => import('../views/RacingGame.vue'),
+    },
   ],
 })
 

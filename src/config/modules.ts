@@ -8,6 +8,13 @@ export interface AppModule {
 
 export const APP_MODULES: AppModule[] = [
   {
+    id: 11,
+    name: '3D赛车',
+    icon: '🏎️',
+    route: '/racing',
+    description: '刺激的3D赛车竞速，支持移动端触控和技能系统',
+  },
+  {
     id: 9,
     name: '股票查询',
     icon: '📈',

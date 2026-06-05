@@ -16,6 +16,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@types/three": "^0.184.1",
     "@vuepic/vue-datepicker": "^13.0.0",
     "highlight.js": "^11.11.1",
     "idb": "^8.0.3",
@@ -23,6 +24,7 @@
     "lunar-javascript": "^1.7.7",
     "marked": "^18.0.4",
     "pinia": "^3.0.3",
+    "three": "^0.184.0",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1",
     "vuedraggable": "^4.1.0"
