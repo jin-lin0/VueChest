@@ -31,8 +31,6 @@ interface ApiCache {
   [key: string]: { data: unknown; expire: number }
 }
 
-// 开发环境走 Vite 代理，生产环境走 Vercel rewrite
-const METING_API = '/meting-api'
 const CACHE_TTL = 5 * 60 * 1000
 
 export const useMusicStore = defineStore('music', () => {
@@ -107,14 +105,6 @@ export const useMusicStore = defineStore('music', () => {
     cache[key] = { data, expire: Date.now() + CACHE_TTL }
   }
 
-  const metingFetch = async (params: Record<string, string>) => {
-    const url = new URL(METING_API, window.location.origin)
-    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
-    const res = await fetch(url.toString())
-    if (!res.ok) throw new Error(`Meting API error: ${res.status}`)
-    return res.json()
-  }
-
   const saveSearchHistory = () => {
     setStorage(STORAGE_KEYS.MUSIC_SEARCH_HISTORY, searchHistory.value)
   }
@@ -138,23 +128,20 @@ export const useMusicStore = defineStore('music', () => {
     saveSearchHistory()
   }
 
-  // 从 url 字段提取歌曲 ID
-  const extractId = (url: string): string => {
-    const match = url.match(/[?&]id=(\d+)/)
-    return match ? match[1] : ''
-  }
-
-  // Parse Meting-API response item into Song
-  const parseSong = (raw: Record<string, unknown>, server: string): Song => {
-    const apiUrl = (raw.url as string) || ''
+  // 解析网易云搜索结果
+  const parseNeteaseSong = (song: Record<string, unknown>): Song => {
+    const artists =
+      (song.ar as Record<string, unknown>[]) || (song.artists as Record<string, unknown>[]) || []
+    const album =
+      (song.al as Record<string, unknown>) || (song.album as Record<string, unknown>) || {}
     return {
-      id: extractId(apiUrl),
-      name: (raw.title as string) || '未知',
-      artists: (raw.author as string) || '未知',
-      album: (raw.album as string) || '未知',
-      coverUrl: (raw.pic as string) || '',
-      url: apiUrl,
-      server,
+      id: String(song.id),
+      name: (song.name as string) || '未知',
+      artists: artists.map((a) => a.name as string).join(' / ') || '未知',
+      album: (album.name as string) || '未知',
+      coverUrl: (album.picUrl as string) || '',
+      url: `https://music.163.com/song/media/outer/url?id=${song.id}.mp3`,
+      server: 'netease',
     }
   }
 
@@ -166,18 +153,17 @@ export const useMusicStore = defineStore('music', () => {
     addSearchHistory(q)
     try {
       const cacheKey = `search:${searchServer.value}:${q}`
-      let data = getCached<Record<string, unknown>[]>(cacheKey)
+      let data = getCached<Record<string, unknown>>(cacheKey)
       if (!data) {
-        data = await metingFetch({
-          server: searchServer.value,
-          type: 'search',
-          id: q,
-        })
+        const res = await fetch(`${SERVER_API}/netease/search?keywords=${encodeURIComponent(q)}`)
+        if (!res.ok) throw new Error(`Server API error: ${res.status}`)
+        data = await res.json()
         setCache(cacheKey, data)
       }
-      searchResults.value = (data || []).map((s) =>
-        parseSong(s as Record<string, unknown>, searchServer.value),
-      )
+      const result = data as Record<string, unknown>
+      const songs =
+        ((result.result as Record<string, unknown>)?.songs as Record<string, unknown>[]) || []
+      searchResults.value = songs.map(parseNeteaseSong)
     } catch (e) {
       console.error('Search failed:', e)
       searchResults.value = []
@@ -186,49 +172,46 @@ export const useMusicStore = defineStore('music', () => {
     }
   }
 
+  const SERVER_API = 'https://server.020201.xyz'
+
   const fetchRecommendPlaylists = async () => {
     isLoadingRecommend.value = true
     try {
-      const playlistIds = [
-        { id: '3778678', name: '云音乐飙升榜' },
-        { id: '19723756', name: '云音乐新歌榜' },
-        { id: '2884035', name: '云音乐原创榜' },
-        { id: '3779629', name: '云音乐热歌榜' },
-        { id: '7356827205', name: '云音乐说唱榜' },
-        { id: '10520166', name: '云音乐电音榜' },
-      ]
-      // 初始化列表
-      recommendPlaylists.value = playlistIds.map((p) => ({
-        id: p.id,
-        name: p.name,
-        coverUrl: '',
-        trackCount: 0,
-        description: '',
-        server: 'netease',
-      }))
-      // 并发加载每个榜单的封面和曲目数
-      const fetches = playlistIds.map(async (p, idx) => {
-        try {
-          const cacheKey = `playlist:netease:${p.id}`
-          let data = getCached<Record<string, unknown>[]>(cacheKey)
-          if (!data) {
-            data = await metingFetch({ server: 'netease', type: 'playlist', id: p.id })
-            setCache(cacheKey, data)
+      const cacheKey = 'toplist:netease'
+      let data = getCached<Record<string, unknown>>(cacheKey)
+      if (!data) {
+        const res = await fetch(`${SERVER_API}/netease/toplist`)
+        if (!res.ok) throw new Error(`Server API error: ${res.status}`)
+        data = await res.json()
+        setCache(cacheKey, data)
+      }
+
+      const toplist = (data as Record<string, unknown>).list as Record<string, unknown>[]
+      if (toplist && Array.isArray(toplist)) {
+        recommendPlaylists.value = toplist.slice(0, 10).map((item) => ({
+          id: String(item.id),
+          name: item.name as string,
+          coverUrl: (item.coverImgUrl as string) || '',
+          trackCount: (item.trackCount as number) || 0,
+          description: (item.description as string) || '',
+          server: 'netease',
+        }))
+
+        // 预加载歌单内容（不阻塞UI）
+        toplist.slice(0, 10).forEach((item) => {
+          const playlistId = String(item.id)
+          const cacheKey = `playlist:netease:${playlistId}`
+          if (!getCached(cacheKey)) {
+            fetch(`${SERVER_API}/netease/playlist/detail?id=${playlistId}`)
+              .then((res) => res.json())
+              .then((data) => setCache(cacheKey, data))
+              .catch(() => {})
           }
-          const items = data || []
-          const first = items[0] as Record<string, unknown> | undefined
-          recommendPlaylists.value[idx] = {
-            ...recommendPlaylists.value[idx],
-            coverUrl: (first?.pic as string) || '',
-            trackCount: items.length,
-          }
-        } catch {
-          // 单个失败不影响其他
-        }
-      })
-      await Promise.allSettled(fetches)
+        })
+      }
     } catch (e) {
       console.error('Fetch recommend failed:', e)
+      recommendPlaylists.value = []
     } finally {
       isLoadingRecommend.value = false
     }
@@ -237,16 +220,17 @@ export const useMusicStore = defineStore('music', () => {
   const loadPlaylistTracks = async (playlistId: string, server = 'netease') => {
     try {
       const cacheKey = `playlist:${server}:${playlistId}`
-      let data = getCached<Record<string, unknown>[]>(cacheKey)
+      let data = getCached<Record<string, unknown>>(cacheKey)
       if (!data) {
-        data = await metingFetch({
-          server,
-          type: 'playlist',
-          id: String(playlistId),
-        })
+        const res = await fetch(`${SERVER_API}/netease/playlist/detail?id=${playlistId}`)
+        if (!res.ok) throw new Error(`Server API error: ${res.status}`)
+        data = await res.json()
         setCache(cacheKey, data)
       }
-      const newPlaylist = (data || []).map((t) => parseSong(t as Record<string, unknown>, server))
+      const result = data as Record<string, unknown>
+      const tracks =
+        ((result.playlist as Record<string, unknown>)?.tracks as Record<string, unknown>[]) || []
+      const newPlaylist = tracks.map(parseNeteaseSong)
       const playingSongId = activeSong.value?.id
       playlist.value = newPlaylist
 
@@ -267,10 +251,12 @@ export const useMusicStore = defineStore('music', () => {
       const cacheKey = `lrc:${song.server}:${song.id}`
       let text = getCached<string>(cacheKey)
       if (!text) {
-        const res = await fetch(
-          `${new URL(METING_API, window.location.origin)}?server=${song.server}&type=lrc&id=${song.id}`,
-        )
-        text = await res.text()
+        const res = await fetch(`${SERVER_API}/netease/lyric?id=${song.id}`)
+        if (!res.ok) throw new Error(`Server API error: ${res.status}`)
+        const data = await res.json()
+        text = (data as Record<string, unknown>).lrc
+          ? (((data as Record<string, unknown>).lrc as Record<string, unknown>).lyric as string)
+          : ''
         setCache(cacheKey, text)
       }
       lyrics.value = parseLyrics(text!)
@@ -312,7 +298,7 @@ export const useMusicStore = defineStore('music', () => {
     isLoadingUrl.value = true
     activeSong.value = song
     playerBarVisible.value = true
-    // song.url 是 Meting-API 的 url 端点，<audio> 标签会跟随 302 重定向到实际 MP3
+    // song.url 是网易云音乐外链，<audio> 标签会跟随 302 重定向到实际 MP3
     if (song.url) {
       songUrl.value = song.url
       isPlaying.value = true

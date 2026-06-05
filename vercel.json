@@ -3,7 +3,6 @@
     { "source": "/api/stock-search/:path*", "destination": "https://smartbox.gtimg.cn/s3/:path*" },
     { "source": "/api/stock-kline/:path*", "destination": "https://web.ifzq.gtimg.cn/:path*" },
     { "source": "/api/stock/:path*", "destination": "http://qt.gtimg.cn/:path*" },
-    { "source": "/meting-api", "destination": "https://meting.mikus.ink/api" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }

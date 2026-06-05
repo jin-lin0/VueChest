@@ -98,12 +98,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/stock/, ''),
       },
-      '/meting-api': {
-        target: 'https://meting.mikus.ink',
-        changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/meting-api/, '/api'),
-      },
     },
   },
   resolve: {
