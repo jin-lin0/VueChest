@@ -281,7 +281,7 @@ const saveLocalState = () => {
 // 获取分类列表
 const fetchCategories = async () => {
   try {
-    const res = await fetch(`${API_BASE}/questions/categories`)
+    const res = await fetch(`${API_BASE}/api/questions/categories`)
     const data = await res.json()
     categories.value = data
     stats.value.totalCategories = data.length
@@ -329,7 +329,7 @@ const fetchAllQuestions = async () => {
     if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
     if (searchKeyword.value) params.append('keyword', searchKeyword.value)
 
-    const res = await fetch(`${API_BASE}/questions?${params}`)
+    const res = await fetch(`${API_BASE}/api/questions?${params}`)
     const data = await res.json()
     allQuestions.value = data.questions
     stats.value.totalQuestions = data.total
@@ -378,7 +378,7 @@ const randomQuiz = async () => {
     if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
     if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
 
-    const res = await fetch(`${API_BASE}/questions/random/1?${params}`)
+    const res = await fetch(`${API_BASE}/api/questions/random/1?${params}`)
     const data = await res.json()
     if (data && data.length > 0) {
       currentQuestion.value = data[0]

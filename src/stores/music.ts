@@ -173,6 +173,8 @@ export const useMusicStore = defineStore('music', () => {
     }
   }
 
+  const SERVER_API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+
   const searchSongs = async (keyword: string) => {
     const q = keyword.trim()
     if (!q) return
@@ -183,7 +185,9 @@ export const useMusicStore = defineStore('music', () => {
       const cacheKey = `search:${searchServer.value}:${q}`
       let data = getCached<Record<string, unknown>>(cacheKey)
       if (!data) {
-        const res = await fetch(`${SERVER_API}/netease/search?keywords=${encodeURIComponent(q)}`)
+        const res = await fetch(
+          `${SERVER_API}/api/netease/search?keywords=${encodeURIComponent(q)}`,
+        )
         if (!res.ok) throw new Error(`Server API error: ${res.status}`)
         data = await res.json()
         setCache(cacheKey, data)
@@ -200,15 +204,13 @@ export const useMusicStore = defineStore('music', () => {
     }
   }
 
-  const SERVER_API = 'https://server.020201.xyz'
-
   const fetchRecommendPlaylists = async () => {
     isLoadingRecommend.value = true
     try {
       const cacheKey = 'toplist:netease'
       let data = getCached<Record<string, unknown>>(cacheKey)
       if (!data) {
-        const res = await fetch(`${SERVER_API}/netease/toplist`)
+        const res = await fetch(`${SERVER_API}/api/netease/toplist`)
         if (!res.ok) throw new Error(`Server API error: ${res.status}`)
         data = await res.json()
         setCache(cacheKey, data)

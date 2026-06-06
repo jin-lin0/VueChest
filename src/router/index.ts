@@ -68,6 +68,24 @@ const router = createRouter({
       name: 'interview',
       component: () => import('../views/InterviewQuiz.vue'),
     },
+    {
+      path: '/admin',
+      component: () => import('../views/AdminDashboard.vue'),
+      children: [
+        {
+          path: '',
+          redirect: '/admin/questions',
+        },
+        {
+          path: 'questions',
+          component: () => import('../views/admin/QuestionManagement.vue'),
+        },
+        {
+          path: 'categories',
+          component: () => import('../views/admin/CategoryManagement.vue'),
+        },
+      ],
+    },
   ],
 })
 

@@ -15,6 +15,13 @@ export const APP_MODULES: AppModule[] = [
     description: '前端面试高频题目，支持随机抽题和分类练习',
   },
   {
+    id: 13,
+    name: '管理后台',
+    icon: '⚙️',
+    route: '/admin',
+    description: '面试题库管理后台，支持题目的增删改查',
+  },
+  {
     id: 11,
     name: '3D赛车',
     icon: '🏎️',
