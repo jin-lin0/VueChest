@@ -63,6 +63,11 @@ const router = createRouter({
       name: 'racing',
       component: () => import('../views/RacingGame.vue'),
     },
+    {
+      path: '/interview',
+      name: 'interview',
+      component: () => import('../views/InterviewQuiz.vue'),
+    },
   ],
 })
 

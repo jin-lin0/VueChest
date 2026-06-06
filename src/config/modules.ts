@@ -8,6 +8,13 @@ export interface AppModule {
 
 export const APP_MODULES: AppModule[] = [
   {
+    id: 12,
+    name: '面试题库',
+    icon: '📚',
+    route: '/interview',
+    description: '前端面试高频题目，支持随机抽题和分类练习',
+  },
+  {
     id: 11,
     name: '3D赛车',
     icon: '🏎️',
