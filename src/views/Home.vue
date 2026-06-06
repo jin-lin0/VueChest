@@ -464,6 +464,14 @@ const navigateToApp = (route: string) => {
         </div>
         <div class="backdoor-body">
           <div class="backdoor-section">
+            <h4>管理后台</h4>
+            <p class="backdoor-desc">进入面试题库管理后台</p>
+            <button class="backdoor-btn admin-btn" @click="router.push('/admin')">
+              进入管理后台 →
+            </button>
+          </div>
+          <div class="backdoor-divider"></div>
+          <div class="backdoor-section">
             <h4>导出数据</h4>
             <p class="backdoor-desc">将所有应用数据导出为 JSON 文件</p>
             <button class="backdoor-btn export-btn" @click="handleExport">导出全部数据</button>
@@ -1430,6 +1438,16 @@ const navigateToApp = (route: string) => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.admin-btn {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  color: white;
+}
+
+.admin-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .export-btn {

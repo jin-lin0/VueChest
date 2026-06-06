@@ -1,106 +1,156 @@
 <template>
-  <div class="admin-dashboard">
-    <div class="admin-sidebar">
-      <div class="admin-header">
-        <h2>⚙️ 管理后台</h2>
-      </div>
-      <nav class="admin-nav">
-        <router-link
-          to="/admin/questions"
-          class="nav-item"
-          :class="{ active: $route.path === '/admin/questions' }"
-        >
-          <span class="icon">📚</span>
-          <span>题目管理</span>
-        </router-link>
-        <router-link
-          to="/admin/categories"
-          class="nav-item"
-          :class="{ active: $route.path === '/admin/categories' }"
-        >
-          <span class="icon">📂</span>
-          <span>分类管理</span>
-        </router-link>
-        <router-link to="/" class="nav-item back-to-home">
-          <span class="icon">←</span>
-          <span>返回首页</span>
-        </router-link>
-      </nav>
+  <div class="dashboard">
+    <div class="dashboard-header">
+      <h2>欢迎回来，{{ authStore.admin?.username }}!</h2>
+      <p>这是您的管理后台仪表盘</p>
     </div>
-    <div class="admin-content">
-      <router-view />
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-content">
+          <div class="stat-value">-</div>
+          <div class="stat-label">题目数量</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📂</div>
+        <div class="stat-content">
+          <div class="stat-value">-</div>
+          <div class="stat-label">分类数量</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-content">
+      <div class="quick-actions">
+        <h3>快捷操作</h3>
+        <div class="action-grid">
+          <router-link to="/admin/questions" class="action-card">
+            <span class="action-icon">📚</span>
+            <span>管理题目</span>
+          </router-link>
+          <router-link to="/admin/categories" class="action-card">
+            <span class="action-icon">📂</span>
+            <span>管理分类</span>
+          </router-link>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+</script>
 
 <style scoped>
-.admin-dashboard {
+.dashboard {
   display: flex;
-  min-height: calc(100vh - 60px);
+  flex-direction: column;
+  gap: 24px;
 }
 
-.admin-sidebar {
-  width: 240px;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+.dashboard-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 32px;
+  border-radius: 16px;
   color: white;
-  display: flex;
-  flex-direction: column;
 }
 
-.admin-header {
-  padding: 24px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+.dashboard-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
 }
 
-.admin-header h2 {
+.dashboard-header p {
   margin: 0;
-  font-size: 18px;
+  opacity: 0.9;
+  font-size: 16px;
 }
 
-.admin-nav {
-  display: flex;
-  flex-direction: column;
-  padding: 16px 0;
-  flex: 1;
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
 }
 
-.nav-item {
+.stat-card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  color: rgba(255, 255, 255, 0.85);
-  text-decoration: none;
-  transition: all 0.2s ease;
-  border-left: 3px solid transparent;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+.stat-icon {
+  font-size: 48px;
 }
 
-.nav-item.active {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  border-left-color: white;
-}
-
-.nav-item.back-to-home {
-  margin-top: auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.icon {
-  font-size: 20px;
-}
-
-.admin-content {
+.stat-content {
   flex: 1;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+.dashboard-content {
+  background: white;
   padding: 24px;
-  background: #f5f7fa;
-  overflow-y: auto;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.quick-actions h3 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.action-card:hover {
+  border-color: #667eea;
+  background: #f0f4ff;
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.action-icon {
+  font-size: 40px;
 }
 </style>
