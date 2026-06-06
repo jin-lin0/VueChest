@@ -2,9 +2,7 @@
   <div class="question-management">
     <div class="page-header">
       <h1>📚 题目管理</h1>
-      <button class="btn-primary" @click="showCreateModal">
-        + 新建题目
-      </button>
+      <button class="btn-primary" @click="showCreateModal">+ 新建题目</button>
     </div>
 
     <div class="search-bar">
@@ -28,30 +26,19 @@
     </div>
 
     <div class="question-list">
-      <div
-        v-for="question in questions"
-        :key="question.id"
-        class="question-card"
-      >
+      <div v-for="question in questions" :key="question.id" class="question-card">
         <div class="question-header">
           <div>
             <h3 class="question-title">{{ question.title }}</h3>
             <div class="question-meta">
-              <span
-                class="difficulty-badge"
-                :class="question.difficulty"
-              >
+              <span class="difficulty-badge" :class="question.difficulty">
                 {{ difficultyText(question.difficulty) }}
               </span>
               <span class="category-tag">
                 {{ getCategoryName(question.categoryId) }}
               </span>
               <span v-if="question.tags && question.tags.length" class="tags">
-                <span
-                  v-for="tag in question.tags"
-                  :key="tag"
-                  class="tag"
-                >
+                <span v-for="tag in question.tags" :key="tag" class="tag">
                   {{ tag }}
                 </span>
               </span>
@@ -61,18 +48,8 @@
             </div>
           </div>
           <div class="question-actions">
-            <button
-              class="btn-secondary"
-              @click="showEditModal(question)"
-            >
-              ✏️ 编辑
-            </button>
-            <button
-              class="btn-danger"
-              @click="deleteQuestion(question.id)"
-            >
-              🗑️ 删除
-            </button>
+            <button class="btn-secondary" @click="showEditModal(question)">✏️ 编辑</button>
+            <button class="btn-danger" @click="deleteQuestion(question.id)">🗑️ 删除</button>
           </div>
         </div>
         <div
@@ -90,10 +67,7 @@
               <p>{{ question.analysis }}</p>
             </div>
           </div>
-          <button
-            class="toggle-preview"
-            @click="toggleExpand(question.id)"
-          >
+          <button class="toggle-preview" @click="toggleExpand(question.id)">
             {{ expandedQuestions.includes(question.id) ? '收起' : '展开查看答案' }}
           </button>
           <div v-if="expandedQuestions.includes(question.id)" class="answer">
@@ -106,21 +80,9 @@
 
     <!-- 分页 -->
     <div v-if="totalPages > 1" class="pagination">
-      <button
-        class="page-btn"
-        :disabled="currentPage <= 1"
-        @click="currentPage--"
-      >
-        上一页
-      </button>
-      <span class="page-info">
-        {{ currentPage }} / {{ totalPages }} (共 {{ total }} 题)
-      </span>
-      <button
-        class="page-btn"
-        :disabled="currentPage >= totalPages"
-        @click="currentPage++"
-      >
+      <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--">上一页</button>
+      <span class="page-info"> {{ currentPage }} / {{ totalPages }} (共 {{ total }} 题) </span>
+      <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++">
         下一页
       </button>
     </div>
@@ -135,11 +97,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label>题目标题 *</label>
-            <input
-              v-model="formData.title"
-              class="form-input"
-              placeholder="输入题目标题"
-            />
+            <input v-model="formData.title" class="form-input" placeholder="输入题目标题" />
           </div>
 
           <div class="form-group">
@@ -177,11 +135,7 @@
               <label>分类 *</label>
               <select v-model="formData.categoryId" class="form-input">
                 <option :value="null">请选择分类</option>
-                <option
-                  v-for="cat in categories"
-                  :key="cat.id"
-                  :value="cat.id"
-                >
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
                   {{ cat.name }}
                 </option>
               </select>
@@ -199,18 +153,12 @@
 
           <div class="form-group">
             <label>标签 (逗号分隔)</label>
-            <input
-              v-model="tagsInput"
-              class="form-input"
-              placeholder="如：JavaScript, Vue, 面试"
-            />
+            <input v-model="tagsInput" class="form-input" placeholder="如：JavaScript, Vue, 面试" />
           </div>
         </div>
 
         <div class="modal-footer">
-          <button class="btn-secondary" @click="showModal = false">
-            取消
-          </button>
+          <button class="btn-secondary" @click="showModal = false">取消</button>
           <button class="btn-primary" @click="saveQuestion">
             {{ editingQuestion ? '保存' : '创建' }}
           </button>
@@ -221,11 +169,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { marked } from 'marked'
-import hljs from 'highlight.js'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+
+interface Question {
+  id: number
+  title: string
+  content: string
+  answer: string
+  analysis?: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  categoryId: number
+  tags?: string[]
+  createdAt: string
+}
+
+interface Category {
+  id: number
+  name: string
+  description?: string
+}
 
 // 搜索和筛选
 const searchKeyword = ref('')
@@ -233,8 +198,8 @@ const selectedCategory = ref<number | ''>('')
 const selectedDifficulty = ref<string>('')
 
 // 数据
-const questions = ref<any[]>([])
-const categories = ref<any[]>([])
+const questions = ref<Question[]>([])
+const categories = ref<Category[]>([])
 const currentPage = ref(1)
 const total = ref(0)
 const totalPages = ref(1)
@@ -244,8 +209,16 @@ const expandedQuestions = ref<number[]>([])
 
 // 模态框
 const showModal = ref(false)
-const editingQuestion = ref<any>(null)
-const formData = ref<any>({
+const editingQuestion = ref<Question | null>(null)
+const formData = ref<{
+  title: string
+  content: string
+  answer: string
+  analysis?: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  categoryId: number | null
+  tags?: string[]
+}>({
   title: '',
   content: '',
   answer: '',
@@ -278,12 +251,9 @@ async function fetchQuestions() {
   params.append('page', currentPage.value.toString())
   params.append('limit', '10')
 
-  if (selectedCategory.value)
-    params.append('categoryId', selectedCategory.value.toString())
-  if (selectedDifficulty.value)
-    params.append('difficulty', selectedDifficulty.value)
-  if (searchKeyword.value)
-    params.append('keyword', searchKeyword.value)
+  if (selectedCategory.value) params.append('categoryId', selectedCategory.value.toString())
+  if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
+  if (searchKeyword.value) params.append('keyword', searchKeyword.value)
 
   const response = await fetch(`${API_BASE}/api/questions?${params.toString()}`)
   const data = await response.json()
@@ -305,9 +275,6 @@ function toggleExpand(id: number) {
 
 // Markdown 渲染
 function renderMarkdown(text: string) {
-  marked.setOptions({
-    highlight: (code) => hljs.highlightAuto(code).value,
-  })
   return marked(text)
 }
 
@@ -349,7 +316,7 @@ function showCreateModal() {
 }
 
 // 显示编辑弹窗
-function showEditModal(question: any) {
+function showEditModal(question: Question) {
   editingQuestion.value = question
   formData.value = { ...question }
   tagsInput.value = (question.tags || []).join(', ')
@@ -360,7 +327,10 @@ function showEditModal(question: any) {
 async function saveQuestion() {
   const data = { ...formData.value }
   if (tagsInput.value) {
-    data.tags = tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean)
+    data.tags = tagsInput.value
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
   } else {
     data.tags = []
   }

@@ -2,35 +2,22 @@
   <div class="category-management">
     <div class="page-header">
       <h1>📂 分类管理</h1>
-      <button class="btn-primary" @click="showCreateModal">
-        + 新建分类
-      </button>
+      <button class="btn-primary" @click="showCreateModal">+ 新建分类</button>
     </div>
 
     <div class="category-grid">
-      <div
-        v-for="category in categories"
-        :key="category.id"
-        class="category-card"
-      >
+      <div v-for="category in categories" :key="category.id" class="category-card">
         <div class="category-content">
           <h3 class="category-name">{{ category.name }}</h3>
           <p v-if="category.description" class="category-desc">
             {{ category.description }}
           </p>
           <div class="category-stats">
-            <span class="stat">
-              📝 {{ getQuestionCount(category) }} 道题目
-            </span>
+            <span class="stat"> 📝 {{ getQuestionCount(category) }} 道题目 </span>
           </div>
         </div>
         <div class="category-actions">
-          <button
-            class="btn-secondary"
-            @click="showEditModal(category)"
-          >
-            ✏️ 编辑
-          </button>
+          <button class="btn-secondary" @click="showEditModal(category)">✏️ 编辑</button>
           <button
             class="btn-danger"
             :disabled="getQuestionCount(category) > 0"
@@ -52,11 +39,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label>分类名称 *</label>
-            <input
-              v-model="formData.name"
-              class="form-input"
-              placeholder="输入分类名称"
-            />
+            <input v-model="formData.name" class="form-input" placeholder="输入分类名称" />
           </div>
 
           <div class="form-group">
@@ -71,9 +54,7 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn-secondary" @click="showModal = false">
-            取消
-          </button>
+          <button class="btn-secondary" @click="showModal = false">取消</button>
           <button class="btn-primary" @click="saveCategory">
             {{ editingCategory ? '保存' : '创建' }}
           </button>
@@ -88,13 +69,23 @@ import { ref, onMounted } from 'vue'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
+interface Category {
+  id: number
+  name: string
+  description?: string
+  Questions?: Array<{ id: number }>
+}
+
 // 数据
-const categories = ref<any[]>([])
+const categories = ref<Category[]>([])
 
 // 模态框
 const showModal = ref(false)
-const editingCategory = ref<any>(null)
-const formData = ref<any>({
+const editingCategory = ref<Category | null>(null)
+const formData = ref<{
+  name: string
+  description: string
+}>({
   name: '',
   description: '',
 })
@@ -111,7 +102,7 @@ async function fetchCategories() {
 }
 
 // 获取题目数量
-function getQuestionCount(category: any) {
+function getQuestionCount(category: Category) {
   return category.Questions ? category.Questions.length : 0
 }
 
@@ -123,7 +114,7 @@ function showCreateModal() {
 }
 
 // 显示编辑弹窗
-function showEditModal(category: any) {
+function showEditModal(category: Category) {
   editingCategory.value = category
   formData.value = { name: category.name, description: category.description || '' }
   showModal.value = true
