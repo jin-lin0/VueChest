@@ -1,27 +1,46 @@
 <template>
   <div class="category-management">
     <div class="page-header">
-      <h1>📂 分类管理</h1>
-      <button class="btn-primary" @click="showCreateModal">+ 新建分类</button>
+      <div>
+        <h1>📂 分类管理</h1>
+        <p class="page-desc">管理题目分类，共 {{ categories.length }} 个分类</p>
+      </div>
+      <button class="btn-primary" @click="showCreateModal">
+        <span class="btn-icon">+</span> 新建分类
+      </button>
     </div>
 
-    <div class="category-grid">
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <span>加载中...</span>
+    </div>
+
+    <!-- 空状态 -->
+    <div v-else-if="categories.length === 0" class="empty-state">
+      <span class="empty-icon">📭</span>
+      <p>暂无分类数据</p>
+      <button class="btn-primary" @click="showCreateModal">创建第一个分类</button>
+    </div>
+
+    <!-- 分类列表 -->
+    <div v-else class="category-grid">
       <div v-for="category in categories" :key="category.id" class="category-card">
+        <div class="category-icon">{{ getCategoryEmoji(category.name) }}</div>
         <div class="category-content">
           <h3 class="category-name">{{ category.name }}</h3>
-          <p v-if="category.description" class="category-desc">
-            {{ category.description }}
-          </p>
+          <p v-if="category.description" class="category-desc">{{ category.description }}</p>
           <div class="category-stats">
-            <span class="stat"> 📝 {{ getQuestionCount(category) }} 道题目 </span>
+            <span class="stat">📝 {{ getQuestionCount(category) }} 道题目</span>
           </div>
         </div>
         <div class="category-actions">
-          <button class="btn-secondary" @click="showEditModal(category)">✏️ 编辑</button>
+          <button class="btn-secondary btn-sm" @click="showEditModal(category)">✏️ 编辑</button>
           <button
-            class="btn-danger"
+            class="btn-danger btn-sm"
             :disabled="getQuestionCount(category) > 0"
-            @click="deleteCategory(category.id)"
+            :title="getQuestionCount(category) > 0 ? '该分类下有题目，无法删除' : '删除分类'"
+            @click="confirmDelete(category)"
           >
             🗑️ 删除
           </button>
@@ -30,42 +49,54 @@
     </div>
 
     <!-- 创建/编辑分类弹窗 -->
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>{{ editingCategory ? '编辑分类' : '创建分类' }}</h2>
-          <button class="close-btn" @click="showModal = false">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>分类名称 *</label>
-            <input v-model="formData.name" class="form-input" placeholder="输入分类名称" />
+    <transition name="modal">
+      <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>{{ editingCategory ? '✏️ 编辑分类' : '📂 创建分类' }}</h2>
+            <button class="close-btn" @click="showModal = false">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>分类名称 <span class="required">*</span></label>
+              <input
+                v-model="formData.name"
+                class="form-input"
+                :class="{ 'input-error': errors.name }"
+                placeholder="输入分类名称"
+              />
+              <span v-if="errors.name" class="error-text">{{ errors.name }}</span>
+            </div>
+
+            <div class="form-group">
+              <label>分类描述</label>
+              <textarea
+                v-model="formData.description"
+                class="form-textarea"
+                rows="3"
+                placeholder="输入分类描述（可选）"
+              ></textarea>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>分类描述</label>
-            <textarea
-              v-model="formData.description"
-              class="form-textarea"
-              rows="3"
-              placeholder="输入分类描述"
-            ></textarea>
+          <div class="modal-footer">
+            <button class="btn-secondary" @click="showModal = false">取消</button>
+            <button class="btn-primary" :disabled="saving" @click="saveCategory">
+              <span v-if="saving" class="loading-spinner-sm"></span>
+              {{ editingCategory ? '保存' : '创建' }}
+            </button>
           </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn-secondary" @click="showModal = false">取消</button>
-          <button class="btn-primary" @click="saveCategory">
-            {{ editingCategory ? '保存' : '创建' }}
-          </button>
         </div>
       </div>
-    </div>
+    </transition>
+
+    <Toast ref="toastRef" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import Toast from '@/components/Toast.vue'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
@@ -76,53 +107,80 @@ interface Category {
   Questions?: Array<{ id: number }>
 }
 
-// 数据
-const categories = ref<Category[]>([])
+const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
-// 模态框
-const showModal = ref(false)
-const editingCategory = ref<Category | null>(null)
-const formData = ref<{
-  name: string
-  description: string
-}>({
-  name: '',
-  description: '',
-})
-
-// 初始化
-onMounted(() => {
-  fetchCategories()
-})
-
-// 获取分类
-async function fetchCategories() {
-  const response = await fetch(`${API_BASE}/api/questions/categories`)
-  categories.value = await response.json()
+function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
+  toastRef.value?.addToast(type, message)
 }
 
-// 获取题目数量
+const categories = ref<Category[]>([])
+const isLoading = ref(false)
+const saving = ref(false)
+
+const showModal = ref(false)
+const editingCategory = ref<Category | null>(null)
+const formData = ref({ name: '', description: '' })
+const errors = ref<Record<string, string>>({})
+
+onMounted(() => fetchCategories())
+
+async function fetchCategories() {
+  isLoading.value = true
+  try {
+    const response = await fetch(`${API_BASE}/api/questions/categories`)
+    categories.value = await response.json()
+  } catch {
+    showToast('error', '获取分类列表失败')
+  } finally {
+    isLoading.value = false
+  }
+}
+
 function getQuestionCount(category: Category) {
   return category.Questions ? category.Questions.length : 0
 }
 
-// 显示创建弹窗
+function getCategoryEmoji(name: string) {
+  const emojiMap: Record<string, string> = {
+    JavaScript: '🟨',
+    TypeScript: '🔷',
+    Vue: '💚',
+    React: '⚛️',
+    CSS: '🎨',
+    HTML: '🌐',
+    Node: '🟢',
+    Git: '🔀',
+    Webpack: '📦',
+    Vite: '⚡',
+  }
+  return emojiMap[name] || '📁'
+}
+
+function validate(): boolean {
+  const errs: Record<string, string> = {}
+  if (!formData.value.name.trim()) errs.name = '请输入分类名称'
+  errors.value = errs
+  return Object.keys(errs).length === 0
+}
+
 function showCreateModal() {
   editingCategory.value = null
   formData.value = { name: '', description: '' }
+  errors.value = {}
   showModal.value = true
 }
 
-// 显示编辑弹窗
 function showEditModal(category: Category) {
   editingCategory.value = category
   formData.value = { name: category.name, description: category.description || '' }
+  errors.value = {}
   showModal.value = true
 }
 
-// 保存分类
 async function saveCategory() {
-  const data = { ...formData.value }
+  if (!validate()) return
+  saving.value = true
+
   try {
     const url = editingCategory.value
       ? `${API_BASE}/api/questions/categories/${editingCategory.value.id}`
@@ -131,45 +189,52 @@ async function saveCategory() {
 
     const response = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('admin_auth_token')}` },
+      body: JSON.stringify(formData.value),
     })
 
     if (!response.ok) {
       const err = await response.json()
-      alert(err.error || '操作失败')
+      showToast('error', err.error || '操作失败')
       return
     }
 
+    showToast('success', editingCategory.value ? '分类已更新' : '分类创建成功')
     await fetchCategories()
     showModal.value = false
-  } catch (err) {
-    console.error(err)
-    alert('保存失败')
+  } catch {
+    showToast('error', '保存失败，请检查网络连接')
+  } finally {
+    saving.value = false
   }
 }
 
-// 删除分类
-async function deleteCategory(id: number) {
-  if (!confirm('确定要删除这个分类吗？')) {
+function confirmDelete(category: Category) {
+  if (getQuestionCount(category) > 0) {
+    showToast('warning', '该分类下有题目，无法删除')
     return
   }
+  if (!window.confirm(`确定要删除分类「${category.name}」吗？`)) return
+  deleteCategory(category.id)
+}
 
+async function deleteCategory(id: number) {
   try {
     const response = await fetch(`${API_BASE}/api/questions/categories/${id}`, {
       method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_auth_token')}` },
     })
 
     if (!response.ok) {
       const err = await response.json()
-      alert(err.error || '删除失败')
+      showToast('error', err.error || '删除失败')
       return
     }
 
+    showToast('success', '分类已删除')
     await fetchCategories()
-  } catch (err) {
-    console.error(err)
-    alert('删除失败')
+  } catch {
+    showToast('error', '删除失败，请检查网络连接')
   }
 }
 </script>
@@ -183,13 +248,30 @@ async function deleteCategory(id: number) {
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   margin-bottom: 24px;
 }
 
 .page-header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 26px;
+  color: #111827;
+}
+
+.page-desc {
+  margin: 4px 0 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.btn-icon {
+  font-size: 18px;
+  font-weight: 300;
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 13px;
 }
 
 .btn-primary {
@@ -197,27 +279,35 @@ async function deleteCategory(id: number) {
   color: white;
   border: none;
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-secondary {
   background: white;
   color: #374151;
   border: 1px solid #d1d5db;
-  padding: 10px 16px;
-  border-radius: 6px;
+  padding: 10px 18px;
+  border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
 }
 
 .btn-secondary:hover {
@@ -229,37 +319,89 @@ async function deleteCategory(id: number) {
   background: #fee2e2;
   color: #dc2626;
   border: 1px solid #fecaca;
-  padding: 10px 16px;
-  border-radius: 6px;
+  padding: 10px 18px;
+  border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
   background: #fecaca;
 }
 
 .btn-danger:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 64px 0;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 0;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 48px;
+}
+
+.empty-state p {
+  font-size: 16px;
+  margin: 0;
 }
 
 .category-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  gap: 16px;
 }
 
 .category-card {
   background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   gap: 16px;
+  transition: all 0.25s;
+  border: 1px solid transparent;
+}
+
+.category-card:hover {
+  border-color: #e5e7eb;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.category-icon {
+  font-size: 36px;
+  line-height: 1;
 }
 
 .category-content {
@@ -267,15 +409,17 @@ async function deleteCategory(id: number) {
 }
 
 .category-name {
-  margin: 0 0 8px 0;
-  font-size: 20px;
+  margin: 0 0 6px 0;
+  font-size: 18px;
   color: #1f2937;
+  font-weight: 600;
 }
 
 .category-desc {
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0;
   color: #6b7280;
   font-size: 14px;
+  line-height: 1.5;
 }
 
 .category-stats {
@@ -291,7 +435,7 @@ async function deleteCategory(id: number) {
 .category-actions {
   display: flex;
   gap: 8px;
-  padding-top: 12px;
+  padding-top: 14px;
   border-top: 1px solid #f3f4f6;
 }
 
@@ -307,26 +451,28 @@ async function deleteCategory(id: number) {
   align-items: center;
   z-index: 1000;
   padding: 24px;
+  backdrop-filter: blur(4px);
 }
 
 .modal {
   background: white;
-  border-radius: 16px;
+  border-radius: 18px;
   width: 100%;
   max-width: 500px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px;
+  padding: 24px 28px;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .modal-header h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .close-btn {
@@ -335,14 +481,26 @@ async function deleteCategory(id: number) {
   font-size: 28px;
   cursor: pointer;
   color: #9ca3af;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 24px 28px;
 }
 
 .modal-footer {
-  padding: 16px 24px;
+  padding: 16px 28px;
   border-top: 1px solid #e5e7eb;
   display: flex;
   gap: 12px;
@@ -355,9 +513,14 @@ async function deleteCategory(id: number) {
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 500;
   color: #374151;
+  font-size: 14px;
+}
+
+.required {
+  color: #dc2626;
 }
 
 .form-input {
@@ -367,12 +530,29 @@ async function deleteCategory(id: number) {
   border-radius: 8px;
   font-size: 14px;
   outline: none;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+  background: white;
+  box-sizing: border-box;
 }
 
 .form-input:focus {
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.input-error {
+  border-color: #dc2626;
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.error-text {
+  display: block;
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 4px;
 }
 
 .form-textarea {
@@ -384,11 +564,47 @@ async function deleteCategory(id: number) {
   font-family: inherit;
   resize: vertical;
   outline: none;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+  background: white;
+  box-sizing: border-box;
 }
 
 .form-textarea:focus {
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.loading-spinner-sm {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.modal-enter-active {
+  transition: all 0.25s ease;
+}
+
+.modal-leave-active {
+  transition: all 0.2s ease;
+}
+
+.modal-enter-from {
+  opacity: 0;
+}
+
+.modal-enter-from .modal {
+  transform: scale(0.95) translateY(10px);
+}
+
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-leave-to .modal {
+  transform: scale(0.95);
 }
 </style>
