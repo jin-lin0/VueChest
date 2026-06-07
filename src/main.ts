@@ -10,11 +10,6 @@ import { useAuthStore } from './stores'
 import { useMarketStore } from './stores/market'
 import { getClientGeo, getGeoHeader } from './utils/clientGeo'
 
-// 浏览器端定位，通过请求头发送给后端
-getClientGeo().then((geo) => {
-  if (geo) sessionStorage.setItem('client_geo', JSON.stringify(geo))
-})
-
 // 全局 fetch 代理：自动添加定位头
 const origFetch = window.fetch.bind(window)
 window.fetch = (input, init) => {
@@ -51,7 +46,11 @@ if ('serviceWorker' in navigator) {
   onUnmounted: Vue.onUnmounted,
 }
 
-initStorage().then(() => {
+initStorage().then(async () => {
+  // 等待前端定位就绪（清缓存后首次需等 api.ip.sb 返回）
+  const geo = await getClientGeo()
+  if (geo) sessionStorage.setItem('client_geo', JSON.stringify(geo))
+
   const app = createApp(App)
   const pinia = createPinia()
 
