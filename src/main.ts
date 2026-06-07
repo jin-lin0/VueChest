@@ -10,12 +10,7 @@ import { useAuthStore } from './stores'
 import { useMarketStore } from './stores/market'
 import { getClientGeo, getGeoHeader } from './utils/clientGeo'
 
-// 浏览器端定位：同步缓存 → 异步更新
-const storedGeo = sessionStorage.getItem('client_geo')
-let geoHeader: Record<string, string> = {}
-if (storedGeo) {
-  try { geoHeader = getGeoHeader(JSON.parse(storedGeo)) as Record<string, string> } catch {}
-}
+// 浏览器端定位，通过请求头发送给后端
 getClientGeo().then((geo) => {
   if (geo) sessionStorage.setItem('client_geo', JSON.stringify(geo))
 })
@@ -24,7 +19,13 @@ getClientGeo().then((geo) => {
 const origFetch = window.fetch.bind(window)
 window.fetch = (input, init) => {
   const headers = new Headers(init?.headers)
-  if (geoHeader['X-Client-Geo']) headers.set('X-Client-Geo', geoHeader['X-Client-Geo'])
+  try {
+    const stored = sessionStorage.getItem('client_geo')
+    if (stored) {
+      const h = getGeoHeader(JSON.parse(stored))
+      if (h['X-Client-Geo']) headers.set('X-Client-Geo', h['X-Client-Geo'])
+    }
+  } catch {}
   return origFetch(input, { ...init, headers })
 }
 
