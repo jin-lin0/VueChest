@@ -9,6 +9,14 @@ import { initStorage } from './utils'
 import { useAuthStore } from './stores'
 import { useMarketStore } from './stores/market'
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister()
+    }
+  })
+}
+
 ;(window as any).__VueChest__ = {
   Vue,
   VueRouter,
