@@ -13,16 +13,21 @@ import {
 } from '@/utils'
 import { APP_MODULES, STORAGE_KEYS } from '@/config'
 import type { AppModule } from '@/config'
+import { useMarketStore } from '@/stores/market'
+import LoginDropdown from '@/components/LoginDropdown.vue'
 
 defineOptions({ name: 'HomeView' })
 
 type AppItem = AppModule
+
+const marketStore = useMarketStore()
 
 interface ContextMenuState {
   visible: boolean
   x: number
   y: number
   appId: number | null
+  isMarketApp: boolean
 }
 
 const defaultAppList: AppItem[] = APP_MODULES
@@ -37,6 +42,7 @@ const contextMenu = ref<ContextMenuState>({
   x: 0,
   y: 0,
   appId: null,
+  isMarketApp: false,
 })
 const dragIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
@@ -149,6 +155,14 @@ const appList = computed(() => {
 })
 const hiddenApps = computed(() => defaultAppList.filter((app) => hiddenIds.value.has(app.id)))
 
+const marketApps = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  return marketStore.installedApps.filter((app) => {
+    if (!q) return true
+    return app.name.toLowerCase().includes(q) || app.description.toLowerCase().includes(q)
+  })
+})
+
 const loadHidden = () => {
   const ids = getStorage<number[]>(STORAGE_KEYS.HOME_APP_HIDDEN, [])
   hiddenIds.value = new Set(ids || [])
@@ -244,18 +258,19 @@ onUnmounted(() => {
   document.removeEventListener('click', closeContextMenu)
 })
 
-const openContextMenu = (e: MouseEvent, appId: number) => {
+const openContextMenu = (e: MouseEvent, appId: number, isMarketApp = false) => {
   e.preventDefault()
   contextMenu.value = {
     visible: true,
     x: e.clientX,
     y: e.clientY,
     appId,
+    isMarketApp,
   }
 }
 
 const closeContextMenu = () => {
-  contextMenu.value = { visible: false, x: 0, y: 0, appId: null }
+  contextMenu.value = { visible: false, x: 0, y: 0, appId: null, isMarketApp: false }
 }
 
 const hideApp = (appId: number) => {
@@ -269,6 +284,11 @@ const showApp = (appId: number) => {
   next.delete(appId)
   hiddenIds.value = next
   saveHidden()
+}
+
+const uninstallMarketApp = (appId: number) => {
+  marketStore.uninstallApp(appId)
+  closeContextMenu()
 }
 
 const showAllApps = () => {
@@ -348,6 +368,10 @@ const navigateToApp = (route: string) => {
           <p class="subtitle">轻量实用工具集</p>
         </div>
       </div>
+      <div class="header-actions">
+        <button class="market-btn" @click="router.push('/market')">🏪 市场</button>
+        <LoginDropdown />
+      </div>
       <div class="search-bar">
         <span class="search-icon">🔍</span>
         <input v-model="searchQuery" type="text" placeholder="搜索应用..." class="search-input" />
@@ -375,7 +399,7 @@ const navigateToApp = (route: string) => {
       </div>
     </div>
 
-    <main v-if="appList.length > 0" class="app-grid">
+    <main v-if="appList.length > 0 || marketApps.length > 0" class="app-grid">
       <div
         v-for="(app, index) in appList"
         :key="app.id"
@@ -403,6 +427,21 @@ const navigateToApp = (route: string) => {
           <div class="card-arrow">→</div>
         </div>
       </div>
+      <div
+        v-for="app in marketApps"
+        :key="'m-' + app.id"
+        class="app-card market-app"
+        @contextmenu="openContextMenu($event, app.id, true)"
+        @click="navigateToApp(app.route)"
+      >
+        <div class="card-glow market-glow"></div>
+        <div class="card-content">
+          <div class="app-icon">{{ app.icon }}</div>
+          <h2 class="app-name">{{ app.name }}</h2>
+          <p class="app-description">{{ app.description }}</p>
+          <div class="card-arrow">→</div>
+        </div>
+      </div>
     </main>
 
     <div v-else class="empty-state">
@@ -416,18 +455,30 @@ const navigateToApp = (route: string) => {
       class="context-menu"
       :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
     >
-      <button
-        class="context-menu-item"
-        @click="contextMenu.appId !== null && hideApp(contextMenu.appId)"
-      >
-        <span class="context-icon">👁️‍🗨️</span>
-        隐藏此应用
-      </button>
+      <template v-if="contextMenu.isMarketApp">
+        <button
+          class="context-menu-item uninstall"
+          @click="contextMenu.appId !== null && uninstallMarketApp(contextMenu.appId)"
+        >
+          <span class="context-icon">🗑️</span>
+          卸载
+        </button>
+      </template>
+      <template v-else>
+        <button
+          class="context-menu-item"
+          @click="contextMenu.appId !== null && hideApp(contextMenu.appId)"
+        >
+          <span class="context-icon">👁️‍🗨️</span>
+          隐藏此应用
+        </button>
+      </template>
     </div>
 
     <footer class="footer">
       <p>
-        共 {{ appList.length }} 个应用 · 数据保存在本地
+        共 {{ appList.length + marketApps.length }} 个应用 · 数据保存在本地
+        <span v-if="marketApps.length > 0"> · {{ marketApps.length }} 个来自市场 </span>
         <span v-if="hiddenApps.length > 0">
           ·
           <button class="manage-btn" @click="showManagePanel = !showManagePanel">
@@ -690,6 +741,52 @@ const navigateToApp = (route: string) => {
 .sub-desc {
   font-size: 1rem;
   color: #8e99a4;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.market-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #667eea;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.market-btn:hover {
+  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
+  background: rgba(102, 126, 234, 0.06);
+}
+
+.market-app {
+  border-style: dashed !important;
+  border-color: rgba(102, 126, 234, 0.25) !important;
+}
+
+.market-glow {
+  background: linear-gradient(135deg, #43e97b, #38f9d7) !important;
+}
+
+.context-menu-item.uninstall {
+  color: #e74c3c;
+}
+
+.context-menu-item.uninstall:hover {
+  background: rgba(231, 76, 60, 0.08) !important;
+  color: #e74c3c;
 }
 
 .search-bar {
@@ -1239,6 +1336,11 @@ const navigateToApp = (route: string) => {
 
   .header h1 {
     font-size: 1.3rem;
+  }
+
+  .header-actions {
+    order: 3;
+    align-self: flex-end;
   }
 
   .search-bar {

@@ -95,6 +95,7 @@ const menuItems = [
   { path: '/admin', name: '仪表盘', icon: '📊' },
   { path: '/admin/questions', name: '问题管理', icon: '📚' },
   { path: '/admin/categories', name: '分类管理', icon: '📂' },
+  { path: '/admin/apps', name: '应用管理', icon: '📱' },
 ]
 
 const currentPageTitle = computed(() => {

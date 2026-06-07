@@ -83,6 +83,24 @@ const router = createRouter({
       meta: { title: '面试问答' },
     },
     {
+      path: '/market',
+      name: 'market',
+      component: () => import('../views/AppMarket.vue'),
+      meta: { title: '应用市场' },
+    },
+    {
+      path: '/market/:id(\\d+)',
+      name: 'market-detail',
+      component: () => import('../views/AppMarketDetail.vue'),
+      meta: { title: '应用详情' },
+    },
+    {
+      path: '/market/upload',
+      name: 'market-upload',
+      component: () => import('../views/AppUpload.vue'),
+      meta: { title: '上传应用', requiresSuperAdmin: true },
+    },
+    {
       path: '/admin/login',
       name: 'admin-login',
       component: () => import('../views/AdminLogin.vue'),
@@ -110,6 +128,12 @@ const router = createRouter({
           name: 'admin-categories',
           component: () => import('../views/admin/CategoryManagement.vue'),
           meta: { title: '分类管理' },
+        },
+        {
+          path: 'apps',
+          name: 'admin-apps',
+          component: () => import('../views/admin/AppManagement.vue'),
+          meta: { title: '应用管理' },
         },
       ],
     },

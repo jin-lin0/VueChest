@@ -26,6 +26,11 @@ export function createRouterGuard(router: Router) {
       }
     }
 
+    // 检查是否需要 super_admin 权限
+    if (to.meta.requiresSuperAdmin && !authStore.isAdmin) {
+      return '/'
+    }
+
     // 如果已登录但访问登录页
     if (authStore.isAuthenticated && (to.path === '/admin/login' || to.path === '/login')) {
       // 如果有重定向参数，跳转到重定向地址

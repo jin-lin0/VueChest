@@ -41,6 +41,11 @@
             <span class="action-title">管理分类</span>
             <span class="action-desc">管理题目分类标签</span>
           </router-link>
+          <router-link to="/admin/apps" class="action-card">
+            <span class="action-icon">📱</span>
+            <span class="action-title">应用管理</span>
+            <span class="action-desc">管理市场应用的上架与下架</span>
+          </router-link>
         </div>
       </div>
 
