@@ -249,7 +249,7 @@ const handleSearch = () => {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     currentPage.value = 1
-    fetchAllQuestions()
+    fetchQuestions()
   }, 300)
 }
 
@@ -257,7 +257,7 @@ const handleSearch = () => {
 const clearSearch = () => {
   searchKeyword.value = ''
   currentPage.value = 1
-  fetchAllQuestions()
+  fetchQuestions()
 }
 
 // 加载本地存储
@@ -314,60 +314,73 @@ const getCategoryIcon = (name: string) => {
   return iconMap[name] || '📖'
 }
 
-// 所有题目缓存
-const allQuestions = ref<Question[]>([])
+// 状态筛选时缓存全量数据，避免翻页重复请求
+const cachedAll = ref<Question[]>([])
+let cachedParamsHash = ''
 
-// 获取所有题目
-const fetchAllQuestions = async () => {
+// 获取题目（支持服务端分页和客户端状态筛选）
+const fetchQuestions = async () => {
   loading.value = true
+  const pageSize = 12
   try {
-    const params = new URLSearchParams({
-      page: '1',
-      limit: '1000', // 获取所有题目
-    })
-    if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
-    if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
-    if (searchKeyword.value) params.append('keyword', searchKeyword.value)
+    const hasStatusFilter = selectedStatus.value !== ''
 
-    const res = await fetch(`${API_BASE}/api/questions?${params}`)
-    const data = await res.json()
-    allQuestions.value = data.questions
-    stats.value.totalQuestions = data.total
+    if (hasStatusFilter) {
+      // 状态筛选依赖 localStorage，需获取全部数据在客户端过滤
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '1000',
+      })
+      if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
+      if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
+      if (searchKeyword.value) params.append('keyword', searchKeyword.value)
 
-    // 应用筛选和分页
-    applyFilterAndPaginate()
+      const currentHash = params.toString()
+      if (currentHash !== cachedParamsHash) {
+        cachedParamsHash = currentHash
+        const res = await fetch(`${API_BASE}/api/questions?${params}`)
+        const data = await res.json()
+        cachedAll.value = data.questions
+        stats.value.totalQuestions = data.total
+      }
+
+      let filtered = cachedAll.value
+      if (selectedStatus.value === 'practiced') {
+        filtered = cachedAll.value.filter((q) => practicedIds.value.has(q.id))
+      } else if (selectedStatus.value === 'mastered') {
+        filtered = cachedAll.value.filter((q) => masteredIds.value.has(q.id))
+      } else if (selectedStatus.value === 'unpracticed') {
+        filtered = cachedAll.value.filter((q) => !practicedIds.value.has(q.id))
+      }
+
+      totalPages.value = Math.ceil(filtered.length / pageSize)
+      if (currentPage.value > totalPages.value) {
+        currentPage.value = Math.max(1, totalPages.value)
+      }
+      const start = (currentPage.value - 1) * pageSize
+      questions.value = filtered.slice(start, start + pageSize)
+    } else {
+      // 正常浏览：服务端分页，每次只取当前页
+      cachedParamsHash = ''
+      const params = new URLSearchParams({
+        page: String(currentPage.value),
+        limit: String(pageSize),
+      })
+      if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
+      if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
+      if (searchKeyword.value) params.append('keyword', searchKeyword.value)
+
+      const res = await fetch(`${API_BASE}/api/questions?${params}`)
+      const data = await res.json()
+      questions.value = data.questions
+      stats.value.totalQuestions = data.total
+      totalPages.value = data.totalPages
+    }
   } catch (e) {
     console.error('获取题目失败:', e)
   } finally {
     loading.value = false
   }
-}
-
-// 应用筛选和分页
-const applyFilterAndPaginate = () => {
-  let filtered = [...allQuestions.value]
-
-  // 前端状态筛选
-  if (selectedStatus.value === 'practiced') {
-    filtered = filtered.filter((q) => practicedIds.value.has(q.id))
-  } else if (selectedStatus.value === 'mastered') {
-    filtered = filtered.filter((q) => masteredIds.value.has(q.id))
-  } else if (selectedStatus.value === 'unpracticed') {
-    filtered = filtered.filter((q) => !practicedIds.value.has(q.id))
-  }
-
-  // 计算分页
-  const pageSize = 12
-  totalPages.value = Math.ceil(filtered.length / pageSize)
-
-  // 确保当前页码有效
-  if (currentPage.value > totalPages.value) {
-    currentPage.value = Math.max(1, totalPages.value)
-  }
-
-  // 截取当前页数据
-  const startIndex = (currentPage.value - 1) * pageSize
-  questions.value = filtered.slice(startIndex, startIndex + pageSize)
 }
 
 // 随机抽题
@@ -424,7 +437,7 @@ const toggleMastered = (id: number) => {
 // 切换页码
 const changePage = (page: number) => {
   currentPage.value = page
-  applyFilterAndPaginate()
+  fetchQuestions()
 }
 
 // 获取难度标签
@@ -455,22 +468,16 @@ const updateStats = () => {
   stats.value.mastered = masteredIds.value.size
 }
 
-// 监听分类和难度变化（需要重新请求后端）
-watch([selectedCategory, selectedDifficulty], () => {
+// 监听筛选条件变化
+watch([selectedCategory, selectedDifficulty, selectedStatus], () => {
   currentPage.value = 1
-  fetchAllQuestions()
-})
-
-// 监听状态变化（前端筛选）
-watch(selectedStatus, () => {
-  currentPage.value = 1
-  applyFilterAndPaginate()
+  fetchQuestions()
 })
 
 onMounted(() => {
   loadLocalState()
   fetchCategories()
-  fetchAllQuestions()
+  fetchQuestions()
   updateStats()
 })
 </script>
