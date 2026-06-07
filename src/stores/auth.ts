@@ -1,12 +1,14 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 
-export interface AdminInfo {
+export interface UserInfo {
   id: number
   username: string
   email?: string
-  role: 'super_admin' | 'admin'
+  avatar?: string
+  role: 'user' | 'admin' | 'super_admin'
   isActive: boolean
+  installedApps: number[]
   createdAt?: string
   lastLoginAt?: string
 }
@@ -17,56 +19,57 @@ export interface LoginCredentials {
 }
 
 const TOKEN_KEY = 'admin_auth_token'
-const ADMIN_INFO_KEY = 'admin_info'
+const USER_INFO_KEY = 'admin_info'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
 export const useAuthStore = defineStore('auth', () => {
-  // State
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
-  const admin = ref<AdminInfo | null>(null)
+  const user = ref<UserInfo | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  // Getters
-  const isAuthenticated = computed(() => !!token.value && !!admin.value)
+  const isAuthenticated = computed(() => !!token.value && !!user.value)
 
-  const isAdmin = computed(() => admin.value?.role === 'super_admin')
+  const isSuperAdmin = computed(() => user.value?.role === 'super_admin')
 
-  // Actions
-  /**
-   * 初始化认证状态（从localStorage恢复）
-   */
+  const isAdmin = computed(() =>
+    user.value?.role === 'admin' || user.value?.role === 'super_admin'
+  )
+
+  const isLoggedInUser = computed(() => isAuthenticated.value)
+
   async function initAuth() {
     if (!token.value) return
 
     try {
-      const savedAdmin = localStorage.getItem(ADMIN_INFO_KEY)
-      if (savedAdmin) {
-        admin.value = JSON.parse(savedAdmin)
+      const savedUser = localStorage.getItem(USER_INFO_KEY)
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser)
+        if (parsed.installedApps && typeof parsed.installedApps === 'string') {
+          try {
+            parsed.installedApps = JSON.parse(parsed.installedApps)
+          } catch {
+            parsed.installedApps = []
+          }
+        }
+        user.value = parsed
       } else {
-        // 如果没有保存的管理员信息，尝试获取
-        await fetchAdminInfo()
+        await fetchUserInfo()
       }
-    } catch (err) {
-      console.error('恢复认证状态失败:', err)
+    } catch {
       logout()
     }
   }
 
-  /**
-   * 管理员登录
-   */
-  async function login(credentials: LoginCredentials): Promise<{ success: boolean; message: string }> {
+  async function login(credentials: LoginCredentials): Promise<{ success: boolean; message: string; role?: string }> {
     isLoading.value = true
     error.value = null
 
     try {
       const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       })
 
@@ -77,16 +80,14 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, message: data.error || '登录失败' }
       }
 
-      // 保存token和管理员信息
       token.value = data.data.token
-      admin.value = data.data.admin
+      user.value = data.data.user
 
       localStorage.setItem(TOKEN_KEY, data.data.token)
-      localStorage.setItem(ADMIN_INFO_KEY, JSON.stringify(data.data.admin))
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.data.user))
 
-      return { success: true, message: '登录成功' }
-    } catch (err) {
-      console.error('登录错误:', err)
+      return { success: true, message: '登录成功', role: data.data.user.role }
+    } catch {
       error.value = '网络连接失败，请检查服务器是否运行'
       return { success: false, message: '网络连接失败，请检查服务器是否运行' }
     } finally {
@@ -94,17 +95,45 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /**
-   * 获取当前管理员信息
-   */
-  async function fetchAdminInfo(): Promise<boolean> {
+  async function register(credentials: LoginCredentials & { email?: string }): Promise<{ success: boolean; message: string }> {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        error.value = data.error || '注册失败'
+        return { success: false, message: data.error || '注册失败' }
+      }
+
+      token.value = data.data.token
+      user.value = data.data.user
+
+      localStorage.setItem(TOKEN_KEY, data.data.token)
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.data.user))
+
+      return { success: true, message: '注册成功' }
+    } catch {
+      error.value = '网络连接失败，请检查服务器是否运行'
+      return { success: false, message: '网络连接失败，请检查服务器是否运行' }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function fetchUserInfo(): Promise<boolean> {
     if (!token.value) return false
 
     try {
       const response = await fetch(`${API_BASE}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token.value}`,
-        },
+        headers: { Authorization: `Bearer ${token.value}` },
       })
 
       if (!response.ok) {
@@ -113,47 +142,74 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       const data = await response.json()
-      admin.value = data.data
-      localStorage.setItem(ADMIN_INFO_KEY, JSON.stringify(data.data))
+      user.value = data.data
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.data))
       return true
-    } catch (err) {
-      console.error('获取管理员信息失败:', err)
+    } catch {
       logout()
       return false
     }
   }
 
-  /**
-   * 登出
-   */
+  async function syncInstalledApps(appIds: number[]) {
+    if (!token.value || !user.value) return
+    try {
+      await fetch(`${API_BASE}/api/auth/installed-apps`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token.value}`,
+        },
+        body: JSON.stringify({ installedApps: appIds }),
+      })
+      user.value = { ...user.value, installedApps: appIds }
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(user.value))
+    } catch {
+      // ignore sync errors
+    }
+  }
+
+  async function fetchInstalledApps(): Promise<number[]> {
+    if (!token.value) return []
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/installed-apps`, {
+        headers: { Authorization: `Bearer ${token.value}` },
+      })
+      const json = await res.json()
+      if (json.success) return json.data
+      return []
+    } catch {
+      return []
+    }
+  }
+
   function logout() {
     token.value = null
-    admin.value = null
+    user.value = null
     localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(ADMIN_INFO_KEY)
+    localStorage.removeItem(USER_INFO_KEY)
     error.value = null
   }
 
-  /**
-   * 清除认证错误
-   */
   function clearError() {
     error.value = null
   }
 
   return {
-    // State
     token,
-    admin,
+    user,
     isLoading,
     error,
-    // Getters
     isAuthenticated,
+    isSuperAdmin,
     isAdmin,
-    // Actions
+    isLoggedInUser,
     initAuth,
     login,
-    fetchAdminInfo,
+    register,
+    fetchUserInfo,
+    syncInstalledApps,
+    fetchInstalledApps,
     logout,
     clearError,
   }

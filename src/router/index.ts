@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { createRouterGuard } from './guards'
+import UserLogin from '../views/UserLogin.vue'
+import UserRegister from '../views/UserRegister.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -101,15 +103,21 @@ const router = createRouter({
       meta: { title: '上传应用', requiresSuperAdmin: true },
     },
     {
-      path: '/admin/login',
-      name: 'admin-login',
-      component: () => import('../views/AdminLogin.vue'),
-      meta: { title: '管理员登录' },
+      path: '/login',
+      name: 'login',
+      component: () => Promise.resolve(UserLogin),
+      meta: { title: '登录' },
+    },
+    {
+      path: '/register',
+      name: 'register',
+      component: () => Promise.resolve(UserRegister),
+      meta: { title: '注册' },
     },
     {
       path: '/admin',
       component: () => import('../layouts/AdminLayout.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
       children: [
         {
           path: '',
@@ -134,6 +142,12 @@ const router = createRouter({
           name: 'admin-apps',
           component: () => import('../views/admin/AppManagement.vue'),
           meta: { title: '应用管理' },
+        },
+        {
+          path: 'users',
+          name: 'admin-users',
+          component: () => import('../views/admin/UserManagement.vue'),
+          meta: { title: '用户管理', requiresSuperAdmin: true },
         },
       ],
     },

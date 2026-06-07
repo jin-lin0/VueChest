@@ -2,7 +2,7 @@
   <div class="dashboard">
     <div class="dashboard-header">
       <div class="header-content">
-        <h2>欢迎回来，{{ authStore.admin?.username }}!</h2>
+        <h2>欢迎回来，{{ authStore.user?.username }}!</h2>
         <p>{{ greetingText }}，这是您的管理后台仪表盘</p>
       </div>
       <div class="header-time">
@@ -56,11 +56,11 @@
         <div class="info-list">
           <div class="info-item">
             <span class="info-label">管理员角色</span>
-            <span class="info-value">{{ getRoleLabel(authStore.admin?.role || '') }}</span>
+            <span class="info-value">{{ getRoleLabel(authStore.user?.role || '') }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">登录时间</span>
-            <span class="info-value">{{ formatDateTime(authStore.admin?.lastLoginAt) }}</span>
+            <span class="info-value">{{ formatDateTime(authStore.user?.lastLoginAt) }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">系统版本</span>

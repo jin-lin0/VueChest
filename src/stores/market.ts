@@ -238,6 +238,33 @@ export const useMarketStore = defineStore('market', () => {
     return installedApps.value.some((a) => a.id === appId)
   }
 
+  async function syncFromServer(mergedIds: number[], serverAppIds: number[]) {
+    const newApps: InstalledApp[] = []
+
+    for (const appId of mergedIds) {
+      const existing = installedApps.value.find((a) => a.id === appId)
+      if (existing) {
+        newApps.push(existing)
+      } else if (serverAppIds.includes(appId)) {
+        const detail = await fetchAppDetail(appId)
+        if (detail) {
+          newApps.push({
+            id: detail.id,
+            name: detail.name,
+            icon: detail.icon,
+            route: `/m/${detail.id}`,
+            description: detail.description,
+            version: detail.version,
+            installedAt: Date.now(),
+          })
+        }
+      }
+    }
+
+    installedApps.value = newApps
+    setStorage(INSTALLED_KEY, installedApps.value)
+  }
+
   return {
     availableApps,
     totalApps,
@@ -254,5 +281,6 @@ export const useMarketStore = defineStore('market', () => {
     deleteApp,
     updateApp,
     isInstalled,
+    syncFromServer,
   }
 })

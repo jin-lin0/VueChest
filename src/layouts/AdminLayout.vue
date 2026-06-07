@@ -30,11 +30,11 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-info" v-if="authStore.admin">
-          <div class="user-avatar">{{ authStore.admin.username.charAt(0).toUpperCase() }}</div>
+        <div class="user-info" v-if="authStore.user">
+          <div class="user-avatar">{{ authStore.user.username.charAt(0).toUpperCase() }}</div>
           <div v-if="!isCollapsed" class="user-details">
-            <div class="user-name">{{ authStore.admin.username }}</div>
-            <div class="user-role">{{ getRoleLabel(authStore.admin.role) }}</div>
+            <div class="user-name">{{ authStore.user.username }}</div>
+            <div class="user-role">{{ getRoleLabel(authStore.user.role) }}</div>
           </div>
         </div>
         <div class="footer-actions">
@@ -91,16 +91,23 @@ const isCollapsed = ref(false)
 const mobileOpen = ref(false)
 const isDark = ref(false)
 
-const menuItems = [
-  { path: '/admin', name: '仪表盘', icon: '📊' },
-  { path: '/admin/questions', name: '问题管理', icon: '📚' },
-  { path: '/admin/categories', name: '分类管理', icon: '📂' },
-  { path: '/admin/apps', name: '应用管理', icon: '📱' },
-]
+const menuItems = computed(() => {
+  const items = [
+    { path: '/admin', name: '仪表盘', icon: '📊' },
+    { path: '/admin/questions', name: '问题管理', icon: '📚' },
+    { path: '/admin/categories', name: '分类管理', icon: '📂' },
+    { path: '/admin/apps', name: '应用管理', icon: '📱' },
+  ]
+  if (authStore.isSuperAdmin) {
+    items.push({ path: '/admin/users', name: '用户管理', icon: '👥' })
+  }
+  return items
+})
 
 const currentPageTitle = computed(() => {
-  const matched = menuItems.find(
-    (item) => route.path === item.path || route.path.startsWith(item.path + '/')
+  const items = menuItems.value
+  const matched = items.find(
+    (item: { path: string; name: string }) => route.path === item.path || route.path.startsWith(item.path + '/')
   )
   return matched?.name ?? (route.meta.title as string) ?? '仪表盘'
 })
@@ -123,13 +130,14 @@ function getRoleLabel(role: string) {
   const roles: Record<string, string> = {
     super_admin: '超级管理员',
     admin: '管理员',
+    user: '普通用户',
   }
   return roles[role] || role
 }
 
 async function handleLogout() {
   authStore.logout()
-  router.push('/admin/login')
+  router.push('/login')
 }
 
 function goToHome() {
