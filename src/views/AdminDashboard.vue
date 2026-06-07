@@ -89,10 +89,46 @@ const currentDate = ref('')
 let timer: ReturnType<typeof setInterval>
 
 const stats = ref([
-  { icon: '📚', label: '题目数量', value: '-', sub: '', loading: true, bg: 'linear-gradient(135deg, #667eea, #764ba2)' },
-  { icon: '📂', label: '分类数量', value: '-', sub: '', loading: true, bg: 'linear-gradient(135deg, #f59e0b, #ef4444)' },
-  { icon: '✅', label: '今日新增', value: '-', sub: '', loading: true, bg: 'linear-gradient(135deg, #10b981, #059669)' },
-  { icon: '👥', label: '访问统计', value: '-', sub: '总访问量', loading: true, bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' },
+  {
+    icon: '📱',
+    label: '应用总数',
+    value: '-',
+    sub: '',
+    loading: true,
+    bg: 'linear-gradient(135deg, #667eea, #764ba2)',
+  },
+  {
+    icon: '📂',
+    label: '分类数量',
+    value: '-',
+    sub: '',
+    loading: true,
+    bg: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+  },
+  {
+    icon: '✨',
+    label: '今日新增应用',
+    value: '-',
+    sub: '',
+    loading: true,
+    bg: 'linear-gradient(135deg, #10b981, #059669)',
+  },
+  {
+    icon: '📝',
+    label: '今日新增题目',
+    value: '-',
+    sub: '',
+    loading: true,
+    bg: 'linear-gradient(135deg, #f97316, #ea580c)',
+  },
+  {
+    icon: '👥',
+    label: '今日访问',
+    value: '-',
+    sub: '累计访问',
+    loading: true,
+    bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+  },
 ])
 
 const greetingText = computed(() => {
@@ -119,29 +155,39 @@ function formatDateTime(dateStr?: string) {
 
 function updateTime() {
   const now = new Date()
-  currentTime.value = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  currentDate.value = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
+  currentTime.value = now.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  currentDate.value = now.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  })
 }
 
 async function fetchStats() {
   try {
-    const [questionsRes, categoriesRes] = await Promise.all([
-      fetch(`${API_BASE}/api/questions?limit=1`),
+    const [statsRes, categoriesRes] = await Promise.all([
+      fetch(`${API_BASE}/api/stats/dashboard`),
       fetch(`${API_BASE}/api/questions/categories`),
     ])
 
-    if (questionsRes.ok) {
-      const qData = await questionsRes.json()
-      stats.value[0].value = qData.total ?? '-'
+    if (statsRes.ok) {
+      const sData = await statsRes.json()
+      stats.value[0].value = String(sData.data.totalApps ?? '-')
+      stats.value[2].value = String(sData.data.todayNewApps ?? '-')
+      stats.value[3].value = String(sData.data.todayNewQuestions ?? '-')
+      stats.value[4].value = String(sData.data.todayVisits ?? '-')
+      stats.value[4].sub = `累计 ${sData.data.totalVisits ?? 0} 次`
     }
 
     if (categoriesRes.ok) {
       const cData = await categoriesRes.json()
       stats.value[1].value = Array.isArray(cData) ? String(cData.length) : '-'
     }
-
-    stats.value[2].value = '--'
-    stats.value[3].value = '--'
   } catch {
     stats.value[0].value = '?'
     stats.value[1].value = '?'
@@ -262,8 +308,12 @@ onUnmounted(() => {
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .stat-label {
