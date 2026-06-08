@@ -102,7 +102,14 @@ export const useMarketStore = defineStore('market', () => {
       if (params?.page) query.set('page', String(params.page))
       if (params?.limit) query.set('limit', String(params.limit))
 
-      const { data } = await api.get<{ items: MarketAppItem[]; total: number; page: number; totalPages: number }>(`/api/market/apps?${query}`, { auth: false })
+      const { data } = await api.get<{
+        data: {
+          items: MarketAppItem[]
+          total: number
+          page: number
+          totalPages: number
+        }
+      }>(`/api/market/apps?${query}`, { auth: false })
       availableApps.value = data.items
       totalApps.value = data.total
       totalPages.value = data.totalPages
@@ -127,7 +134,9 @@ export const useMarketStore = defineStore('market', () => {
   async function installApp(appId: number) {
     if (installedApps.value.some((a) => a.id === appId)) return
 
-    const { data: downloadData } = await api.get<{ data: { fileContent: string; name: string; version: string } }>(`/api/market/apps/${appId}/download`, { auth: false })
+    const { data: downloadData } = await api.get<{
+      data: { fileContent: string; name: string; version: string }
+    }>(`/api/market/apps/${appId}/download`, { auth: false })
     const { fileContent, name, version } = downloadData
 
     setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, fileContent)
@@ -140,7 +149,9 @@ export const useMarketStore = defineStore('market', () => {
     let icon = def.meta.icon
     let description = def.meta.description
     try {
-      const detailRes = await api.get<{ data: MarketAppItem }>(`/api/market/apps/${appId}`, { auth: false })
+      const detailRes = await api.get<{ data: MarketAppItem }>(`/api/market/apps/${appId}`, {
+        auth: false,
+      })
       if (detailRes.data) {
         icon = detailRes.data.icon || icon
         description = detailRes.data.description || description
@@ -186,7 +197,9 @@ export const useMarketStore = defineStore('market', () => {
     fileContent: string
     readme?: string
   }) {
-    const { data } = await api.post<{ data: { id: number; name: string; version: string; status: string } }>('/api/market/apps', formData)
+    const { data } = await api.post<{
+      data: { id: number; name: string; version: string; status: string }
+    }>('/api/market/apps', formData)
     return data
   }
 
@@ -212,7 +225,7 @@ export const useMarketStore = defineStore('market', () => {
       category?: string
       fileContent?: string
       readme?: string
-    }
+    },
   ) {
     return api.put(`/api/market/apps/${id}`, data)
   }
@@ -226,7 +239,12 @@ export const useMarketStore = defineStore('market', () => {
     let changed = false
     for (const app of installedApps.value) {
       const detail = await fetchAppDetail(app.id)
-      if (detail && (detail.icon !== app.icon || detail.name !== app.name || detail.description !== app.description)) {
+      if (
+        detail &&
+        (detail.icon !== app.icon ||
+          detail.name !== app.name ||
+          detail.description !== app.description)
+      ) {
         app.icon = detail.icon
         app.name = detail.name
         app.description = detail.description
