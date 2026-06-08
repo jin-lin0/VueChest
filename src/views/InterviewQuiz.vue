@@ -194,7 +194,7 @@ interface Question {
   tags: string[]
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+import { api } from '@/utils/request'
 
 // 下拉选项
 const categoryOptions = ref<SelectOption[]>([])
@@ -281,8 +281,7 @@ const saveLocalState = () => {
 // 获取分类列表
 const fetchCategories = async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/questions/categories`)
-    const data = await res.json()
+    const data = await api.get<Category[]>('/api/questions/categories', { auth: false })
     categories.value = data
     stats.value.totalCategories = data.length
     // 转换为下拉选项格式
@@ -338,8 +337,7 @@ const fetchQuestions = async () => {
       const currentHash = params.toString()
       if (currentHash !== cachedParamsHash) {
         cachedParamsHash = currentHash
-        const res = await fetch(`${API_BASE}/api/questions?${params}`)
-        const data = await res.json()
+        const data = await api.get<{ questions: Question[]; total: number }>(`/api/questions?${params}`, { auth: false })
         cachedAll.value = data.questions
         stats.value.totalQuestions = data.total
       }
@@ -370,8 +368,7 @@ const fetchQuestions = async () => {
       if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
       if (searchKeyword.value) params.append('keyword', searchKeyword.value)
 
-      const res = await fetch(`${API_BASE}/api/questions?${params}`)
-      const data = await res.json()
+      const data = await api.get<{ questions: Question[]; total: number; totalPages: number }>(`/api/questions?${params}`, { auth: false })
       questions.value = data.questions
       stats.value.totalQuestions = data.total
       totalPages.value = data.totalPages
@@ -391,8 +388,7 @@ const randomQuiz = async () => {
     if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
     if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
 
-    const res = await fetch(`${API_BASE}/api/questions/random/1?${params}`)
-    const data = await res.json()
+    const data = await api.get<Question[]>(`/api/questions/random/1?${params}`, { auth: false })
     if (data && data.length > 0) {
       currentQuestion.value = data[0]
       showDetail.value = true

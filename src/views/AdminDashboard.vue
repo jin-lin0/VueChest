@@ -79,10 +79,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { api } from '@/utils/request'
 
 const authStore = useAuthStore()
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
 const currentTime = ref('')
 const currentDate = ref('')
@@ -170,13 +169,12 @@ function updateTime() {
 
 async function fetchStats() {
   try {
-    const [statsRes, categoriesRes] = await Promise.all([
-      fetch(`${API_BASE}/api/stats/dashboard`),
-      fetch(`${API_BASE}/api/questions/categories`),
+    const [sData, cData] = await Promise.all([
+      api.get<{ data: { totalApps: number; todayNewApps: number; todayNewQuestions: number; todayVisits: number; totalVisits: number } }>('/api/stats/dashboard', { auth: false }),
+      api.get<{ length: number }[]>('/api/questions/categories'),
     ])
 
-    if (statsRes.ok) {
-      const sData = await statsRes.json()
+    if (sData) {
       stats.value[0].value = String(sData.data.totalApps ?? '-')
       stats.value[2].value = String(sData.data.todayNewApps ?? '-')
       stats.value[3].value = String(sData.data.todayNewQuestions ?? '-')
@@ -184,8 +182,7 @@ async function fetchStats() {
       stats.value[4].sub = `累计 ${sData.data.totalVisits ?? 0} 次`
     }
 
-    if (categoriesRes.ok) {
-      const cData = await categoriesRes.json()
+    if (cData) {
       stats.value[1].value = Array.isArray(cData) ? String(cData.length) : '-'
     }
   } catch {

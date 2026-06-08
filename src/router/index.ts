@@ -100,7 +100,7 @@ const router = createRouter({
       path: '/market/upload',
       name: 'market-upload',
       component: () => import('../views/AppUpload.vue'),
-      meta: { title: '上传应用', requiresAdmin: true },
+      meta: { title: '上传应用', requiresAuth: true },
     },
     {
       path: '/login',

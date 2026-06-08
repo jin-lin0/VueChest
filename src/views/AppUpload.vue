@@ -137,7 +137,7 @@ async function handleSubmit() {
           <span class="success-icon">✅</span>
         </div>
         <h2>发布成功！</h2>
-        <p class="success-desc">{{ parsedMeta?.name }} 已发布到应用市场</p>
+        <p class="success-desc">{{ parsedMeta?.name }} 已提交，等待管理员审核</p>
         <div class="success-actions">
           <button class="btn btn-primary" @click="router.push('/market')">前往市场</button>
           <button class="btn btn-ghost" @click="resetForm">继续上传</button>

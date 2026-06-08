@@ -187,8 +187,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { marked } from 'marked'
 import Toast from '@/components/Toast.vue'
 import CustomSelect from '@/components/CustomSelect.vue'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+import { api } from '@/utils/request'
 
 interface Question {
   id: number
@@ -279,8 +278,7 @@ watch([searchKeyword, selectedCategory, selectedDifficulty, currentPage], () => 
 
 async function fetchCategories() {
   try {
-    const res = await fetch(`${API_BASE}/api/questions/categories`)
-    categories.value = await res.json()
+    categories.value = await api.get<Category[]>('/api/questions/categories')
   } catch {
     showToast('error', '获取分类失败')
   }
@@ -295,8 +293,7 @@ async function fetchQuestions() {
   if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
   if (searchKeyword.value) params.append('keyword', searchKeyword.value)
   try {
-    const res = await fetch(`${API_BASE}/api/questions?${params.toString()}`)
-    const data = await res.json()
+    const data = await api.get<{ questions: Question[]; total: number; totalPages: number }>(`/api/questions?${params}`, { auth: false })
     questions.value = data.questions
     total.value = data.total
     totalPages.value = data.totalPages
@@ -370,25 +367,16 @@ async function saveQuestion() {
     data.tags = []
   }
   try {
-    const url = editingQuestion.value
-      ? `${API_BASE}/api/questions/${editingQuestion.value.id}`
-      : `${API_BASE}/api/questions`
-    const method = editingQuestion.value ? 'PUT' : 'POST'
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('admin_auth_token')}` },
-      body: JSON.stringify(data),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      showToast('error', err.error || '操作失败')
-      return
+    if (editingQuestion.value) {
+      await api.put(`/api/questions/${editingQuestion.value.id}`, data)
+    } else {
+      await api.post('/api/questions', data)
     }
     showToast('success', editingQuestion.value ? '已更新' : '已创建')
     await fetchQuestions()
     showModal.value = false
-  } catch {
-    showToast('error', '保存失败')
+  } catch (e) {
+    showToast('error', e instanceof Error ? e.message : '保存失败')
   } finally {
     saving.value = false
   }
@@ -401,31 +389,18 @@ function confirmDelete(question: Question) {
 
 async function deleteQuestion(id: number) {
   try {
-    const res = await fetch(`${API_BASE}/api/questions/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${localStorage.getItem('admin_auth_token')}` },
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      showToast('error', err.error || '删除失败')
-      return
-    }
+    await api.delete(`/api/questions/${id}`)
     showToast('success', '已删除')
     await fetchQuestions()
-  } catch {
-    showToast('error', '删除失败')
+  } catch (e) {
+    showToast('error', e instanceof Error ? e.message : '删除失败')
   }
 }
 
 async function batchDelete() {
   if (!window.confirm(`确定删除 ${selectedIds.value.length} 道题目？`)) return
   try {
-    await Promise.all(selectedIds.value.map((id) =>
-      fetch(`${API_BASE}/api/questions/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_auth_token')}` },
-      })
-    ))
+    await Promise.all(selectedIds.value.map((id) => api.delete(`/api/questions/${id}`)))
     showToast('success', `已删除 ${selectedIds.value.length} 道题目`)
     selectedIds.value = []
     await fetchQuestions()

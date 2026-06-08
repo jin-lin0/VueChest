@@ -224,17 +224,11 @@ const getSessionTitle = (session: ChatSession) => {
   return session.title
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+import { api } from '@/utils/request'
 
 const saveMessageToServer = async (question: string, answer: string, model: string) => {
   try {
-    await fetch(`${API_BASE}/api/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ question, answer, model }),
-    })
+    await api.post('/api/messages', { question, answer, model }, { auth: false })
   } catch {
     // 静默失败，不影响用户体验
   }

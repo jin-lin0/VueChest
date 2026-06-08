@@ -78,6 +78,7 @@
             <th class="col-version">版本</th>
             <th class="col-author">作者</th>
             <th class="col-category">分类</th>
+            <th class="col-status">状态</th>
             <th class="col-downloads">下载</th>
             <th class="col-date">上传时间</th>
             <th class="col-actions">操作</th>
@@ -99,15 +100,32 @@
             <td class="col-category">
               <span class="category-tag">{{ app.category || '-' }}</span>
             </td>
+            <td class="col-status">
+              <span class="status-badge" :class="'status-' + (app.status || 'approved')">
+                {{ statusLabel(app.status) }}
+              </span>
+            </td>
             <td class="col-downloads">{{ app.downloads }}</td>
             <td class="col-date">{{ formatDate(app.createdAt) }}</td>
             <td class="col-actions">
-              <button class="btn-secondary btn-sm" @click="showEditModal(app)">
-                ✏️ 编辑
-              </button>
-              <button class="btn-danger btn-sm" @click="confirmDelete(app)">
-                🗑️ 删除
-              </button>
+              <template v-if="app.status === 'pending'">
+                <button
+                  class="btn-approve btn-sm"
+                  :disabled="reviewingId === app.id"
+                  @click="handleApprove(app)"
+                >
+                  ✅ 通过
+                </button>
+                <button
+                  class="btn-reject btn-sm"
+                  :disabled="reviewingId === app.id"
+                  @click="handleReject(app)"
+                >
+                  ❌ 拒绝
+                </button>
+              </template>
+              <button class="btn-secondary btn-sm" @click="showEditModal(app)">✏️ 编辑</button>
+              <button class="btn-danger btn-sm" @click="confirmDelete(app)">🗑️ 删除</button>
             </td>
           </tr>
         </tbody>
@@ -115,11 +133,7 @@
     </div>
 
     <div v-if="totalPages > 1" class="pagination">
-      <button
-        class="page-btn"
-        :disabled="currentPage <= 1"
-        @click="goToPage(currentPage - 1)"
-      >
+      <button class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
         ← 上一页
       </button>
       <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页</span>
@@ -181,6 +195,9 @@
           </div>
           <div class="modal-footer">
             <button class="btn-secondary" @click="showEditModal_ = false">取消</button>
+            <button class="btn-ghost" :disabled="!editingApp" @click="downloadJs(editingApp)">
+              📥 下载 JS
+            </button>
             <button class="btn-primary" :disabled="saving" @click="saveEdit">
               <span v-if="saving" class="loading-spinner-sm"></span>
               保存
@@ -197,8 +214,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import Toast from '@/components/Toast.vue'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+import { api } from '@/utils/request'
 
 interface MarketAppItem {
   id: number
@@ -211,6 +227,7 @@ interface MarketAppItem {
   size: number
   downloads: number
   isOfficial: boolean
+  status: string
   createdAt: string
   updatedAt: string
 }
@@ -232,6 +249,7 @@ const totalApps = ref(0)
 const totalPages = ref(0)
 const currentPage = ref(1)
 const isLoading = ref(false)
+const reviewingId = ref<number | null>(null)
 
 const searchKeyword = ref('')
 const filterCategory = ref('')
@@ -265,6 +283,41 @@ function truncate(text: string, max: number) {
   return text.length > max ? text.slice(0, max) + '...' : text
 }
 
+function statusLabel(status?: string) {
+  const map: Record<string, string> = {
+    pending: '待审核',
+    approved: '已通过',
+    rejected: '已拒绝',
+  }
+  return map[status || 'approved'] || status || '已通过'
+}
+
+async function handleApprove(app: MarketAppItem) {
+  reviewingId.value = app.id
+  try {
+    await api.post(`/api/market/apps/${app.id}/approve`)
+    showToast('success', `应用「${app.name}」已通过审核`)
+    fetchApps()
+  } catch (e) {
+    showToast('error', e instanceof Error ? e.message : '操作失败')
+  } finally {
+    reviewingId.value = null
+  }
+}
+
+async function handleReject(app: MarketAppItem) {
+  reviewingId.value = app.id
+  try {
+    await api.post(`/api/market/apps/${app.id}/reject`)
+    showToast('success', `应用「${app.name}」已拒绝`)
+    fetchApps()
+  } catch (e) {
+    showToast('error', e instanceof Error ? e.message : '操作失败')
+  } finally {
+    reviewingId.value = null
+  }
+}
+
 function formatDate(dateStr: string) {
   if (!dateStr) return '-'
   const d = new Date(dateStr)
@@ -273,9 +326,8 @@ function formatDate(dateStr: string) {
 
 async function fetchCategories() {
   try {
-    const res = await fetch(`${API_BASE}/api/market/categories`)
-    const json = await res.json()
-    if (json.success) categories.value = json.data
+    const { data } = await api.get<{ data: { name: string; count: number }[] }>('/api/market/categories', { auth: false })
+    categories.value = data
   } catch {
     // ignore
   }
@@ -290,15 +342,12 @@ async function fetchApps() {
     if (searchKeyword.value) params.set('keyword', searchKeyword.value)
     if (filterCategory.value) params.set('category', filterCategory.value)
 
-    const res = await fetch(`${API_BASE}/api/market/apps?${params}`)
-    const json = await res.json()
-    if (json.success) {
-      apps.value = json.data.items
-      totalApps.value = json.data.total
-      totalPages.value = json.data.totalPages
-      currentPage.value = json.data.page
-      updateStats()
-    }
+    const { data } = await api.get<{ data: { items: MarketAppItem[]; total: number; page: number; totalPages: number } }>(`/api/market/apps?${params}`)
+    apps.value = data.items
+    totalApps.value = data.total
+    totalPages.value = data.totalPages
+    currentPage.value = data.page
+    updateStats()
   } catch {
     showToast('error', '获取应用列表失败')
   } finally {
@@ -347,11 +396,8 @@ function showEditModal(app: MarketAppItem) {
   editForm.readme = ''
   showEditModal_.value = true
 
-  fetch(`${API_BASE}/api/market/apps/${app.id}`)
-    .then((r) => r.json())
-    .then((json) => {
-      if (json.success && json.data.readme) editForm.readme = json.data.readme
-    })
+  api.get<{ data: { readme?: string } }>(`/api/market/apps/${app.id}`, { auth: false })
+    .then((res) => { if (res.data?.readme) editForm.readme = res.data.readme })
     .catch(() => {})
 }
 
@@ -363,7 +409,6 @@ async function saveEdit() {
   if (!editingApp.value) return
   saving.value = true
   try {
-    const token = localStorage.getItem('admin_auth_token')
     const body: Record<string, string> = {
       name: editForm.name,
       icon: editForm.icon,
@@ -373,16 +418,7 @@ async function saveEdit() {
     }
     if (editForm.readme) body.readme = editForm.readme
 
-    const res = await fetch(`${API_BASE}/api/market/apps/${editingApp.value.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    })
-    const json = await res.json()
-    if (!json.success) throw new Error(json.error || '更新失败')
+    await api.put(`/api/market/apps/${editingApp.value.id}`, body)
     showToast('success', '应用已更新')
     showEditModal_.value = false
     fetchApps()
@@ -398,15 +434,26 @@ function confirmDelete(app: MarketAppItem) {
   deleteApp(app)
 }
 
+async function downloadJs(app: MarketAppItem | null) {
+  if (!app) return
+  try {
+    const { data } = await api.get<{ data: { fileContent: string } }>(`/api/market/apps/${app.id}/download`, { auth: false })
+    const blob = new Blob([data.fileContent], { type: 'application/javascript' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${app.name}-v${app.version}.js`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('success', 'JS 文件已下载')
+  } catch (e) {
+    showToast('error', e instanceof Error ? e.message : '下载失败')
+  }
+}
+
 async function deleteApp(app: MarketAppItem) {
   try {
-    const token = localStorage.getItem('admin_auth_token')
-    const res = await fetch(`${API_BASE}/api/market/apps/${app.id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const json = await res.json()
-    if (!json.success) throw new Error(json.error || '删除失败')
+    await api.delete(`/api/market/apps/${app.id}`)
     showToast('success', `应用「${app.name}」已删除`)
     fetchApps()
   } catch (e) {
@@ -492,6 +539,27 @@ async function deleteApp(app: MarketAppItem) {
   border-color: #9ca3af;
 }
 
+.btn-ghost {
+  background: #f0f4ff;
+  color: #667eea;
+  border: 1px solid #dbe4ff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: #dbe4ff;
+  border-color: #667eea;
+}
+
+.btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .btn-danger {
   background: #fee2e2;
   color: #dc2626;
@@ -510,6 +578,69 @@ async function deleteApp(app: MarketAppItem) {
 .btn-danger:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.btn-approve {
+  background: #d1fae5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background: #a7f3d0;
+}
+
+.btn-approve:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-reject {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.btn-reject:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-approved {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* Stats row */
@@ -636,7 +767,9 @@ async function deleteApp(app: MarketAppItem) {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {

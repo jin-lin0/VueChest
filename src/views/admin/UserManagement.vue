@@ -142,8 +142,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Toast from '@/components/Toast.vue'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+import { api } from '@/utils/request'
 const authStore = useAuthStore()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const currentUserId = computed(() => authStore.user?.id)
@@ -179,10 +178,6 @@ const saving = ref(false)
 
 onMounted(() => fetchUsers())
 
-function getToken() {
-  return localStorage.getItem('admin_auth_token')
-}
-
 function roleLabel(role: string) {
   const map: Record<string, string> = { user: '普通用户', admin: '管理员', super_admin: '超管' }
   return map[role] || role
@@ -207,16 +202,11 @@ async function fetchUsers() {
     if (keyword.value) params.set('keyword', keyword.value)
     if (roleFilter.value) params.set('role', roleFilter.value)
 
-    const res = await fetch(`${API_BASE}/api/users?${params}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    })
-    const json = await res.json()
-    if (json.success) {
-      users.value = json.data.items
-      totalUsers.value = json.data.total
-      totalPages.value = json.data.totalPages
-      currentPage.value = json.data.page
-    }
+    const { data } = await api.get<{ data: { items: UserItem[]; total: number; page: number; totalPages: number } }>(`/api/users?${params}`)
+    users.value = data.items
+    totalUsers.value = data.total
+    totalPages.value = data.totalPages
+    currentPage.value = data.page
   } catch {
     showToast('error', '获取用户列表失败')
   } finally {
@@ -269,20 +259,11 @@ async function saveUser() {
       body.isActive = form.value.isActive
     }
 
-    const url = editingUser.value
-      ? `${API_BASE}/api/users/${editingUser.value.id}`
-      : `${API_BASE}/api/users`
-
-    const res = await fetch(url, {
-      method: editingUser.value ? 'PUT' : 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
-      },
-      body: JSON.stringify(body),
-    })
-    const json = await res.json()
-    if (!json.success) throw new Error(json.error || '操作失败')
+    if (editingUser.value) {
+      await api.put(`/api/users/${editingUser.value.id}`, body)
+    } else {
+      await api.post('/api/users', body)
+    }
 
     showToast('success', editingUser.value ? '用户已更新' : '用户创建成功')
     showModal.value = false
@@ -299,16 +280,7 @@ async function toggleStatus(u: UserItem) {
   if (!window.confirm(`确定要${action}用户「${u.username}」吗？`)) return
 
   try {
-    const res = await fetch(`${API_BASE}/api/users/${u.id}`, {
-      method: editingUser.value ? 'PUT' : 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
-      },
-      body: JSON.stringify({ isActive: !u.isActive }),
-    })
-    const json = await res.json()
-    if (!json.success) throw new Error(json.error || '操作失败')
+    await api.put(`/api/users/${u.id}`, { isActive: !u.isActive })
     showToast('success', `用户已${action}`)
     fetchUsers()
   } catch (e) {

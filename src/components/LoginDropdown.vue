@@ -49,7 +49,7 @@ function handleLogout() {
           <span class="dropdown-role">{{ getRoleLabel(authStore.user?.role) }}</span>
         </div>
         <div class="dropdown-divider"></div>
-        <button v-if="authStore.isAdmin" class="dropdown-item upload-link" @click.stop="$router.push('/market/upload')">
+        <button class="dropdown-item upload-link" @click.stop="$router.push('/market/upload')">
           📤 上传应用
         </button>
         <button v-if="authStore.isAdmin" class="dropdown-item" @click.stop="$router.push('/admin')">

@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getStorage, setStorage, removeStorage } from '@/utils'
 import { loadMarketApp } from '@/utils/app-loader'
+import { api } from '@/utils/request'
 import router from '@/router'
 import type { MarketAppDefinition } from '@/utils/app-loader'
 
@@ -18,6 +19,7 @@ export interface MarketAppItem {
   readme?: string
   isOfficial: boolean
   downloads: number
+  status?: string
   createdAt: string
   updatedAt: string
 }
@@ -39,8 +41,6 @@ export interface MarketAppListData {
   limit: number
   totalPages: number
 }
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 const INSTALLED_KEY = 'market_installed_apps'
 const BUNDLE_KEY_PREFIX = 'market-bundle-'
 
@@ -102,15 +102,11 @@ export const useMarketStore = defineStore('market', () => {
       if (params?.page) query.set('page', String(params.page))
       if (params?.limit) query.set('limit', String(params.limit))
 
-      const res = await fetch(`${API_BASE}/api/market/apps?${query}`)
-      const json = await res.json()
-
-      if (json.success) {
-        availableApps.value = json.data.items
-        totalApps.value = json.data.total
-        totalPages.value = json.data.totalPages
-        currentPage.value = json.data.page
-      }
+      const { data } = await api.get<{ items: MarketAppItem[]; total: number; page: number; totalPages: number }>(`/api/market/apps?${query}`, { auth: false })
+      availableApps.value = data.items
+      totalApps.value = data.total
+      totalPages.value = data.totalPages
+      currentPage.value = data.page
     } catch (e) {
       console.error('Failed to fetch market apps:', e)
     } finally {
@@ -120,10 +116,8 @@ export const useMarketStore = defineStore('market', () => {
 
   async function fetchAppDetail(id: number): Promise<MarketAppItem | null> {
     try {
-      const res = await fetch(`${API_BASE}/api/market/apps/${id}`)
-      const json = await res.json()
-      if (json.success) return json.data
-      return null
+      const res = await api.get<{ data: MarketAppItem }>(`/api/market/apps/${id}`, { auth: false })
+      return res.data
     } catch (e) {
       console.error('Failed to fetch app detail:', e)
       return null
@@ -133,11 +127,8 @@ export const useMarketStore = defineStore('market', () => {
   async function installApp(appId: number) {
     if (installedApps.value.some((a) => a.id === appId)) return
 
-    const res = await fetch(`${API_BASE}/api/market/apps/${appId}/download`)
-    const json = await res.json()
-    if (!json.success) throw new Error(json.error || '下载失败')
-
-    const { fileContent, name, version } = json.data
+    const { data: downloadData } = await api.get<{ data: { fileContent: string; name: string; version: string } }>(`/api/market/apps/${appId}/download`, { auth: false })
+    const { fileContent, name, version } = downloadData
 
     setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, fileContent)
 
@@ -146,12 +137,24 @@ export const useMarketStore = defineStore('market', () => {
 
     registerRoute(appId, def)
 
+    let icon = def.meta.icon
+    let description = def.meta.description
+    try {
+      const detailRes = await api.get<{ data: MarketAppItem }>(`/api/market/apps/${appId}`, { auth: false })
+      if (detailRes.data) {
+        icon = detailRes.data.icon || icon
+        description = detailRes.data.description || description
+      }
+    } catch {}
+    if (!icon) icon = def.meta.icon
+    if (!description) description = def.meta.description
+
     const entry: InstalledApp = {
       id: appId,
-      name: def.meta.name,
-      icon: def.meta.icon,
+      name,
+      icon,
       route: def.route,
-      description: def.meta.description,
+      description,
       version,
       installedAt: Date.now(),
     }
@@ -183,29 +186,20 @@ export const useMarketStore = defineStore('market', () => {
     fileContent: string
     readme?: string
   }) {
-    const token = localStorage.getItem('admin_auth_token')
-    const res = await fetch(`${API_BASE}/api/market/apps`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(formData),
-    })
-    const json = await res.json()
-    if (!json.success) throw new Error(json.error || '上传失败')
-    return json.data
+    const { data } = await api.post<{ data: { id: number; name: string; version: string; status: string } }>('/api/market/apps', formData)
+    return data
+  }
+
+  async function approveApp(id: number) {
+    return api.post(`/api/market/apps/${id}/approve`)
+  }
+
+  async function rejectApp(id: number) {
+    return api.post(`/api/market/apps/${id}/reject`)
   }
 
   async function deleteApp(id: number) {
-    const token = localStorage.getItem('admin_auth_token')
-    const res = await fetch(`${API_BASE}/api/market/apps/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const json = await res.json()
-    if (!json.success) throw new Error(json.error || '删除失败')
-    return json
+    return api.delete(`/api/market/apps/${id}`)
   }
 
   async function updateApp(
@@ -220,22 +214,29 @@ export const useMarketStore = defineStore('market', () => {
       readme?: string
     }
   ) {
-    const token = localStorage.getItem('admin_auth_token')
-    const res = await fetch(`${API_BASE}/api/market/apps/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    })
-    const json = await res.json()
-    if (!json.success) throw new Error(json.error || '更新失败')
-    return json
+    return api.put(`/api/market/apps/${id}`, data)
   }
 
   function isInstalled(appId: number): boolean {
     return installedApps.value.some((a) => a.id === appId)
+  }
+
+  async function refreshInstalledMeta() {
+    if (installedApps.value.length === 0) return
+    let changed = false
+    for (const app of installedApps.value) {
+      const detail = await fetchAppDetail(app.id)
+      if (detail && (detail.icon !== app.icon || detail.name !== app.name || detail.description !== app.description)) {
+        app.icon = detail.icon
+        app.name = detail.name
+        app.description = detail.description
+        app.version = detail.version
+        changed = true
+      }
+    }
+    if (changed) {
+      setStorage(INSTALLED_KEY, installedApps.value)
+    }
   }
 
   async function syncFromServer(mergedIds: number[], serverAppIds: number[]) {
@@ -278,9 +279,12 @@ export const useMarketStore = defineStore('market', () => {
     installApp,
     uninstallApp,
     uploadApp,
+    approveApp,
+    rejectApp,
     deleteApp,
     updateApp,
     isInstalled,
+    refreshInstalledMeta,
     syncFromServer,
   }
 })

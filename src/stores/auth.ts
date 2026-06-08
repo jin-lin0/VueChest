@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { api } from '@/utils/request'
 
 export interface UserInfo {
   id: number
@@ -20,8 +21,6 @@ export interface LoginCredentials {
 
 const TOKEN_KEY = 'admin_auth_token'
 const USER_INFO_KEY = 'admin_info'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
@@ -67,29 +66,19 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      })
+      const { data } = await api.post<{ data: { token: string; user: UserInfo } }>('/api/auth/login', credentials, { auth: false })
 
-      const data = await response.json()
+      token.value = data.token
+      user.value = data.user
 
-      if (!response.ok) {
-        error.value = data.error || '登录失败'
-        return { success: false, message: data.error || '登录失败' }
-      }
+      localStorage.setItem(TOKEN_KEY, data.token)
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.user))
 
-      token.value = data.data.token
-      user.value = data.data.user
-
-      localStorage.setItem(TOKEN_KEY, data.data.token)
-      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.data.user))
-
-      return { success: true, message: '登录成功', role: data.data.user.role }
-    } catch {
-      error.value = '网络连接失败，请检查服务器是否运行'
-      return { success: false, message: '网络连接失败，请检查服务器是否运行' }
+      return { success: true, message: '登录成功', role: data.user.role }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '网络连接失败，请检查服务器是否运行'
+      error.value = message
+      return { success: false, message }
     } finally {
       isLoading.value = false
     }
@@ -100,29 +89,19 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      })
+      const { data } = await api.post<{ data: { token: string; user: UserInfo } }>('/api/auth/register', credentials, { auth: false })
 
-      const data = await response.json()
+      token.value = data.token
+      user.value = data.user
 
-      if (!response.ok) {
-        error.value = data.error || '注册失败'
-        return { success: false, message: data.error || '注册失败' }
-      }
-
-      token.value = data.data.token
-      user.value = data.data.user
-
-      localStorage.setItem(TOKEN_KEY, data.data.token)
-      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.data.user))
+      localStorage.setItem(TOKEN_KEY, data.token)
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.user))
 
       return { success: true, message: '注册成功' }
-    } catch {
-      error.value = '网络连接失败，请检查服务器是否运行'
-      return { success: false, message: '网络连接失败，请检查服务器是否运行' }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '网络连接失败，请检查服务器是否运行'
+      error.value = message
+      return { success: false, message }
     } finally {
       isLoading.value = false
     }
@@ -132,18 +111,9 @@ export const useAuthStore = defineStore('auth', () => {
     if (!token.value) return false
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token.value}` },
-      })
-
-      if (!response.ok) {
-        logout()
-        return false
-      }
-
-      const data = await response.json()
-      user.value = data.data
-      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data.data))
+      const { data } = await api.get<{ data: UserInfo }>('/api/auth/me')
+      user.value = data
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data))
       return true
     } catch {
       logout()
@@ -154,14 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function syncInstalledApps(appIds: number[]) {
     if (!token.value || !user.value) return
     try {
-      await fetch(`${API_BASE}/api/auth/installed-apps`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token.value}`,
-        },
-        body: JSON.stringify({ installedApps: appIds }),
-      })
+      await api.put('/api/auth/installed-apps', { installedApps: appIds })
       user.value = { ...user.value, installedApps: appIds }
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(user.value))
     } catch {
@@ -172,12 +135,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchInstalledApps(): Promise<number[]> {
     if (!token.value) return []
     try {
-      const res = await fetch(`${API_BASE}/api/auth/installed-apps`, {
-        headers: { Authorization: `Bearer ${token.value}` },
-      })
-      const json = await res.json()
-      if (json.success) return json.data
-      return []
+      const { data } = await api.get<{ data: number[] }>('/api/auth/installed-apps')
+      return data
     } catch {
       return []
     }

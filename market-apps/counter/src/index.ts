@@ -4,7 +4,7 @@ export default {
   component: App,
   route: '/m/counter',
   meta: {
-    name: '计数器',
+    name: '计数器2',
     icon: '🔢',
     description: '一个简单的计数器应用',
   },

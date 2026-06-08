@@ -251,6 +251,7 @@ const handleFileImport = (e: Event) => {
 onMounted(() => {
   loadHidden()
   loadOrder()
+  marketStore.refreshInstalledMeta()
   document.addEventListener('click', closeContextMenu)
 })
 

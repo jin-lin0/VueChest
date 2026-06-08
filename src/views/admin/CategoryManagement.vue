@@ -97,8 +97,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import Toast from '@/components/Toast.vue'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+import { api } from '@/utils/request'
 
 interface Category {
   id: number
@@ -127,8 +126,7 @@ onMounted(() => fetchCategories())
 async function fetchCategories() {
   isLoading.value = true
   try {
-    const response = await fetch(`${API_BASE}/api/questions/categories`)
-    categories.value = await response.json()
+    categories.value = await api.get<Category[]>('/api/questions/categories')
   } catch {
     showToast('error', '获取分类列表失败')
   } finally {
@@ -182,28 +180,16 @@ async function saveCategory() {
   saving.value = true
 
   try {
-    const url = editingCategory.value
-      ? `${API_BASE}/api/questions/categories/${editingCategory.value.id}`
-      : `${API_BASE}/api/questions/categories`
-    const method = editingCategory.value ? 'PUT' : 'POST'
-
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('admin_auth_token')}` },
-      body: JSON.stringify(formData.value),
-    })
-
-    if (!response.ok) {
-      const err = await response.json()
-      showToast('error', err.error || '操作失败')
-      return
+    if (editingCategory.value) {
+      await api.put(`/api/questions/categories/${editingCategory.value.id}`, formData.value)
+    } else {
+      await api.post('/api/questions/categories', formData.value)
     }
-
     showToast('success', editingCategory.value ? '分类已更新' : '分类创建成功')
     await fetchCategories()
     showModal.value = false
-  } catch {
-    showToast('error', '保存失败，请检查网络连接')
+  } catch (e) {
+    showToast('error', e instanceof Error ? e.message : '保存失败，请检查网络连接')
   } finally {
     saving.value = false
   }
@@ -220,21 +206,11 @@ function confirmDelete(category: Category) {
 
 async function deleteCategory(id: number) {
   try {
-    const response = await fetch(`${API_BASE}/api/questions/categories/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_auth_token')}` },
-    })
-
-    if (!response.ok) {
-      const err = await response.json()
-      showToast('error', err.error || '删除失败')
-      return
-    }
-
+    await api.delete(`/api/questions/categories/${id}`)
     showToast('success', '分类已删除')
     await fetchCategories()
-  } catch {
-    showToast('error', '删除失败，请检查网络连接')
+  } catch (e) {
+    showToast('error', e instanceof Error ? e.message : '删除失败，请检查网络连接')
   }
 }
 </script>

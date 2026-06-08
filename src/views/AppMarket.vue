@@ -9,6 +9,7 @@ const market = useMarketStore()
 const categories = ['全部', '工具', '娱乐', '开发', '游戏', '生活', '教育']
 const activeCategory = ref('全部')
 const searchQuery = ref('')
+const installingId = ref<number | null>(null)
 
 const filteredApps = computed(() => {
   let items = market.availableApps
@@ -48,6 +49,18 @@ function onSearch() {
 
 function goDetail(id: number) {
   router.push(`/market/${id}`)
+}
+
+async function handleInstall(appId: number) {
+  if (installingId.value === appId || market.isInstalled(appId)) return
+  installingId.value = appId
+  try {
+    await market.installApp(appId)
+  } catch (e) {
+    console.error('安装失败', e)
+  } finally {
+    installingId.value = null
+  }
 }
 
 onMounted(() => {
@@ -115,9 +128,18 @@ onMounted(() => {
             <span class="app-version">v{{ app.version }}</span>
             <span class="app-downloads">{{ app.downloads }} 次下载</span>
           </div>
-          <div class="install-badge" :class="{ installed: market.isInstalled(app.id) }">
-            {{ market.isInstalled(app.id) ? '已安装' : '安装' }}
-          </div>
+          <button
+            class="install-btn"
+            :class="{
+              installed: market.isInstalled(app.id),
+              installing: installingId === app.id,
+            }"
+            :disabled="market.isInstalled(app.id) || installingId === app.id"
+            @click.stop="handleInstall(app.id)"
+          >
+            <span v-if="installingId === app.id" class="btn-spinner" />
+            {{ installingId === app.id ? '安装中' : market.isInstalled(app.id) ? '已安装' : '安装' }}
+          </button>
         </div>
       </div>
     </main>
@@ -371,23 +393,57 @@ onMounted(() => {
   margin-bottom: 0.8rem;
 }
 
-.install-badge {
-  padding: 0.3rem 1rem;
+.install-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0.4rem 1.2rem;
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 600;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
-  transition: opacity 0.2s ease;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
-.install-badge.installed {
+.install-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+}
+
+.install-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.install-btn.installed {
   background: #e8ecf1;
   color: #27ae60;
+  cursor: default;
 }
 
-.app-card:hover .install-badge:not(.installed) {
-  opacity: 0.85;
+.install-btn.installing {
+  opacity: 0.7;
+}
+
+.install-btn:disabled {
+  cursor: default;
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
