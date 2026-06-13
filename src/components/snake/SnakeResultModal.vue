@@ -11,6 +11,11 @@ const props = defineProps<{
   }[]
   onRestart: () => void
   onBack: () => void
+  // 本地双人对战胜场统计（可选）
+  p1Wins?: number
+  p2Wins?: number
+  p1Name?: string
+  p2Name?: string
 }>()
 
 const PLAYER_COLORS: Record<number, string> = {
@@ -36,6 +41,21 @@ const PLAYER_COLORS: Record<number, string> = {
           <div class="trophy">💀</div>
           <div class="winner-name">平局</div>
           <div class="winner-sub">无人生还</div>
+        </div>
+
+        <!-- 本地双人对战胜场对比 -->
+        <div v-if="props.p1Wins !== undefined && props.p2Wins !== undefined" class="win-tally">
+          <div class="tally-row">
+            <span class="tally-dot" style="background:#4CAF50" />
+            <span class="tally-name">{{ props.p1Name || '玩家1' }}</span>
+            <span class="tally-score">{{ props.p1Wins }}</span>
+          </div>
+          <div class="tally-vs">VS</div>
+          <div class="tally-row">
+            <span class="tally-dot" style="background:#f44336" />
+            <span class="tally-name">{{ props.p2Name || '玩家2' }}</span>
+            <span class="tally-score">{{ props.p2Wins }}</span>
+          </div>
         </div>
 
         <div class="stats-list">
@@ -189,6 +209,46 @@ const PLAYER_COLORS: Record<number, string> = {
 
 .btn-back:hover {
   background: rgba(255, 255, 255, 0.15);
+}
+
+.win-tally {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.tally-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tally-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tally-name {
+  font-weight: 500;
+}
+
+.tally-score {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffd700;
+  min-width: 24px;
+  text-align: center;
+}
+
+.tally-vs {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
 }
 
 .modal-enter-active,

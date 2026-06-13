@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from 'vue'
-import type { SnakeState, ItemState } from '@/composables/useSnakeGameClient'
+import type { SnakeState, ItemState } from '@/composables/snakeTypes'
 
 const props = defineProps<{
   snakes: SnakeState[]
   items: ItemState[]
   myPlayerId: number | null
   canvasWidth: number
+  invincibleTimers?: Map<number, number>
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -70,6 +71,31 @@ function draw() {
       ctx.moveTo(cx, cy - r * 0.4)
       ctx.lineTo(cx, cy + r * 0.4)
       ctx.stroke()
+    } else if (item.type === 'big_supply') {
+      // 大血包 — 红色发光圆 + ♥
+      const br = r * 1.3
+      // 发光效果
+      ctx.shadowColor = '#ff1744'
+      ctx.shadowBlur = 12
+      ctx.fillStyle = '#ff1744'
+      ctx.beginPath()
+      ctx.arc(cx, cy, br, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.shadowBlur = 0
+
+      // 白色边框
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.arc(cx, cy, br, 0, Math.PI * 2)
+      ctx.stroke()
+
+      // ♥ 符号
+      ctx.fillStyle = '#fff'
+      ctx.font = `bold ${Math.round(br * 1.1)}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('♥', cx, cy)
     } else {
       // 紫色毒蜘蛛
       ctx.fillStyle = '#7b1fa2'
@@ -115,6 +141,15 @@ function draw() {
   for (const snake of props.snakes) {
     if (!snake.alive) continue
     const colors = PLAYER_COLORS[snake.id] || { head: '#888', body: '#aaa', outline: '#555' }
+    const inv = (props.invincibleTimers?.get(snake.id) || 0) > 0
+
+    // 无敌状态：半透明 + 发光效果
+    if (inv) {
+      ctx.save()
+      ctx.globalAlpha = 0.45
+      ctx.shadowColor = colors.head
+      ctx.shadowBlur = 10
+    }
 
     for (let i = snake.body.length - 1; i >= 0; i--) {
       const seg = snake.body[i]
@@ -170,6 +205,10 @@ function draw() {
         ctx.arc(x + cellSize / 2, y + cellSize / 2, (size - 2) / 2, 0, Math.PI * 2)
         ctx.fill()
       }
+    }
+
+    if (inv) {
+      ctx.restore()
     }
   }
 }

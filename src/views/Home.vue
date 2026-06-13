@@ -30,7 +30,9 @@ interface ContextMenuState {
   isMarketApp: boolean
 }
 
-const defaultAppList: AppItem[] = APP_MODULES
+const defaultAppList: AppItem[] = APP_MODULES.filter(
+  (app) => !app.devOnly || import.meta.env.DEV
+)
 
 const router = useRouter()
 const searchQuery = ref('')

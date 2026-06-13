@@ -4,15 +4,17 @@ export interface AppModule {
   icon: string
   route: string
   description: string
+  devOnly?: boolean // 仅开发环境显示
 }
 
 export const APP_MODULES: AppModule[] = [
   {
     id: 13,
-    name: '贪吃蛇·对战',
+    name: '贪吃蛇·本地对战',
     icon: '🐍',
-    route: '/snake',
-    description: '在线多人对战贪吃蛇，2-4人实时Battle！',
+    route: '/snake/local',
+    description: '本地双人对战贪吃蛇，WASD vs 方向键！',
+    devOnly: true, // 仅开发环境显示
   },
   {
     id: 12,
