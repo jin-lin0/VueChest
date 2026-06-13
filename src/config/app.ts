@@ -11,13 +11,4 @@ export const APP_CONFIG = {
     text: '#333333',
     textSecondary: '#666666',
   },
-  pwa: {
-    shortName: 'VueChest',
-    themeColor: '#667eea',
-    backgroundColor: '#f5f7fa',
-    display: 'standalone',
-    orientation: 'portrait-primary',
-    lang: 'zh-CN',
-    categories: ['productivity', 'utilities'],
-  },
 } as const
