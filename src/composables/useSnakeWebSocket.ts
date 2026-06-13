@@ -31,7 +31,7 @@ export function getGameUrl(type: 'create' | 'join', name: string, roomId?: strin
 }
 
 /** 获取房间列表（HTTP） */
-export async function fetchRoomList(): Promise<WSMessage> {
+export async function fetchRoomList(): Promise<{ type: 'room_list'; rooms: any[] }> {
   const res = await fetch(`${HTTP_BASE}/snake/lobby`)
   return res.json()
 }
