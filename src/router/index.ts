@@ -103,6 +103,18 @@ const router = createRouter({
       meta: { title: '上传应用', requiresAuth: true },
     },
     {
+      path: '/snake',
+      name: 'snake-room',
+      component: () => import('../views/SnakeRoom.vue'),
+      meta: { title: '贪吃蛇大作战' },
+    },
+    {
+      path: '/snake/battle',
+      name: 'snake-battle',
+      component: () => import('../views/SnakeBattleOnline.vue'),
+      meta: { title: '贪吃蛇 · 对战' },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => Promise.resolve(UserLogin),

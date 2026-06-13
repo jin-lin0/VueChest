@@ -8,6 +8,13 @@ export interface AppModule {
 
 export const APP_MODULES: AppModule[] = [
   {
+    id: 13,
+    name: '贪吃蛇·对战',
+    icon: '🐍',
+    route: '/snake',
+    description: '在线多人对战贪吃蛇，2-4人实时Battle！',
+  },
+  {
     id: 12,
     name: '面试题库',
     icon: '📚',
