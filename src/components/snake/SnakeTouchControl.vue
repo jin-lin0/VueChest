@@ -16,7 +16,7 @@ const isTouching = ref(false)
 const currentDir = ref('')
 
 const knobStyle = computed(() => ({
-  transform: `translate(${knobOffset.value.x}px, ${knobOffset.value.y}px)`,
+  transform: `translate(calc(-50% + ${knobOffset.value.x}px), calc(-50% + ${knobOffset.value.y}px))`,
 }))
 
 function getAngle( dx: number, dy: number): number {
