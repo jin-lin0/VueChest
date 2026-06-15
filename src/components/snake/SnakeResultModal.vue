@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+
 const props = defineProps<{
   visible: boolean
   winnerName: string | null
@@ -24,11 +26,46 @@ const PLAYER_COLORS: Record<number, string> = {
   3: '#2196F3',
   4: '#FF9800',
 }
+
+const backCooldown = ref(0)
+let cooldownTimer: ReturnType<typeof setInterval> | null = null
+
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      // 弹窗出现时，返回大厅按钮锁定 3 秒防误触
+      backCooldown.value = 3
+      cooldownTimer = setInterval(() => {
+        backCooldown.value--
+        if (backCooldown.value <= 0) {
+          backCooldown.value = 0
+          if (cooldownTimer) {
+            clearInterval(cooldownTimer)
+            cooldownTimer = null
+          }
+        }
+      }, 1000)
+    } else {
+      // 弹窗关闭时清理定时器
+      if (cooldownTimer) {
+        clearInterval(cooldownTimer)
+        cooldownTimer = null
+      }
+      backCooldown.value = 0
+    }
+  },
+)
+
+function handleBack() {
+  if (backCooldown.value > 0) return
+  props.onBack?.()
+}
 </script>
 
 <template>
   <Transition name="modal">
-    <div v-if="visible" class="modal-overlay" @click.self="props.onBack?.()">
+    <div v-if="visible" class="modal-overlay" @click.self="handleBack">
       <div class="modal-content">
         <div class="modal-title">游戏结束</div>
 
@@ -78,7 +115,14 @@ const PLAYER_COLORS: Record<number, string> = {
 
         <div class="modal-actions">
           <button class="btn btn-restart" @click="props.onRestart?.()">再来一局</button>
-          <button class="btn btn-back" @click="props.onBack?.()">返回大厅</button>
+          <button
+            class="btn btn-back"
+            :class="{ disabled: backCooldown > 0 }"
+            :disabled="backCooldown > 0"
+            @click="handleBack"
+          >
+            {{ backCooldown > 0 ? `返回大厅 (${backCooldown}s)` : '返回大厅' }}
+          </button>
         </div>
       </div>
     </div>
@@ -209,6 +253,13 @@ const PLAYER_COLORS: Record<number, string> = {
 
 .btn-back:hover {
   background: rgba(255, 255, 255, 0.15);
+}
+.btn-back.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-back.disabled:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .win-tally {
