@@ -24,8 +24,7 @@ const difficultyOptions: { key: Difficulty; label: string; desc: string; color: 
 ]
 
 onMounted(() => {
-  isMobile.value =
-    !window.matchMedia('(pointer: fine)').matches || window.innerWidth < 768
+  isMobile.value = !window.matchMedia('(pointer: fine)').matches || window.innerWidth < 768
   updateCanvasSize()
   window.addEventListener('resize', updateCanvasSize)
   window.addEventListener('keydown', onKeyDown)
@@ -125,7 +124,9 @@ function restart() {
             <span class="badge-dot" style="background: #f44336" />
             <div>
               <div class="badge-title">AI</div>
-              <div class="badge-sub">{{ difficultyOptions.find(d => d.key === selectedDifficulty)?.label }}难度</div>
+              <div class="badge-sub">
+                {{ difficultyOptions.find((d) => d.key === selectedDifficulty)?.label }}难度
+              </div>
             </div>
           </div>
         </div>
@@ -158,10 +159,7 @@ function restart() {
         </div>
         <div class="player-hud" :class="{ dead: !game.state.snakes[1]?.alive }">
           <span class="dot" style="background: #f44336" />
-          <span class="pname">
-            AI
-            <span class="diff-tag">{{ difficultyOptions.find(d => d.key === selectedDifficulty)?.label }}</span>
-          </span>
+          <span class="pname"> AI </span>
           <span class="health">❤️ {{ game.state.snakes[1]?.health || 0 }}</span>
           <span class="len">📏 {{ game.state.snakes[1]?.length || 0 }}</span>
         </div>
@@ -177,8 +175,11 @@ function restart() {
         />
       </div>
 
-      <!-- 移动端摇杆 -->
-      <div v-if="isMobile && game.state.status === 'playing'" class="joystick-area">
+      <!-- 移动端摇杆（读秒时也显示，方便提前就位） -->
+      <div
+        v-if="isMobile && (game.state.status === 'countdown' || game.state.status === 'playing')"
+        class="joystick-area"
+      >
         <SnakeTouchControl @direction="onJoystickDir" />
       </div>
 
@@ -420,14 +421,6 @@ function restart() {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-.diff-tag {
-  font-size: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.6);
 }
 .health {
   color: #ef5350;
