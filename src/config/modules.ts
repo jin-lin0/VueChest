@@ -10,11 +10,10 @@ export interface AppModule {
 export const APP_MODULES: AppModule[] = [
   {
     id: 13,
-    name: '贪吃蛇·本地对战',
+    name: 'PK贪吃蛇',
     icon: '🐍',
-    route: '/snake/local',
-    description: '本地双人对战贪吃蛇，WASD vs 方向键！',
-    devOnly: true, // 仅开发环境显示
+    route: '/snake',
+    description: '贪吃蛇双人对战 & 人机对战，在方块中一决高下',
   },
   {
     id: 12,

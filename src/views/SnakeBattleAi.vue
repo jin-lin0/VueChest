@@ -1,22 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useSnakeLocalGame } from '@/composables/useSnakeLocalGame'
+import { useSnakeAiGame, type Difficulty } from '@/composables/useSnakeAiGame'
 import SnakeCanvas from '@/components/snake/SnakeCanvas.vue'
 import SnakeResultModal from '@/components/snake/SnakeResultModal.vue'
+import SnakeTouchControl from '@/components/snake/SnakeTouchControl.vue'
 
-defineOptions({ name: 'SnakeBattleLocalView' })
+defineOptions({ name: 'SnakeBattleAiView' })
 
 const router = useRouter()
 
-const p1Name = ref('')
-const p2Name = ref('')
 const showSetup = ref(true)
+const selectedDifficulty = ref<Difficulty>('medium')
+const isMobile = ref(false)
 
-const game = useSnakeLocalGame()
+const game = useSnakeAiGame()
 const canvasWidth = ref(360)
 
+const difficultyOptions: { key: Difficulty; label: string; desc: string; color: string }[] = [
+  { key: 'easy', label: '简单', desc: 'AI 血量越低越聪明，绝地反击', color: '#4CAF50' },
+  { key: 'medium', label: '中等', desc: 'AI 正常水平，偶有小失误', color: '#FF9800' },
+  { key: 'hard', label: '困难', desc: 'AI 初始更强，精准追击', color: '#f44336' },
+]
+
 onMounted(() => {
+  isMobile.value =
+    !window.matchMedia('(pointer: fine)').matches || window.innerWidth < 768
   updateCanvasSize()
   window.addEventListener('resize', updateCanvasSize)
   window.addEventListener('keydown', onKeyDown)
@@ -31,43 +40,35 @@ onUnmounted(() => {
 function updateCanvasSize() {
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const maxSize = Math.min(vw - 24, vh - 320, 520)
-  canvasWidth.value = Math.max(280, maxSize)
+  const joystickSpace = isMobile.value ? 180 : 80
+  const maxSize = Math.min(vw - 24, vh - 200 - joystickSpace, 520)
+  canvasWidth.value = Math.max(240, maxSize)
 }
 
 function onKeyDown(e: KeyboardEvent) {
   if (game.state.status !== 'playing') return
   const key = e.key.toLowerCase()
 
-  // 玩家1：WASD
   if (['w', 'a', 's', 'd'].includes(key)) {
     e.preventDefault()
     const dirMap: Record<string, string> = { w: 'UP', a: 'LEFT', s: 'DOWN', d: 'RIGHT' }
-    game.changeDirection(1, dirMap[key])
-    return
-  }
-
-  // 玩家2：方向键
-  if (['arrowup', 'arrowleft', 'arrowdown', 'arrowright'].includes(key)) {
-    e.preventDefault()
-    const dirMap: Record<string, string> = {
-      arrowup: 'UP',
-      arrowleft: 'LEFT',
-      arrowdown: 'DOWN',
-      arrowright: 'RIGHT',
-    }
-    game.changeDirection(2, dirMap[key])
-    return
+    game.changeDirection(game.HUMAN_ID, dirMap[key])
   }
 }
 
-function startLocalGame() {
-  game.startGame(p1Name.value || '玩家1', p2Name.value || '玩家2')
+function onJoystickDir(dir: string) {
+  if (game.state.status === 'playing') {
+    game.changeDirection(game.HUMAN_ID, dir)
+  }
+}
+
+function startAiGame() {
+  game.difficulty.value = selectedDifficulty.value
+  game.startGame()
   showSetup.value = false
 }
 
 function goBack() {
-  game.resetSession()
   game.reset()
   router.push('/snake')
 }
@@ -79,33 +80,65 @@ function restart() {
 </script>
 
 <template>
-  <div class="local-page">
+  <div class="ai-page">
     <header class="top-bar">
       <button class="btn back" @click="goBack">← 返回</button>
-      <h2>🐍 本地双人对战</h2>
+      <h2>🤖 人机对战</h2>
       <div />
     </header>
 
     <!-- 设置界面 -->
     <div v-if="showSetup" class="setup-area">
       <div class="setup-card">
-        <h3>输入玩家昵称</h3>
-        <div class="name-row">
-          <div class="name-group">
-            <span class="player-dot" style="background: #4caf50" />
-            <span class="player-label">玩家1（WASD）</span>
-            <input v-model="p1Name" placeholder="玩家1" maxlength="8" class="name-input" />
+        <h3>选择难度</h3>
+
+        <div class="diff-options">
+          <button
+            v-for="opt in difficultyOptions"
+            :key="opt.key"
+            class="diff-btn"
+            :class="{ active: selectedDifficulty === opt.key }"
+            :style="{
+              '--active-color': opt.color,
+              borderColor: selectedDifficulty === opt.key ? opt.color : 'rgba(255,255,255,0.1)',
+            }"
+            @click="selectedDifficulty = opt.key"
+          >
+            <span class="diff-label">{{ opt.label }}</span>
+            <span class="diff-desc">{{ opt.desc }}</span>
+          </button>
+        </div>
+
+        <div class="player-badge">
+          <div class="badge-item">
+            <span class="badge-dot" style="background: #4caf50" />
+            <div>
+              <div class="badge-title">你</div>
+              <div class="badge-sub">
+                <template v-if="isMobile">触屏摇杆控制</template>
+                <template v-else>WASD 控制</template>
+              </div>
+            </div>
           </div>
-          <div class="name-group">
-            <span class="player-dot" style="background: #f44336" />
-            <span class="player-label">玩家2（方向键）</span>
-            <input v-model="p2Name" placeholder="玩家2" maxlength="8" class="name-input" />
+          <div class="badge-divider">VS</div>
+          <div class="badge-item">
+            <span class="badge-dot" style="background: #f44336" />
+            <div>
+              <div class="badge-title">AI</div>
+              <div class="badge-sub">{{ difficultyOptions.find(d => d.key === selectedDifficulty)?.label }}难度</div>
+            </div>
           </div>
         </div>
-        <button class="start-btn" @click="startLocalGame">⚡ 开始对战</button>
+
+        <button class="start-btn" @click="startAiGame">⚡ 开始对战</button>
+
         <div class="controls-hint">
-          <p>🎮 玩家1：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 控制方向</p>
-          <p>🎮 玩家2：<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> 控制方向</p>
+          <template v-if="isMobile">
+            <p>🖐️ 使用屏幕下方的摇杆控制方向</p>
+          </template>
+          <template v-else>
+            <p>🎮 你：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 控制方向</p>
+          </template>
         </div>
       </div>
     </div>
@@ -119,13 +152,16 @@ function restart() {
       <div class="hud-row">
         <div class="player-hud" :class="{ dead: !game.state.snakes[0]?.alive }">
           <span class="dot" style="background: #4caf50" />
-          <span class="pname">{{ p1Name || '玩家1' }}</span>
+          <span class="pname">你</span>
           <span class="health">❤️ {{ game.state.snakes[0]?.health || 0 }}</span>
           <span class="len">📏 {{ game.state.snakes[0]?.length || 0 }}</span>
         </div>
         <div class="player-hud" :class="{ dead: !game.state.snakes[1]?.alive }">
           <span class="dot" style="background: #f44336" />
-          <span class="pname">{{ p2Name || '玩家2' }}</span>
+          <span class="pname">
+            AI
+            <span class="diff-tag">{{ difficultyOptions.find(d => d.key === selectedDifficulty)?.label }}</span>
+          </span>
           <span class="health">❤️ {{ game.state.snakes[1]?.health || 0 }}</span>
           <span class="len">📏 {{ game.state.snakes[1]?.length || 0 }}</span>
         </div>
@@ -135,20 +171,21 @@ function restart() {
         <SnakeCanvas
           :snakes="game.state.snakes"
           :items="game.state.items"
-          :my-player-id="null"
+          :my-player-id="game.HUMAN_ID"
           :canvas-width="canvasWidth"
           :invincible-timers="game.invincibleTimers"
         />
+      </div>
+
+      <!-- 移动端摇杆 -->
+      <div v-if="isMobile && game.state.status === 'playing'" class="joystick-area">
+        <SnakeTouchControl @direction="onJoystickDir" />
       </div>
 
       <SnakeResultModal
         :visible="game.state.status === 'finished'"
         :winner-name="game.state.winnerName"
         :stats="game.state.stats"
-        :p1-wins="game.p1Wins.value"
-        :p2-wins="game.p2Wins.value"
-        :p1-name="p1Name || '玩家1'"
-        :p2-name="p2Name || '玩家2'"
         :on-restart="restart"
         :on-back="goBack"
       />
@@ -157,8 +194,9 @@ function restart() {
 </template>
 
 <style scoped>
-.local-page {
+.ai-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background: #0f0f23;
   color: #e0e0e0;
   display: flex;
@@ -171,6 +209,7 @@ function restart() {
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 .top-bar h2 {
   font-size: 16px;
@@ -209,41 +248,81 @@ function restart() {
   font-size: 18px;
   margin-bottom: 20px;
 }
-.name-row {
+
+.diff-options {
   display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 24px;
 }
-.name-group {
+.diff-btn {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.player-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.player-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-}
-.name-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
+.diff-btn:hover {
   background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+}
+.diff-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 20px rgba(var(--active-color), 0.15);
+  transform: translateY(-2px);
+}
+.diff-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+.diff-desc {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.player-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+}
+.badge-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.badge-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.badge-title {
   font-size: 14px;
-  outline: none;
-  box-sizing: border-box;
+  font-weight: 600;
 }
-.name-input:focus {
-  border-color: #6366f1;
+.badge-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
 }
+.badge-divider {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 700;
+}
+
 .start-btn {
   width: 100%;
   padding: 14px;
@@ -279,6 +358,7 @@ function restart() {
   align-items: center;
   padding: 8px;
   gap: 8px;
+  overflow: hidden;
 }
 .countdown-overlay {
   position: fixed;
@@ -312,6 +392,7 @@ function restart() {
   gap: 16px;
   width: 100%;
   max-width: 520px;
+  flex-shrink: 0;
 }
 .player-hud {
   display: flex;
@@ -336,6 +417,17 @@ function restart() {
 .pname {
   flex: 1;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.diff-tag {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
 }
 .health {
   color: #ef5350;
@@ -349,5 +441,13 @@ function restart() {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 0;
+}
+
+.joystick-area {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
 }
 </style>

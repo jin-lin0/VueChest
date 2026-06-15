@@ -103,10 +103,22 @@ const router = createRouter({
       meta: { title: '上传应用', requiresAuth: true },
     },
     {
+      path: '/snake',
+      name: 'snake',
+      component: () => import('../views/SnakeGameLobby.vue'),
+      meta: { title: '贪吃蛇' },
+    },
+    {
       path: '/snake/local',
       name: 'snake-local',
       component: () => import('../views/SnakeBattleLocal.vue'),
       meta: { title: '贪吃蛇 · 本地对战' },
+    },
+    {
+      path: '/snake/ai',
+      name: 'snake-ai',
+      component: () => import('../views/SnakeBattleAi.vue'),
+      meta: { title: '贪吃蛇 · 人机对战' },
     },
     {
       path: '/login',
