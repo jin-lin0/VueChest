@@ -15,7 +15,7 @@
         <span class="search-icon">🔍</span>
         <input
           v-model="searchKeyword"
-          placeholder="搜索标题、内容..."
+          placeholder="搜索题目..."
           class="search-input"
         />
         <button v-if="searchKeyword" class="search-clear" @click="searchKeyword = ''">&times;</button>
@@ -76,10 +76,6 @@
               </div>
             </div>
             <div v-if="expandedIds.includes(question.id)" class="row-detail" @click.stop>
-              <div class="detail-section">
-                <strong>题目：</strong>
-                <p>{{ question.content }}</p>
-              </div>
               <div v-if="question.analysis" class="detail-section">
                 <strong>解析：</strong>
                 <p>{{ question.analysis }}</p>
@@ -121,12 +117,6 @@
               <label>题目标题 <span class="required">*</span></label>
               <input v-model="formData.title" class="form-input" :class="{ 'input-error': errors.title }" placeholder="输入标题" />
               <span v-if="errors.title" class="error-text">{{ errors.title }}</span>
-            </div>
-
-            <div class="form-group">
-              <label>题目内容 <span class="required">*</span></label>
-              <textarea v-model="formData.content" class="form-textarea" :class="{ 'input-error': errors.content }" rows="4" placeholder="输入题目内容"></textarea>
-              <span v-if="errors.content" class="error-text">{{ errors.content }}</span>
             </div>
 
             <div class="form-group">
@@ -192,7 +182,6 @@ import { api } from '@/utils/request'
 interface Question {
   id: number
   title: string
-  content: string
   answer: string
   analysis?: string
   difficulty: 'easy' | 'medium' | 'hard'
@@ -230,7 +219,6 @@ const showModal = ref(false)
 const editingQuestion = ref<Question | null>(null)
 const formData = ref({
   title: '',
-  content: '',
   answer: '',
   analysis: '',
   difficulty: 'medium' as 'easy' | 'medium' | 'hard',
@@ -334,7 +322,6 @@ function difficultyText(difficulty: string) {
 function validate(): boolean {
   const errs: Record<string, string> = {}
   if (!formData.value.title.trim()) errs.title = '请输入标题'
-  if (!formData.value.content.trim()) errs.content = '请输入内容'
   if (!formData.value.answer.trim()) errs.answer = '请输入答案'
   if (formData.value.categoryId === null) errs.categoryId = '请选择分类'
   errors.value = errs
@@ -343,7 +330,7 @@ function validate(): boolean {
 
 function showCreateModal() {
   editingQuestion.value = null
-  formData.value = { title: '', content: '', answer: '', analysis: '', difficulty: 'medium', categoryId: null, tags: [] }
+  formData.value = { title: '', answer: '', analysis: '', difficulty: 'medium', categoryId: null, tags: [] }
   tagsInput.value = ''
   errors.value = {}
   showModal.value = true
@@ -351,7 +338,7 @@ function showCreateModal() {
 
 function showEditModal(question: Question) {
   editingQuestion.value = question
-  formData.value = { title: question.title, content: question.content, answer: question.answer, analysis: question.analysis || '', difficulty: question.difficulty, categoryId: question.categoryId, tags: question.tags || [] }
+  formData.value = { title: question.title, answer: question.answer, analysis: question.analysis || '', difficulty: question.difficulty, categoryId: question.categoryId, tags: question.tags || [] }
   tagsInput.value = (question.tags || []).join(', ')
   errors.value = {}
   showModal.value = true

@@ -77,7 +77,6 @@
             <span class="category-tag">{{ getCategoryName(question.categoryId) }}</span>
           </div>
           <h3 class="question-title">{{ question.title }}</h3>
-          <p class="question-preview">{{ question.content }}</p>
           <div class="card-footer">
             <span class="practiced-status" v-if="practicedIds.has(question.id)"> ✓ 已练习 </span>
             <span class="click-hint">点击查看 →</span>
@@ -117,10 +116,6 @@
         </div>
 
         <h2 class="detail-title">{{ currentQuestion.title }}</h2>
-        <div class="detail-content">
-          <h4>题目：</h4>
-          <p>{{ currentQuestion.content }}</p>
-        </div>
 
         <div class="answer-section" v-if="showAnswer">
           <h4>答案：</h4>
@@ -185,7 +180,6 @@ interface Category {
 interface Question {
   id: number
   title: string
-  content: string
   options: string[] | null
   answer: string
   analysis: string
@@ -728,16 +722,6 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.question-preview {
-  color: #666;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 .card-footer {
   display: flex;
   justify-content: space-between;
@@ -847,20 +831,6 @@ onMounted(() => {
   color: #1a1a1a;
   margin-bottom: 20px;
   line-height: 1.4;
-}
-
-.detail-content {
-  margin-bottom: 20px;
-}
-
-.detail-content h4 {
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.detail-content p {
-  color: #555;
-  line-height: 1.8;
 }
 
 .answer-section {
