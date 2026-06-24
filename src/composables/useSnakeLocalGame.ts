@@ -213,7 +213,7 @@ export function useSnakeLocalGame() {
       if (invincible) {
         // 无敌状态：可以穿越障碍物，正常移动
         // 穿墙时从另一侧出现
-        let wrappedHead = { ...newHead }
+        const wrappedHead = { ...newHead }
         if (wrappedHead.x < 0) wrappedHead.x = BOARD_SIZE - 1
         if (wrappedHead.x >= BOARD_SIZE) wrappedHead.x = 0
         if (wrappedHead.y < 0) wrappedHead.y = BOARD_SIZE - 1

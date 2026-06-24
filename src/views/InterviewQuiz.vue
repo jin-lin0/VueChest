@@ -36,6 +36,7 @@
           placeholder="搜索面试题..."
           class="search-input"
           @input="handleSearch"
+          @keydown.enter="handleSearchImmediate"
         />
         <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">✕</button>
       </div>
@@ -117,6 +118,28 @@
 
         <h2 class="detail-title">{{ currentQuestion.title }}</h2>
 
+        <!-- 选择题选项 -->
+        <div v-if="currentQuestion.options?.length" class="options-section">
+          <div
+            v-for="(opt, idx) in currentQuestion.options"
+            :key="idx"
+            class="option-item"
+            :class="{
+              'option-selected': selectedAnswer === opt,
+              'option-reveal': showAnswer,
+            }"
+            @click="selectOption(opt)"
+          >
+            <span class="option-marker">{{ String.fromCharCode(65 + idx) }}</span>
+            <span class="option-text">{{ opt }}</span>
+          </div>
+        </div>
+
+        <div v-if="randomLoading" class="loading loading-detail">
+          <div class="spinner"></div>
+          <p>随机抽题中...</p>
+        </div>
+
         <div class="answer-section" v-if="showAnswer">
           <h4>答案：</h4>
           <div class="answer-content" v-html="formatAnswer(currentQuestion.answer)"></div>
@@ -128,7 +151,7 @@
         </div>
 
         <div class="detail-actions">
-          <button class="btn btn-primary" @click="showAnswer = !showAnswer">
+          <button class="btn btn-primary" @click="toggleAnswer">
             {{ showAnswer ? '隐藏答案' : '显示答案' }}
           </button>
           <button
@@ -138,7 +161,9 @@
           >
             {{ masteredIds.has(currentQuestion.id) ? '已掌握 ✓' : '标记掌握' }}
           </button>
-          <button class="btn btn-outline" @click="randomQuiz">🎲 下一题</button>
+          <button class="btn btn-outline" :disabled="randomLoading" @click="randomQuiz">
+            🎲 下一题
+          </button>
         </div>
       </div>
     </div>
@@ -153,6 +178,8 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import CustomSelect from '@/components/CustomSelect.vue'
 import type { SelectOption } from '@/components/CustomSelect.vue'
+import type { Question, Category } from '@/types/interview'
+import { api } from '@/utils/request'
 
 const router = useRouter()
 
@@ -170,25 +197,6 @@ renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
 }
 
 marked.use({ renderer })
-
-interface Category {
-  id: number
-  name: string
-  description: string
-}
-
-interface Question {
-  id: number
-  title: string
-  options: string[] | null
-  answer: string
-  analysis: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  categoryId: number
-  tags: string[]
-}
-
-import { api } from '@/utils/request'
 
 // 下拉选项
 const categoryOptions = ref<SelectOption[]>([])
@@ -210,8 +218,10 @@ const questions = ref<Question[]>([])
 const categories = ref<Category[]>([])
 const currentQuestion = ref<Question>({} as Question)
 const loading = ref(false)
+const randomLoading = ref(false)
 const showDetail = ref(false)
 const showAnswer = ref(false)
+const selectedAnswer = ref<string | null>(null)
 const selectedCategory = ref('')
 const selectedDifficulty = ref('')
 const selectedStatus = ref('')
@@ -245,6 +255,13 @@ const handleSearch = () => {
     currentPage.value = 1
     fetchQuestions()
   }, 300)
+}
+
+// 立即搜索（Enter 键）
+const handleSearchImmediate = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  currentPage.value = 1
+  fetchQuestions()
 }
 
 // 清除搜索
@@ -331,7 +348,10 @@ const fetchQuestions = async () => {
       const currentHash = params.toString()
       if (currentHash !== cachedParamsHash) {
         cachedParamsHash = currentHash
-        const data = await api.get<{ questions: Question[]; total: number }>(`/api/questions?${params}`, { auth: false })
+        const data = await api.get<{ questions: Question[]; total: number }>(
+          `/api/questions?${params}`,
+          { auth: false },
+        )
         cachedAll.value = data.questions
         stats.value.totalQuestions = data.total
       }
@@ -362,7 +382,10 @@ const fetchQuestions = async () => {
       if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
       if (searchKeyword.value) params.append('keyword', searchKeyword.value)
 
-      const data = await api.get<{ questions: Question[]; total: number; totalPages: number }>(`/api/questions?${params}`, { auth: false })
+      const data = await api.get<{ questions: Question[]; total: number; totalPages: number }>(
+        `/api/questions?${params}`,
+        { auth: false },
+      )
       questions.value = data.questions
       stats.value.totalQuestions = data.total
       totalPages.value = data.totalPages
@@ -376,7 +399,10 @@ const fetchQuestions = async () => {
 
 // 随机抽题
 const randomQuiz = async () => {
-  loading.value = true
+  randomLoading.value = true
+  showDetail.value = true
+  showAnswer.value = false
+  selectedAnswer.value = null
   try {
     const params = new URLSearchParams()
     if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
@@ -385,8 +411,6 @@ const randomQuiz = async () => {
     const data = await api.get<Question[]>(`/api/questions/random/1?${params}`, { auth: false })
     if (data && data.length > 0) {
       currentQuestion.value = data[0]
-      showDetail.value = true
-      showAnswer.value = false
       // 标记为已练习
       practicedIds.value.add(data[0].id)
       saveLocalState()
@@ -394,7 +418,7 @@ const randomQuiz = async () => {
   } catch (e) {
     console.error('随机抽题失败:', e)
   } finally {
-    loading.value = false
+    randomLoading.value = false
   }
 }
 
@@ -408,9 +432,24 @@ const showQuestionDetail = (question: Question) => {
   saveLocalState()
 }
 
+// 选择选项
+const selectOption = (opt: string) => {
+  selectedAnswer.value = opt
+  showAnswer.value = true
+}
+
+// 切换答案显示
+const toggleAnswer = () => {
+  showAnswer.value = !showAnswer.value
+  if (!showAnswer.value) {
+    selectedAnswer.value = null
+  }
+}
+
 // 关闭详情
 const closeDetail = () => {
   showDetail.value = false
+  selectedAnswer.value = null
 }
 
 // 切换掌握状态
@@ -461,6 +500,7 @@ const updateStats = () => {
 // 监听筛选条件变化
 watch([selectedCategory, selectedDifficulty, selectedStatus], () => {
   currentPage.value = 1
+  selectedAnswer.value = null
   fetchQuestions()
 })
 
@@ -1005,6 +1045,76 @@ onMounted(() => {
   100% {
     transform: rotate(360deg);
   }
+}
+
+.loading-detail {
+  padding: 30px 0 !important;
+}
+
+/* 选项样式 */
+.options-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background: white;
+}
+
+.option-item:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  transform: translateX(4px);
+}
+
+.option-item.option-selected {
+  border-color: #667eea;
+  background: #eef1ff;
+}
+
+.option-item.option-reveal.option-selected {
+  border-color: #38ef7d;
+  background: #e6f9e6;
+}
+
+.option-marker {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.option-item.option-selected .option-marker {
+  background: #667eea;
+  color: white;
+}
+
+.option-item.option-reveal.option-selected .option-marker {
+  background: #38ef7d;
+  color: white;
+}
+
+.option-text {
+  font-size: 0.95rem;
+  color: #333;
+  line-height: 1.5;
 }
 
 /* 响应式 */

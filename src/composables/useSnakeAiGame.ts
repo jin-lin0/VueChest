@@ -205,7 +205,7 @@ export function useSnakeAiGame() {
 
     if (hasCollision) {
       if (invincible) {
-        let wrappedHead = { ...newHead }
+        const wrappedHead = { ...newHead }
         if (wrappedHead.x < 0) wrappedHead.x = BOARD_SIZE - 1
         if (wrappedHead.x >= BOARD_SIZE) wrappedHead.x = 0
         if (wrappedHead.y < 0) wrappedHead.y = BOARD_SIZE - 1

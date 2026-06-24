@@ -17,19 +17,22 @@
           v-model="searchKeyword"
           placeholder="搜索题目..."
           class="search-input"
+          @input="triggerSearch"
         />
-        <button v-if="searchKeyword" class="search-clear" @click="searchKeyword = ''">&times;</button>
+        <button v-if="searchKeyword" class="search-clear" @click="searchKeyword = ''; triggerSearch()">&times;</button>
       </div>
-      <select v-model="selectedCategory" class="select-input">
-        <option value="">全部类别</option>
-        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-      </select>
-      <select v-model="selectedDifficulty" class="select-input">
-        <option value="">全部难度</option>
-        <option value="easy">简单</option>
-        <option value="medium">中等</option>
-        <option value="hard">困难</option>
-      </select>
+      <CustomSelect
+        :model-value="selectedCategory"
+        :options="categoryFilterOptions"
+        placeholder="全部类别"
+        @update:model-value="onFilterCategoryChange"
+      />
+      <CustomSelect
+        :model-value="selectedDifficulty"
+        :options="difficultyFilterOptions"
+        placeholder="全部难度"
+        @update:model-value="onFilterDifficultyChange"
+      />
     </div>
 
     <!-- 批量操作 -->
@@ -120,6 +123,22 @@
             </div>
 
             <div class="form-group">
+              <label>题目类型 <span class="required">*</span></label>
+              <div class="type-toggle">
+                <button
+                  class="type-btn"
+                  :class="{ active: questionType === 'text' }"
+                  @click="questionType = 'text'"
+                >📝 问答题</button>
+                <button
+                  class="type-btn"
+                  :class="{ active: questionType === 'choice' }"
+                  @click="questionType = 'choice'"
+                >🔘 选择题</button>
+              </div>
+            </div>
+
+            <div class="form-group">
               <label>答案 (Markdown) <span class="required">*</span></label>
               <textarea v-model="formData.answer" class="form-textarea" :class="{ 'input-error': errors.answer }" rows="6" placeholder="支持 Markdown 格式"></textarea>
               <span v-if="errors.answer" class="error-text">{{ errors.answer }}</span>
@@ -128,6 +147,12 @@
             <div class="form-group">
               <label>解析</label>
               <textarea v-model="formData.analysis" class="form-textarea" rows="3" placeholder="可选"></textarea>
+            </div>
+
+            <div class="form-group" v-if="questionType === 'choice'">
+              <label>选择题选项 (每行一个) <span class="required">*</span></label>
+              <textarea v-model="formData.options" class="form-textarea" :class="{ 'input-error': errors.options }" rows="4" placeholder="每行一个选项"></textarea>
+              <span v-if="errors.options" class="error-text">{{ errors.options }}</span>
             </div>
 
             <div class="form-row">
@@ -145,7 +170,7 @@
                 <label>难度 <span class="required">*</span></label>
                 <CustomSelect
                   :model-value="formData.difficulty"
-                  :options="difficultyOptions"
+                  :options="formDifficultyOptions"
                   placeholder="请选择难度"
                   @update:model-value="onDifficultyChange"
                 />
@@ -177,23 +202,9 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { marked } from 'marked'
 import Toast from '@/components/Toast.vue'
 import CustomSelect from '@/components/CustomSelect.vue'
+import type { SelectOption } from '@/components/CustomSelect.vue'
+import type { Question, Category, Difficulty } from '@/types/interview'
 import { api } from '@/utils/request'
-
-interface Question {
-  id: number
-  title: string
-  answer: string
-  analysis?: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  categoryId: number
-  tags?: string[]
-  createdAt: string
-}
-
-interface Category {
-  id: number
-  name: string
-}
 
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
@@ -217,22 +228,36 @@ const selectedIds = ref<number[]>([])
 
 const showModal = ref(false)
 const editingQuestion = ref<Question | null>(null)
+const questionType = ref<'text' | 'choice'>('text')
 const formData = ref({
   title: '',
   answer: '',
   analysis: '',
-  difficulty: 'medium' as 'easy' | 'medium' | 'hard',
+  options: '',
+  difficulty: 'medium' as Difficulty,
   categoryId: null as number | null,
   tags: [] as string[],
 })
 const tagsInput = ref('')
 const errors = ref<Record<string, string>>({})
 
-const categoryOptions = computed(() =>
+const categoryOptions = computed<SelectOption[]>(() =>
   categories.value.map((c) => ({ value: c.id, label: c.name }))
 )
 
-const difficultyOptions = [
+const categoryFilterOptions = computed<SelectOption[]>(() => [
+  { value: '', label: '全部类别' },
+  ...categoryOptions.value,
+])
+
+const difficultyFilterOptions: SelectOption[] = [
+  { value: '', label: '全部难度' },
+  { value: 'easy', label: '简单' },
+  { value: 'medium', label: '中等' },
+  { value: 'hard', label: '困难' },
+]
+
+const formDifficultyOptions: SelectOption[] = [
   { value: 'easy', label: '简单' },
   { value: 'medium', label: '中等' },
   { value: 'hard', label: '困难' },
@@ -251,17 +276,37 @@ function onCategoryChange(val: string | number) {
 }
 
 function onDifficultyChange(val: string | number) {
-  formData.value.difficulty = val as 'easy' | 'medium' | 'hard'
+  formData.value.difficulty = val as Difficulty
 }
+
+function onFilterCategoryChange(val: string | number) {
+  selectedCategory.value = val === '' ? '' : (val as number)
+}
+
+function onFilterDifficultyChange(val: string | number) {
+  selectedDifficulty.value = val as string
+}
+
+let searchTimer: ReturnType<typeof setTimeout>
+
+function triggerSearch() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    currentPage.value = 1
+    fetchQuestions()
+  }, 400)
+}
+
+watch([searchKeyword, selectedCategory, selectedDifficulty], () => {
+  triggerSearch()
+})
+
+watch(currentPage, () => {
+  fetchQuestions()
+})
 
 onMounted(async () => {
   await Promise.all([fetchCategories(), fetchQuestions()])
-})
-
-let searchTimer: ReturnType<typeof setTimeout>
-watch([searchKeyword, selectedCategory, selectedDifficulty, currentPage], () => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => fetchQuestions(), searchKeyword.value ? 400 : 0)
 })
 
 async function fetchCategories() {
@@ -324,13 +369,17 @@ function validate(): boolean {
   if (!formData.value.title.trim()) errs.title = '请输入标题'
   if (!formData.value.answer.trim()) errs.answer = '请输入答案'
   if (formData.value.categoryId === null) errs.categoryId = '请选择分类'
+  if (questionType.value === 'choice' && !formData.value.options.trim()) {
+    errs.options = '请填写选择题选项'
+  }
   errors.value = errs
   return Object.keys(errs).length === 0
 }
 
 function showCreateModal() {
   editingQuestion.value = null
-  formData.value = { title: '', answer: '', analysis: '', difficulty: 'medium', categoryId: null, tags: [] }
+  questionType.value = 'text'
+  formData.value = { title: '', answer: '', analysis: '', options: '', difficulty: 'medium', categoryId: null, tags: [] }
   tagsInput.value = ''
   errors.value = {}
   showModal.value = true
@@ -338,7 +387,16 @@ function showCreateModal() {
 
 function showEditModal(question: Question) {
   editingQuestion.value = question
-  formData.value = { title: question.title, answer: question.answer, analysis: question.analysis || '', difficulty: question.difficulty, categoryId: question.categoryId, tags: question.tags || [] }
+  questionType.value = question.options?.length ? 'choice' : 'text'
+  formData.value = {
+    title: question.title,
+    answer: question.answer,
+    analysis: question.analysis || '',
+    options: (question.options || []).join('\n'),
+    difficulty: question.difficulty,
+    categoryId: question.categoryId,
+    tags: question.tags || [],
+  }
   tagsInput.value = (question.tags || []).join(', ')
   errors.value = {}
   showModal.value = true
@@ -347,7 +405,20 @@ function showEditModal(question: Question) {
 async function saveQuestion() {
   if (!validate()) return
   saving.value = true
-  const data: Record<string, unknown> = { ...formData.value }
+  const data: Record<string, unknown> = {
+    title: formData.value.title,
+    answer: formData.value.answer,
+    analysis: formData.value.analysis,
+    difficulty: formData.value.difficulty,
+    categoryId: formData.value.categoryId,
+  }
+  // 解析选项（每行一个）
+  if (questionType.value === 'choice') {
+    data.options = formData.value.options.split('\n').map((o) => o.trim()).filter(Boolean)
+  } else {
+    data.options = null
+  }
+  // 解析标签
   if (tagsInput.value) {
     data.tags = tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean)
   } else {
@@ -472,22 +543,6 @@ async function batchDelete() {
   cursor: pointer;
   color: #9ca3af;
   line-height: 1;
-}
-
-.select-input {
-  padding: 9px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 13px;
-  outline: none;
-  background: white;
-  min-width: 100px;
-  cursor: pointer;
-}
-
-.select-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 /* Batch */
@@ -883,6 +938,36 @@ async function batchDelete() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+/* Type toggle */
+.type-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.type-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+
+.type-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.type-btn.active {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
 }
 
 .loading-spinner-sm {

@@ -140,16 +140,22 @@ function getQuestionCount(category: Category) {
 
 function getCategoryEmoji(name: string) {
   const emojiMap: Record<string, string> = {
-    JavaScript: '🟨',
-    TypeScript: '🔷',
-    Vue: '💚',
-    React: '⚛️',
-    CSS: '🎨',
-    HTML: '🌐',
-    Node: '🟢',
-    Git: '🔀',
-    Webpack: '📦',
-    Vite: '⚡',
+    'JavaScript基础': '🟨',
+    'JavaScript': '🟨',
+    'Vue.js': '💚',
+    'Vue': '💚',
+    'CSS/HTML': '🎨',
+    'CSS': '🎨',
+    'HTML': '🌐',
+    'React': '⚛️',
+    '网络与性能优化': '🚀',
+    'TypeScript': '🔷',
+    '工程化与工具': '🛠️',
+    '算法与数据结构': '🧮',
+    'Node': '🟢',
+    'Git': '🔀',
+    'Webpack': '📦',
+    'Vite': '⚡',
   }
   return emojiMap[name] || '📁'
 }
