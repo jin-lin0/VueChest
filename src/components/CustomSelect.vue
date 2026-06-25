@@ -30,14 +30,14 @@
             :key="option.value"
             class="option-item"
             :class="{
-              selected: modelValue === option.value,
+              selected: model === option.value,
               disabled: option.disabled
             }"
             @click="selectOption(option)"
           >
             <span class="option-icon" v-if="option.icon">{{ option.icon }}</span>
             <span class="option-label">{{ option.label }}</span>
-            <span class="option-check" v-if="modelValue === option.value">
+            <span class="option-check" v-if="model === option.value">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M4 8L7 11L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch, watchEffect } from 'vue'
 
 export interface SelectOption {
   value: string | number
@@ -62,22 +62,22 @@ export interface SelectOption {
   disabled?: boolean
 }
 
-interface Props {
-  modelValue: string | number
+const model = defineModel<string | number | null>({ default: null })
+
+const props = withDefaults(defineProps<{
   options: SelectOption[]
   placeholder?: string
   disabled?: boolean
   searchable?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
+  defaultFirst?: boolean
+}>(), {
   placeholder: '请选择',
   disabled: false,
   searchable: false,
+  defaultFirst: false,
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string | number]
   change: [value: string | number]
 }>()
 
@@ -87,7 +87,8 @@ const isOpen = ref(false)
 const searchQuery = ref('')
 
 const selectedOption = computed(() => {
-  return props.options.find(opt => opt.value === props.modelValue)
+  if (model.value === null || model.value === undefined) return undefined
+  return props.options.find(opt => opt.value === model.value)
 })
 
 const filteredOptions = computed(() => {
@@ -111,7 +112,7 @@ const toggleDropdown = () => {
 
 const selectOption = (option: SelectOption) => {
   if (option.disabled) return
-  emit('update:modelValue', option.value)
+  model.value = option.value
   emit('change', option.value)
   isOpen.value = false
   searchQuery.value = ''
@@ -130,6 +131,12 @@ watch(isOpen, (val) => {
   } else {
     document.removeEventListener('click', handleClickOutside)
     searchQuery.value = ''
+  }
+})
+
+watchEffect(() => {
+  if (props.defaultFirst && model.value == null && props.options.length > 0) {
+    model.value = (props.options.find(o => !o.disabled) ?? props.options[0]).value
   }
 })
 

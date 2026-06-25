@@ -148,6 +148,18 @@ const router = createRouter({
           meta: { title: '问题管理' },
         },
         {
+          path: 'questions/create',
+          name: 'admin-question-create',
+          component: () => import('../views/admin/QuestionEditor.vue'),
+          meta: { title: '新建题目' },
+        },
+        {
+          path: 'questions/:id/edit',
+          name: 'admin-question-edit',
+          component: () => import('../views/admin/QuestionEditor.vue'),
+          meta: { title: '编辑题目' },
+        },
+        {
           path: 'categories',
           name: 'admin-categories',
           component: () => import('../views/admin/CategoryManagement.vue'),

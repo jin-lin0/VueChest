@@ -5,7 +5,7 @@
         <h1>📚 题目管理</h1>
         <p class="page-desc">共 {{ total }} 道题目</p>
       </div>
-      <button class="btn-primary" @click="showCreateModal">
+      <button class="btn-primary" @click="goCreate">
         <span class="btn-icon">+</span> 新建题目
       </button>
     </div>
@@ -22,16 +22,14 @@
         <button v-if="searchKeyword" class="search-clear" @click="searchKeyword = ''; triggerSearch()">&times;</button>
       </div>
       <CustomSelect
-        :model-value="selectedCategory"
+        v-model="selectedCategory"
         :options="categoryFilterOptions"
         placeholder="全部类别"
-        @update:model-value="onFilterCategoryChange"
       />
       <CustomSelect
-        :model-value="selectedDifficulty"
+        v-model="selectedDifficulty"
         :options="difficultyFilterOptions"
         placeholder="全部难度"
-        @update:model-value="onFilterDifficultyChange"
       />
     </div>
 
@@ -52,7 +50,7 @@
     <div v-else-if="questions.length === 0" class="empty-state">
       <span class="empty-icon">📭</span>
       <p>暂无题目</p>
-      <button class="btn-primary" @click="showCreateModal">创建第一道题目</button>
+      <button class="btn-primary" @click="goCreate">创建第一道题目</button>
     </div>
 
     <!-- 题目列表（紧凑） -->
@@ -90,7 +88,7 @@
             </div>
           </div>
           <div class="row-actions" @click.stop>
-            <button class="btn-text" @click="showEditModal(question)">✏️</button>
+            <button class="btn-text" @click="goEdit(question)">✏️</button>
             <button class="btn-text-danger" @click="confirmDelete(question)">🗑️</button>
           </div>
         </div>
@@ -107,105 +105,21 @@
       <span class="page-info">{{ totalPages }} 页 / {{ total }} 题</span>
     </div>
 
-    <!-- 创建/编辑弹窗 -->
-    <transition name="modal">
-      <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>{{ editingQuestion ? '✏️ 编辑题目' : '📝 新建题目' }}</h2>
-            <button class="close-btn" @click="showModal = false">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>题目标题 <span class="required">*</span></label>
-              <input v-model="formData.title" class="form-input" :class="{ 'input-error': errors.title }" placeholder="输入标题" />
-              <span v-if="errors.title" class="error-text">{{ errors.title }}</span>
-            </div>
-
-            <div class="form-group">
-              <label>题目类型 <span class="required">*</span></label>
-              <div class="type-toggle">
-                <button
-                  class="type-btn"
-                  :class="{ active: questionType === 'text' }"
-                  @click="questionType = 'text'"
-                >📝 问答题</button>
-                <button
-                  class="type-btn"
-                  :class="{ active: questionType === 'choice' }"
-                  @click="questionType = 'choice'"
-                >🔘 选择题</button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>答案 (Markdown) <span class="required">*</span></label>
-              <textarea v-model="formData.answer" class="form-textarea" :class="{ 'input-error': errors.answer }" rows="6" placeholder="支持 Markdown 格式"></textarea>
-              <span v-if="errors.answer" class="error-text">{{ errors.answer }}</span>
-            </div>
-
-            <div class="form-group">
-              <label>解析</label>
-              <textarea v-model="formData.analysis" class="form-textarea" rows="3" placeholder="可选"></textarea>
-            </div>
-
-            <div class="form-group" v-if="questionType === 'choice'">
-              <label>选择题选项 (每行一个) <span class="required">*</span></label>
-              <textarea v-model="formData.options" class="form-textarea" :class="{ 'input-error': errors.options }" rows="4" placeholder="每行一个选项"></textarea>
-              <span v-if="errors.options" class="error-text">{{ errors.options }}</span>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>分类 <span class="required">*</span></label>
-                <CustomSelect
-                  :model-value="formData.categoryId || 0"
-                  :options="categoryOptions"
-                  placeholder="请选择分类"
-                  @update:model-value="onCategoryChange"
-                />
-                <span v-if="errors.categoryId" class="error-text">{{ errors.categoryId }}</span>
-              </div>
-              <div class="form-group">
-                <label>难度 <span class="required">*</span></label>
-                <CustomSelect
-                  :model-value="formData.difficulty"
-                  :options="formDifficultyOptions"
-                  placeholder="请选择难度"
-                  @update:model-value="onDifficultyChange"
-                />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>标签 (逗号分隔)</label>
-              <input v-model="tagsInput" class="form-input" placeholder="如：JavaScript, Vue, 面试" />
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn-secondary" @click="showModal = false">取消</button>
-            <button class="btn-primary" :disabled="saving" @click="saveQuestion">
-              <span v-if="saving" class="loading-spinner-sm"></span>
-              {{ editingQuestion ? '保存' : '创建' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
-
     <Toast ref="toastRef" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { marked } from 'marked'
 import Toast from '@/components/Toast.vue'
 import CustomSelect from '@/components/CustomSelect.vue'
 import type { SelectOption } from '@/components/CustomSelect.vue'
-import type { Question, Category, Difficulty } from '@/types/interview'
+import type { Question, Category } from '@/types/interview'
 import { api } from '@/utils/request'
 
+const router = useRouter()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
   toastRef.value?.addToast(type, message)
@@ -221,43 +135,17 @@ const currentPage = ref(1)
 const total = ref(0)
 const totalPages = ref(1)
 const isLoading = ref(false)
-const saving = ref(false)
 
 const expandedIds = ref<number[]>([])
 const selectedIds = ref<number[]>([])
 
-const showModal = ref(false)
-const editingQuestion = ref<Question | null>(null)
-const questionType = ref<'text' | 'choice'>('text')
-const formData = ref({
-  title: '',
-  answer: '',
-  analysis: '',
-  options: '',
-  difficulty: 'medium' as Difficulty,
-  categoryId: null as number | null,
-  tags: [] as string[],
-})
-const tagsInput = ref('')
-const errors = ref<Record<string, string>>({})
-
-const categoryOptions = computed<SelectOption[]>(() =>
-  categories.value.map((c) => ({ value: c.id, label: c.name }))
-)
-
 const categoryFilterOptions = computed<SelectOption[]>(() => [
   { value: '', label: '全部类别' },
-  ...categoryOptions.value,
+  ...categories.value.map((c) => ({ value: c.id, label: c.name })),
 ])
 
 const difficultyFilterOptions: SelectOption[] = [
   { value: '', label: '全部难度' },
-  { value: 'easy', label: '简单' },
-  { value: 'medium', label: '中等' },
-  { value: 'hard', label: '困难' },
-]
-
-const formDifficultyOptions: SelectOption[] = [
   { value: 'easy', label: '简单' },
   { value: 'medium', label: '中等' },
   { value: 'hard', label: '困难' },
@@ -270,22 +158,6 @@ const visiblePages = computed(() => {
   for (let i = start; i <= end; i++) pages.push(i)
   return pages
 })
-
-function onCategoryChange(val: string | number) {
-  formData.value.categoryId = val === 0 ? null : (val as number)
-}
-
-function onDifficultyChange(val: string | number) {
-  formData.value.difficulty = val as Difficulty
-}
-
-function onFilterCategoryChange(val: string | number) {
-  selectedCategory.value = val === '' ? '' : (val as number)
-}
-
-function onFilterDifficultyChange(val: string | number) {
-  selectedDifficulty.value = val as string
-}
 
 let searchTimer: ReturnType<typeof setTimeout>
 
@@ -364,80 +236,12 @@ function difficultyText(difficulty: string) {
   return map[difficulty as keyof typeof map] || difficulty
 }
 
-function validate(): boolean {
-  const errs: Record<string, string> = {}
-  if (!formData.value.title.trim()) errs.title = '请输入标题'
-  if (!formData.value.answer.trim()) errs.answer = '请输入答案'
-  if (formData.value.categoryId === null) errs.categoryId = '请选择分类'
-  if (questionType.value === 'choice' && !formData.value.options.trim()) {
-    errs.options = '请填写选择题选项'
-  }
-  errors.value = errs
-  return Object.keys(errs).length === 0
+function goCreate() {
+  router.push('/admin/questions/create')
 }
 
-function showCreateModal() {
-  editingQuestion.value = null
-  questionType.value = 'text'
-  formData.value = { title: '', answer: '', analysis: '', options: '', difficulty: 'medium', categoryId: null, tags: [] }
-  tagsInput.value = ''
-  errors.value = {}
-  showModal.value = true
-}
-
-function showEditModal(question: Question) {
-  editingQuestion.value = question
-  questionType.value = question.options?.length ? 'choice' : 'text'
-  formData.value = {
-    title: question.title,
-    answer: question.answer,
-    analysis: question.analysis || '',
-    options: (question.options || []).join('\n'),
-    difficulty: question.difficulty,
-    categoryId: question.categoryId,
-    tags: question.tags || [],
-  }
-  tagsInput.value = (question.tags || []).join(', ')
-  errors.value = {}
-  showModal.value = true
-}
-
-async function saveQuestion() {
-  if (!validate()) return
-  saving.value = true
-  const data: Record<string, unknown> = {
-    title: formData.value.title,
-    answer: formData.value.answer,
-    analysis: formData.value.analysis,
-    difficulty: formData.value.difficulty,
-    categoryId: formData.value.categoryId,
-  }
-  // 解析选项（每行一个）
-  if (questionType.value === 'choice') {
-    data.options = formData.value.options.split('\n').map((o) => o.trim()).filter(Boolean)
-  } else {
-    data.options = null
-  }
-  // 解析标签
-  if (tagsInput.value) {
-    data.tags = tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean)
-  } else {
-    data.tags = []
-  }
-  try {
-    if (editingQuestion.value) {
-      await api.put(`/api/questions/${editingQuestion.value.id}`, data)
-    } else {
-      await api.post('/api/questions', data)
-    }
-    showToast('success', editingQuestion.value ? '已更新' : '已创建')
-    await fetchQuestions()
-    showModal.value = false
-  } catch (e) {
-    showToast('error', e instanceof Error ? e.message : '保存失败')
-  } finally {
-    saving.value = false
-  }
+function goEdit(question: Question) {
+  router.push(`/admin/questions/${question.id}/edit`)
 }
 
 function confirmDelete(question: Question) {
@@ -586,19 +390,6 @@ async function batchDelete() {
 }
 
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.btn-secondary {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-secondary:hover { background: #f3f4f6; border-color: #9ca3af; }
 
 .btn-danger {
   background: #fee2e2;
@@ -833,161 +624,8 @@ async function batchDelete() {
   border-color: transparent;
 }
 
-.page-info { color: #9ca3af; font-size: 12px; margin-left: 4px; }
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 24px;
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 640px;
-  max-height: 85vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h2 { margin: 0; font-size: 18px; }
-
-.close-btn {
-  background: none; border: none; font-size: 24px;
-  cursor: pointer; color: #9ca3af;
-  width: 32px; height: 32px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 6px; transition: all 0.15s;
-}
-
-.close-btn:hover { background: #f3f4f6; color: #374151; }
-
-.modal-body { padding: 20px 24px; }
-.modal-footer {
-  padding: 14px 24px;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.form-group { margin-bottom: 16px; }
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #374151;
-  font-size: 13px;
-}
-
-.required { color: #dc2626; }
-
-.form-input {
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 13px;
-  outline: none;
-  transition: all 0.15s;
-  background: white;
-  box-sizing: border-box;
-}
-
-.form-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
-
-.input-error { border-color: #dc2626; }
-.input-error:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
-
-.error-text { display: block; color: #dc2626; font-size: 11px; margin-top: 3px; }
-
-.form-textarea {
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 13px;
-  font-family: inherit;
-  resize: vertical;
-  outline: none;
-  transition: all 0.15s;
-  background: white;
-  box-sizing: border-box;
-}
-
-.form-textarea:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-/* Type toggle */
-.type-toggle {
-  display: flex;
-  gap: 8px;
-}
-
-.type-btn {
-  flex: 1;
-  padding: 10px 16px;
-  border: 2px solid #d1d5db;
-  border-radius: 8px;
-  background: white;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s;
-  color: #6b7280;
-}
-
-.type-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
-}
-
-.type-btn.active {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.loading-spinner-sm {
-  display: inline-block;
-  width: 14px; height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
 /* Transitions */
 .list-enter-active, .list-leave-active { transition: all 0.2s ease; }
 .list-enter-from { opacity: 0; transform: translateY(6px); }
 .list-leave-to { opacity: 0; transform: translateX(-6px); }
-
-.modal-enter-active { transition: all 0.2s ease; }
-.modal-leave-active { transition: all 0.15s ease; }
-.modal-enter-from { opacity: 0; }
-.modal-enter-from .modal { transform: scale(0.95) translateY(8px); }
-.modal-leave-to { opacity: 0; }
-.modal-leave-to .modal { transform: scale(0.95); }
 </style>

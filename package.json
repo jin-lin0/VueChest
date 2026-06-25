@@ -25,6 +25,7 @@
     "lightweight-charts": "^5.2.0",
     "lunar-javascript": "^1.7.7",
     "marked": "^18.0.4",
+    "md-editor-v3": "^6.5.3",
     "pinia": "^3.0.3",
     "three": "^0.184.0",
     "vue": "^3.5.18",
