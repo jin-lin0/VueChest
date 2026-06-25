@@ -16,22 +16,43 @@
       <div class="editor-sidebar">
         <div class="form-group">
           <label>题目标题 <span class="required">*</span></label>
-          <input v-model="formData.title" :class="{ 'input-error': errors.title }" placeholder="输入题目标题" />
+          <input
+            v-model="formData.title"
+            :class="{ 'input-error': errors.title }"
+            placeholder="输入题目标题"
+          />
           <span v-if="errors.title" class="error-text">{{ errors.title }}</span>
         </div>
 
         <div class="form-group">
           <label>题目类型 <span class="required">*</span></label>
           <div class="type-toggle">
-            <button class="type-btn" :class="{ active: questionType === 'text' }" @click="questionType = 'text'">📝 问答题</button>
-            <button class="type-btn" :class="{ active: questionType === 'choice' }" @click="questionType = 'choice'">🔘 选择题</button>
+            <button
+              class="type-btn"
+              :class="{ active: questionType === 'text' }"
+              @click="questionType = 'text'"
+            >
+              📝 问答题
+            </button>
+            <button
+              class="type-btn"
+              :class="{ active: questionType === 'choice' }"
+              @click="questionType = 'choice'"
+            >
+              🔘 选择题
+            </button>
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label>分类 <span class="required">*</span></label>
-            <CustomSelect v-model="formData.categoryId" :options="categoryOptions" placeholder="请选择分类" default-first />
+            <CustomSelect
+              v-model="formData.categoryId"
+              :options="categoryOptions"
+              placeholder="请选择分类"
+              default-first
+            />
             <span v-if="errors.categoryId" class="error-text">{{ errors.categoryId }}</span>
           </div>
           <div class="form-group">
@@ -46,8 +67,15 @@
         </div>
 
         <div v-if="questionType === 'choice'" class="form-group">
-          <label>选择题选项 <span class="required">*</span> <span class="hint">每行一个</span></label>
-          <textarea v-model="formData.options" :class="{ 'input-error': errors.options }" rows="6" placeholder="A选项&#10;B选项&#10;C选项&#10;D选项"></textarea>
+          <label
+            >选择题选项 <span class="required">*</span> <span class="hint">每行一个</span></label
+          >
+          <textarea
+            v-model="formData.options"
+            :class="{ 'input-error': errors.options }"
+            rows="6"
+            placeholder="A选项&#10;B选项&#10;C选项&#10;D选项"
+          ></textarea>
           <span v-if="errors.options" class="error-text">{{ errors.options }}</span>
         </div>
 
@@ -114,9 +142,22 @@ const formDifficultyOptions: SelectOption[] = [
 import type { ToolbarNames } from 'md-editor-v3'
 
 const toolbars: ToolbarNames[] = [
-  'bold', 'italic', 'strikeThrough', 'title', 'quote', 'code', 'prettier',
-  '-', 'unorderedList', 'orderedList', 'table', 'link', 'image',
-  '-', 'preview', 'fullscreen',
+  'bold',
+  'italic',
+  'strikeThrough',
+  'title',
+  'quote',
+  'code',
+  'prettier',
+  '-',
+  'unorderedList',
+  'orderedList',
+  'table',
+  'link',
+  'image',
+  '-',
+  'preview',
+  'fullscreen',
 ]
 
 onMounted(async () => {
@@ -176,12 +217,18 @@ async function saveQuestion() {
     categoryId: formData.value.categoryId,
   }
   if (questionType.value === 'choice') {
-    data.options = formData.value.options.split('\n').map((o) => o.trim()).filter(Boolean)
+    data.options = formData.value.options
+      .split('\n')
+      .map((o) => o.trim())
+      .filter(Boolean)
   } else {
     data.options = null
   }
   if (tagsInput.value) {
-    data.tags = tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean)
+    data.tags = tagsInput.value
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
   } else {
     data.tags = []
   }
@@ -431,6 +478,8 @@ function goBack() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

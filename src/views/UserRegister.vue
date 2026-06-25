@@ -92,10 +92,11 @@ const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
 
-const isFormValid = computed(() =>
-  username.value.length >= 3 &&
-  password.value.length >= 6 &&
-  password.value === confirmPassword.value
+const isFormValid = computed(
+  () =>
+    username.value.length >= 3 &&
+    password.value.length >= 6 &&
+    password.value === confirmPassword.value,
 )
 
 async function handleRegister() {
@@ -261,7 +262,9 @@ async function syncInitialApps() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .register-footer {

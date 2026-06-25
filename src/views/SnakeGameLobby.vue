@@ -8,8 +8,7 @@ const router = useRouter()
 const isDesktop = ref(true)
 
 onMounted(() => {
-  isDesktop.value =
-    window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 768
+  isDesktop.value = window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 768
 })
 </script>
 

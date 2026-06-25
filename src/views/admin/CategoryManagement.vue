@@ -140,22 +140,22 @@ function getQuestionCount(category: Category) {
 
 function getCategoryEmoji(name: string) {
   const emojiMap: Record<string, string> = {
-    'JavaScript基础': '🟨',
-    'JavaScript': '🟨',
+    JavaScript基础: '🟨',
+    JavaScript: '🟨',
     'Vue.js': '💚',
-    'Vue': '💚',
+    Vue: '💚',
     'CSS/HTML': '🎨',
-    'CSS': '🎨',
-    'HTML': '🌐',
-    'React': '⚛️',
-    '网络与性能优化': '🚀',
-    'TypeScript': '🔷',
-    '工程化与工具': '🛠️',
-    '算法与数据结构': '🧮',
-    'Node': '🟢',
-    'Git': '🔀',
-    'Webpack': '📦',
-    'Vite': '⚡',
+    CSS: '🎨',
+    HTML: '🌐',
+    React: '⚛️',
+    网络与性能优化: '🚀',
+    TypeScript: '🔷',
+    工程化与工具: '🛠️',
+    算法与数据结构: '🧮',
+    Node: '🟢',
+    Git: '🔀',
+    Webpack: '📦',
+    Vite: '⚡',
   }
   return emojiMap[name] || '📁'
 }
@@ -246,8 +246,14 @@ async function deleteCategory(id: number) {
   font-size: 14px;
 }
 
-.btn-icon { font-size: 18px; font-weight: 300; }
-.btn-sm { padding: 8px 14px; font-size: 13px; }
+.btn-icon {
+  font-size: 18px;
+  font-weight: 300;
+}
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 13px;
+}
 
 .btn-primary {
   background: linear-gradient(135deg, #667eea, #764ba2);
@@ -269,7 +275,10 @@ async function deleteCategory(id: number) {
   box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
 }
 
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .btn-secondary {
   background: var(--bg-card);
@@ -298,9 +307,14 @@ async function deleteCategory(id: number) {
   transition: all 0.2s;
 }
 
-.btn-danger:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
 
-.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .loading-state {
   display: flex;
@@ -320,7 +334,11 @@ async function deleteCategory(id: number) {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .empty-state {
   display: flex;
@@ -331,8 +349,13 @@ async function deleteCategory(id: number) {
   color: var(--text-secondary);
 }
 
-.empty-icon { font-size: 48px; }
-.empty-state p { font-size: 16px; margin: 0; }
+.empty-icon {
+  font-size: 48px;
+}
+.empty-state p {
+  font-size: 16px;
+  margin: 0;
+}
 
 .category-grid {
   display: grid;
@@ -358,8 +381,13 @@ async function deleteCategory(id: number) {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
-.category-icon { font-size: 36px; line-height: 1; }
-.category-content { flex: 1; }
+.category-icon {
+  font-size: 36px;
+  line-height: 1;
+}
+.category-content {
+  flex: 1;
+}
 
 .category-name {
   margin: 0 0 6px 0;
@@ -375,8 +403,14 @@ async function deleteCategory(id: number) {
   line-height: 1.5;
 }
 
-.category-stats { display: flex; gap: 12px; }
-.stat { color: var(--text-muted); font-size: 13px; }
+.category-stats {
+  display: flex;
+  gap: 12px;
+}
+.stat {
+  color: var(--text-muted);
+  font-size: 13px;
+}
 
 .category-actions {
   display: flex;
@@ -413,7 +447,11 @@ async function deleteCategory(id: number) {
   border-bottom: 1px solid var(--border-light);
 }
 
-.modal-header h2 { margin: 0; font-size: 20px; color: var(--text-primary); }
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary);
+}
 
 .close-btn {
   background: none;
@@ -435,7 +473,9 @@ async function deleteCategory(id: number) {
   color: var(--text-primary);
 }
 
-.modal-body { padding: 24px 28px; }
+.modal-body {
+  padding: 24px 28px;
+}
 
 .modal-footer {
   padding: 16px 28px;
@@ -445,7 +485,9 @@ async function deleteCategory(id: number) {
   justify-content: flex-end;
 }
 
-.form-group { margin-bottom: 20px; }
+.form-group {
+  margin-bottom: 20px;
+}
 
 .form-group label {
   display: block;
@@ -455,7 +497,9 @@ async function deleteCategory(id: number) {
   font-size: 14px;
 }
 
-.required { color: var(--danger); }
+.required {
+  color: var(--danger);
+}
 
 .form-input {
   width: 100%;
@@ -475,8 +519,12 @@ async function deleteCategory(id: number) {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.input-error { border-color: var(--danger); }
-.input-error:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
+.input-error {
+  border-color: var(--danger);
+}
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
 
 .error-text {
   display: block;
@@ -515,10 +563,22 @@ async function deleteCategory(id: number) {
   animation: spin 0.8s linear infinite;
 }
 
-.modal-enter-active { transition: all 0.25s ease; }
-.modal-leave-active { transition: all 0.2s ease; }
-.modal-enter-from { opacity: 0; }
-.modal-enter-from .modal { transform: scale(0.95) translateY(10px); }
-.modal-leave-to { opacity: 0; }
-.modal-leave-to .modal { transform: scale(0.95); }
+.modal-enter-active {
+  transition: all 0.25s ease;
+}
+.modal-leave-active {
+  transition: all 0.2s ease;
+}
+.modal-enter-from {
+  opacity: 0;
+}
+.modal-enter-from .modal {
+  transform: scale(0.95) translateY(10px);
+}
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-leave-to .modal {
+  transform: scale(0.95);
+}
 </style>

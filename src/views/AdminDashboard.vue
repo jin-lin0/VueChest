@@ -170,7 +170,15 @@ function updateTime() {
 async function fetchStats() {
   try {
     const [sData, cData] = await Promise.all([
-      api.get<{ data: { totalApps: number; todayNewApps: number; todayNewQuestions: number; todayVisits: number; totalVisits: number } }>('/api/stats/dashboard', { auth: false }),
+      api.get<{
+        data: {
+          totalApps: number
+          todayNewApps: number
+          todayNewQuestions: number
+          todayVisits: number
+          totalVisits: number
+        }
+      }>('/api/stats/dashboard', { auth: false }),
       api.get<{ length: number }[]>('/api/questions/categories'),
     ])
 
@@ -233,11 +241,25 @@ onUnmounted(() => {
   font-size: 15px;
 }
 
-.header-time { text-align: right; }
-.current-time { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.current-date { font-size: 13px; opacity: 0.6; margin-top: 2px; }
+.header-time {
+  text-align: right;
+}
+.current-time {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.current-date {
+  font-size: 13px;
+  opacity: 0.6;
+  margin-top: 2px;
+}
 
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
 
 .stat-card {
   background: var(--bg-card);
@@ -266,7 +288,10 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.stat-content { flex: 1; min-width: 0; }
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
 
 .stat-value {
   font-size: 30px;
@@ -279,22 +304,47 @@ onUnmounted(() => {
   display: inline-block;
   width: 60px;
   height: 30px;
-  background: linear-gradient(90deg, var(--border-light) 25%, var(--bg-hover) 50%, var(--border-light) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--border-light) 25%,
+    var(--bg-hover) 50%,
+    var(--border-light) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 6px;
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
-.stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
-.stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
 
-.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-@media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 .dashboard-card {
   background: var(--bg-card);
@@ -309,7 +359,11 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
 
 .action-card {
   display: flex;
@@ -332,11 +386,23 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
-.action-icon { font-size: 32px; }
-.action-title { font-size: 15px; font-weight: 600; }
-.action-desc { font-size: 12px; color: var(--text-muted); }
+.action-icon {
+  font-size: 32px;
+}
+.action-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.action-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
 
-.info-list { display: flex; flex-direction: column; gap: 0; }
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
 
 .info-item {
   display: flex;
@@ -345,8 +411,17 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border-light);
 }
 
-.info-item:last-child { border-bottom: none; }
+.info-item:last-child {
+  border-bottom: none;
+}
 
-.info-label { color: var(--text-secondary); font-size: 14px; }
-.info-value { color: var(--text-primary); font-weight: 500; font-size: 14px; }
+.info-label {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.info-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 14px;
+}
 </style>

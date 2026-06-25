@@ -19,7 +19,16 @@
           class="search-input"
           @input="triggerSearch"
         />
-        <button v-if="searchKeyword" class="search-clear" @click="searchKeyword = ''; triggerSearch()">&times;</button>
+        <button
+          v-if="searchKeyword"
+          class="search-clear"
+          @click="
+            searchKeyword = ''
+            triggerSearch()
+          "
+        >
+          &times;
+        </button>
       </div>
       <CustomSelect
         v-model="selectedCategory"
@@ -56,7 +65,12 @@
     <!-- 题目列表（紧凑） -->
     <div v-else class="question-list">
       <transition-group name="list">
-        <div v-for="question in questions" :key="question.id" class="question-row" @click="toggleExpand(question.id)">
+        <div
+          v-for="question in questions"
+          :key="question.id"
+          class="question-row"
+          @click="toggleExpand(question.id)"
+        >
           <div class="row-check" @click.stop>
             <input
               type="checkbox"
@@ -68,11 +82,17 @@
             <div class="row-title-row">
               <span class="row-title">{{ question.title }}</span>
               <div class="row-meta">
-                <span class="diff-badge" :class="question.difficulty">{{ difficultyText(question.difficulty) }}</span>
+                <span class="diff-badge" :class="question.difficulty">{{
+                  difficultyText(question.difficulty)
+                }}</span>
                 <span class="cat-tag">{{ getCategoryName(question.categoryId) }}</span>
                 <span v-if="question.tags?.length" class="row-tags">
-                  <span v-for="tag in question.tags.slice(0, 2)" :key="tag" class="row-tag">{{ tag }}</span>
-                  <span v-if="question.tags.length > 2" class="row-tag-more">+{{ question.tags.length - 2 }}</span>
+                  <span v-for="tag in question.tags.slice(0, 2)" :key="tag" class="row-tag">{{
+                    tag
+                  }}</span>
+                  <span v-if="question.tags.length > 2" class="row-tag-more"
+                    >+{{ question.tags.length - 2 }}</span
+                  >
                 </span>
               </div>
             </div>
@@ -99,9 +119,19 @@
     <div v-if="totalPages > 1" class="pagination">
       <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--">← 上一页</button>
       <div class="page-numbers">
-        <button v-for="p in visiblePages" :key="p" class="page-num" :class="{ active: p === currentPage }" @click="currentPage = p">{{ p }}</button>
+        <button
+          v-for="p in visiblePages"
+          :key="p"
+          class="page-num"
+          :class="{ active: p === currentPage }"
+          @click="currentPage = p"
+        >
+          {{ p }}
+        </button>
       </div>
-      <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++">下一页 →</button>
+      <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++">
+        下一页 →
+      </button>
       <span class="page-info">{{ totalPages }} 页 / {{ total }} 题</span>
     </div>
 
@@ -198,7 +228,10 @@ async function fetchQuestions() {
   if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
   if (searchKeyword.value) params.append('keyword', searchKeyword.value)
   try {
-    const data = await api.get<{ questions: Question[]; total: number; totalPages: number }>(`/api/questions?${params}`, { auth: false })
+    const data = await api.get<{ questions: Question[]; total: number; totalPages: number }>(
+      `/api/questions?${params}`,
+      { auth: false },
+    )
     questions.value = data.questions
     total.value = data.total
     totalPages.value = data.totalPages
@@ -297,7 +330,10 @@ async function batchDelete() {
   font-size: 13px;
 }
 
-.btn-icon { font-size: 18px; font-weight: 300; }
+.btn-icon {
+  font-size: 18px;
+  font-weight: 300;
+}
 
 .search-bar {
   display: flex;
@@ -387,7 +423,10 @@ async function batchDelete() {
   box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
 }
 
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .btn-danger {
   background: var(--danger-bg);
@@ -400,11 +439,18 @@ async function batchDelete() {
   transition: all 0.2s;
 }
 
-.btn-danger:hover { background: var(--danger-bg); filter: brightness(0.9); }
+.btn-danger:hover {
+  background: var(--danger-bg);
+  filter: brightness(0.9);
+}
 
-.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
 
-.loading-state, .empty-state {
+.loading-state,
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -422,10 +468,19 @@ async function batchDelete() {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
-.empty-icon { font-size: 40px; }
-.empty-state p { font-size: 14px; margin: 0; }
+.empty-icon {
+  font-size: 40px;
+}
+.empty-state p {
+  font-size: 14px;
+  margin: 0;
+}
 
 .question-list {
   display: flex;
@@ -459,7 +514,10 @@ async function batchDelete() {
   display: block;
 }
 
-.row-body { flex: 1; min-width: 0; }
+.row-body {
+  flex: 1;
+  min-width: 0;
+}
 
 .row-title-row {
   display: flex;
@@ -489,9 +547,18 @@ async function batchDelete() {
   font-size: 11px;
   font-weight: 500;
 }
-.diff-badge.easy { background: var(--success-bg); color: var(--success); }
-.diff-badge.medium { background: var(--warning-bg); color: var(--warning); }
-.diff-badge.hard { background: var(--danger-bg); color: var(--danger); }
+.diff-badge.easy {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.diff-badge.medium {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.diff-badge.hard {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
 
 .cat-tag {
   padding: 1px 7px;
@@ -501,7 +568,10 @@ async function batchDelete() {
   font-size: 11px;
 }
 
-.row-tags { display: flex; gap: 3px; }
+.row-tags {
+  display: flex;
+  gap: 3px;
+}
 .row-tag {
   padding: 1px 6px;
   border-radius: 8px;
@@ -531,7 +601,10 @@ async function batchDelete() {
   transition: all 0.15s;
 }
 
-.btn-text:hover { opacity: 1; background: var(--bg-hover); }
+.btn-text:hover {
+  opacity: 1;
+  background: var(--bg-hover);
+}
 
 .btn-text-danger {
   background: none;
@@ -544,7 +617,10 @@ async function batchDelete() {
   transition: all 0.15s;
 }
 
-.btn-text-danger:hover { opacity: 1; background: var(--danger-bg); }
+.btn-text-danger:hover {
+  opacity: 1;
+  background: var(--danger-bg);
+}
 
 .row-detail {
   margin-top: 10px;
@@ -554,9 +630,17 @@ async function batchDelete() {
   color: var(--text-secondary);
 }
 
-.detail-section { margin-bottom: 10px; }
-.detail-section strong { font-size: 12px; color: var(--text-muted); }
-.detail-section p { margin: 4px 0 0; line-height: 1.6; }
+.detail-section {
+  margin-bottom: 10px;
+}
+.detail-section strong {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.detail-section p {
+  margin: 4px 0 0;
+  line-height: 1.6;
+}
 
 .detail-answer {
   background: var(--bg-hover);
@@ -565,13 +649,24 @@ async function batchDelete() {
   border: 1px solid var(--border-light);
 }
 
-.answer-body { line-height: 1.7; font-size: 13px; }
-.answer-body :deep(pre) {
-  background: #1f2937; padding: 10px; border-radius: 6px;
-  overflow-x: auto; margin: 6px 0;
+.answer-body {
+  line-height: 1.7;
+  font-size: 13px;
 }
-.answer-body :deep(code) { font-family: Monaco, Consolas, monospace; font-size: 12px; }
-.answer-body :deep(p) { margin: 6px 0; }
+.answer-body :deep(pre) {
+  background: #1f2937;
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+.answer-body :deep(code) {
+  font-family: Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+.answer-body :deep(p) {
+  margin: 6px 0;
+}
 
 .pagination {
   display: flex;
@@ -593,13 +688,23 @@ async function batchDelete() {
   color: var(--text-primary);
 }
 
-.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.page-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 
-.page-numbers { display: flex; gap: 3px; }
+.page-numbers {
+  display: flex;
+  gap: 3px;
+}
 
 .page-num {
-  width: 32px; height: 32px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--border-color);
   background: var(--bg-card);
   border-radius: 6px;
@@ -609,7 +714,10 @@ async function batchDelete() {
   color: var(--text-primary);
 }
 
-.page-num:hover { border-color: var(--accent); color: var(--accent); }
+.page-num:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
 .page-num.active {
   background: linear-gradient(135deg, #667eea, #764ba2);
@@ -617,7 +725,16 @@ async function batchDelete() {
   border-color: transparent;
 }
 
-.list-enter-active, .list-leave-active { transition: all 0.2s ease; }
-.list-enter-from { opacity: 0; transform: translateY(6px); }
-.list-leave-to { opacity: 0; transform: translateX(-6px); }
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.2s ease;
+}
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-6px);
+}
 </style>

@@ -2,12 +2,7 @@
 import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSpecialDaysStore } from '@/stores'
-import {
-  solarToLunar,
-  lunarToSolar,
-  getLunarMonthName,
-  getLunarDayName,
-} from '@/utils'
+import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils'
 import type { SpecialDay } from '@/stores'
 
 defineOptions({ name: 'SpecialDaysView' })
@@ -37,14 +32,20 @@ const saveDay = () => {
   if (!specialDaysStore.form.name.trim()) return
 
   const solarYear =
-    specialDaysStore.form.repeatType === 'once' ? specialDaysStore.form.solarYear || new Date().getFullYear() : null
+    specialDaysStore.form.repeatType === 'once'
+      ? specialDaysStore.form.solarYear || new Date().getFullYear()
+      : null
 
   let year = solarYear
   let solarMonth = specialDaysStore.form.solarMonth
   let solarDay = specialDaysStore.form.solarDay
   if (specialDaysStore.form.calendarType === 'lunar') {
     const targetYear = year || new Date().getFullYear()
-    const solar = lunarToSolar(targetYear, specialDaysStore.form.lunarMonth, specialDaysStore.form.lunarDay)
+    const solar = lunarToSolar(
+      targetYear,
+      specialDaysStore.form.lunarMonth,
+      specialDaysStore.form.lunarDay,
+    )
     year = solar.year
     solarMonth = solar.month
     solarDay = solar.day
@@ -215,13 +216,19 @@ watch(
           </div>
           <div class="day-actions">
             <button class="edit-btn" @click="specialDaysStore.openEditForm(day)">编辑</button>
-            <button class="delete-btn" @click="specialDaysStore.deleteSpecialDay(day.id)">删除</button>
+            <button class="delete-btn" @click="specialDaysStore.deleteSpecialDay(day.id)">
+              删除
+            </button>
           </div>
         </div>
       </div>
     </main>
 
-    <div v-if="specialDaysStore.showForm" class="modal-overlay" @click.self="specialDaysStore.closeForm">
+    <div
+      v-if="specialDaysStore.showForm"
+      class="modal-overlay"
+      @click.self="specialDaysStore.closeForm"
+    >
       <div class="modal">
         <div class="modal-header">
           <h2>{{ specialDaysStore.editingId ? '编辑纪念日' : '添加纪念日' }}</h2>
@@ -296,9 +303,14 @@ watch(
 
           <div v-if="specialDaysStore.form.repeatType === 'once'" class="form-group">
             <label>年份</label>
-            <select v-model.number="specialDaysStore.form.solarYear" class="date-select year-select">
+            <select
+              v-model.number="specialDaysStore.form.solarYear"
+              class="date-select year-select"
+            >
               <option :value="null" disabled>请选择年份</option>
-              <option v-for="y in specialDaysStore.yearOptions" :key="y" :value="y">{{ y }}年</option>
+              <option v-for="y in specialDaysStore.yearOptions" :key="y" :value="y">
+                {{ y }}年
+              </option>
             </select>
           </div>
 
@@ -306,7 +318,9 @@ watch(
             <label>阳历日期</label>
             <div class="date-picker">
               <select v-model.number="specialDaysStore.form.solarMonth" class="date-select">
-                <option v-for="m in specialDaysStore.solarMonthOptions" :key="m" :value="m">{{ m }}月</option>
+                <option v-for="m in specialDaysStore.solarMonthOptions" :key="m" :value="m">
+                  {{ m }}月
+                </option>
               </select>
               <select v-model.number="specialDaysStore.form.solarDay" class="date-select">
                 <option v-for="d in solarDayOptions" :key="d" :value="d">{{ d }}日</option>
@@ -319,7 +333,23 @@ watch(
             <div class="date-picker">
               <select v-model.number="specialDaysStore.form.lunarMonth" class="date-select">
                 <option v-for="m in specialDaysStore.lunarMonthOptions" :key="m" :value="m">
-                  {{ ['', '正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月'][m] }}
+                  {{
+                    [
+                      '',
+                      '正月',
+                      '二月',
+                      '三月',
+                      '四月',
+                      '五月',
+                      '六月',
+                      '七月',
+                      '八月',
+                      '九月',
+                      '十月',
+                      '冬月',
+                      '腊月',
+                    ][m]
+                  }}
                 </option>
               </select>
               <select v-model.number="specialDaysStore.form.lunarDay" class="date-select">
@@ -430,7 +460,9 @@ watch(
   border-radius: 12px;
   padding: 1.2rem 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .day-card:hover {
