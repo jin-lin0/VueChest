@@ -216,13 +216,13 @@ function goBack() {
   align-items: center;
   gap: 16px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-light);
   margin-bottom: 20px;
 }
 
 .editor-header h1 {
   font-size: 20px;
-  color: #111827;
+  color: var(--text-primary);
   flex: 1;
   margin: 0;
 }
@@ -230,7 +230,7 @@ function goBack() {
 .btn-back {
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 15px;
   cursor: pointer;
   padding: 8px 12px;
@@ -239,8 +239,8 @@ function goBack() {
 }
 
 .btn-back:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .header-actions {
@@ -250,17 +250,17 @@ function goBack() {
 
 .btn-cancel {
   padding: 8px 20px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
-  color: #374151;
+  color: var(--text-primary);
   transition: all 0.15s;
 }
 
 .btn-cancel:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .btn-save {
@@ -315,7 +315,7 @@ function goBack() {
   gap: 8px;
   font-weight: 500;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
@@ -324,7 +324,7 @@ function goBack() {
   min-height: 400px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
 }
 
 .form-group {
@@ -336,26 +336,27 @@ function goBack() {
   margin-bottom: 5px;
   font-weight: 500;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .form-group input,
 .form-group textarea {
   width: 100%;
   padding: 9px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
   outline: none;
   transition: all 0.15s;
-  background: white;
+  background: var(--bg-input);
+  color: var(--text-primary);
   box-sizing: border-box;
   font-family: inherit;
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -370,22 +371,22 @@ function goBack() {
 }
 
 .required {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .hint {
   font-weight: 400;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .input-error {
-  border-color: #dc2626 !important;
+  border-color: var(--danger) !important;
 }
 
 .error-text {
   display: block;
-  color: #dc2626;
+  color: var(--danger);
   font-size: 11px;
   margin-top: 3px;
 }
@@ -398,23 +399,23 @@ function goBack() {
 .type-btn {
   flex: 1;
   padding: 9px 12px;
-  border: 2px solid #d1d5db;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: white;
+  background: var(--bg-card);
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
   transition: all 0.2s;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .type-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .type-btn.active {
-  border-color: #667eea;
+  border-color: var(--accent);
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
 }

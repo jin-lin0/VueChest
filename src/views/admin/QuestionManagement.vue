@@ -288,18 +288,17 @@ async function batchDelete() {
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .page-desc {
   margin: 4px 0 0;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
 .btn-icon { font-size: 18px; font-weight: 300; }
 
-/* Search */
 .search-bar {
   display: flex;
   gap: 10px;
@@ -325,16 +324,17 @@ async function batchDelete() {
 .search-input {
   width: 100%;
   padding: 9px 34px 9px 34px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 13px;
   outline: none;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .search-input:focus {
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -345,18 +345,17 @@ async function batchDelete() {
   border: none;
   font-size: 18px;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--text-muted);
   line-height: 1;
 }
 
-/* Batch */
 .batch-bar {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
+  background: var(--accent-bg);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   margin-bottom: 12px;
 }
@@ -364,11 +363,10 @@ async function batchDelete() {
 .batch-info {
   font-size: 13px;
   font-weight: 500;
-  color: #4f46e5;
+  color: var(--accent);
   flex: 1;
 }
 
-/* Buttons */
 .btn-primary {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
@@ -392,9 +390,9 @@ async function batchDelete() {
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-danger {
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-bg);
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 13px;
@@ -402,25 +400,24 @@ async function batchDelete() {
   transition: all 0.2s;
 }
 
-.btn-danger:hover { background: #fecaca; }
+.btn-danger:hover { background: var(--danger-bg); filter: brightness(0.9); }
 
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 
-/* Loading / Empty */
 .loading-state, .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
   padding: 48px 0;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .loading-spinner {
   width: 30px;
   height: 30px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #667eea;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -430,7 +427,6 @@ async function batchDelete() {
 .empty-icon { font-size: 40px; }
 .empty-state p { font-size: 14px; margin: 0; }
 
-/* Compact question list */
 .question-list {
   display: flex;
   flex-direction: column;
@@ -442,16 +438,16 @@ async function batchDelete() {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: white;
+  background: var(--bg-card);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
   border: 1px solid transparent;
   transition: all 0.15s;
   cursor: pointer;
 }
 
 .question-row:hover {
-  border-color: #e5e7eb;
+  border-color: var(--border-light);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -459,14 +455,11 @@ async function batchDelete() {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #667eea;
+  accent-color: var(--accent);
   display: block;
 }
 
-.row-body {
-  flex: 1;
-  min-width: 0;
-}
+.row-body { flex: 1; min-width: 0; }
 
 .row-title-row {
   display: flex;
@@ -477,7 +470,7 @@ async function batchDelete() {
 .row-title {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -496,15 +489,15 @@ async function batchDelete() {
   font-size: 11px;
   font-weight: 500;
 }
-.diff-badge.easy { background: #d1fae5; color: #059669; }
-.diff-badge.medium { background: #fef3c7; color: #d97706; }
-.diff-badge.hard { background: #fee2e2; color: #dc2626; }
+.diff-badge.easy { background: var(--success-bg); color: var(--success); }
+.diff-badge.medium { background: var(--warning-bg); color: var(--warning); }
+.diff-badge.hard { background: var(--danger-bg); color: var(--danger); }
 
 .cat-tag {
   padding: 1px 7px;
   border-radius: 10px;
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: var(--accent-bg);
+  color: var(--accent);
   font-size: 11px;
 }
 
@@ -512,13 +505,13 @@ async function batchDelete() {
 .row-tag {
   padding: 1px 6px;
   border-radius: 8px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--tag-bg);
+  color: var(--text-secondary);
   font-size: 10px;
 }
 .row-tag-more {
   font-size: 10px;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .row-actions {
@@ -538,7 +531,7 @@ async function batchDelete() {
   transition: all 0.15s;
 }
 
-.btn-text:hover { opacity: 1; background: #f3f4f6; }
+.btn-text:hover { opacity: 1; background: var(--bg-hover); }
 
 .btn-text-danger {
   background: none;
@@ -551,26 +544,25 @@ async function batchDelete() {
   transition: all 0.15s;
 }
 
-.btn-text-danger:hover { opacity: 1; background: #fee2e2; }
+.btn-text-danger:hover { opacity: 1; background: var(--danger-bg); }
 
-/* Expanded detail */
 .row-detail {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border-light);
   font-size: 13px;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .detail-section { margin-bottom: 10px; }
-.detail-section strong { font-size: 12px; color: #6b7280; }
+.detail-section strong { font-size: 12px; color: var(--text-muted); }
 .detail-section p { margin: 4px 0 0; line-height: 1.6; }
 
 .detail-answer {
-  background: #f9fafb;
+  background: var(--bg-hover);
   padding: 12px;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
 }
 
 .answer-body { line-height: 1.7; font-size: 13px; }
@@ -581,7 +573,6 @@ async function batchDelete() {
 .answer-body :deep(code) { font-family: Monaco, Consolas, monospace; font-size: 12px; }
 .answer-body :deep(p) { margin: 6px 0; }
 
-/* Pagination */
 .pagination {
   display: flex;
   justify-content: center;
@@ -593,30 +584,32 @@ async function batchDelete() {
 
 .page-btn {
   padding: 6px 14px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
   font-size: 13px;
+  color: var(--text-primary);
 }
 
-.page-btn:hover:not(:disabled) { border-color: #667eea; color: #667eea; }
+.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .page-numbers { display: flex; gap: 3px; }
 
 .page-num {
   width: 32px; height: 32px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
   transition: all 0.15s;
+  color: var(--text-primary);
 }
 
-.page-num:hover { border-color: #667eea; color: #667eea; }
+.page-num:hover { border-color: var(--accent); color: var(--accent); }
 
 .page-num.active {
   background: linear-gradient(135deg, #667eea, #764ba2);
@@ -624,7 +617,6 @@ async function batchDelete() {
   border-color: transparent;
 }
 
-/* Transitions */
 .list-enter-active, .list-leave-active { transition: all 0.2s ease; }
 .list-enter-from { opacity: 0; transform: translateY(6px); }
 .list-leave-to { opacity: 0; transform: translateX(-6px); }

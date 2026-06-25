@@ -623,3 +623,48 @@ function goToHome() {
   transform: translateY(-4px);
 }
 </style>
+
+<style>
+/* CSS custom properties for child admin pages */
+.admin-layout {
+  --bg-page: #f3f4f6;
+  --bg-card: #ffffff;
+  --bg-hover: #f3f4f6;
+  --bg-input: #ffffff;
+  --bg-row-hover: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border-color: #d1d5db;
+  --border-light: #e5e7eb;
+  --accent: #667eea;
+  --accent-bg: #eef2ff;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --success: #059669;
+  --success-bg: #d1fae5;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --tag-bg: #f3f4f6;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.admin-layout.dark-mode {
+  --bg-page: #0f172a;
+  --bg-card: #1e293b;
+  --bg-hover: #334155;
+  --bg-input: #0f172a;
+  --bg-row-hover: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-color: #334155;
+  --border-light: #334155;
+  --accent-bg: #1e293b;
+  --danger-bg: #450a0a;
+  --success-bg: #064e3b;
+  --warning-bg: #78350f;
+  --tag-bg: #334155;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.15);
+}
+</style>

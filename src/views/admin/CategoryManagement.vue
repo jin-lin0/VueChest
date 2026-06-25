@@ -237,24 +237,17 @@ async function deleteCategory(id: number) {
 .page-header h1 {
   margin: 0;
   font-size: 26px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .page-desc {
   margin: 4px 0 0 0;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
-.btn-icon {
-  font-size: 18px;
-  font-weight: 300;
-}
-
-.btn-sm {
-  padding: 8px 14px;
-  font-size: 13px;
-}
+.btn-icon { font-size: 18px; font-weight: 300; }
+.btn-sm { padding: 8px 14px; font-size: 13px; }
 
 .btn-primary {
   background: linear-gradient(135deg, #667eea, #764ba2);
@@ -276,15 +269,12 @@ async function deleteCategory(id: number) {
   box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
 }
 
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-secondary {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   padding: 10px 18px;
   border-radius: 8px;
   font-size: 14px;
@@ -293,14 +283,14 @@ async function deleteCategory(id: number) {
 }
 
 .btn-secondary:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+  background: var(--bg-hover);
+  border-color: var(--text-muted);
 }
 
 .btn-danger {
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-bg);
   padding: 10px 18px;
   border-radius: 8px;
   font-size: 14px;
@@ -308,14 +298,9 @@ async function deleteCategory(id: number) {
   transition: all 0.2s;
 }
 
-.btn-danger:hover:not(:disabled) {
-  background: #fecaca;
-}
+.btn-danger:hover:not(:disabled) { filter: brightness(1.1); }
 
-.btn-danger:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .loading-state {
   display: flex;
@@ -323,21 +308,19 @@ async function deleteCategory(id: number) {
   align-items: center;
   gap: 16px;
   padding: 64px 0;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .loading-spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #667eea;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .empty-state {
   display: flex;
@@ -345,17 +328,11 @@ async function deleteCategory(id: number) {
   align-items: center;
   gap: 12px;
   padding: 64px 0;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
-.empty-icon {
-  font-size: 48px;
-}
-
-.empty-state p {
-  font-size: 16px;
-  margin: 0;
-}
+.empty-icon { font-size: 48px; }
+.empty-state p { font-size: 16px; margin: 0; }
 
 .category-grid {
   display: grid;
@@ -364,10 +341,10 @@ async function deleteCategory(id: number) {
 }
 
 .category-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -376,57 +353,41 @@ async function deleteCategory(id: number) {
 }
 
 .category-card:hover {
-  border-color: #e5e7eb;
+  border-color: var(--border-light);
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
-.category-icon {
-  font-size: 36px;
-  line-height: 1;
-}
-
-.category-content {
-  flex: 1;
-}
+.category-icon { font-size: 36px; line-height: 1; }
+.category-content { flex: 1; }
 
 .category-name {
   margin: 0 0 6px 0;
   font-size: 18px;
-  color: #1f2937;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .category-desc {
   margin: 0 0 10px 0;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.5;
 }
 
-.category-stats {
-  display: flex;
-  gap: 12px;
-}
-
-.stat {
-  color: #9ca3af;
-  font-size: 13px;
-}
+.category-stats { display: flex; gap: 12px; }
+.stat { color: var(--text-muted); font-size: 13px; }
 
 .category-actions {
   display: flex;
   gap: 8px;
   padding-top: 14px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border-light);
 }
 
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
@@ -437,7 +398,7 @@ async function deleteCategory(id: number) {
 }
 
 .modal {
-  background: white;
+  background: var(--bg-card);
   border-radius: 18px;
   width: 100%;
   max-width: 500px;
@@ -449,20 +410,17 @@ async function deleteCategory(id: number) {
   justify-content: space-between;
   align-items: center;
   padding: 24px 28px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-}
+.modal-header h2 { margin: 0; font-size: 20px; color: var(--text-primary); }
 
 .close-btn {
   background: none;
   border: none;
   font-size: 28px;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--text-muted);
   width: 36px;
   height: 36px;
   display: flex;
@@ -473,66 +431,56 @@ async function deleteCategory(id: number) {
 }
 
 .close-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
-.modal-body {
-  padding: 24px 28px;
-}
+.modal-body { padding: 24px 28px; }
 
 .modal-footer {
   padding: 16px 28px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-light);
   display: flex;
   gap: 12px;
   justify-content: flex-end;
 }
 
-.form-group {
-  margin-bottom: 20px;
-}
+.form-group { margin-bottom: 20px; }
 
 .form-group label {
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
-.required {
-  color: #dc2626;
-}
+.required { color: var(--danger); }
 
 .form-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-input);
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 
 .form-input:focus {
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.input-error {
-  border-color: #dc2626;
-}
-
-.input-error:focus {
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-}
+.input-error { border-color: var(--danger); }
+.input-error:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
 
 .error-text {
   display: block;
-  color: #dc2626;
+  color: var(--danger);
   font-size: 12px;
   margin-top: 4px;
 }
@@ -540,19 +488,20 @@ async function deleteCategory(id: number) {
 .form-textarea {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
   resize: vertical;
   outline: none;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-input);
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 
 .form-textarea:focus {
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -566,27 +515,10 @@ async function deleteCategory(id: number) {
   animation: spin 0.8s linear infinite;
 }
 
-.modal-enter-active {
-  transition: all 0.25s ease;
-}
-
-.modal-leave-active {
-  transition: all 0.2s ease;
-}
-
-.modal-enter-from {
-  opacity: 0;
-}
-
-.modal-enter-from .modal {
-  transform: scale(0.95) translateY(10px);
-}
-
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-leave-to .modal {
-  transform: scale(0.95);
-}
+.modal-enter-active { transition: all 0.25s ease; }
+.modal-leave-active { transition: all 0.2s ease; }
+.modal-enter-from { opacity: 0; }
+.modal-enter-from .modal { transform: scale(0.95) translateY(10px); }
+.modal-leave-to { opacity: 0; }
+.modal-leave-to .modal { transform: scale(0.95); }
 </style>
