@@ -81,4 +81,3 @@ textarea {
 }
 </style>
 
-<style scoped></style>

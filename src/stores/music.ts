@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { getStorage, setStorage } from '@/utils'
 import { STORAGE_KEYS } from '@/config'
+import { API_BASE } from '@/utils/request'
 
 export interface Song {
   id: string
@@ -35,9 +36,9 @@ interface ApiCache {
   [key: string]: { data: unknown; expire: number }
 }
 
-const CACHE_TTL = 5 * 60 * 1000
-
 export const useMusicStore = defineStore('music', () => {
+  const CACHE_TTL = 5 * 60 * 1000
+  const cache: ApiCache = {}
   const searchQuery = ref('')
   const searchResults = ref<Song[]>([])
   const isSearching = ref(false)
@@ -95,8 +96,6 @@ export const useMusicStore = defineStore('music', () => {
     if (!song) return false
     return favorites.value.some((s) => s.id === song.id)
   })
-
-  const cache: ApiCache = {}
 
   const getCached = <T>(key: string): T | null => {
     const entry = cache[key]
@@ -173,8 +172,6 @@ export const useMusicStore = defineStore('music', () => {
     }
   }
 
-  const SERVER_API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
-
   const searchSongs = async (keyword: string) => {
     const q = keyword.trim()
     if (!q) return
@@ -186,7 +183,7 @@ export const useMusicStore = defineStore('music', () => {
       let data = getCached<Record<string, unknown>>(cacheKey)
       if (!data) {
         const res = await fetch(
-          `${SERVER_API}/api/netease/search?keywords=${encodeURIComponent(q)}`,
+          `${API_BASE}/api/netease/search?keywords=${encodeURIComponent(q)}`,
         )
         if (!res.ok) throw new Error(`Server API error: ${res.status}`)
         data = await res.json()
@@ -210,7 +207,7 @@ export const useMusicStore = defineStore('music', () => {
       const cacheKey = 'toplist:netease'
       let data = getCached<Record<string, unknown>>(cacheKey)
       if (!data) {
-        const res = await fetch(`${SERVER_API}/api/netease/toplist`)
+        const res = await fetch(`${API_BASE}/api/netease/toplist`)
         if (!res.ok) throw new Error(`Server API error: ${res.status}`)
         data = await res.json()
         setCache(cacheKey, data)
@@ -393,22 +390,6 @@ export const useMusicStore = defineStore('music', () => {
     setStorage(STORAGE_KEYS.MUSIC_VOLUME, volume.value)
   }
 
-  const toggleFavorite = () => {
-    const song = activeSong.value || currentSong.value
-    if (!song) return
-    const idx = favorites.value.findIndex((s) => s.id === song.id)
-    if (idx >= 0) {
-      favorites.value.splice(idx, 1)
-    } else {
-      favorites.value.unshift(song)
-    }
-    setStorage(STORAGE_KEYS.MUSIC_FAVORITES, favorites.value)
-  }
-
-  const isFavoriteSong = (songId: string) => {
-    return favorites.value.some((s) => s.id === songId)
-  }
-
   const toggleFavoriteSong = (song: Song) => {
     const idx = favorites.value.findIndex((s) => s.id === song.id)
     if (idx >= 0) {
@@ -417,6 +398,15 @@ export const useMusicStore = defineStore('music', () => {
       favorites.value.push(song)
     }
     setStorage(STORAGE_KEYS.MUSIC_FAVORITES, favorites.value)
+  }
+
+  const isFavoriteSong = (songId: string) => {
+    return favorites.value.some((s) => s.id === songId)
+  }
+
+  const toggleFavorite = () => {
+    const song = activeSong.value || currentSong.value
+    if (song) toggleFavoriteSong(song)
   }
 
   const cyclePlayMode = () => {

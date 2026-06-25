@@ -36,8 +36,6 @@ export const useAuthStore = defineStore('auth', () => {
     user.value?.role === 'admin' || user.value?.role === 'super_admin'
   )
 
-  const isLoggedInUser = computed(() => isAuthenticated.value)
-
   async function initAuth() {
     if (!token.value) return
 
@@ -162,7 +160,6 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isSuperAdmin,
     isAdmin,
-    isLoggedInUser,
     initAuth,
     login,
     register,

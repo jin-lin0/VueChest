@@ -1,7 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { createRouterGuard } from './guards'
-import UserLogin from '../views/UserLogin.vue'
-import UserRegister from '../views/UserRegister.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -123,13 +121,13 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: () => Promise.resolve(UserLogin),
+      component: () => import('../views/UserLogin.vue'),
       meta: { title: '登录' },
     },
     {
       path: '/register',
       name: 'register',
-      component: () => Promise.resolve(UserRegister),
+      component: () => import('../views/UserRegister.vue'),
       meta: { title: '注册' },
     },
     {
