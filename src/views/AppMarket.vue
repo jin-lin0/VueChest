@@ -47,6 +47,11 @@ function onSearch() {
   loadApps()
 }
 
+function clearSearch() {
+  searchQuery.value = ''
+  onSearch()
+}
+
 function goDetail(id: number) {
   router.push(`/market/${id}`)
 }
@@ -87,7 +92,7 @@ onMounted(() => {
           class="search-input"
           @input="onSearch"
         />
-        <button v-if="searchQuery" class="search-clear" @click="searchQuery = ''; onSearch()">✕</button>
+        <button v-if="searchQuery" class="search-clear" @click="clearSearch">✕</button>
       </div>
     </header>
 

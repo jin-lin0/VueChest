@@ -22,10 +22,7 @@
         <button
           v-if="searchKeyword"
           class="search-clear"
-          @click="
-            searchKeyword = ''
-            triggerSearch()
-          "
+          @click="clearSearch"
         >
           &times;
         </button>
@@ -197,6 +194,11 @@ function triggerSearch() {
     currentPage.value = 1
     fetchQuestions()
   }, 400)
+}
+
+function clearSearch() {
+  searchKeyword.value = ''
+  triggerSearch()
 }
 
 watch([searchKeyword, selectedCategory, selectedDifficulty], () => {
