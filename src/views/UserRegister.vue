@@ -24,7 +24,7 @@
           </div>
 
           <div class="form-group">
-            <label>邮箱（选填）</label>
+            <label>邮箱</label>
             <input
               v-model="email"
               type="email"
@@ -33,6 +33,31 @@
               :disabled="authStore.isLoading"
               autocomplete="email"
             />
+          </div>
+
+          <div class="form-group">
+            <label>验证码</label>
+            <div class="code-row">
+              <input
+                v-model="code"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="6位验证码"
+                class="form-input code-input"
+                :disabled="authStore.isLoading"
+                autocomplete="one-time-code"
+              />
+              <button
+                type="button"
+                class="send-code-btn"
+                :disabled="!canSendCode || authStore.isLoading"
+                @click="handleSendCode"
+              >
+                <span v-if="sendingCode" class="btn-spinner btn-spinner-sm"></span>
+                {{ sendBtnText }}
+              </button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -77,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
@@ -88,13 +113,68 @@ const marketStore = useMarketStore()
 
 const username = ref('')
 const email = ref('')
+const code = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
 
+// 验证码倒计时
+const countdown = ref(0)
+const sendingCode = ref(false)
+let timer: ReturnType<typeof setInterval> | null = null
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const canSendCode = computed(() => EMAIL_RE.test(email.value) && countdown.value === 0)
+
+const sendBtnText = computed(() => {
+  if (sendingCode.value) return '发送中'
+  if (countdown.value > 0) return `${countdown.value}s 后重发`
+  return '发送验证码'
+})
+
+function startCountdown(seconds: number) {
+  countdown.value = seconds
+  if (timer) clearInterval(timer)
+  timer = setInterval(() => {
+    countdown.value -= 1
+    if (countdown.value <= 0) {
+      countdown.value = 0
+      if (timer) {
+        clearInterval(timer)
+        timer = null
+      }
+    }
+  }, 1000)
+}
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
+
+async function handleSendCode() {
+  error.value = ''
+  if (!EMAIL_RE.test(email.value)) {
+    error.value = '请输入有效的邮箱地址'
+    return
+  }
+
+  sendingCode.value = true
+  const result = await authStore.sendVerificationCode(email.value)
+  sendingCode.value = false
+
+  if (result.success) {
+    startCountdown(result.cooldown || 60)
+  } else {
+    error.value = result.message
+  }
+}
+
 const isFormValid = computed(
   () =>
     username.value.length >= 3 &&
+    EMAIL_RE.test(email.value) &&
+    code.value.length === 6 &&
     password.value.length >= 6 &&
     password.value === confirmPassword.value,
 )
@@ -104,6 +184,14 @@ async function handleRegister() {
 
   if (username.value.length < 3) {
     error.value = '用户名至少需要3个字符'
+    return
+  }
+  if (!EMAIL_RE.test(email.value)) {
+    error.value = '请输入有效的邮箱地址'
+    return
+  }
+  if (code.value.length !== 6) {
+    error.value = '请输入6位验证码'
     return
   }
   if (password.value.length < 6) {
@@ -118,7 +206,8 @@ async function handleRegister() {
   const result = await authStore.register({
     username: username.value,
     password: password.value,
-    email: email.value || undefined,
+    email: email.value,
+    code: code.value,
   })
 
   if (result.success) {
@@ -216,6 +305,59 @@ async function syncInitialApps() {
 .form-input:focus {
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.code-row {
+  display: flex;
+  gap: 10px;
+}
+
+.code-input {
+  flex: 1;
+  letter-spacing: 4px;
+  font-weight: 600;
+}
+
+.code-input::placeholder {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.send-code-btn {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  background: white;
+  color: #667eea;
+  border: 1px solid #667eea;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.send-code-btn:hover:not(:disabled) {
+  background: #667eea;
+  color: white;
+}
+
+.send-code-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #d1d5db;
+  color: #9ca3af;
+  background: #f3f4f6;
+}
+
+.btn-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
 }
 
 .form-error {

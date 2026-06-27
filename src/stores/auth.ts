@@ -82,7 +82,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(credentials: LoginCredentials & { email?: string }): Promise<{ success: boolean; message: string }> {
+  async function sendVerificationCode(email: string): Promise<{ success: boolean; message: string; expiresIn?: number; cooldown?: number }> {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { data } = await api.post<{ data: { expiresIn: number; cooldown: number } }>('/api/auth/send-code', { email }, { auth: false })
+
+      return { success: true, message: '验证码已发送', expiresIn: data.expiresIn, cooldown: data.cooldown }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '验证码发送失败'
+      error.value = message
+      return { success: false, message }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function register(credentials: LoginCredentials & { email?: string; code?: string }): Promise<{ success: boolean; message: string }> {
     isLoading.value = true
     error.value = null
 
@@ -163,6 +180,7 @@ export const useAuthStore = defineStore('auth', () => {
     initAuth,
     login,
     register,
+    sendVerificationCode,
     fetchUserInfo,
     syncInstalledApps,
     fetchInstalledApps,

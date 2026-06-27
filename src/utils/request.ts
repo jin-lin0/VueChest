@@ -54,8 +54,9 @@ async function request<T = any>(path: string, config: RequestConfig = {}): Promi
     throw new ApiError('服务器响应格式错误', 'PARSE_ERROR', res.status)
   }
 
-  if (json.success === false) {
-    throw new ApiError(json.error || '请求失败', json.code, res.status)
+  // 同时检查 HTTP 状态码和业务 success 字段，避免后端错误响应（无 success 字段）被当成成功
+  if (!res.ok || json.success === false) {
+    throw new ApiError(json.error || `请求失败 (${res.status})`, json.code, res.status)
   }
 
   return json as T
