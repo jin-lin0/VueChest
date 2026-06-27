@@ -8,14 +8,15 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:prod": "vite --mode prod",
+    "dev:prod": "vite --mode production",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
-    "build:market": "node scripts/build-market-apps.mjs"
+    "build:market": "node scripts/build-market-apps.mjs",
+    "publish:market": "node scripts/publish-market-apps.mjs"
   },
   "dependencies": {
     "@types/three": "^0.184.1",

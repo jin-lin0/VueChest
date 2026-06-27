@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useNotesStore } from '@/stores'
+import { useNotesStore } from './store'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
@@ -26,12 +25,7 @@ const renderMarkdown = (content: string): string => {
   return marked.parse(content) as string
 }
 
-const router = useRouter()
 const notesStore = useNotesStore()
-
-const goBack = () => {
-  router.push('/')
-}
 
 onMounted(() => {
   notesStore.init()
@@ -61,12 +55,16 @@ const deleteNote = () => {
     notesStore.deleteNote(notesStore.selectedNote.id)
   }
 }
+
+const goBack = () => {
+  history.back()
+}
 </script>
 
 <template>
   <div class="app-container">
     <header class="app-header">
-      <button class="back-button" @click="goBack">返回</button>
+      <button class="back-btn" @click="goBack">← 返回</button>
       <h1>笔记本</h1>
     </header>
 
@@ -683,6 +681,20 @@ const deleteNote = () => {
 
 .empty-state p {
   font-style: italic;
+}
+
+.back-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 1rem;
+  font-size: 1rem;
+}
+.back-btn:hover {
+  background: #2980b9;
 }
 
 @media (max-width: 768px) {

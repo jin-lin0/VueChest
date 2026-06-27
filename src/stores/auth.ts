@@ -32,9 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isSuperAdmin = computed(() => user.value?.role === 'super_admin')
 
-  const isAdmin = computed(() =>
-    user.value?.role === 'admin' || user.value?.role === 'super_admin'
-  )
+  const isAdmin = computed(() => user.value?.role === 'admin' || user.value?.role === 'super_admin')
 
   async function initAuth() {
     if (!token.value) return
@@ -59,12 +57,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(credentials: LoginCredentials): Promise<{ success: boolean; message: string; role?: string }> {
+  async function login(
+    credentials: LoginCredentials,
+  ): Promise<{ success: boolean; message: string; role?: string }> {
     isLoading.value = true
     error.value = null
 
     try {
-      const { data } = await api.post<{ data: { token: string; user: UserInfo } }>('/api/auth/login', credentials, { auth: false })
+      const { data } = await api.post<{ data: { token: string; user: UserInfo } }>(
+        '/api/auth/login',
+        credentials,
+        { auth: false },
+      )
 
       token.value = data.token
       user.value = data.user
@@ -82,14 +86,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function sendVerificationCode(email: string): Promise<{ success: boolean; message: string; expiresIn?: number; cooldown?: number }> {
+  async function sendVerificationCode(
+    email: string,
+  ): Promise<{ success: boolean; message: string; expiresIn?: number; cooldown?: number }> {
     isLoading.value = true
     error.value = null
 
     try {
-      const { data } = await api.post<{ data: { expiresIn: number; cooldown: number } }>('/api/auth/send-code', { email }, { auth: false })
+      const { data } = await api.post<{ data: { expiresIn: number; cooldown: number } }>(
+        '/api/auth/send-code',
+        { email },
+        { auth: false },
+      )
 
-      return { success: true, message: '验证码已发送', expiresIn: data.expiresIn, cooldown: data.cooldown }
+      return {
+        success: true,
+        message: '验证码已发送',
+        expiresIn: data.expiresIn,
+        cooldown: data.cooldown,
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : '验证码发送失败'
       error.value = message
@@ -99,12 +114,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(credentials: LoginCredentials & { email?: string; code?: string }): Promise<{ success: boolean; message: string }> {
+  async function register(
+    credentials: LoginCredentials & { email?: string; code?: string },
+  ): Promise<{ success: boolean; message: string }> {
     isLoading.value = true
     error.value = null
 
     try {
-      const { data } = await api.post<{ data: { token: string; user: UserInfo } }>('/api/auth/register', credentials, { auth: false })
+      const { data } = await api.post<{ data: { token: string; user: UserInfo } }>(
+        '/api/auth/register',
+        credentials,
+        { auth: false },
+      )
 
       token.value = data.token
       user.value = data.user
@@ -136,27 +157,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function syncInstalledApps(appIds: number[]) {
-    if (!token.value || !user.value) return
-    try {
-      await api.put('/api/auth/installed-apps', { installedApps: appIds })
-      user.value = { ...user.value, installedApps: appIds }
-      localStorage.setItem(USER_INFO_KEY, JSON.stringify(user.value))
-    } catch {
-      // ignore sync errors
-    }
-  }
-
-  async function fetchInstalledApps(): Promise<number[]> {
-    if (!token.value) return []
-    try {
-      const { data } = await api.get<{ data: number[] }>('/api/auth/installed-apps')
-      return data
-    } catch {
-      return []
-    }
-  }
-
   function logout() {
     token.value = null
     user.value = null
@@ -182,8 +182,9 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     sendVerificationCode,
     fetchUserInfo,
-    syncInstalledApps,
-    fetchInstalledApps,
+    syncInstalledApps: () => {
+      /* deprecated, use marketStore.syncToServer */
+    },
     logout,
     clearError,
   }

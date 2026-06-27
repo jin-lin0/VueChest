@@ -1,16 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useBookmarkStore } from '@/stores'
+import { useBookmarkStore } from './store'
 
 defineOptions({ name: 'BookmarkView' })
 
-const router = useRouter()
 const bookmarkStore = useBookmarkStore()
-
-const goBack = () => {
-  router.push('/')
-}
 
 const newTitle = ref('')
 const newUrl = ref('')
@@ -89,12 +83,17 @@ const formatDate = (dateString: string) => {
     minute: '2-digit',
   }).format(date)
 }
+
+const goBack = () => {
+  history.back()
+}
 </script>
 
 <template>
   <div class="app-container">
     <header class="app-header">
-      <button class="back-button" @click="goBack">返回</button>
+      <button class="back-btn" @click="goBack">← 返回</button>
+
       <h1>书签管理</h1>
     </header>
 
@@ -402,6 +401,20 @@ const formatDate = (dateString: string) => {
   text-align: center;
   color: #7f8c8d;
   font-style: italic;
+}
+
+.back-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 1rem;
+  font-size: 1rem;
+}
+.back-btn:hover {
+  background: #2980b9;
 }
 
 @media (max-width: 768px) {

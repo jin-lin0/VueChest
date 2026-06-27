@@ -1,7 +1,11 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from '@/utils'
-import { STORAGE_KEYS, DEFAULT_POMODORO_SETTINGS } from '@/config'
+import { debounce, getStorage, setStorage } from './utils'
+
+const SETTINGS_KEY = 'pomodoro-settings'
+const HISTORY_KEY = 'pomodoro-history'
+
+const DEFAULT_SETTINGS = { work: 25, break: 5, longBreak: 15, sound: 'chime' as const }
 
 export type SessionType = 'work' | 'break' | 'longBreak'
 export type SoundType = 'chime' | 'bell' | 'alert' | 'gentle'
@@ -12,7 +16,6 @@ export interface HistoryRecord {
   duration: number
   completedAt: string
 }
-
 export interface PomodoroSettings {
   work: number
   break: number
@@ -21,7 +24,7 @@ export interface PomodoroSettings {
 }
 
 export const usePomodoroStore = defineStore('pomodoro', () => {
-  const settings = ref<PomodoroSettings>({ ...DEFAULT_POMODORO_SETTINGS })
+  const settings = ref<PomodoroSettings>({ ...DEFAULT_SETTINGS })
   const showSettings = ref(false)
   const sessionType = ref<SessionType>('work')
   const isRunning = ref(false)
@@ -29,19 +32,13 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
   const history = ref<HistoryRecord[]>([])
   let timer: ReturnType<typeof setInterval> | null = null
 
-  const LABELS: Record<SessionType, string> = {
-    work: '专注',
-    break: '短休息',
-    longBreak: '长休息',
-  }
-
+  const LABELS: Record<SessionType, string> = { work: '专注', break: '短休息', longBreak: '长休息' }
   const SOUND_OPTIONS: { key: SoundType; label: string }[] = [
     { key: 'chime', label: '清脆' },
     { key: 'bell', label: '铃声' },
     { key: 'alert', label: '警示' },
     { key: 'gentle', label: '柔和' },
   ]
-
   const sessionOptions: { key: SessionType; label: string }[] = [
     { key: 'work', label: '专注' },
     { key: 'break', label: '短休息' },
@@ -53,26 +50,19 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     break: settings.value.break * 60,
     longBreak: settings.value.longBreak * 60,
   }))
-
   const timeLeft = ref(durations.value.work)
 
-  const loadSettings = (): PomodoroSettings => {
-    return {
-      ...DEFAULT_POMODORO_SETTINGS,
-      ...(getStorage<Partial<PomodoroSettings>>(STORAGE_KEYS.POMODORO_SETTINGS) || {}),
-    }
-  }
-
-  const loadHistory = (): HistoryRecord[] => {
-    return getStorage<HistoryRecord[]>(STORAGE_KEYS.POMODORO_HISTORY, []) || []
-  }
+  const loadSettings = (): PomodoroSettings => ({
+    ...DEFAULT_SETTINGS,
+    ...(getStorage<Partial<PomodoroSettings>>(SETTINGS_KEY) || {}),
+  })
+  const loadHistory = (): HistoryRecord[] => getStorage<HistoryRecord[]>(HISTORY_KEY, []) || []
 
   const saveHistory = () => {
-    setStorage(STORAGE_KEYS.POMODORO_HISTORY, history.value)
+    setStorage(HISTORY_KEY, history.value)
   }
-
   const saveSettings = () => {
-    setStorage(STORAGE_KEYS.POMODORO_SETTINGS, settings.value)
+    setStorage(SETTINGS_KEY, settings.value)
   }
 
   const init = () => {
@@ -94,30 +84,21 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     const secs = timeLeft.value % 60
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   })
-
   const progress = computed(() => {
     const total = durations.value[sessionType.value]
     return ((total - timeLeft.value) / total) * 100
   })
-
   const circumference = 2 * Math.PI * 120
-
-  const strokeDashoffset = computed(() => {
-    return circumference - (progress.value / 100) * circumference
-  })
+  const strokeDashoffset = computed(() => circumference - (progress.value / 100) * circumference)
 
   const startTimer = () => {
     if (isRunning.value) return
     isRunning.value = true
     timer = setInterval(() => {
-      if (timeLeft.value > 0) {
-        timeLeft.value--
-      } else {
-        completeSession()
-      }
+      if (timeLeft.value > 0) timeLeft.value--
+      else completeSession()
     }, 1000)
   }
-
   const pauseTimer = () => {
     isRunning.value = false
     if (timer) {
@@ -125,7 +106,6 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
       timer = null
     }
   }
-
   const resetTimer = () => {
     pauseTimer()
     timeLeft.value = durations.value[sessionType.value]
@@ -134,40 +114,32 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
   const completeSession = () => {
     pauseTimer()
     playNotificationSound()
-
     history.value.unshift({
       id: Date.now(),
       type: sessionType.value,
       duration: durations.value[sessionType.value],
       completedAt: new Date().toISOString(),
     })
-
-    if (sessionType.value === 'work') {
-      pomodoroCount.value++
-    }
-
+    if (sessionType.value === 'work') pomodoroCount.value++
     switchSession()
   }
-
   const switchSession = () => {
-    if (sessionType.value === 'work') {
-      sessionType.value = pomodoroCount.value % 4 === 0 ? 'longBreak' : 'break'
-    } else {
-      sessionType.value = 'work'
-    }
+    sessionType.value =
+      sessionType.value === 'work'
+        ? pomodoroCount.value % 4 === 0
+          ? 'longBreak'
+          : 'break'
+        : 'work'
     timeLeft.value = durations.value[sessionType.value]
   }
-
   const setSession = (type: SessionType) => {
     if (isRunning.value) return
     sessionType.value = type
     timeLeft.value = durations.value[type]
   }
-
   const toggleSettings = () => {
     showSettings.value = !showSettings.value
   }
-
   const applySettings = () => {
     if (isRunning.value) return
     timeLeft.value = durations.value[sessionType.value]
@@ -179,25 +151,19 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
       (r) => new Date(r.completedAt).toDateString() === today && r.type === 'work',
     ).length
   })
-
   const totalFocusMinutes = computed(() => {
     const today = new Date().toDateString()
-    const todayRecords = history.value.filter(
-      (r) => r.type === 'work' && new Date(r.completedAt).toDateString() === today,
-    )
-    return todayRecords.reduce((sum, r) => sum + r.duration / 60, 0)
+    return history.value
+      .filter((r) => r.type === 'work' && new Date(r.completedAt).toDateString() === today)
+      .reduce((s, r) => s + r.duration / 60, 0)
   })
 
   let playSoundCallback: (() => void) | null = null
-
   const setPlaySoundCallback = (callback: () => void) => {
     playSoundCallback = callback
   }
-
   const playNotificationSound = () => {
-    if (playSoundCallback) {
-      playSoundCallback()
-    }
+    if (playSoundCallback) playSoundCallback()
   }
 
   const debouncedSaveHistory = debounce(() => saveHistory(), 500)

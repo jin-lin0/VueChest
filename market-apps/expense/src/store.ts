@@ -1,7 +1,11 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from '@/utils'
-import { STORAGE_KEYS, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/config'
+import { debounce, getStorage, setStorage } from './utils'
+
+const STORAGE_KEY = 'expenses'
+
+const EXPENSE_CATEGORIES = ['餐饮', '交通', '购物', '娱乐', '住房', '医疗', '教育', '其他']
+const INCOME_CATEGORIES = ['工资', '奖金', '兼职', '理财', '红包', '其他']
 
 export interface ExpenseItem {
   id: number
@@ -22,27 +26,24 @@ export const useExpenseStore = defineStore('expense', () => {
   const formDate = ref(new Date().toISOString().slice(0, 10))
   const editingId = ref<number | null>(null)
 
-  const loadRecords = (): ExpenseItem[] => {
-    return getStorage<ExpenseItem[]>(STORAGE_KEYS.EXPENSES, []) || []
-  }
-
+  const loadRecords = (): ExpenseItem[] => getStorage<ExpenseItem[]>(STORAGE_KEY, []) || []
   const saveRecords = () => {
-    setStorage(STORAGE_KEYS.EXPENSES, records.value)
+    setStorage(STORAGE_KEY, records.value)
   }
 
   const init = () => {
     records.value = loadRecords()
   }
 
-  const currentCategories = computed(() => {
-    return formType.value === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
-  })
+  const currentCategories = computed(() =>
+    formType.value === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES,
+  )
 
-  const sortedRecords = computed(() => {
-    return [...records.value].sort(
+  const sortedRecords = computed(() =>
+    [...records.value].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || b.id - a.id,
-    )
-  })
+    ),
+  )
 
   const groupedRecords = computed(() => {
     const groups: Record<string, ExpenseItem[]> = {}
@@ -54,14 +55,12 @@ export const useExpenseStore = defineStore('expense', () => {
     return groups
   })
 
-  const totalIncome = computed(() => {
-    return records.value.filter((r) => r.type === 'income').reduce((sum, r) => sum + r.amount, 0)
-  })
-
-  const totalExpense = computed(() => {
-    return records.value.filter((r) => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0)
-  })
-
+  const totalIncome = computed(() =>
+    records.value.filter((r) => r.type === 'income').reduce((s, r) => s + r.amount, 0),
+  )
+  const totalExpense = computed(() =>
+    records.value.filter((r) => r.type === 'expense').reduce((s, r) => s + r.amount, 0),
+  )
   const balance = computed(() => totalIncome.value - totalExpense.value)
 
   const monthlyIncome = computed(() => {
@@ -69,15 +68,14 @@ export const useExpenseStore = defineStore('expense', () => {
     const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     return records.value
       .filter((r) => r.type === 'income' && r.date.startsWith(monthStr))
-      .reduce((sum, r) => sum + r.amount, 0)
+      .reduce((s, r) => s + r.amount, 0)
   })
-
   const monthlyExpense = computed(() => {
     const now = new Date()
     const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     return records.value
       .filter((r) => r.type === 'expense' && r.date.startsWith(monthStr))
-      .reduce((sum, r) => sum + r.amount, 0)
+      .reduce((s, r) => s + r.amount, 0)
   })
 
   const switchType = (type: 'income' | 'expense') => {
@@ -103,7 +101,6 @@ export const useExpenseStore = defineStore('expense', () => {
     }
     showForm.value = true
   }
-
   const closeForm = () => {
     showForm.value = false
   }
@@ -112,7 +109,6 @@ export const useExpenseStore = defineStore('expense', () => {
     const amount = parseFloat(formAmount.value)
     if (!amount || amount <= 0) return
     if (!formCategory.value) return
-
     if (editingId.value !== null) {
       const index = records.value.findIndex((r) => r.id === editingId.value)
       if (index !== -1) {
@@ -135,7 +131,6 @@ export const useExpenseStore = defineStore('expense', () => {
         date: formDate.value,
       })
     }
-
     showForm.value = false
   }
 

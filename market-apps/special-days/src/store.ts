@@ -1,7 +1,8 @@
 import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from '@/utils'
-import { STORAGE_KEYS } from '@/config'
+import { getStorage, setStorage } from './utils'
+
+const STORAGE_KEY = 'special_days'
 
 export interface SpecialDay {
   id: number
@@ -52,7 +53,6 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
     '💝',
     '🎊',
   ]
-
   const solarMonthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
   const lunarMonthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
 
@@ -60,20 +60,11 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
     const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     return daysInMonth[month - 1] || 31
   }
+  const getMaxLunarDay = (): number => 30
 
-  const getMaxLunarDay = (): number => {
-    return 30
-  }
-
-  const solarDayOptions = (month: number) => {
-    const max = getMaxSolarDay(month)
-    return Array.from({ length: max }, (_, i) => i + 1)
-  }
-
-  const lunarDayOptions = () => {
-    const max = getMaxLunarDay()
-    return Array.from({ length: max }, (_, i) => i + 1)
-  }
+  const solarDayOptions = (month: number) =>
+    Array.from({ length: getMaxSolarDay(month) }, (_, i) => i + 1)
+  const lunarDayOptions = () => Array.from({ length: getMaxLunarDay() }, (_, i) => i + 1)
 
   const currentYear = new Date().getFullYear()
   const yearOptions = Array.from({ length: 50 }, (_, i) => currentYear - 10 + i)
@@ -92,18 +83,14 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
 
   const form = ref<EditForm>(defaultForm())
 
-  const loadSpecialDays = (): SpecialDay[] => {
-    return getStorage<SpecialDay[]>(STORAGE_KEYS.SPECIAL_DAYS, []) || []
-  }
-
-  const saveSpecialDays = () => {
-    setStorage(STORAGE_KEYS.SPECIAL_DAYS, specialDays.value)
+  const load = (): SpecialDay[] => getStorage<SpecialDay[]>(STORAGE_KEY, []) || []
+  const save = () => {
+    setStorage(STORAGE_KEY, specialDays.value)
   }
 
   const init = () => {
-    specialDays.value = loadSpecialDays()
+    specialDays.value = load()
   }
-
   const resetForm = () => {
     form.value = defaultForm()
     editingId.value = null
@@ -113,7 +100,6 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
     resetForm()
     showForm.value = true
   }
-
   const openEditForm = (day: SpecialDay) => {
     editingId.value = day.id
     form.value = {
@@ -129,7 +115,6 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
     }
     showForm.value = true
   }
-
   const closeForm = () => {
     showForm.value = false
     resetForm()
@@ -137,23 +122,12 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
 
   const submitForm = () => {
     if (!form.value.name.trim()) return
-
     if (editingId.value !== null) {
-      const index = specialDays.value.findIndex((d) => d.id === editingId.value)
-      if (index !== -1) {
-        specialDays.value[index] = {
-          ...specialDays.value[index],
-          ...form.value,
-        }
-      }
+      const idx = specialDays.value.findIndex((d) => d.id === editingId.value)
+      if (idx !== -1) specialDays.value[idx] = { ...specialDays.value[idx], ...form.value }
     } else {
-      specialDays.value.push({
-        id: Date.now(),
-        ...form.value,
-        createdAt: new Date().toISOString(),
-      })
+      specialDays.value.push({ id: Date.now(), ...form.value, createdAt: new Date().toISOString() })
     }
-
     showForm.value = false
     resetForm()
   }
@@ -162,8 +136,7 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
     specialDays.value = specialDays.value.filter((d) => d.id !== id)
   }
 
-  const debouncedSave = debounce(() => saveSpecialDays(), 500)
-  watch(specialDays, debouncedSave, { deep: true })
+  watch(specialDays, () => save(), { deep: true })
 
   return {
     specialDays,

@@ -11,46 +11,10 @@ const router = createRouter({
       meta: { title: '首页' },
     },
     {
-      path: '/todo',
-      name: 'todo',
-      component: () => import('../views/Todo.vue'),
-      meta: { title: '待办事项' },
-    },
-    {
-      path: '/notes',
-      name: 'notes',
-      component: () => import('../views/Notes.vue'),
-      meta: { title: '笔记' },
-    },
-    {
-      path: '/bookmark',
-      name: 'bookmark',
-      component: () => import('../views/Bookmark.vue'),
-      meta: { title: '书签' },
-    },
-    {
-      path: '/pomodoro',
-      name: 'pomodoro',
-      component: () => import('../views/Pomodoro.vue'),
-      meta: { title: '番茄钟' },
-    },
-    {
-      path: '/expense',
-      name: 'expense',
-      component: () => import('../views/Expense.vue'),
-      meta: { title: '支出管理' },
-    },
-    {
       path: '/api-manager',
       name: 'api-manager',
       component: () => import('../views/ApiManager.vue'),
       meta: { title: 'API 管理' },
-    },
-    {
-      path: '/special-days',
-      name: 'special-days',
-      component: () => import('../views/SpecialDays.vue'),
-      meta: { title: '特殊日子' },
     },
     {
       path: '/ai-chat',

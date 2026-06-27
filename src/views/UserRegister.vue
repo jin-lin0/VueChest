@@ -217,10 +217,8 @@ async function handleRegister() {
 }
 
 async function syncInitialApps() {
-  const localInstalled = marketStore.installedApps.map((a) => a.id)
-  if (localInstalled.length > 0) {
-    await authStore.syncInstalledApps(localInstalled)
-  }
+  // 注册后把本地已安装的 App 同步到服务端
+  await marketStore.syncToServer()
 }
 </script>
 

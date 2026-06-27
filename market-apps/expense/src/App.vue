@@ -1,16 +1,10 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useExpenseStore } from '@/stores'
+import { useExpenseStore } from './store'
 
 defineOptions({ name: 'ExpenseView' })
 
-const router = useRouter()
 const expenseStore = useExpenseStore()
-
-const goBack = () => {
-  router.push('/')
-}
 
 onMounted(() => {
   expenseStore.init()
@@ -41,12 +35,17 @@ const getDayTotal = (items: { type: string; amount: number }[]) => {
   const expense = items.filter((r) => r.type === 'expense').reduce((s, r) => s + r.amount, 0)
   return { income, expense }
 }
+
+const goBack = () => {
+  history.back()
+}
 </script>
 
 <template>
   <div class="app-container">
     <header class="app-header">
-      <button class="back-button" @click="goBack">返回</button>
+      <button class="back-btn" @click="goBack">← 返回</button>
+
       <h1>记账本</h1>
     </header>
 
@@ -564,6 +563,20 @@ const getDayTotal = (items: { type: string; amount: number }[]) => {
 
 .submit-btn:hover {
   background-color: #27ae60;
+}
+
+.back-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 1rem;
+  font-size: 1rem;
+}
+.back-btn:hover {
+  background: #2980b9;
 }
 
 @media (max-width: 768px) {

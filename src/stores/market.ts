@@ -131,46 +131,51 @@ export const useMarketStore = defineStore('market', () => {
     }
   }
 
+  /**
+   * 从服务端下载并安装单个 App（核心安装逻辑）
+   * 供 installApp / syncFromServer 共用
+   */
+  async function downloadAndInstall(appId: number): Promise<InstalledApp | null> {
+    // 1. 下载 bundle + 详情（并发）
+    const [downloadRes, detail] = await Promise.all([
+      api.get<{
+        data: { fileContent: string; name: string; version: string }
+      }>(`/api/market/apps/${appId}/download`, { auth: false }),
+      fetchAppDetail(appId),
+    ])
+
+    const { fileContent } = downloadRes.data
+    if (!fileContent) return null
+
+    // 2. 缓存 bundle 到 IndexedDB
+    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, fileContent)
+
+    // 3. 解析 + 注册路由
+    const def = loadMarketApp(fileContent)
+    if (!def) return null
+    registerRoute(appId, def)
+
+    // 4. 构建 InstalledApp 记录
+    return {
+      id: appId,
+      name: detail?.name || downloadRes.data.name,
+      icon: detail?.icon || def.meta.icon,
+      route: def.route,
+      description: detail?.description || def.meta.description,
+      version: detail?.version || downloadRes.data.version,
+      installedAt: Date.now(),
+    }
+  }
+
   async function installApp(appId: number) {
     if (installedApps.value.some((a) => a.id === appId)) return
 
-    const { data: downloadData } = await api.get<{
-      data: { fileContent: string; name: string; version: string }
-    }>(`/api/market/apps/${appId}/download`, { auth: false })
-    const { fileContent, name, version } = downloadData
+    const entry = await downloadAndInstall(appId)
+    if (!entry) throw new Error('无法加载应用')
 
-    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, fileContent)
-
-    const def = loadMarketApp(fileContent)
-    if (!def) throw new Error('无法加载应用')
-
-    registerRoute(appId, def)
-
-    let icon = def.meta.icon
-    let description = def.meta.description
-    try {
-      const detailRes = await api.get<{ data: MarketAppItem }>(`/api/market/apps/${appId}`, {
-        auth: false,
-      })
-      if (detailRes.data) {
-        icon = detailRes.data.icon || icon
-        description = detailRes.data.description || description
-      }
-    } catch {}
-    if (!icon) icon = def.meta.icon
-    if (!description) description = def.meta.description
-
-    const entry: InstalledApp = {
-      id: appId,
-      name,
-      icon,
-      route: def.route,
-      description,
-      version,
-      installedAt: Date.now(),
-    }
     installedApps.value.push(entry)
     setStorage(INSTALLED_KEY, installedApps.value)
+    syncToServer()
   }
 
   async function uninstallApp(appId: number) {
@@ -186,6 +191,7 @@ export const useMarketStore = defineStore('market', () => {
     }
 
     removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
+    syncToServer()
   }
 
   async function uploadApp(formData: {
@@ -234,6 +240,16 @@ export const useMarketStore = defineStore('market', () => {
     return installedApps.value.some((a) => a.id === appId)
   }
 
+  // 将已安装的 App ID 列表同步到服务端
+  async function syncToServer() {
+    const ids = installedApps.value.map((a) => a.id)
+    try {
+      await api.put('/api/auth/installed-apps', { installedApps: ids })
+    } catch {
+      // ignore sync errors silently
+    }
+  }
+
   async function refreshInstalledMeta() {
     if (installedApps.value.length === 0) return
     let changed = false
@@ -257,31 +273,29 @@ export const useMarketStore = defineStore('market', () => {
     }
   }
 
-  async function syncFromServer(mergedIds: number[], serverAppIds: number[]) {
-    const newApps: InstalledApp[] = []
+  /**
+   * 跨设备同步：根据服务端的 App ID 列表，下载本地缺失的 App
+   * 并发下载，比串行快很多
+   */
+  async function syncFromServer(serverAppIds: number[]) {
+    // 找出本地没有的
+    const missing = serverAppIds.filter((id) => !installedApps.value.some((a) => a.id === id))
+    if (missing.length === 0) return
 
-    for (const appId of mergedIds) {
-      const existing = installedApps.value.find((a) => a.id === appId)
-      if (existing) {
-        newApps.push(existing)
-      } else if (serverAppIds.includes(appId)) {
-        const detail = await fetchAppDetail(appId)
-        if (detail) {
-          newApps.push({
-            id: detail.id,
-            name: detail.name,
-            icon: detail.icon,
-            route: `/m/${detail.id}`,
-            description: detail.description,
-            version: detail.version,
-            installedAt: Date.now(),
-          })
-        }
-      }
-    }
+    // 并发下载
+    const results = await Promise.allSettled(missing.map((id) => downloadAndInstall(id)))
+    const newApps = results
+      .filter(
+        (r): r is PromiseFulfilledResult<InstalledApp> =>
+          r.status === 'fulfilled' && r.value !== null,
+      )
+      .map((r) => r.value)
 
-    installedApps.value = newApps
+    if (newApps.length === 0) return
+
+    installedApps.value.push(...newApps)
     setStorage(INSTALLED_KEY, installedApps.value)
+    syncToServer()
   }
 
   return {
@@ -304,5 +318,6 @@ export const useMarketStore = defineStore('market', () => {
     isInstalled,
     refreshInstalledMeta,
     syncFromServer,
+    syncToServer,
   }
 })

@@ -1,17 +1,11 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { usePomodoroStore } from '@/stores'
-import type { SoundType } from '@/stores'
+import { usePomodoroStore } from './store'
+import type { SoundType } from './store'
 
 defineOptions({ name: 'PomodoroView' })
 
-const router = useRouter()
 const pomodoroStore = usePomodoroStore()
-
-const goBack = () => {
-  router.push('/')
-}
 
 onMounted(() => {
   pomodoroStore.init()
@@ -128,12 +122,17 @@ const selectSound = (sound: SoundType) => {
   pomodoroStore.settings.sound = sound
   previewSound(sound)
 }
+
+const goBack = () => {
+  history.back()
+}
 </script>
 
 <template>
   <div class="app-container">
     <header class="app-header">
-      <button class="back-button" @click="goBack">返回</button>
+      <button class="back-btn" @click="goBack">← 返回</button>
+
       <h1>番茄钟</h1>
     </header>
 
@@ -740,6 +739,20 @@ const selectSound = (sound: SoundType) => {
   text-align: center;
   color: #7f8c8d;
   font-style: italic;
+}
+
+.back-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 1rem;
+  font-size: 1rem;
+}
+.back-btn:hover {
+  background: #2980b9;
 }
 
 @media (max-width: 768px) {

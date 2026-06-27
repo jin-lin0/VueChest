@@ -383,7 +383,7 @@ const navigateToApp = (route: string) => {
     <div
       v-if="nearestSpecialDay && !searchQuery"
       class="countdown-banner"
-      @click="navigateToApp('/special-days')"
+      @click="navigateToApp('/m/special-days')"
     >
       <div class="countdown-emoji">{{ nearestSpecialDay.emoji }}</div>
       <div class="countdown-info">

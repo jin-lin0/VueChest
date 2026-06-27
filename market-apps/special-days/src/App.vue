@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useSpecialDaysStore } from '@/stores'
-import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils'
-import type { SpecialDay } from '@/stores'
+import { useSpecialDaysStore } from './store'
+import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from './lunar'
+import type { SpecialDay } from './store'
 
 defineOptions({ name: 'SpecialDaysView' })
 
-const router = useRouter()
 const specialDaysStore = useSpecialDaysStore()
-
-const goBack = () => {
-  router.push('/')
-}
 
 onMounted(() => {
   specialDaysStore.init()
@@ -171,12 +165,16 @@ watch(
     }
   },
 )
+
+const goBack = () => {
+  history.back()
+}
 </script>
 
 <template>
   <div class="app-container">
     <header class="app-header">
-      <button class="back-button" @click="goBack">返回</button>
+      <button class="back-btn" @click="goBack">← 返回</button>
       <h1>🎉 特殊日子</h1>
       <button class="add-button" @click="specialDaysStore.openAddForm()">+ 添加</button>
     </header>
@@ -842,6 +840,20 @@ watch(
 .save-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.back-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 1rem;
+  font-size: 1rem;
+}
+.back-btn:hover {
+  background: #2980b9;
 }
 
 @media (max-width: 768px) {

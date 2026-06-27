@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import * as Vue from 'vue'
 import { createPinia } from 'pinia'
+import * as Pinia from 'pinia'
 import * as VueRouter from 'vue-router'
 
 import App from './App.vue'
@@ -32,6 +33,7 @@ if ('serviceWorker' in navigator) {
   })
 }
 
+import { getStorage, setStorage } from './utils/storage'
 ;(window as any).__VueChest__ = {
   Vue,
   VueRouter,
@@ -54,14 +56,34 @@ initStorage().then(async () => {
   const app = createApp(App)
   const pinia = createPinia()
 
+  // 挂到全局，供 Market App 共享 Pinia 模块 + 存储层
+  ;(window as any).__VueChest__.Pinia = Pinia // Pinia 模块（含 defineStore）
+  ;(window as any).__VueChest__.storage = { getStorage, setStorage }
+
   app.use(pinia)
   app.use(router)
 
   app.mount('#app')
 
   const authStore = useAuthStore()
-  authStore.initAuth()
+  await authStore.initAuth()
 
   const marketStore = useMarketStore()
+  // 先从本地 IndexedDB 恢复已安装的 App
   marketStore.initInstalledApps()
+  // 再从服务端拉取缺失的 App（跨设备同步）
+  // 同时处理：本地有但服务端没记录的情况（未登录时安装的）
+  if (authStore.token && authStore.user) {
+    const serverIds = authStore.user.installedApps || []
+    const localIds = marketStore.installedApps.map((a) => a.id)
+    const hasMissingOnLocal = serverIds.some((id) => !localIds.includes(id))
+    const hasMissingOnServer = localIds.some((id) => !serverIds.includes(id))
+
+    if (hasMissingOnLocal) {
+      await marketStore.syncFromServer(serverIds)
+    }
+    if (hasMissingOnServer) {
+      await marketStore.syncToServer()
+    }
+  }
 })

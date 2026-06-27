@@ -78,24 +78,23 @@ async function handleLogin() {
   })
 
   if (result.success) {
-    await mergeInstalledApps()
+    // 登录后跨设备同步：
+    // 1. 服务端有但本地没有 → 下载恢复
+    // 2. 本地有但服务端没有 → 推送上去
+    const serverIds = authStore.user?.installedApps || []
+    const localIds = marketStore.installedApps.map((a) => a.id)
+    const hasMissingOnLocal = serverIds.some((id) => !localIds.includes(id))
+    const hasMissingOnServer = localIds.some((id) => !serverIds.includes(id))
+
+    if (hasMissingOnLocal) {
+      await marketStore.syncFromServer(serverIds)
+    }
+    if (hasMissingOnServer) {
+      await marketStore.syncToServer()
+    }
+
     const redirect = route.query.redirect as string
     router.push(redirect || '/')
-  }
-}
-
-async function mergeInstalledApps() {
-  const localInstalled = marketStore.installedApps.map((a) => a.id)
-  const serverInstalled = await authStore.fetchInstalledApps()
-
-  const merged = [...new Set([...serverInstalled, ...localInstalled])]
-
-  if (merged.length > 0) {
-    await authStore.syncInstalledApps(merged)
-  }
-
-  if (merged.length !== serverInstalled.length || merged.length !== localInstalled.length) {
-    await marketStore.syncFromServer(merged, authStore.user?.installedApps || [])
   }
 }
 </script>
