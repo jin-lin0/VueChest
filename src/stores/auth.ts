@@ -182,9 +182,6 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     sendVerificationCode,
     fetchUserInfo,
-    syncInstalledApps: () => {
-      /* deprecated, use marketStore.syncToServer */
-    },
     logout,
     clearError,
   }

@@ -46,6 +46,9 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          charts: ['lightweight-charts'],
+          editor: ['md-editor-v3', 'marked', 'highlight.js'],
+          three: ['three'],
         },
       },
     },
