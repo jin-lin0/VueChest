@@ -13,37 +13,37 @@ const router = createRouter({
     {
       path: '/api-manager',
       name: 'api-manager',
-      component: () => import('../views/ApiManager.vue'),
+      component: () => import('../apps/api-manager/App.vue'),
       meta: { title: 'API 管理' },
     },
     {
       path: '/ai-chat',
       name: 'ai-chat',
-      component: () => import('../views/AIChat.vue'),
+      component: () => import('../apps/ai-chat/App.vue'),
       meta: { title: 'AI 聊天' },
     },
     {
       path: '/stock',
       name: 'stock',
-      component: () => import('../views/StockAnalysis.vue'),
+      component: () => import('../apps/stock/App.vue'),
       meta: { title: '股票分析' },
     },
     {
       path: '/music',
       name: 'music',
-      component: () => import('../views/Music.vue'),
+      component: () => import('../apps/music/App.vue'),
       meta: { title: '音乐' },
     },
     {
       path: '/racing',
       name: 'racing',
-      component: () => import('../views/RacingGame.vue'),
+      component: () => import('../apps/racing/App.vue'),
       meta: { title: '赛车游戏' },
     },
     {
       path: '/interview',
       name: 'interview',
-      component: () => import('../views/InterviewQuiz.vue'),
+      component: () => import('../apps/interview/App.vue'),
       meta: { title: '面试问答' },
     },
     {
@@ -67,19 +67,19 @@ const router = createRouter({
     {
       path: '/snake',
       name: 'snake',
-      component: () => import('../views/SnakeGameLobby.vue'),
+      component: () => import('../apps/snake/App.vue'),
       meta: { title: '贪吃蛇' },
     },
     {
       path: '/snake/local',
       name: 'snake-local',
-      component: () => import('../views/SnakeBattleLocal.vue'),
+      component: () => import('../apps/snake/views/LocalBattle.vue'),
       meta: { title: '贪吃蛇 · 本地对战' },
     },
     {
       path: '/snake/ai',
       name: 'snake-ai',
-      component: () => import('../views/SnakeBattleAi.vue'),
+      component: () => import('../apps/snake/views/AiBattle.vue'),
       meta: { title: '贪吃蛇 · 人机对战' },
     },
     {

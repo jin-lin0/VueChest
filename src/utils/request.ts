@@ -1,6 +1,6 @@
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
-export interface ApiResponse<T = any> {
+interface ApiResponse<T = any> {
   success: boolean
   data?: T
   message?: string
@@ -9,7 +9,7 @@ export interface ApiResponse<T = any> {
   [key: string]: any
 }
 
-export class ApiError extends Error {
+class ApiError extends Error {
   code: string
   status: number
   constructor(message: string, code = 'UNKNOWN', status = 500) {
@@ -78,4 +78,3 @@ const api = {
 }
 
 export { api }
-export default api

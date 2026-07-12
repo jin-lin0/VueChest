@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useSnakeAiGame, type Difficulty } from '@/composables/useSnakeAiGame'
-import SnakeCanvas from '@/components/snake/SnakeCanvas.vue'
-import SnakeResultModal from '@/components/snake/SnakeResultModal.vue'
-import SnakeTouchControl from '@/components/snake/SnakeTouchControl.vue'
+import { useSnakeAiGame, type Difficulty } from '../composables/useSnakeAiGame'
+import SnakeCanvas from '../components/SnakeCanvas.vue'
+import SnakeResultModal from '../components/SnakeResultModal.vue'
+import SnakeTouchControl from '../components/SnakeTouchControl.vue'
 
 defineOptions({ name: 'SnakeBattleAiView' })
 

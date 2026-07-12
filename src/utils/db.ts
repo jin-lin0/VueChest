@@ -25,12 +25,6 @@ const getDB = (): Promise<IDBPDatabase> => {
   return initPromise
 }
 
-export const dbGet = async <T>(key: string): Promise<T | null> => {
-  const db = await getDB()
-  const value = await db.get(STORE_NAME, key)
-  return value ?? null
-}
-
 export const dbSet = async (key: string, value: unknown): Promise<void> => {
   const db = await getDB()
   await db.put(STORE_NAME, value, key)
