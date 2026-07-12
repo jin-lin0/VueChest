@@ -49,19 +49,19 @@ const router = createRouter({
     {
       path: '/market',
       name: 'market',
-      component: () => import('../views/AppMarket.vue'),
+      component: () => import('../views/market/AppMarket.vue'),
       meta: { title: '应用市场' },
     },
     {
       path: '/market/:id(\\d+)',
       name: 'market-detail',
-      component: () => import('../views/AppMarketDetail.vue'),
+      component: () => import('../views/market/AppMarketDetail.vue'),
       meta: { title: '应用详情' },
     },
     {
       path: '/market/upload',
       name: 'market-upload',
-      component: () => import('../views/AppUpload.vue'),
+      component: () => import('../views/market/AppUpload.vue'),
       meta: { title: '上传应用', requiresAuth: true },
     },
     {
@@ -85,13 +85,13 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: () => import('../views/UserLogin.vue'),
+      component: () => import('../views/auth/UserLogin.vue'),
       meta: { title: '登录' },
     },
     {
       path: '/register',
       name: 'register',
-      component: () => import('../views/UserRegister.vue'),
+      component: () => import('../views/auth/UserRegister.vue'),
       meta: { title: '注册' },
     },
     {
@@ -102,7 +102,7 @@ const router = createRouter({
         {
           path: '',
           name: 'admin-dashboard',
-          component: () => import('../views/AdminDashboard.vue'),
+          component: () => import('../views/admin/AdminDashboard.vue'),
           meta: { title: '仪表盘' },
         },
         {
