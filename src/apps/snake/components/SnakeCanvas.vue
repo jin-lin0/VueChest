@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from 'vue'
-import type { SnakeState, ItemState } from '@/composables/snakeTypes'
+import type { SnakeState, ItemState } from '../composables/snakeTypes'
 
 const props = defineProps<{
   snakes: SnakeState[]

@@ -176,8 +176,6 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
 })
 
-// Expose for parent
-defineExpose({})
 </script>
 
 <template>

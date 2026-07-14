@@ -165,10 +165,6 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
   }
 
-  function clearError() {
-    error.value = null
-  }
-
   return {
     token,
     user,
@@ -181,8 +177,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     sendVerificationCode,
-    fetchUserInfo,
     logout,
-    clearError,
   }
 })

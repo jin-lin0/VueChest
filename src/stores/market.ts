@@ -34,13 +34,6 @@ export interface InstalledApp {
   installedAt: number
 }
 
-export interface MarketAppListData {
-  items: MarketAppItem[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
 const INSTALLED_KEY = 'market_installed_apps'
 const BUNDLE_KEY_PREFIX = 'market-bundle-'
 
@@ -48,9 +41,6 @@ const installedRoutePrefix = 'market-installed-'
 
 export const useMarketStore = defineStore('market', () => {
   const availableApps = ref<MarketAppItem[]>([])
-  const totalApps = ref(0)
-  const totalPages = ref(0)
-  const currentPage = ref(1)
   const isLoading = ref(false)
 
   const installedApps = ref<InstalledApp[]>([])
@@ -103,17 +93,9 @@ export const useMarketStore = defineStore('market', () => {
       if (params?.limit) query.set('limit', String(params.limit))
 
       const { data } = await api.get<{
-        data: {
-          items: MarketAppItem[]
-          total: number
-          page: number
-          totalPages: number
-        }
+        data: { items: MarketAppItem[] }
       }>(`/api/market/apps?${query}`, { auth: false })
       availableApps.value = data.items
-      totalApps.value = data.total
-      totalPages.value = data.totalPages
-      currentPage.value = data.page
     } catch (e) {
       console.error('Failed to fetch market apps:', e)
     } finally {
@@ -209,33 +191,6 @@ export const useMarketStore = defineStore('market', () => {
     return data
   }
 
-  async function approveApp(id: number) {
-    return api.post(`/api/market/apps/${id}/approve`)
-  }
-
-  async function rejectApp(id: number) {
-    return api.post(`/api/market/apps/${id}/reject`)
-  }
-
-  async function deleteApp(id: number) {
-    return api.delete(`/api/market/apps/${id}`)
-  }
-
-  async function updateApp(
-    id: number,
-    data: {
-      name?: string
-      icon?: string
-      description?: string
-      version?: string
-      category?: string
-      fileContent?: string
-      readme?: string
-    },
-  ) {
-    return api.put(`/api/market/apps/${id}`, data)
-  }
-
   function isInstalled(appId: number): boolean {
     return installedApps.value.some((a) => a.id === appId)
   }
@@ -300,9 +255,6 @@ export const useMarketStore = defineStore('market', () => {
 
   return {
     availableApps,
-    totalApps,
-    totalPages,
-    currentPage,
     isLoading,
     installedApps,
     initInstalledApps,
@@ -311,10 +263,6 @@ export const useMarketStore = defineStore('market', () => {
     installApp,
     uninstallApp,
     uploadApp,
-    approveApp,
-    rejectApp,
-    deleteApp,
-    updateApp,
     isInstalled,
     refreshInstalledMeta,
     syncFromServer,

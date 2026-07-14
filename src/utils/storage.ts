@@ -1,4 +1,4 @@
-import { dbSet, dbRemove, dbClear, dbGetAll, dbImportAll } from './db'
+import { dbSet, dbRemove, dbGetAll, dbImportAll } from './db'
 
 const cache = new Map<string, unknown>()
 let initialized = false
@@ -45,17 +45,6 @@ export function removeStorage(key: string): void {
   dbRemove(key).catch((error) => {
     console.error('IndexedDB 删除失败:', error)
   })
-}
-
-export function clearStorage(): void {
-  cache.clear()
-  dbClear().catch((error) => {
-    console.error('IndexedDB 清空失败:', error)
-  })
-}
-
-export function hasStorage(key: string): boolean {
-  return cache.has(key)
 }
 
 export const exportAllData = async (): Promise<Record<string, unknown>> => {

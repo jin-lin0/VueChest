@@ -19,9 +19,3 @@ export interface Question {
   createdAt?: string
 }
 
-export interface QuestionQueryResult {
-  questions: Question[]
-  total: number
-  page: number
-  totalPages: number
-}

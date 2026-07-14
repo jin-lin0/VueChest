@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useSnakeLocalGame } from '@/composables/useSnakeLocalGame'
-import SnakeCanvas from '@/components/snake/SnakeCanvas.vue'
-import SnakeResultModal from '@/components/snake/SnakeResultModal.vue'
+import { useSnakeLocalGame } from '../composables/useSnakeLocalGame'
+import SnakeCanvas from '../components/SnakeCanvas.vue'
+import SnakeResultModal from '../components/SnakeResultModal.vue'
 
 defineOptions({ name: 'SnakeBattleLocalView' })
 
