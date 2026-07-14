@@ -49,10 +49,6 @@ import { getStorage, setStorage } from './utils/storage'
 }
 
 initStorage().then(async () => {
-  // 等待前端定位就绪（清缓存后首次需等 api.ip.sb 返回）
-  const geo = await getClientGeo()
-  if (geo) sessionStorage.setItem('client_geo', JSON.stringify(geo))
-
   const app = createApp(App)
   const pinia = createPinia()
 
@@ -64,6 +60,11 @@ initStorage().then(async () => {
   app.use(router)
 
   app.mount('#app')
+
+  // 定位不阻塞首屏，完成后会自动用于后续请求。
+  getClientGeo().then((geo) => {
+    if (geo) sessionStorage.setItem('client_geo', JSON.stringify(geo))
+  })
 
   const authStore = useAuthStore()
   await authStore.initAuth()

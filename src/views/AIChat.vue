@@ -315,6 +315,7 @@ const sendMessage = async () => {
     const decoder = new TextDecoder()
     let buffer = ''
     let fullContent = ''
+    let scrollFrame: number | null = null
 
     while (true) {
       const { done, value } = await reader.read()
@@ -336,14 +337,20 @@ const sendMessage = async () => {
           if (delta) {
             fullContent += delta
             session.messages[assistantIndex].content = fullContent
-            await nextTick()
-            scrollToBottom()
+            if (scrollFrame === null) {
+              scrollFrame = requestAnimationFrame(() => {
+                scrollFrame = null
+                scrollToBottom()
+              })
+            }
           }
         } catch {
           // skip invalid json
         }
       }
     }
+
+    if (scrollFrame !== null) cancelAnimationFrame(scrollFrame)
 
     session.updatedAt = Date.now()
     saveSessions()

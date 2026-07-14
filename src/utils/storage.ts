@@ -11,39 +11,7 @@ export const initStorage = async (): Promise<void> => {
   initPromise = (async () => {
     try {
       const allData = await dbGetAll()
-      const hasDbData = Object.keys(allData).length > 0
-
-      if (hasDbData) {
-        Object.entries(allData).forEach(([key, value]) => {
-          cache.set(key, value)
-        })
-      } else {
-        const keys: string[] = []
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)
-          if (key) keys.push(key)
-        }
-
-        for (const key of keys) {
-          const raw = localStorage.getItem(key)
-          if (raw !== null) {
-            try {
-              cache.set(key, JSON.parse(raw))
-            } catch {
-              cache.set(key, raw)
-            }
-          }
-        }
-
-        if (cache.size > 0) {
-          const data: Record<string, unknown> = {}
-          cache.forEach((value, key) => {
-            data[key] = value
-          })
-          await dbImportAll(data)
-          localStorage.clear()
-        }
-      }
+      Object.entries(allData).forEach(([key, value]) => cache.set(key, value))
 
       initialized = true
     } catch (error) {
