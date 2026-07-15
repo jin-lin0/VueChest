@@ -177,6 +177,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     sendVerificationCode,
+    fetchUserInfo,
     logout,
   }
 })

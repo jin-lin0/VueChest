@@ -16,7 +16,7 @@
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "build:market": "node scripts/build-market-apps.mjs",
-    "publish:market": "node scripts/publish-market-apps.mjs"
+    "publish:market": "node scripts/publish-market-apps-r2.mjs"
   },
   "dependencies": {
     "@types/three": "^0.184.1",

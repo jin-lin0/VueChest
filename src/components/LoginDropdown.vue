@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
+import { api } from '@/utils/request'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -34,19 +35,58 @@ function handleLogout() {
   authStore.logout()
   showDropdown.value = false
 }
+
+async function uploadAvatar(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) return window.alert('头像不能超过 2MB')
+
+  try {
+    const { data } = await api.post<{ data: { key: string; uploadUrl: string } }>(
+      '/api/uploads/presign',
+      { kind: 'avatar', contentType: file.type, size: file.size },
+    )
+    const uploaded = await fetch(data.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    })
+    if (!uploaded.ok) throw new Error('upload failed')
+    await api.post('/api/uploads/complete', { kind: 'avatar', key: data.key })
+    await authStore.fetchUserInfo()
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '头像上传失败，请稍后重试')
+  }
+}
 </script>
 
 <template>
   <div class="login-dropdown" @click.stop>
     <button class="user-btn" @click="toggleDropdown">
-      <span class="user-icon">👤</span>
+      <span class="user-icon">
+        <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="用户头像" />
+        <span v-else>👤</span>
+      </span>
       <span v-if="authStore.isAuthenticated" class="user-name">{{ authStore.user?.username }}</span>
     </button>
 
     <div v-if="showDropdown" class="dropdown-menu" @click="closeDropdown">
       <template v-if="authStore.isAuthenticated">
         <div class="dropdown-info">
-          <span class="dropdown-role">{{ getRoleLabel(authStore.user?.role) }}</span>
+          <div class="profile-row">
+            <div class="profile-avatar">
+              <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="用户头像" />
+              <span v-else>{{ authStore.user?.username?.charAt(0).toUpperCase() }}</span>
+            </div>
+            <div class="profile-meta">
+              <strong>{{ authStore.user?.username }}</strong>
+              <span class="dropdown-role">{{ getRoleLabel(authStore.user?.role) }}</span>
+            </div>
+            <label class="avatar-upload">
+              更换
+              <input type="file" accept="image/jpeg,image/png,image/webp" hidden @change="uploadAvatar" />
+            </label>
+          </div>
         </div>
         <div class="dropdown-divider"></div>
         <button class="dropdown-item upload-link" @click.stop="$router.push('/market/upload')">
@@ -95,6 +135,73 @@ function handleLogout() {
 
 .user-icon {
   font-size: 1.1rem;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.user-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.profile-avatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: #667eea;
+  font-weight: 700;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-meta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-meta strong {
+  overflow: hidden;
+  color: #2c3e50;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar-upload {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #dbe3ff;
+  border-radius: 6px;
+  background: #f5f7ff;
+  color: #667eea;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.avatar-upload:hover {
+  background: #eef2ff;
 }
 
 .user-name {

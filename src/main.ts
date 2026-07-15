@@ -14,6 +14,10 @@ import { getClientGeo, getGeoHeader } from './utils/clientGeo'
 // 全局 fetch 代理：自动添加定位头
 const origFetch = window.fetch.bind(window)
 window.fetch = (input, init) => {
+  const url =
+    typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString()
+  if (!url.includes('/api/')) return origFetch(input, init)
+
   const headers = new Headers(init?.headers)
   try {
     const stored = sessionStorage.getItem('client_geo')

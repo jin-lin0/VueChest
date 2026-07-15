@@ -121,19 +121,19 @@ export const useMarketStore = defineStore('market', () => {
     // 1. 下载 bundle + 详情（并发）
     const [downloadRes, detail] = await Promise.all([
       api.get<{
-        data: { fileContent: string; name: string; version: string }
+        data: { fileUrl: string; name: string; version: string }
       }>(`/api/market/apps/${appId}/download`, { auth: false }),
       fetchAppDetail(appId),
     ])
 
-    const { fileContent } = downloadRes.data
-    if (!fileContent) return null
+    const code = await fetch(downloadRes.data.fileUrl).then((res) => res.text())
+    if (!code) return null
 
     // 2. 缓存 bundle 到 IndexedDB
-    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, fileContent)
+    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, code)
 
     // 3. 解析 + 注册路由
-    const def = loadMarketApp(fileContent)
+    const def = loadMarketApp(code)
     if (!def) return null
     registerRoute(appId, def)
 
@@ -182,12 +182,36 @@ export const useMarketStore = defineStore('market', () => {
     description: string
     version: string
     category: string
-    fileContent: string
+    file: File
     readme?: string
   }) {
+    const { data: upload } = await api.post<{
+      data: { key: string; uploadUrl: string }
+    }>('/api/uploads/presign', {
+      kind: 'app',
+      contentType: 'application/javascript',
+      size: formData.file.size,
+    })
+    const uploaded = await fetch(upload.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/javascript' },
+      body: formData.file,
+    })
+    if (!uploaded.ok) throw new Error('应用文件上传失败')
+    await api.post('/api/uploads/complete', { kind: 'app', key: upload.key })
+
     const { data } = await api.post<{
       data: { id: number; name: string; version: string; status: string }
-    }>('/api/market/apps', formData)
+    }>('/api/market/apps', {
+      name: formData.name,
+      icon: formData.icon,
+      description: formData.description,
+      version: formData.version,
+      category: formData.category,
+      readme: formData.readme,
+      fileKey: upload.key,
+      fileSize: formData.file.size,
+    })
     return data
   }
 

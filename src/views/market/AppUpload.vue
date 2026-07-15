@@ -11,6 +11,7 @@ const router = useRouter()
 const market = useMarketStore()
 
 const fileContent = ref('')
+const selectedFile = ref<File | null>(null)
 const category = ref('工具')
 const readme = ref('')
 const uploading = ref(false)
@@ -34,6 +35,7 @@ const categoryOptions: SelectOption[] = [
 function resetForm() {
   success.value = false
   fileContent.value = ''
+  selectedFile.value = null
   parsedMeta.value = null
   parseFailed.value = false
   readme.value = ''
@@ -42,6 +44,7 @@ function resetForm() {
 
 function changeFile() {
   fileContent.value = ''
+  selectedFile.value = null
   parsedMeta.value = null
   parseFailed.value = false
   error.value = ''
@@ -50,6 +53,11 @@ function changeFile() {
 
 function processFile(file: File) {
   if (!file) return
+  if (file.size > 10 * 1024 * 1024) {
+    error.value = '应用包不能超过 10MB'
+    return
+  }
+  selectedFile.value = file
   parseFailed.value = false
   parsedMeta.value = null
   error.value = ''
@@ -89,7 +97,7 @@ function triggerFileInput() {
 }
 
 async function handleSubmit() {
-  if (!fileContent.value || !parsedMeta.value) {
+  if (!selectedFile.value || !parsedMeta.value) {
     error.value = '请选择有效的应用包文件'
     return
   }
@@ -103,7 +111,7 @@ async function handleSubmit() {
       description: parsedMeta.value.description || '',
       version: parsedMeta.value.version || '1.0.0',
       category: category.value,
-      fileContent: fileContent.value,
+      file: selectedFile.value,
       readme: readme.value,
     })
     success.value = true

@@ -31,7 +31,11 @@
 
       <div class="sidebar-footer">
         <div class="user-info" v-if="authStore.user">
-          <div class="user-avatar">{{ authStore.user.username.charAt(0).toUpperCase() }}</div>
+          <label class="user-avatar" title="更换头像">
+            <img v-if="authStore.user.avatar" :src="authStore.user.avatar" alt="用户头像" />
+            <span v-else>{{ authStore.user.username.charAt(0).toUpperCase() }}</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden @change="uploadAvatar" />
+          </label>
           <div v-if="!isCollapsed" class="user-details">
             <div class="user-name">{{ authStore.user.username }}</div>
             <div class="user-role">{{ getRoleLabel(authStore.user.role) }}</div>
@@ -82,6 +86,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { api } from '@/utils/request'
 
 const router = useRouter()
 const route = useRoute()
@@ -90,6 +95,32 @@ const authStore = useAuthStore()
 const isCollapsed = ref(false)
 const mobileOpen = ref(false)
 const isDark = ref(false)
+
+async function uploadAvatar(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) {
+    window.alert('头像不能超过 2MB')
+    return
+  }
+
+  try {
+    const { data } = await api.post<{ data: { key: string; uploadUrl: string } }>(
+      '/api/uploads/presign',
+      { kind: 'avatar', contentType: file.type, size: file.size },
+    )
+    const uploaded = await fetch(data.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    })
+    if (!uploaded.ok) throw new Error('upload failed')
+    await api.post('/api/uploads/complete', { kind: 'avatar', key: data.key })
+    await authStore.fetchUserInfo()
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '头像上传失败，请稍后重试')
+  }
+}
 
 const menuItems = computed(() => {
   const items = [
@@ -386,6 +417,14 @@ function goToHome() {
   font-weight: 600;
   font-size: 15px;
   flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .user-details {
