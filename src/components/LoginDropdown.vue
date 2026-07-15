@@ -44,7 +44,7 @@ async function uploadAvatar(event: Event) {
   try {
     const { data } = await api.post<{ data: { key: string; uploadUrl: string } }>(
       '/api/uploads/presign',
-      { kind: 'avatar', contentType: file.type, size: file.size },
+      { kind: 'avatar', contentType: file.type, size: file.size, name: file.name },
     )
     const uploaded = await fetch(data.uploadUrl, {
       method: 'PUT',

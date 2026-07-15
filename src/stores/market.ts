@@ -191,6 +191,7 @@ export const useMarketStore = defineStore('market', () => {
       kind: 'app',
       contentType: 'application/javascript',
       size: formData.file.size,
+      name: `${formData.name}-v${formData.version}`,
     })
     const uploaded = await fetch(upload.uploadUrl, {
       method: 'PUT',
