@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/utils/request'
 import { copyToClipboard } from '@/utils'
-import Tooltip from '@/components/Tooltip.vue'
+import { Tooltip } from '@/components'
 
 const router = useRouter()
 function goBack() {
@@ -235,13 +235,14 @@ function exportAllTxt() {
 
       <label class="field">
         <span class="label">
-          SESSDATA（可选）
+          SESSDATA
           <Tooltip placement="bottom" max-width="min(300px, 88vw)">
             <span class="hint-icon" role="button" aria-label="什么是 SESSDATA，如何获取">ⓘ</span>
             <template #content>
               <b>SESSDATA 是什么？</b><br />
               登录 B站后，浏览器 Cookie 里的一个字段，相当于你的登录凭证。<br /><br />
-              部分视频的 <b>AI 字幕需登录后才可见</b>，填入可解锁更多字幕；留空也能抓取公开字幕。<br /><br />
+              部分视频的
+              <b>AI 字幕需登录后才可见</b>，填入可解锁更多字幕；留空也能抓取公开字幕。<br /><br />
               <b>如何获取：</b>登录 bilibili.com → 按 F12 → Application → Cookies → 复制 SESSDATA
               的值。<br /><br />
               <span class="hint-warn">该值等同账号凭证，仅本地使用，请勿外传。</span>

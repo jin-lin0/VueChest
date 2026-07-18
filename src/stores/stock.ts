@@ -361,8 +361,7 @@ export const useStockStore = defineStore('stock', () => {
   ): Promise<KlineData[]> => {
     const marketPrefix = getMarketId(code) === 1 ? 'sh' : 'sz'
     const symbol = `${marketPrefix}${code}`
-    const varName = `kline_${type}qfq`
-    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=${varName}&param=${symbol},${type},,,${count},qfqa`
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/kline/kline?param=${symbol},${type},,,${count},&qfq=1`
 
     const response = await fetch(url)
     if (!response.ok) {
@@ -370,12 +369,7 @@ export const useStockStore = defineStore('stock', () => {
     }
 
     const text = await response.text()
-    const jsonStr = text.split('=')[1]
-    if (!jsonStr) {
-      throw new Error('数据格式异常')
-    }
-
-    const data = JSON.parse(jsonStr)
+    const data = JSON.parse(text)
     if (data.code !== 0 || !data.data?.[symbol]?.[type]) {
       throw new Error('未找到K线数据')
     }

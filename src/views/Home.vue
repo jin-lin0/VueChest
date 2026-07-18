@@ -14,7 +14,7 @@ import {
 import { APP_MODULES, STORAGE_KEYS } from '@/config'
 import type { AppModule } from '@/config'
 import { useMarketStore } from '@/stores/market'
-import LoginDropdown from '@/components/LoginDropdown.vue'
+import { LoginDropdown } from '@/components'
 import { useTheme } from '@/composables/useTheme'
 
 defineOptions({ name: 'HomeView' })
@@ -381,6 +381,7 @@ const navigateToApp = (route: string) => {
           {{ isDark ? '☀️' : '🌙' }}
         </button>
         <button class="market-btn" @click="router.push('/market')">🏪 市场</button>
+        <button class="market-btn" @click="router.push('/docs')">📚 文档</button>
         <LoginDropdown />
       </div>
       <div class="search-bar">

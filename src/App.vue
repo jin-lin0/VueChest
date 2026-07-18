@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import RouteLoadingBar from './components/RouteLoadingBar.vue'
-import MusicPlayer from './components/MusicPlayer.vue'
+import { RouteLoadingBar, MusicPlayer } from '@/components'
 
 const router = useRouter()
 const isRouteLoading = ref(false)

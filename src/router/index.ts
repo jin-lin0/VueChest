@@ -11,6 +11,12 @@ const router = createRouter({
       meta: { title: '首页' },
     },
     {
+      path: '/docs',
+      name: 'docs',
+      component: () => import('../views/Docs.vue'),
+      meta: { title: '帮助文档' },
+    },
+    {
       path: '/api-manager',
       name: 'api-manager',
       component: () => import('../apps/api-manager/App.vue'),
@@ -27,6 +33,12 @@ const router = createRouter({
       name: 'stock',
       component: () => import('../apps/stock/App.vue'),
       meta: { title: '股票分析' },
+    },
+    {
+      path: '/stock/recommend',
+      name: 'stock-recommend',
+      component: () => import('../apps/stock/views/Recommend.vue'),
+      meta: { title: '短线荐股' },
     },
     {
       path: '/bilibili-subtitle',

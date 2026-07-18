@@ -144,6 +144,10 @@ onUnmounted(() => {
     <header class="app-header">
       <button class="back-button" @click="goBack">返回</button>
       <h1>股票查询</h1>
+      <nav class="module-tabs">
+        <RouterLink to="/stock" exact-active-class="active">行情分析</RouterLink>
+        <RouterLink to="/stock/recommend" active-class="active">短线荐股</RouterLink>
+      </nav>
     </header>
 
     <main class="stock-layout">
@@ -429,6 +433,33 @@ onUnmounted(() => {
   margin: 0;
   font-size: 1.5rem;
   color: var(--text-primary);
+}
+
+.module-tabs {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.module-tabs a {
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #555);
+  background: var(--bg-secondary, #f1f3f5);
+  border: 1px solid var(--border-color, #e0e0e0);
+  transition: all 0.15s;
+}
+
+.module-tabs a:hover {
+  color: var(--text-primary);
+}
+
+.module-tabs a.active {
+  color: #fff;
+  background: var(--info, #3498db);
+  border-color: var(--info, #3498db);
 }
 
 .stock-layout {

@@ -140,9 +140,8 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { marked } from 'marked'
-import Toast from '@/components/Toast.vue'
-import CustomSelect from '@/components/CustomSelect.vue'
-import type { SelectOption } from '@/components/CustomSelect.vue'
+import { Toast } from '@/components'
+import { CustomSelect, type SelectOption } from '@/components'
 import type { Question, Category } from '@/types/interview'
 import { api } from '@/utils/request'
 

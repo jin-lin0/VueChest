@@ -164,7 +164,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import Toast from '@/components/Toast.vue'
+import { Toast } from '@/components'
 import { api } from '@/utils/request'
 const authStore = useAuthStore()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)

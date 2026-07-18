@@ -3,9 +3,8 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
 import { extractMetaFromBundle } from '@/utils/app-loader'
-import CustomSelect from '@/components/CustomSelect.vue'
+import { CustomSelect, type SelectOption } from '@/components'
 import type { MarketAppMeta } from '@/utils/app-loader'
-import type { SelectOption } from '@/components/CustomSelect.vue'
 
 const router = useRouter()
 const market = useMarketStore()
