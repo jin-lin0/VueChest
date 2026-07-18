@@ -144,10 +144,9 @@ onUnmounted(() => {
     <header class="app-header">
       <button class="back-button" @click="goBack">返回</button>
       <h1>股票查询</h1>
-      <nav class="module-tabs">
-        <RouterLink to="/stock" exact-active-class="active">行情分析</RouterLink>
-        <RouterLink to="/stock/recommend" active-class="active">短线荐股</RouterLink>
-      </nav>
+        <nav class="module-tabs">
+          <RouterLink to="/stock" exact-active-class="active">行情分析</RouterLink>
+        </nav>
     </header>
 
     <main class="stock-layout">

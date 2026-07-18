@@ -35,12 +35,6 @@ const router = createRouter({
       meta: { title: '股票分析' },
     },
     {
-      path: '/stock/recommend',
-      name: 'stock-recommend',
-      component: () => import('../apps/stock/views/Recommend.vue'),
-      meta: { title: '短线荐股' },
-    },
-    {
       path: '/bilibili-subtitle',
       name: 'bilibili-subtitle',
       component: () => import('../apps/bilibili-subtitle/App.vue'),
