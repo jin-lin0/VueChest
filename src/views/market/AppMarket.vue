@@ -176,27 +176,27 @@ onMounted(() => {
 }
 
 .back-btn {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: var(--bg-glass-soft);
+  border: 1px solid var(--bg-glass-soft);
   padding: 0.5rem 1rem;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 0.9rem;
-  color: #667eea;
+  color: var(--accent);
   font-weight: 600;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .back-btn:hover {
-  background: rgba(102, 126, 234, 0.08);
-  border-color: rgba(102, 126, 234, 0.3);
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.3);
 }
 
 .header-text h1 {
   font-size: 1.6rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #2c3e50, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--text-primary), var(--accent), var(--accent-strong));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -207,7 +207,7 @@ onMounted(() => {
 
 .subtitle {
   font-size: 0.78rem;
-  color: #667eea;
+  color: var(--accent);
   font-weight: 600;
   margin: 0;
   letter-spacing: 0.08em;
@@ -218,17 +218,17 @@ onMounted(() => {
   display: flex;
   align-items: center;
   flex: 0 1 320px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--bg-glass-soft);
+  border-radius: var(--radius-md);
   padding: 0.5rem 0.9rem;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .search-bar:focus-within {
-  border-color: rgba(102, 126, 234, 0.4);
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.12);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.12);
 }
 
 .search-icon {
@@ -243,29 +243,29 @@ onMounted(() => {
   background: none;
   outline: none;
   font-size: 0.95rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   padding: 0;
 }
 
 .search-input::placeholder {
-  color: #b0b8c1;
+  color: var(--text-muted);
 }
 
 .search-clear {
   background: none;
   border: none;
-  color: #b0b8c1;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 0.85rem;
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
-  transition: all 0.15s ease;
+  transition: all var(--transition-fast);
   line-height: 1;
 }
 
 .search-clear:hover {
   background: rgba(0, 0, 0, 0.05);
-  color: #667eea;
+  color: var(--accent);
 }
 
 .category-tabs {
@@ -277,24 +277,24 @@ onMounted(() => {
 
 .category-tab {
   padding: 0.4rem 1rem;
-  border: 1px solid rgba(102, 126, 234, 0.2);
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 20px;
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  background: var(--bg-glass-soft);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   font-size: 0.85rem;
-  color: #8e99a4;
+  color: var(--text-muted);
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: all var(--transition);
 }
 
 .category-tab:hover {
-  border-color: rgba(102, 126, 234, 0.4);
-  color: #667eea;
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent);
 }
 
 .category-tab.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
+  background: var(--gradient-primary);
+  color: var(--accent-contrast);
   border-color: transparent;
 }
 
@@ -302,7 +302,7 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
-  color: #8e99a4;
+  color: var(--text-muted);
 }
 
 .empty-icon {
@@ -321,9 +321,9 @@ onMounted(() => {
 
 .app-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 16px;
+  background: var(--bg-glass);
+  border: 1px solid var(--bg-glass-soft);
+  border-radius: var(--radius-lg);
   padding: 2rem 1.5rem;
   cursor: pointer;
   overflow: hidden;
@@ -332,7 +332,7 @@ onMounted(() => {
 
 .app-card:hover {
   transform: translateY(-6px) scale(1.02);
-  border-color: rgba(102, 126, 234, 0.3);
+  border-color: rgba(var(--accent-rgb), 0.3);
 }
 
 .card-glow {
@@ -341,8 +341,8 @@ onMounted(() => {
   left: -2px;
   right: -2px;
   bottom: -2px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: calc(var(--radius-lg) + 2px);
+  background: var(--gradient-primary);
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: -1;
@@ -367,8 +367,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
-  border-radius: 18px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-lg);
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -379,12 +379,12 @@ onMounted(() => {
 .app-name {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .app-description {
-  color: #8e99a4;
+  color: var(--text-muted);
   font-size: 0.88rem;
   line-height: 1.5;
   margin-bottom: 0.8rem;
@@ -394,7 +394,7 @@ onMounted(() => {
   display: flex;
   gap: 0.8rem;
   font-size: 0.78rem;
-  color: #b0b8c1;
+  color: var(--text-muted);
   margin-bottom: 0.8rem;
 }
 
@@ -404,20 +404,20 @@ onMounted(() => {
   justify-content: center;
   gap: 4px;
   padding: 0.4rem 1.2rem;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   font-size: 0.8rem;
   font-weight: 600;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
+  background: var(--gradient-primary);
+  color: var(--accent-contrast);
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition);
   font-family: inherit;
 }
 
 .install-btn:hover:not(:disabled) {
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.35);
 }
 
 .install-btn:active:not(:disabled) {
@@ -425,8 +425,8 @@ onMounted(() => {
 }
 
 .install-btn.installed {
-  background: #e8ecf1;
-  color: #27ae60;
+  background: var(--bg-subtle);
+  color: var(--success);
   cursor: default;
 }
 

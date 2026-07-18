@@ -161,8 +161,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: white;
-  border: 2px solid #e8e8e8;
+  background: var(--bg-card);
+  border: 2px solid var(--border-light);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -171,19 +171,19 @@ onUnmounted(() => {
 }
 
 .select-trigger:hover {
-  border-color: #a8b4ff;
+  border-color: var(--accent-light);
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.12);
 }
 
 .select-trigger.active {
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }
 
 .custom-select.disabled .select-trigger {
   opacity: 0.6;
   cursor: not-allowed;
-  background: #f5f5f5;
+  background: var(--bg-subtle);
 }
 
 .trigger-content {
@@ -200,7 +200,7 @@ onUnmounted(() => {
 }
 
 .trigger-text {
-  color: #333;
+  color: var(--text-body);
   font-size: 0.95rem;
   white-space: nowrap;
   overflow: hidden;
@@ -208,7 +208,7 @@ onUnmounted(() => {
 }
 
 .trigger-arrow {
-  color: #999;
+  color: var(--text-muted);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   display: flex;
@@ -217,7 +217,7 @@ onUnmounted(() => {
 
 .select-trigger.active .trigger-arrow {
   transform: rotate(180deg);
-  color: #667eea;
+  color: var(--accent);
 }
 
 /* 下拉面板 */
@@ -226,7 +226,7 @@ onUnmounted(() => {
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 2px 10px rgba(0, 0, 0, 0.08);
   z-index: 1000;
@@ -237,28 +237,28 @@ onUnmounted(() => {
 /* 搜索框 */
 .dropdown-search {
   padding: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .search-input {
   width: 100%;
   padding: 8px 12px;
-  border: 2px solid #e8e8e8;
+  border: 2px solid var(--border-light);
   border-radius: 10px;
   font-size: 0.9rem;
   outline: none;
   transition: all 0.3s ease;
-  background: #fafafa;
+  background: var(--bg-subtle);
 }
 
 .search-input:focus {
-  border-color: #667eea;
-  background: white;
+  border-color: var(--accent);
+  background: var(--bg-card);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .search-input::placeholder {
-  color: #bbb;
+  color: var(--text-muted);
 }
 
 /* 选项列表 */
@@ -281,12 +281,12 @@ onUnmounted(() => {
 }
 
 .dropdown-options::-webkit-scrollbar-thumb {
-  background: #ddd;
+  background: var(--border-light);
   border-radius: 3px;
 }
 
 .dropdown-options::-webkit-scrollbar-thumb:hover {
-  background: #ccc;
+  background: var(--border);
 }
 
 .option-item {
@@ -301,16 +301,16 @@ onUnmounted(() => {
 }
 
 .option-item:hover {
-  background: linear-gradient(135deg, #f5f7ff 0%, #eef1ff 100%);
+  background: linear-gradient(135deg, var(--accent-bg) 0%, var(--accent-light) 100%);
 }
 
 .option-item.selected {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   color: white;
 }
 
 .option-item.selected:hover {
-  background: linear-gradient(135deg, #5a6fd6 0%, #6a4296 100%);
+  background: var(--gradient-primary);
 }
 
 .option-item.disabled {
@@ -347,7 +347,7 @@ onUnmounted(() => {
 .no-options {
   padding: 20px;
   text-align: center;
-  color: #999;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 

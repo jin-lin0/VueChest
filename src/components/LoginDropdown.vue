@@ -120,7 +120,7 @@ async function uploadAvatar(event: Event) {
   gap: 0.4rem;
   padding: 0.4rem 0.8rem;
   border: 1px solid rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--bg-glass);
   border-radius: 10px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -163,8 +163,8 @@ async function uploadAvatar(event: Event) {
   flex: 0 0 34px;
   overflow: hidden;
   border-radius: 50%;
-  background: #eef2ff;
-  color: #667eea;
+  background: var(--accent-bg);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -184,7 +184,7 @@ async function uploadAvatar(event: Event) {
 
 .profile-meta strong {
   overflow: hidden;
-  color: #2c3e50;
+  color: var(--text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -192,20 +192,20 @@ async function uploadAvatar(event: Event) {
 .avatar-upload {
   flex: 0 0 auto;
   padding: 0.35rem 0.55rem;
-  border: 1px solid #dbe3ff;
+  border: 1px solid var(--accent-light);
   border-radius: 6px;
-  background: #f5f7ff;
-  color: #667eea;
+  background: var(--accent-bg);
+  color: var(--accent);
   font-size: 0.85rem;
   cursor: pointer;
 }
 
 .avatar-upload:hover {
-  background: #eef2ff;
+  background: var(--accent-light);
 }
 
 .user-name {
-  color: #2c3e50;
+  color: var(--text-primary);
   font-weight: 600;
   max-width: 80px;
   overflow: hidden;
@@ -218,7 +218,7 @@ async function uploadAvatar(event: Event) {
   top: calc(100% + 6px);
   right: 0;
   min-width: 180px;
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--bg-glass);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
@@ -240,7 +240,7 @@ async function uploadAvatar(event: Event) {
 
 .dropdown-info {
   padding: 0.8rem 1rem;
-  color: #8e99a4;
+  color: var(--text-secondary);
   font-size: 0.8rem;
 }
 
@@ -250,7 +250,7 @@ async function uploadAvatar(event: Event) {
 
 .dropdown-divider {
   height: 1px;
-  background: #f0f0f0;
+  background: var(--border-light);
 }
 
 .dropdown-item {
@@ -263,7 +263,7 @@ async function uploadAvatar(event: Event) {
   background: none;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   transition: background-color 0.15s ease;
   text-align: left;
 }
@@ -273,11 +273,11 @@ async function uploadAvatar(event: Event) {
 }
 
 .dropdown-item.logout {
-  color: #e74c3c;
+  color: var(--danger);
 }
 
 .upload-link {
-  color: #667eea;
+  color: var(--accent);
   font-weight: 600;
 }
 </style>

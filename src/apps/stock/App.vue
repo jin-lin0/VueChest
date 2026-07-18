@@ -411,7 +411,7 @@ onUnmounted(() => {
 }
 
 .back-button {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -428,7 +428,7 @@ onUnmounted(() => {
 .app-header h1 {
   margin: 0;
   font-size: 1.5rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .stock-layout {
@@ -457,7 +457,7 @@ onUnmounted(() => {
 }
 
 .query-card {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   padding: 1.2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -466,12 +466,12 @@ onUnmounted(() => {
 .query-card h2 {
   margin: 0 0 0.2rem;
   font-size: 1.1rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .query-desc {
   margin: 0 0 1rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-size: 0.85rem;
 }
 
@@ -488,7 +488,7 @@ onUnmounted(() => {
 
 .form-group label {
   font-size: 0.85rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 0.3rem;
   font-weight: 600;
 }
@@ -496,7 +496,7 @@ onUnmounted(() => {
 .date-input {
   width: 100%;
   padding: 0.6rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.9rem;
   box-sizing: border-box;
@@ -505,7 +505,7 @@ onUnmounted(() => {
 
 .date-input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--info);
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
@@ -516,7 +516,7 @@ onUnmounted(() => {
 .search-input {
   width: 100%;
   padding: 0.6rem 2rem 0.6rem 0.6rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.9rem;
   box-sizing: border-box;
@@ -525,7 +525,7 @@ onUnmounted(() => {
 
 .search-input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--info);
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
@@ -535,7 +535,7 @@ onUnmounted(() => {
   top: 50%;
   transform: translateY(-50%);
   font-size: 0.75rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
 }
 
 .clear-search {
@@ -544,7 +544,7 @@ onUnmounted(() => {
   top: 50%;
   transform: translateY(-50%);
   font-size: 1.2rem;
-  color: #bbb;
+  color: var(--text-muted);
   cursor: pointer;
   line-height: 1;
   padding: 0 0.3rem;
@@ -559,8 +559,8 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   right: 0;
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 4px 4px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -576,7 +576,7 @@ onUnmounted(() => {
   padding: 0.6rem 0.8rem;
   cursor: pointer;
   transition: background-color 0.2s;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .search-result-item:last-child {
@@ -584,7 +584,7 @@ onUnmounted(() => {
 }
 
 .search-result-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
 }
 
 .result-info {
@@ -594,13 +594,13 @@ onUnmounted(() => {
 
 .result-name {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-size: 0.9rem;
 }
 
 .result-code {
   font-size: 0.8rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-family: monospace;
   margin-top: 0.1rem;
 }
@@ -608,7 +608,7 @@ onUnmounted(() => {
 .result-market {
   font-size: 0.75rem;
   color: #fff;
-  background-color: #3498db;
+  background-color: var(--info);
   padding: 0.15rem 0.4rem;
   border-radius: 3px;
 }
@@ -616,16 +616,16 @@ onUnmounted(() => {
 .no-results {
   padding: 0.8rem;
   text-align: center;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-size: 0.85rem;
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 4px 4px;
 }
 
 .query-btn {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.6rem 1.5rem;
@@ -665,7 +665,7 @@ onUnmounted(() => {
 }
 
 .favorites-card {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   padding: 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -680,14 +680,14 @@ onUnmounted(() => {
 
 .favorites-label {
   font-size: 0.9rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .refresh-btn {
   background: none;
-  border: 1px solid #3498db;
-  color: #3498db;
+  border: 1px solid var(--info);
+  color: var(--info);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   cursor: pointer;
@@ -695,13 +695,13 @@ onUnmounted(() => {
 }
 
 .refresh-btn:hover {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
 }
 
 .favorites-loading {
   text-align: center;
-  color: #7f8c8d;
+  color: var(--text-dim);
   padding: 0.5rem;
   font-size: 0.85rem;
 }
@@ -713,17 +713,17 @@ onUnmounted(() => {
 }
 
 .favorites-table th {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
   padding: 0.4rem 0.5rem;
   text-align: left;
   font-weight: 600;
-  color: #2c3e50;
-  border-bottom: 1px solid #e0e0e0;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .favorites-table td {
   padding: 0.5rem 0.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .favorites-table tbody tr {
@@ -736,17 +736,17 @@ onUnmounted(() => {
 }
 
 .favorites-table tbody tr:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
 }
 
 .stock-name {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-size: 0.85rem;
 }
 
 .stock-code {
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-family: monospace;
   font-size: 0.7rem;
   margin-top: 0.1rem;
@@ -768,7 +768,7 @@ onUnmounted(() => {
 .remove-fav-btn {
   background: none;
   border: none;
-  color: #bbb;
+  color: var(--text-muted);
   font-size: 1.1rem;
   cursor: pointer;
   padding: 0 0.3rem;
@@ -780,9 +780,9 @@ onUnmounted(() => {
 }
 
 .error-message {
-  background-color: #fdecea;
-  border: 1px solid #f5c6cb;
-  color: #721c24;
+  background-color: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger);
   padding: 0.7rem 1rem;
   border-radius: 4px;
   display: flex;
@@ -806,7 +806,7 @@ onUnmounted(() => {
 }
 
 .result-card {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   padding: 1.2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -818,7 +818,7 @@ onUnmounted(() => {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.8rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .stock-info {
@@ -830,12 +830,12 @@ onUnmounted(() => {
 .stock-title {
   margin: 0;
   font-size: 1.1rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .stock-code-badge {
-  background-color: #e3f2fd;
-  color: #1976d2;
+  background-color: var(--accent-bg);
+  color: var(--info);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -844,12 +844,12 @@ onUnmounted(() => {
 
 .fav-btn {
   background: none;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-light);
   padding: 0.2rem 0.6rem;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.8rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   transition: all 0.2s;
 }
 
@@ -865,7 +865,7 @@ onUnmounted(() => {
 }
 
 .result-date {
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-size: 0.85rem;
 }
 
@@ -877,7 +877,7 @@ onUnmounted(() => {
 }
 
 .price-card {
-  background-color: #f9f9f9;
+  background-color: var(--bg-subtle);
   border-radius: 6px;
   padding: 0.8rem;
   text-align: center;
@@ -885,14 +885,14 @@ onUnmounted(() => {
 
 .price-label {
   font-size: 0.8rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   margin-bottom: 0.3rem;
 }
 
 .price-value {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .price-card.close .price-value {
@@ -903,7 +903,7 @@ onUnmounted(() => {
   display: flex;
   gap: 2rem;
   padding-top: 0.8rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-light);
 }
 
 .summary-item {
@@ -914,13 +914,13 @@ onUnmounted(() => {
 
 .summary-label {
   font-size: 0.85rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
 }
 
 .summary-value {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .summary-value.up {
@@ -937,7 +937,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
-  color: #95a5a6;
+  color: var(--text-muted);
 }
 
 .empty-icon {

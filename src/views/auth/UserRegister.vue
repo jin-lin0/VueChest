@@ -228,7 +228,7 @@ async function syncInitialApps() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  background: linear-gradient(135deg, var(--bg-page) 0%, var(--bg-subtle) 100%);
   padding: 24px;
 }
 
@@ -238,7 +238,7 @@ async function syncInitialApps() {
 }
 
 .register-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   padding: 40px 32px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
@@ -264,7 +264,7 @@ async function syncInitialApps() {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -272,7 +272,7 @@ async function syncInitialApps() {
 
 .subtitle {
   margin: 8px 0 0;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -284,24 +284,29 @@ async function syncInitialApps() {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-body);
   margin-bottom: 6px;
 }
 
 .form-input {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 15px;
   outline: none;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-card);
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
 .form-input:focus {
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -324,9 +329,9 @@ async function syncInitialApps() {
 .send-code-btn {
   flex-shrink: 0;
   padding: 12px 16px;
-  background: white;
-  color: #667eea;
-  border: 1px solid #667eea;
+  background: var(--bg-card);
+  color: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
@@ -340,16 +345,16 @@ async function syncInitialApps() {
 }
 
 .send-code-btn:hover:not(:disabled) {
-  background: #667eea;
+  background: var(--accent);
   color: white;
 }
 
 .send-code-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  border-color: #d1d5db;
-  color: #9ca3af;
-  background: #f3f4f6;
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--bg-subtle);
 }
 
 .btn-spinner-sm {
@@ -359,7 +364,7 @@ async function syncInitialApps() {
 }
 
 .form-error {
-  color: #dc2626;
+  color: var(--danger);
   font-size: 14px;
   margin: 0 0 16px;
   text-align: center;
@@ -368,7 +373,7 @@ async function syncInitialApps() {
 .submit-btn {
   width: 100%;
   padding: 13px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--gradient-primary);
   color: white;
   border: none;
   border-radius: 12px;
@@ -410,12 +415,12 @@ async function syncInitialApps() {
 .register-footer {
   text-align: center;
   margin-top: 20px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .link {
-  color: #667eea;
+  color: var(--accent);
   text-decoration: none;
   font-weight: 500;
 }

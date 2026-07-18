@@ -178,7 +178,7 @@ async function fetchStats() {
           todayVisits: number
           totalVisits: number
         }
-      }>('/api/stats/dashboard', { auth: false }),
+      }>('/api/stats/dashboard', { auth: true }),
       api.get<{ length: number }[]>('/api/questions/categories'),
     ])
 

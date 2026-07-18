@@ -1,8 +1,32 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, inject } from 'vue'
 import { createChart, ColorType, CandlestickSeries, createSeriesMarkers } from 'lightweight-charts'
 import type { IChartApi, ISeriesApi, ISeriesMarkersPluginApi, Time } from 'lightweight-charts'
 import type { KlineData } from '@/stores/stock'
+
+// 平台注入的主题对象（opt-in）：CSS 变量管不到 lightweight-charts 的 JS 上色，
+// 所以图表背景/文字/网格必须读 isDark 主动重绘。拿不到时降级为浅色。
+interface AppTheme {
+  isDark: boolean
+  onChange: (cb: (isDark: boolean) => void) => () => void
+}
+const appTheme = inject<AppTheme | null>('appTheme', null)
+let unsubscribeTheme: (() => void) | null = null
+
+// 图表主题色（对齐 tokens.css：浅色 #fff/#333/#f0f0f0；深色 #1e293b/#94a3b8/#334155）
+const chartTheme = (dark: boolean) =>
+  dark
+    ? { background: '#1e293b', text: '#94a3b8', grid: '#334155' }
+    : { background: '#ffffff', text: '#333333', grid: '#f0f0f0' }
+
+const applyChartTheme = (dark: boolean) => {
+  if (!chart) return
+  const c = chartTheme(dark)
+  chart.applyOptions({
+    layout: { background: { type: ColorType.Solid, color: c.background }, textColor: c.text },
+    grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+  })
+}
 
 const props = defineProps<{
   data: KlineData[]
@@ -21,14 +45,15 @@ let markersPlugin: ISeriesMarkersPluginApi<Time> | null = null
 const initChart = () => {
   if (!chartContainer.value) return
 
+  const c = chartTheme(appTheme?.isDark ?? false)
   chart = createChart(chartContainer.value, {
     layout: {
-      background: { type: ColorType.Solid, color: '#ffffff' },
-      textColor: '#333',
+      background: { type: ColorType.Solid, color: c.background },
+      textColor: c.text,
     },
     grid: {
-      vertLines: { color: '#f0f0f0' },
-      horzLines: { color: '#f0f0f0' },
+      vertLines: { color: c.grid },
+      horzLines: { color: c.grid },
     },
     width: chartContainer.value.clientWidth,
     height: 400,
@@ -115,11 +140,19 @@ onMounted(() => {
   nextTick(() => {
     initChart()
     window.addEventListener('resize', handleResize)
+    // 主题切换时重绘图表（app 主动 opt-in 消费平台主题）
+    if (appTheme?.onChange) {
+      unsubscribeTheme = appTheme.onChange((isDark) => applyChartTheme(isDark))
+    }
   })
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  if (unsubscribeTheme) {
+    unsubscribeTheme()
+    unsubscribeTheme = null
+  }
   if (chart) {
     chart.remove()
     chart = null
@@ -157,7 +190,7 @@ watch(
 .chart-container {
   width: 100%;
   height: 400px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xs);
 }
 </style>

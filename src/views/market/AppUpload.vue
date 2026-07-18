@@ -262,7 +262,7 @@ async function handleSubmit() {
 <style scoped>
 .upload-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  background: linear-gradient(135deg, var(--bg-page) 0%, var(--bg-subtle) 100%);
   display: flex;
   justify-content: center;
   padding: 40px 24px;
@@ -294,13 +294,13 @@ async function handleSubmit() {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .header-center p {
   margin: 4px 0 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .back-btn {
@@ -308,10 +308,10 @@ async function handleSubmit() {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: white;
-  color: #374151;
+  background: var(--bg-card);
+  color: var(--text-body);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -319,14 +319,14 @@ async function handleSubmit() {
 }
 
 .back-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+  background: var(--bg-hover);
+  border-color: var(--text-muted);
   transform: translateY(-1px);
 }
 
 /* Form card */
 .upload-form {
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   padding: 32px;
@@ -346,10 +346,10 @@ async function handleSubmit() {
   gap: 8px;
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .section-icon {
@@ -358,30 +358,30 @@ async function handleSubmit() {
 
 /* File upload zone */
 .file-zone {
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--border);
   border-radius: 14px;
   padding: 40px 24px;
   text-align: center;
   cursor: pointer;
   transition: all 0.25s;
-  background: #f9fafb;
+  background: var(--bg-subtle);
 }
 
 .file-zone:hover {
-  border-color: #667eea;
-  background: #f0f4ff;
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .file-zone-filled {
-  border-color: #059669;
-  background: #f0fdf4;
+  border-color: var(--success);
+  background: var(--success-bg);
   cursor: default;
   padding: 20px 24px;
 }
 
 .file-zone-error {
-  border-color: #dc2626;
-  background: #fef2f2;
+  border-color: var(--danger);
+  background: var(--danger-bg);
 }
 
 .file-input-hidden {
@@ -395,15 +395,15 @@ async function handleSubmit() {
 .file-zone-text {
   margin: 0 0 8px;
   font-size: 15px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .file-error-text {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .file-zone-link {
-  color: #667eea;
+  color: var(--accent);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -412,7 +412,7 @@ async function handleSubmit() {
 .file-zone-hint {
   margin: 0;
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 /* File selected state */
@@ -424,12 +424,12 @@ async function handleSubmit() {
 
 .file-name {
   font-weight: 600;
-  color: #065f46;
+  color: var(--success);
   font-size: 14px;
 }
 
 .file-size {
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 13px;
   font-family: monospace;
 }
@@ -437,10 +437,10 @@ async function handleSubmit() {
 .file-change {
   margin-left: auto;
   padding: 6px 14px;
-  border: 1px solid #059669;
+  border: 1px solid var(--success);
   border-radius: 8px;
-  background: white;
-  color: #059669;
+  background: var(--bg-card);
+  color: var(--success);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -448,7 +448,7 @@ async function handleSubmit() {
 }
 
 .file-change:hover {
-  background: #059669;
+  background: var(--success);
   color: white;
 }
 
@@ -458,8 +458,8 @@ async function handleSubmit() {
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #f0f4ff 0%, #ede9fe 100%);
-  border: 1px solid #dbe4ff;
+  background: linear-gradient(135deg, var(--accent-bg) 0%, var(--accent-light) 100%);
+  border: 1px solid var(--accent-light);
   border-radius: 14px;
 }
 
@@ -471,7 +471,7 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
+  background: var(--bg-card);
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
 }
@@ -484,7 +484,7 @@ async function handleSubmit() {
 .meta-name {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -492,8 +492,8 @@ async function handleSubmit() {
 
 .meta-version {
   font-size: 12px;
-  color: #667eea;
-  background: white;
+  color: var(--accent);
+  background: var(--bg-card);
   padding: 2px 10px;
   border-radius: 6px;
   font-family: monospace;
@@ -502,7 +502,7 @@ async function handleSubmit() {
 
 .meta-desc {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin-top: 4px;
   line-height: 1.4;
 }
@@ -520,39 +520,39 @@ async function handleSubmit() {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-body);
   margin-bottom: 6px;
 }
 
 .label-optional {
   font-weight: 400;
-  color: #9ca3af;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .form-textarea {
   width: 100%;
   padding: 11px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 14px;
   font-family: inherit;
   resize: vertical;
   outline: none;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-card);
   box-sizing: border-box;
   line-height: 1.5;
-  color: #1f2937;
+  color: var(--text-body);
 }
 
 .form-textarea:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
 }
 
 .form-textarea::placeholder {
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .form-error {
@@ -560,10 +560,10 @@ async function handleSubmit() {
   align-items: center;
   gap: 6px;
   padding: 12px 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
   border-radius: 10px;
-  color: #dc2626;
+  color: var(--danger);
   font-size: 14px;
   margin: 0 0 20px;
 }
@@ -576,7 +576,7 @@ async function handleSubmit() {
   justify-content: center;
   gap: 8px;
   padding: 14px 24px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--gradient-primary);
   color: white;
   border: none;
   border-radius: 12px;
@@ -588,7 +588,7 @@ async function handleSubmit() {
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+  box-shadow: var(--shadow-brand-lg);
 }
 
 .submit-btn:active:not(:disabled) {
@@ -617,7 +617,7 @@ async function handleSubmit() {
 .success-state {
   text-align: center;
   padding: 60px 32px;
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
@@ -626,7 +626,7 @@ async function handleSubmit() {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: #f0fdf4;
+  background: var(--success-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -647,12 +647,12 @@ async function handleSubmit() {
 .success-state h2 {
   margin: 0 0 8px;
   font-size: 24px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .success-desc {
   margin: 0 0 28px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 15px;
 }
 
@@ -676,23 +676,23 @@ async function handleSubmit() {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--gradient-primary);
   color: white;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+  box-shadow: var(--shadow-brand-md);
 }
 
 .btn-ghost {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--bg-subtle);
+  color: var(--text-body);
+  border: 1px solid var(--border);
 }
 
 .btn-ghost:hover {
-  background: #e5e7eb;
+  background: var(--bg-hover);
   transform: translateY(-1px);
 }
 

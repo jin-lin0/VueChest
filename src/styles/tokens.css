@@ -1,0 +1,135 @@
+/* ============================================================
+   VueChest — 全局设计 Token（Design Tokens）
+   ------------------------------------------------------------
+   用法：所有组件用 var(--xxx) 取代硬编码颜色/圆角/阴影。
+   浅色为默认（:root），深色通过 <html class="dark"> 切换
+   （AdminLayout 已用 documentElement.classList.toggle('dark') 触发）。
+
+   词汇沿用项目既有命名（--text-primary / --accent / --bg-card /
+   --border-light / --shadow-sm / --radius-sm …），并在此基础上补全
+   品牌渐变、圆角阶梯、阴影阶梯、间距阶梯。
+   ============================================================ */
+
+:root {
+  /* ---------- 品牌 / 主色 ---------- */
+  --brand-1: #667eea;
+  --brand-2: #764ba2;
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-primary-soft: linear-gradient(135deg, #f5f7ff 0%, #eef1ff 100%);
+
+  --accent: #667eea;            /* 全站主强调色（覆盖 85 处 #667eea）*/
+  --accent-strong: #764ba2;     /* 渐变末端 / hover 加深 */
+  --accent-contrast: #ffffff;   /* 主色上的文字 */
+  --accent-bg: #eef2ff;         /* 浅色强调底（tab/选中行）*/
+  --accent-light: #c7d2fe;      /* 浅色描边 / 发光 */
+  --accent-rgb: 102, 126, 234;  /* 供 rgba(var(--accent-rgb), a) 使用 */
+
+  /* ---------- 语义色 ---------- */
+  --success: #059669;
+  --success-bg: #d1fae5;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --danger: #dc2626;            /* 覆盖 #e74c3c/#f44336/#dc2626/#ff6b6b 红系 */
+  --danger-bg: #fee2e2;
+  --info: #3498db;
+
+  /* ---------- 表面 / 背景 ---------- */
+  --bg-page: #f5f7fa;           /* 公开站默认底（同 body 现状）*/
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #f3f4f6;
+  --bg-subtle: #f3f4f6;         /* 图标底 / tag 底 */
+  --bg-input: #ffffff;
+  --tag-bg: #f3f4f6;
+  --bg-glass: rgba(255, 255, 255, 0.92);        /* 卡片 / 搜索框玻璃底 */
+  --bg-glass-soft: rgba(255, 255, 255, 0.8);     /* 按钮 / tab 玻璃底 */
+
+  /* ---------- 文本 ---------- */
+  --text-primary: #2c3e50;      /* 标题 / 强文本（覆盖 42 处 #2c3e50）*/
+  --text-body: #333333;         /* 正文 */
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-dim: #7f8c8d;
+  --text-inverse: #ffffff;
+
+  /* ---------- 边框 ---------- */
+  --border: #d1d5db;
+  --border-light: #e5e7eb;
+  --border-color: #d1d5db;
+
+  /* ---------- 圆角阶梯（4px 基准）---------- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 50px;
+  --radius-full: 50%;
+
+  /* ---------- 阴影阶梯 ---------- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.20);
+  /* 品牌着色阴影：聚焦 / 发光（rgba(102,126,234) 即 #667eea）*/
+  --shadow-brand-sm: 0 0 3px rgba(102, 126, 234, 0.10);
+  --shadow-brand-md: 0 4px 14px rgba(102, 126, 234, 0.35);
+  --shadow-brand-lg: 0 6px 20px rgba(102, 126, 234, 0.35);
+
+  /* ---------- 间距阶梯（4px 基准）---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* ---------- 字体 / 过渡 ---------- */
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --transition-fast: 0.15s ease;
+  --transition: 0.2s ease;
+}
+
+/* 深色：值对齐 AdminLayout 既有 .dark-mode 设定，
+   由 <html class="dark">（documentElement.toggle）驱动，全局生效。*/
+:root.dark {
+  --gradient-primary-soft: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+
+  --accent-bg: #1e293b;
+  --accent-light: #334155;
+
+  --bg-page: #0f172a;
+  --bg-card: #1e293b;
+  --bg-elevated: #1e293b;
+  --bg-hover: #334155;
+  --bg-subtle: #334155;
+  --bg-input: #0f172a;
+  --tag-bg: #334155;
+  --bg-glass: rgba(30, 41, 59, 0.92);
+  --bg-glass-soft: rgba(30, 41, 59, 0.6);
+
+  --text-primary: #f1f5f9;
+  --text-body: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+
+  --border: #334155;
+  --border-light: #334155;
+  --border-color: #334155;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.50);
+  --shadow-brand-sm: 0 0 3px rgba(102, 126, 234, 0.25);
+  --shadow-brand-md: 0 4px 14px rgba(102, 126, 234, 0.45);
+  --shadow-brand-lg: 0 6px 20px rgba(102, 126, 234, 0.45);
+
+  --success-bg: #064e3b;
+  --warning-bg: #78350f;
+  --danger-bg: #450a0a;
+}

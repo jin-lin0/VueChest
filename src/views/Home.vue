@@ -15,6 +15,7 @@ import { APP_MODULES, STORAGE_KEYS } from '@/config'
 import type { AppModule } from '@/config'
 import { useMarketStore } from '@/stores/market'
 import LoginDropdown from '@/components/LoginDropdown.vue'
+import { useTheme } from '@/composables/useTheme'
 
 defineOptions({ name: 'HomeView' })
 
@@ -33,6 +34,7 @@ interface ContextMenuState {
 const defaultAppList: AppItem[] = APP_MODULES.filter((app) => !app.devOnly || import.meta.env.DEV)
 
 const router = useRouter()
+const { isDark, toggleTheme } = useTheme()
 const searchQuery = ref('')
 const allApps = ref<AppItem[]>([...defaultAppList])
 const hiddenIds = ref<Set<number>>(new Set())
@@ -370,6 +372,14 @@ const navigateToApp = (route: string) => {
         </div>
       </div>
       <div class="header-actions">
+        <button
+          class="theme-toggle"
+          @click="toggleTheme"
+          :title="isDark ? '切换到亮色模式' : '切换到暗色模式'"
+          :aria-label="isDark ? '切换到亮色模式' : '切换到暗色模式'"
+        >
+          {{ isDark ? '☀️' : '🌙' }}
+        </button>
         <button class="market-btn" @click="router.push('/market')">🏪 市场</button>
         <LoginDropdown />
       </div>
@@ -741,7 +751,7 @@ const navigateToApp = (route: string) => {
 
 .sub-desc {
   font-size: 1rem;
-  color: #8e99a4;
+  color: var(--text-secondary);
 }
 
 .header-actions {
@@ -756,7 +766,7 @@ const navigateToApp = (route: string) => {
   gap: 0.35rem;
   padding: 0.4rem 0.8rem;
   border: 1px solid rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--bg-glass);
   border-radius: 10px;
   cursor: pointer;
   font-size: 0.85rem;
@@ -769,6 +779,29 @@ const navigateToApp = (route: string) => {
 .market-btn:hover {
   border-color: rgba(102, 126, 234, 0.3);
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
+  background: rgba(102, 126, 234, 0.06);
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: var(--bg-glass);
+  border-radius: var(--radius-full, 50%);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all var(--transition, 0.2s ease);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.04));
+}
+
+.theme-toggle:hover {
+  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: var(--shadow-brand-md, 0 4px 16px rgba(102, 126, 234, 0.1));
   background: rgba(102, 126, 234, 0.06);
 }
 
@@ -794,7 +827,7 @@ const navigateToApp = (route: string) => {
   display: flex;
   align-items: center;
   flex: 0 1 320px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-glass);
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 12px;
   padding: 0.5rem 0.9rem;
@@ -822,18 +855,18 @@ const navigateToApp = (route: string) => {
   background: none;
   outline: none;
   font-size: 0.95rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   padding: 0;
 }
 
 .search-input::placeholder {
-  color: #b0b8c1;
+  color: var(--text-secondary);
 }
 
 .search-clear {
   background: none;
   border: none;
-  color: #b0b8c1;
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 0.85rem;
   padding: 0.2rem 0.4rem;
@@ -863,7 +896,7 @@ const navigateToApp = (route: string) => {
 }
 
 .empty-text {
-  color: #8e99a4;
+  color: var(--text-secondary);
   font-size: 1.05rem;
   margin-bottom: 1rem;
 }
@@ -893,7 +926,7 @@ const navigateToApp = (route: string) => {
 
 .app-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-glass);
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 16px;
   padding: 2rem 1.5rem;
@@ -978,12 +1011,12 @@ const navigateToApp = (route: string) => {
 .app-name {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .app-description {
-  color: #8e99a4;
+  color: var(--text-secondary);
   font-size: 0.88rem;
   line-height: 1.5;
   margin-bottom: 0.8rem;
@@ -991,7 +1024,7 @@ const navigateToApp = (route: string) => {
 
 .card-arrow {
   font-size: 1.1rem;
-  color: #b0b8c1;
+  color: var(--text-secondary);
   font-weight: 600;
   opacity: 0;
   transform: translateX(-8px);
@@ -1012,7 +1045,7 @@ const navigateToApp = (route: string) => {
   top: 8px;
   right: 10px;
   font-size: 1.2rem;
-  color: #b0b8c1;
+  color: var(--text-secondary);
   opacity: 0;
   cursor: grab;
   transition: opacity 0.3s ease;
@@ -1044,14 +1077,14 @@ const navigateToApp = (route: string) => {
 .footer {
   text-align: center;
   padding: 1.5rem 0 0.5rem;
-  color: #b0b8c1;
+  color: var(--text-secondary);
   font-size: 0.85rem;
 }
 
 .context-menu {
   position: fixed;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--bg-glass);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   padding: 0.4rem;
@@ -1083,7 +1116,7 @@ const navigateToApp = (route: string) => {
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   transition: background-color 0.15s ease;
   white-space: nowrap;
 }
@@ -1120,7 +1153,7 @@ const navigateToApp = (route: string) => {
   transform: translateX(-50%);
   width: 90%;
   max-width: 480px;
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--bg-glass);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   padding: 1.2rem;
@@ -1151,7 +1184,7 @@ const navigateToApp = (route: string) => {
 .manage-header h3 {
   margin: 0;
   font-size: 1.05rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .manage-actions {
@@ -1179,7 +1212,7 @@ const navigateToApp = (route: string) => {
 .close-panel-btn {
   background: none;
   border: none;
-  color: #8e99a4;
+  color: var(--text-secondary);
   font-size: 1.1rem;
   cursor: pointer;
   padding: 0.2rem 0.4rem;
@@ -1190,7 +1223,7 @@ const navigateToApp = (route: string) => {
 
 .close-panel-btn:hover {
   background: rgba(0, 0, 0, 0.05);
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .hidden-list {
@@ -1227,7 +1260,7 @@ const navigateToApp = (route: string) => {
 
 .hidden-name {
   font-size: 0.95rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -1251,7 +1284,7 @@ const navigateToApp = (route: string) => {
 .countdown-banner {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-glass);
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 16px;
   padding: 1rem 1.5rem;
@@ -1278,7 +1311,7 @@ const navigateToApp = (route: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--bg-glass);
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
@@ -1291,13 +1324,13 @@ const navigateToApp = (route: string) => {
 .countdown-name {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 0.2rem;
 }
 
 .countdown-detail {
   font-size: 0.85rem;
-  color: #8e99a4;
+  color: var(--text-secondary);
 }
 
 .countdown-days {
@@ -1319,7 +1352,7 @@ const navigateToApp = (route: string) => {
 
 .countdown-label {
   font-size: 0.8rem;
-  color: #8e99a4;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -1447,7 +1480,7 @@ const navigateToApp = (route: string) => {
 }
 
 .backdoor-modal {
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   width: 90%;
   max-width: 520px;
@@ -1488,14 +1521,14 @@ const navigateToApp = (route: string) => {
 .backdoor-header h3 {
   margin: 0;
   font-size: 1.15rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .backdoor-close {
   background: none;
   border: none;
   font-size: 1.2rem;
-  color: #8e99a4;
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 0.2rem 0.4rem;
   border-radius: 6px;
@@ -1504,7 +1537,7 @@ const navigateToApp = (route: string) => {
 
 .backdoor-close:hover {
   background: rgba(0, 0, 0, 0.05);
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .backdoor-body {
@@ -1514,13 +1547,13 @@ const navigateToApp = (route: string) => {
 .backdoor-section h4 {
   margin: 0 0 0.4rem;
   font-size: 1rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .backdoor-desc {
   margin: 0 0 1rem;
   font-size: 0.85rem;
-  color: #8e99a4;
+  color: var(--text-secondary);
 }
 
 .backdoor-divider {

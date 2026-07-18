@@ -119,13 +119,13 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 }
 
 .back-btn {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--bg-glass);
   border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 0.5rem 1rem;
   border-radius: 10px;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #667eea;
+  color: var(--accent);
   font-weight: 600;
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -140,13 +140,13 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 .error-state {
   text-align: center;
   padding: 4rem 2rem;
-  color: #8e99a4;
+  color: var(--text-secondary);
 }
 
 .detail-hero {
   display: flex;
   gap: 2rem;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-glass);
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 20px;
   padding: 2rem;
@@ -161,7 +161,7 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
+  background: linear-gradient(135deg, var(--bg-page), var(--bg-subtle));
   border-radius: 24px;
   flex-shrink: 0;
 }
@@ -174,7 +174,7 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 .hero-info h1 {
   font-size: 1.8rem;
   font-weight: 800;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin: 0 0 0.6rem;
 }
 
@@ -187,15 +187,15 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 
 .meta-item {
   font-size: 0.8rem;
-  color: #8e99a4;
-  background: rgba(245, 247, 250, 0.8);
+  color: var(--text-secondary);
+  background: var(--tag-bg);
   padding: 0.25rem 0.7rem;
   border-radius: 6px;
 }
 
 .hero-desc {
   font-size: 1rem;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 1.2rem;
 }
@@ -207,7 +207,7 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 
 .install-btn {
   padding: 0.7rem 2rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--gradient-primary);
   color: white;
   border: none;
   border-radius: 10px;
@@ -228,9 +228,9 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 
 .uninstall-btn {
   padding: 0.7rem 2rem;
-  background: white;
-  color: #e74c3c;
-  border: 1px solid #e74c3c;
+  background: var(--bg-card);
+  color: var(--danger);
+  border: 1px solid var(--danger);
   border-radius: 10px;
   font-size: 1rem;
   font-weight: 600;
@@ -239,7 +239,7 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 }
 
 .uninstall-btn:hover:not(:disabled) {
-  background: #fff5f5;
+  background: var(--danger-bg);
 }
 
 .uninstall-btn:disabled {
@@ -248,7 +248,7 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 }
 
 .detail-section {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-glass);
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 16px;
   padding: 1.5rem;
@@ -258,13 +258,13 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
 .detail-section h2 {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin: 0 0 1rem;
 }
 
 .readme-content {
   font-size: 0.95rem;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.8;
   white-space: pre-wrap;
 }

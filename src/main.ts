@@ -4,6 +4,10 @@ import { createPinia } from 'pinia'
 import * as Pinia from 'pinia'
 import * as VueRouter from 'vue-router'
 
+import './styles/tokens.css'
+import { initTheme, getAppTheme } from './composables/useTheme'
+// 首屏前先应用主题，避免浅色/深色闪烁
+initTheme()
 import App from './App.vue'
 import router from './router'
 import { initStorage } from './utils'
@@ -38,6 +42,8 @@ if ('serviceWorker' in navigator) {
 }
 
 import { getStorage, setStorage } from './utils/storage'
+// 暴露给 app 的运行时主题对象（opt-in）：{ isDark, onChange }
+const appTheme = getAppTheme()
 ;(window as any).__VueChest__ = {
   Vue,
   VueRouter,
@@ -50,7 +56,10 @@ import { getStorage, setStorage } from './utils/storage'
   watch: Vue.watch,
   onMounted: Vue.onMounted,
   onUnmounted: Vue.onUnmounted,
+  theme: appTheme, // 市场 app 也可通过 __VueChest__.theme 读取
 }
+// 市场 app（运行时注入的纯 JS）读取主题的主通道
+;(window as any).__APP_THEME__ = appTheme
 
 initStorage().then(async () => {
   const app = createApp(App)
@@ -62,6 +71,9 @@ initStorage().then(async () => {
 
   app.use(pinia)
   app.use(router)
+
+  // 系统 app（Vue 组件）可 inject('appTheme') 自愿消费主题
+  app.provide('appTheme', appTheme)
 
   app.mount('#app')
 

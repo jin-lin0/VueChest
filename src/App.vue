@@ -47,11 +47,11 @@ html {
 }
 
 body {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f7fa;
-  color: #333;
+  background-color: var(--bg-page);
+  color: var(--text-body);
   line-height: 1.6;
   overflow-x: hidden;
 }

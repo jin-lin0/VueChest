@@ -87,6 +87,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/utils/request'
+import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
 const route = useRoute()
@@ -94,7 +95,8 @@ const authStore = useAuthStore()
 
 const isCollapsed = ref(false)
 const mobileOpen = ref(false)
-const isDark = ref(false)
+// 主题状态与公开页共享同一份（composables/useTheme 模块级单例）
+const { isDark, toggleTheme } = useTheme()
 
 async function uploadAvatar(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
@@ -153,8 +155,8 @@ function toggleSidebar() {
 }
 
 function toggleDark() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
+  // 切换到全局主题（同步 html.dark + localStorage + 公开页状态）
+  toggleTheme()
 }
 
 function getRoleLabel(role: string) {
@@ -207,7 +209,7 @@ function goToHome() {
 /* ===== Sidebar ===== */
 .sidebar {
   width: 260px;
-  background: #ffffff;
+  background: var(--bg-card);
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
@@ -279,7 +281,7 @@ function goToHome() {
 .collapse-btn {
   background: none;
   border: 1px solid #d1d5db;
-  color: #9ca3af;
+  color: var(--text-muted);
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -322,7 +324,7 @@ function goToHome() {
 
 .nav-section-label {
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
   padding: 8px 12px 4px;
@@ -340,7 +342,7 @@ function goToHome() {
   padding: 11px 12px;
   margin: 2px 0;
   border-radius: 8px;
-  color: #6b7280;
+  color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.2s;
   position: relative;
@@ -372,7 +374,7 @@ function goToHome() {
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--bg-glass-soft);
   border-radius: 3px 0 0 3px;
 }
 
@@ -447,7 +449,7 @@ function goToHome() {
 
 .user-role {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin-top: 1px;
 }
 
@@ -469,7 +471,7 @@ function goToHome() {
   background: #f3f4f6;
   border: none;
   border-radius: 8px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 16px;
   cursor: pointer;
   transition: all 0.2s;
@@ -531,7 +533,7 @@ function goToHome() {
 
 .top-header {
   flex-shrink: 0;
-  background: white;
+  background: var(--bg-card);
   padding: 14px 24px;
   display: flex;
   align-items: center;
@@ -579,7 +581,7 @@ function goToHome() {
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .breadcrumb-item.active {
@@ -663,47 +665,3 @@ function goToHome() {
 }
 </style>
 
-<style>
-/* CSS custom properties for child admin pages */
-.admin-layout {
-  --bg-page: #f3f4f6;
-  --bg-card: #ffffff;
-  --bg-hover: #f3f4f6;
-  --bg-input: #ffffff;
-  --bg-row-hover: #f3f4f6;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --border-color: #d1d5db;
-  --border-light: #e5e7eb;
-  --accent: #667eea;
-  --accent-bg: #eef2ff;
-  --danger: #dc2626;
-  --danger-bg: #fee2e2;
-  --success: #059669;
-  --success-bg: #d1fae5;
-  --warning: #d97706;
-  --warning-bg: #fef3c7;
-  --tag-bg: #f3f4f6;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-}
-
-.admin-layout.dark-mode {
-  --bg-page: #0f172a;
-  --bg-card: #1e293b;
-  --bg-hover: #334155;
-  --bg-input: #0f172a;
-  --bg-row-hover: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --border-color: #334155;
-  --border-light: #334155;
-  --accent-bg: #1e293b;
-  --danger-bg: #450a0a;
-  --success-bg: #064e3b;
-  --warning-bg: #78350f;
-  --tag-bg: #334155;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.15);
-}
-</style>
