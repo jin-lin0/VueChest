@@ -29,6 +29,12 @@ const router = createRouter({
       meta: { title: '股票分析' },
     },
     {
+      path: '/bilibili-subtitle',
+      name: 'bilibili-subtitle',
+      component: () => import('../apps/bilibili-subtitle/App.vue'),
+      meta: { title: 'B站字幕' },
+    },
+    {
       path: '/music',
       name: 'music',
       component: () => import('../apps/music/App.vue'),

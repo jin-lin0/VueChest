@@ -2,6 +2,7 @@
 export * from './db'
 export * from './storage'
 export * from './lunar'
+export * from './clipboard'
 
 export const debounce = <T extends (...args: unknown[]) => unknown>(
   fn: T,

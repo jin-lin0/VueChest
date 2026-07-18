@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getStorage, setStorage } from '@/utils'
+import { getStorage, setStorage, copyToClipboard } from '@/utils'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
@@ -420,28 +420,13 @@ const handleResize = () => {
 
 const copiedMessageId = ref<number | null>(null)
 
-const copyMessage = async (content: string, messageId: number) => {
-  try {
-    await navigator.clipboard.writeText(content)
+const copyMessage = (content: string, messageId: number) =>
+  copyToClipboard(content, () => {
     copiedMessageId.value = messageId
     setTimeout(() => {
       copiedMessageId.value = null
     }, 2000)
-  } catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = content
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    copiedMessageId.value = messageId
-    setTimeout(() => {
-      copiedMessageId.value = null
-    }, 2000)
-  }
-}
+  })
 
 onMounted(() => {
   loadSessions()

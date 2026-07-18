@@ -4,6 +4,7 @@ import music from '@/apps/music'
 import racing from '@/apps/racing'
 import interview from '@/apps/interview'
 import stock from '@/apps/stock'
+import bilibiliSubtitle from '@/apps/bilibili-subtitle'
 import snake from '@/apps/snake'
 
 export interface AppModule {
@@ -23,6 +24,7 @@ function appDef(
 }
 
 export const APP_MODULES: AppModule[] = [
+  appDef(14, bilibiliSubtitle),
   appDef(13, snake),
   appDef(12, interview),
   appDef(11, racing),
