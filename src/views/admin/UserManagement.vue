@@ -165,7 +165,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { Toast } from '@/components'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 const authStore = useAuthStore()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const currentUserId = computed(() => authStore.user?.id)

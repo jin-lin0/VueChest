@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { marked } from 'marked'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github-dark.css'
 import { docSections, allDocs, findDoc } from '../docs'
 import { useTheme } from '../composables/useTheme'
+import { renderMarkdown } from '@/lib/markdown'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,22 +16,12 @@ const activeDoc = computed(() => findDoc(route.query.doc as string | undefined) 
 const html = computed(() => {
   const doc = activeDoc.value
   if (!doc) return ''
-  return marked.parse(doc.content, { async: false }) as string
+  return renderMarkdown(doc.content)
 })
 
 function selectDoc(id: string) {
   router.push({ path: '/docs', query: { doc: id } })
   if (contentRef.value) contentRef.value.scrollTop = 0
-}
-
-function highlight() {
-  nextTick(() => {
-    const el = contentRef.value
-    if (!el) return
-    el.querySelectorAll('pre code').forEach((block) => {
-      hljs.highlightElement(block as HTMLElement)
-    })
-  })
 }
 
 // 将文档内的相对 .md 链接（如 ./market-upload.md）在站内导航，而非发起文件请求
@@ -47,9 +35,6 @@ function onContentClick(e: MouseEvent) {
     selectDoc(match[1])
   }
 }
-
-watch(html, highlight)
-onMounted(highlight)
 </script>
 
 <template>

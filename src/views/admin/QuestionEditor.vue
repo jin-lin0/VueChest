@@ -103,7 +103,7 @@ import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { CustomSelect, type SelectOption } from '@/components'
 import type { Question, Category, Difficulty } from '@/types/interview'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 
 const router = useRouter()
 const route = useRoute()

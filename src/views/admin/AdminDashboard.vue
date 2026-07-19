@@ -79,7 +79,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 
 const authStore = useAuthStore()
 

@@ -59,6 +59,12 @@ const router = createRouter({
       meta: { title: '面试问答' },
     },
     {
+      path: '/interview/docs',
+      name: 'interview-docs',
+      component: () => import('../apps/interview/views/KnowledgeDocs.vue'),
+      meta: { title: '面试题库 · 知识文档' },
+    },
+    {
       path: '/market',
       name: 'market',
       component: () => import('../views/market/AppMarket.vue'),

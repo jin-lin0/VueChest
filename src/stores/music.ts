@@ -1,8 +1,8 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { getStorage, setStorage } from '@/utils'
+import { getStorage, setStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config'
-import { API_BASE } from '@/utils/request'
+import { API_BASE } from '@/lib/request'
 
 export interface Song {
   id: string

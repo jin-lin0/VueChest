@@ -214,7 +214,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { Toast } from '@/components'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 
 interface MarketAppItem {
   id: number

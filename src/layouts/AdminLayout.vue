@@ -86,7 +86,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()

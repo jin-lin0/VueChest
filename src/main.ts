@@ -10,10 +10,10 @@ import { initTheme, getAppTheme } from './composables/useTheme'
 initTheme()
 import App from './App.vue'
 import router from './router'
-import { initStorage } from './utils'
+import { initStorage } from './lib/storage'
 import { useAuthStore } from './stores'
 import { useMarketStore } from './stores/market'
-import { getClientGeo, getGeoHeader } from './utils/clientGeo'
+import { getClientGeo, getGeoHeader } from './lib/clientGeo'
 
 // 全局 fetch 代理：自动添加定位头
 const origFetch = window.fetch.bind(window)
@@ -41,7 +41,7 @@ if ('serviceWorker' in navigator) {
   })
 }
 
-import { getStorage, setStorage } from './utils/storage'
+import { getStorage, setStorage } from './lib/storage'
 // 暴露给 app 的运行时主题对象（opt-in）：{ isDark, onChange }
 const appTheme = getAppTheme()
 ;(window as any).__VueChest__ = {

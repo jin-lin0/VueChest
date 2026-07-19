@@ -97,7 +97,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Toast } from '@/components'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 
 interface Category {
   id: number

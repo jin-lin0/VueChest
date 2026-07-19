@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 import { copyToClipboard } from '@/utils'
 import { Tooltip } from '@/components'
 

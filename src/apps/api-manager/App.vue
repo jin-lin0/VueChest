@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, defineComponent, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getStorage, setStorage } from '@/utils'
+import { getStorage, setStorage } from '@/lib/storage'
 
 defineComponent({
   name: 'ApiManagerView',

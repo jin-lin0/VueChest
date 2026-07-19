@@ -1,10 +1,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getStorage, setStorage, removeStorage } from '@/utils'
-import { loadMarketApp } from '@/utils/app-loader'
-import { api } from '@/utils/request'
+import { getStorage, setStorage, removeStorage } from '@/lib/storage'
+import { loadMarketApp } from '@/lib/app-loader'
+import { api } from '@/lib/request'
 import router from '@/router'
-import type { MarketAppDefinition } from '@/utils/app-loader'
+import type { MarketAppDefinition } from '@/lib/app-loader'
 
 export interface MarketAppItem {
   id: number

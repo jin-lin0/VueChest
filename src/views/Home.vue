@@ -1,16 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  solarToLunar,
-  lunarToSolar,
-  getLunarMonthName,
-  getLunarDayName,
-  exportAllData,
-  importAllData,
-  getStorage,
-  setStorage,
-} from '@/utils'
+import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils'
+import { exportAllData, importAllData, getStorage, setStorage } from '@/lib/storage'
 import { APP_MODULES, STORAGE_KEYS } from '@/config'
 import type { AppModule } from '@/config'
 import { useMarketStore } from '@/stores/market'

@@ -139,11 +139,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/lib/markdown'
 import { Toast } from '@/components'
 import { CustomSelect, type SelectOption } from '@/components'
 import type { Question, Category } from '@/types/interview'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 
 const router = useRouter()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -254,10 +254,6 @@ function toggleSelect(id: number) {
   const idx = selectedIds.value.indexOf(id)
   if (idx > -1) selectedIds.value.splice(idx, 1)
   else selectedIds.value.push(id)
-}
-
-function renderMarkdown(text: string) {
-  return marked(text)
 }
 
 function getCategoryName(categoryId: number) {

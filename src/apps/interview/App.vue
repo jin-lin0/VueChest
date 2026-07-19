@@ -2,6 +2,7 @@
   <div class="interview-quiz">
     <header class="quiz-header">
       <button class="back-button" @click="goBack">← 返回</button>
+      <button class="docs-entry" @click="goDocs">📖 知识文档</button>
       <h1>📚 面试题库</h1>
       <p class="subtitle">前端面试高频题目，支持随机抽题和分类练习</p>
     </header>
@@ -173,29 +174,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { marked } from 'marked'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github-dark.css'
 import { CustomSelect, type SelectOption } from '@/components'
 import type { Question, Category } from '@/types/interview'
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
+import { renderMarkdown } from '@/lib/markdown'
 
 const router = useRouter()
-
-// 配置 markdown 渲染
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-})
-
-const renderer = new marked.Renderer()
-renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
-  const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext'
-  const highlighted = hljs.highlight(text, { language }).value
-  return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`
-}
-
-marked.use({ renderer })
 
 // 下拉选项
 const categoryOptions = ref<SelectOption[]>([])
@@ -245,6 +229,11 @@ const stats = ref({
 // 返回首页
 const goBack = () => {
   router.push('/')
+}
+
+// 进入知识文档
+const goDocs = () => {
+  router.push('/interview/docs')
 }
 
 // 搜索处理（防抖）
@@ -487,7 +476,7 @@ const getCategoryName = (categoryId: number) => {
 // 格式化答案（使用 markdown 渲染）
 const formatAnswer = (answer: string) => {
   if (!answer) return ''
-  return marked.parse(answer) as string
+  return renderMarkdown(answer)
 }
 
 // 更新统计
@@ -542,6 +531,28 @@ onMounted(() => {
 .back-button:hover {
   background-color: #764ba2;
   transform: translateY(-50%) translateX(-2px);
+}
+
+.docs-entry {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.docs-entry:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-50%) translateX(2px);
 }
 
 .quiz-header h1 {
@@ -1136,6 +1147,19 @@ onMounted(() => {
 
   .back-button:hover {
     transform: translateX(-2px);
+  }
+
+  .docs-entry {
+    position: relative;
+    top: auto;
+    right: auto;
+    transform: none;
+    margin-bottom: 10px;
+    margin-left: 10px;
+  }
+
+  .docs-entry:hover {
+    transform: translateX(2px);
   }
 
   .stats-cards {

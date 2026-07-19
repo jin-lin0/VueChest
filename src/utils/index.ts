@@ -1,8 +1,6 @@
-// 工具函数统一导出入口
-export * from './db'
-export * from './storage'
-export * from './lunar'
+// 纯工具函数统一导出入口（库级封装见 src/lib）
 export * from './clipboard'
+export * from './lunar'
 
 export const debounce = <T extends (...args: unknown[]) => unknown>(
   fn: T,

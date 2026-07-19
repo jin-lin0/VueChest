@@ -1,30 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getStorage, setStorage, copyToClipboard } from '@/utils'
-import { marked } from 'marked'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github-dark.css'
+import { getStorage, setStorage } from '@/lib/storage'
+import { renderMarkdown } from '@/lib/markdown'
+import { copyToClipboard } from '@/utils'
 
 defineOptions({ name: 'AIChatView' })
-
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-})
-
-const renderer = new marked.Renderer()
-renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
-  const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext'
-  const highlighted = hljs.highlight(text, { language }).value
-  return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`
-}
-
-marked.use({ renderer })
-
-const renderMarkdown = (content: string): string => {
-  return marked.parse(content) as string
-}
 
 interface Message {
   id: number
@@ -224,7 +205,7 @@ const getSessionTitle = (session: ChatSession) => {
   return session.title
 }
 
-import { api } from '@/utils/request'
+import { api } from '@/lib/request'
 
 const saveMessageToServer = async (question: string, answer: string, model: string) => {
   try {
