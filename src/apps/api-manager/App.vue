@@ -28,7 +28,7 @@ const error = ref<string | null>(null)
 
 const showAddForm = ref(false)
 const editingId = ref<number | null>(null)
-const formData = ref<Partial<ApiItem>>({
+const blankForm = (): Partial<ApiItem> => ({
   name: '',
   url: '',
   method: 'GET',
@@ -36,34 +36,13 @@ const formData = ref<Partial<ApiItem>>({
   description: '',
   params: [],
 })
-
-const loadApis = (): ApiItem[] => {
-  // [api-manager-merge-seed]
-  const stored = getStorage<ApiItem[]>('apis', null)
-  if (!Array.isArray(stored)) return defaultApis
-  const storedUrls = new Set(stored.map((a) => a.url))
-  const merged = stored.filter(Boolean)
-  for (const d of defaultApis) {
-    if (!storedUrls.has(d.url)) merged.push(d)
-  }
-  return merged
-}
-
-const saveApis = () => {
-  setStorage('apis', apis.value)
-}
+const formData = ref<Partial<ApiItem>>(blankForm())
 
 onMounted(() => {
-  apis.value = loadApis()
+  apis.value = getStorage<ApiItem[]>('apis', defaultApis) ?? defaultApis
 })
 
-watch(
-  apis,
-  () => {
-    saveApis()
-  },
-  { deep: true },
-)
+watch(apis, () => setStorage('apis', apis.value), { deep: true })
 
 const categories = computed(() => {
   const cats = new Set(apis.value.map((a) => a.category).filter(Boolean))
@@ -166,24 +145,13 @@ const formatJson = (data: unknown): string => {
   }
 }
 
-const getStatusClass = (status: number): string => {
-  if (status >= 200 && status < 300) return 'success'
-  if (status >= 400 && status < 500) return 'client-error'
-  if (status >= 500) return 'server-error'
-  return 'info'
-}
+const getStatusClass = (status: number): string =>
+  status >= 500 ? 'server-error' : status >= 400 ? 'client-error' : status >= 200 ? 'success' : 'info'
 
 const showAddFormPanel = () => {
   showAddForm.value = true
   editingId.value = null
-  formData.value = {
-    name: '',
-    url: '',
-    method: 'GET',
-    category: '',
-    description: '',
-    params: [],
-  }
+  formData.value = blankForm()
 }
 
 const editApi = (api: ApiItem) => {
