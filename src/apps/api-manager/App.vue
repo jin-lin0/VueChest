@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getStorage, setStorage } from '@/lib/storage'
+import { getStorage, setStorage, removeStorage } from '@/lib/storage'
+import { CustomSelect, type SelectOption } from '@/components'
 import { defaultApis, type ApiItem } from './defaults'
 
 interface ApiResponse {
@@ -40,6 +41,16 @@ const blankForm = (): Partial<ApiItem> => ({
 })
 const formData = ref<Partial<ApiItem>>(blankForm())
 
+const methodOptions: SelectOption[] = [
+  { value: 'GET', label: 'GET' },
+  { value: 'POST', label: 'POST' },
+]
+const typeOptions: SelectOption[] = [
+  { value: 'string', label: '字符串' },
+  { value: 'number', label: '数字' },
+  { value: 'boolean', label: '布尔值' },
+]
+
 onMounted(() => {
   apis.value = getStorage<ApiItem[]>('apis', defaultApis) ?? defaultApis
 })
@@ -74,12 +85,36 @@ const selectApi = (api: ApiItem) => {
   error.value = null
 }
 
-const buildUrl = (api: ApiItem): string =>
-  api.params.reduce(
-    (url, p) =>
-      url.replace(`{${p.name}}`, encodeURIComponent(paramValues.value[p.name] || p.defaultValue)),
-    api.url,
-  )
+const buildUrl = (api: ApiItem): string => {
+  const getVal = (p: ApiItem['params'][number]): string | null | undefined => {
+    const raw = paramValues.value[p.name]
+    return raw !== undefined && raw !== '' ? raw : p.defaultValue
+  }
+  // 1) 替换 URL 中的 {placeholder}
+  let url = api.params.reduce((u, p) => {
+    const v = getVal(p)
+    return u.replace(`{${p.name}}`, v == null ? '' : encodeURIComponent(String(v)))
+  }, api.url)
+  // 2) 剔除因占位符为空产生的 &key= / ?key=，避免把无效空参数发给接口
+  url = url
+    .replace(/[?&][^=&?#]+=(?=&|$|#)/g, (seg) => (seg.startsWith('?') ? '?' : ''))
+    .replace(/\?&/, '?')
+    .replace(/[?&]$/, '')
+  // 3) URL 中无占位符、但用户已填值的参数，自动以 ?key=value 形式追加
+  const extras = api.params
+    .filter((p) => !api.url.includes(`{${p.name}}`))
+    .map((p) => {
+      const v = getVal(p)
+      return v == null || v === ''
+        ? null
+        : `${encodeURIComponent(p.name)}=${encodeURIComponent(String(v))}`
+    })
+    .filter((s): s is string => s !== null)
+  if (extras.length) {
+    url += (url.includes('?') ? '&' : '?') + extras.join('&')
+  }
+  return url
+}
 
 const parseBody = async (
   res: Response,
@@ -194,6 +229,21 @@ const togglePin = (id: number) => {
   if (api) api.pinned = !api.pinned
 }
 
+const resetApis = () => {
+  if (
+    !window.confirm(
+      '重置将清空本地保存的全部 API（含你自定义添加的），并恢复为系统默认列表。确定继续？',
+    )
+  ) {
+    return
+  }
+  removeStorage('apis')
+  apis.value = JSON.parse(JSON.stringify(defaultApis)) as ApiItem[]
+  selectedApi.value = null
+  response.value = null
+  error.value = null
+}
+
 const addParam = () => {
   if (!formData.value.params) formData.value.params = []
   formData.value.params.push({
@@ -221,6 +271,9 @@ const selectCategory = (cat: string) => {
     <header class="app-header">
       <button class="back-button" @click="goBack">返回</button>
       <h1>API管理器</h1>
+      <button class="reset-api-btn" @click="resetApis" title="清空本地数据，恢复系统默认API列表">
+        重置默认
+      </button>
       <button class="add-api-btn" @click="showAddFormPanel">+ 添加API</button>
     </header>
 
@@ -296,10 +349,9 @@ const selectCategory = (cat: string) => {
             <div class="form-row">
               <div class="form-group">
                 <label>方法</label>
-                <select v-model="formData.method">
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                </select>
+                <div class="cs-wrap">
+                  <CustomSelect v-model="formData.method" :options="methodOptions" size="sm" />
+                </div>
               </div>
               <div class="form-group">
                 <label>分类</label>
@@ -323,11 +375,9 @@ const selectCategory = (cat: string) => {
               <div v-for="(param, index) in formData.params" :key="index" class="param-item">
                 <div class="param-row">
                   <input v-model="param.name" type="text" placeholder="参数名" class="param-name" />
-                  <select v-model="param.type" class="param-type">
-                    <option value="string">字符串</option>
-                    <option value="number">数字</option>
-                    <option value="boolean">布尔值</option>
-                  </select>
+                  <div class="param-type cs-wrap">
+                    <CustomSelect v-model="param.type" :options="typeOptions" size="sm" />
+                  </div>
                   <input
                     v-model="param.defaultValue"
                     type="text"
@@ -462,6 +512,7 @@ const selectCategory = (cat: string) => {
 .app-header {
   display: flex;
   align-items: center;
+  gap: 0.8rem;
   margin-bottom: 1.5rem;
 }
 
@@ -472,7 +523,6 @@ const selectCategory = (cat: string) => {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
-  margin-right: 1rem;
   font-size: 1rem;
 }
 
@@ -499,6 +549,37 @@ const selectCategory = (cat: string) => {
 
 .add-api-btn:hover {
   background-color: #27ae60;
+}
+
+.reset-api-btn {
+  background-color: transparent;
+  color: var(--api-danger);
+  border: 1px solid var(--api-danger);
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.reset-api-btn:hover {
+  background-color: var(--api-danger);
+  color: #fff;
+}
+
+/* CustomSelect 包裹层：让下拉组件撑满表单宽度 */
+.cs-wrap {
+  width: 100%;
+}
+
+.cs-wrap :deep(.custom-select) {
+  width: 100%;
+}
+
+/* 参数行里的包裹层复用 .param-type 的弹性宽度，去掉原生 select 的边框/内边距 */
+.param-type.cs-wrap {
+  border: none;
+  padding: 0;
 }
 
 .api-content {
@@ -1317,13 +1398,14 @@ const selectCategory = (cat: string) => {
 
   .app-header {
     flex-wrap: wrap;
-    gap: 0.8rem;
+    gap: 0.5rem;
     margin-bottom: 1rem;
   }
 
   .app-header h1 {
     font-size: 1.4rem;
     order: 1;
+    flex: 1;
   }
 
   .back-button {
@@ -1332,11 +1414,17 @@ const selectCategory = (cat: string) => {
     order: 0;
   }
 
-  .add-api-btn {
+  .reset-api-btn {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
     order: 2;
-    margin-left: auto;
+  }
+
+  .add-api-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    order: 3;
+    margin-left: 0;
   }
 
   .api-content {
@@ -1351,6 +1439,13 @@ const selectCategory = (cat: string) => {
 
   .api-actions {
     opacity: 1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .api-item-meta {
+    flex-wrap: wrap;
+    gap: 0.4rem;
   }
 
   .form-row {
