@@ -1,4 +1,4 @@
-import { AI_CHAT_CONFIG } from '../config'
+import { API_BASE } from '@/lib/request'
 
 export interface ChatStreamMessage {
   role: 'user' | 'assistant' | 'system'
@@ -6,46 +6,41 @@ export interface ChatStreamMessage {
 }
 
 export interface StreamChatParams {
-  apiKey: string
+  conversationId: string
+  provider: string
   model: string
   messages: ChatStreamMessage[]
-  apiUrl?: string
   maxTokens?: number
   temperature?: number
 }
 
+const DEFAULT_MAX_TOKENS = 4096
+const DEFAULT_TEMPERATURE = 0.7
+
 export function useChatStream() {
   async function* streamChat(params: StreamChatParams): AsyncGenerator<string> {
     const {
-      apiKey,
+      conversationId,
+      provider,
       model,
       messages,
-      apiUrl = AI_CHAT_CONFIG.defaultApiUrl,
-      maxTokens = AI_CHAT_CONFIG.defaultMaxTokens,
-      temperature = AI_CHAT_CONFIG.defaultTemperature,
+      maxTokens = DEFAULT_MAX_TOKENS,
+      temperature = DEFAULT_TEMPERATURE,
     } = params
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`${API_BASE}/api/ai-chat/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: true,
-        max_tokens: maxTokens,
-        temperature,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId, provider, model, messages, maxTokens, temperature }),
     })
 
     if (!response.ok) {
-      const errData = await response.json().catch(() => null)
-      throw new Error(
-        (errData as { error?: { message?: string } } | null)?.error?.message ||
-          `请求失败: ${response.status}`,
-      )
+      let msg = `请求失败: ${response.status}`
+      try {
+        const j = await response.json()
+        msg = j?.error || msg
+      } catch {}
+      throw new Error(msg)
     }
 
     const reader = response.body?.getReader()

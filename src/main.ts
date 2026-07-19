@@ -15,13 +15,33 @@ import { initStorage } from './lib/storage'
 import { useAuthStore } from './stores'
 import { useMarketStore } from './stores/market'
 import { getClientGeo, getGeoHeader } from './lib/clientGeo'
+import { API_BASE } from './lib/request'
 
-// 全局 fetch 代理：自动添加定位头
+const BACKEND_ORIGIN = (() => {
+  try {
+    return new URL(API_BASE).origin
+  } catch {
+    return ''
+  }
+})()
+
+function isOwnBackend(url: string): boolean {
+  if (!BACKEND_ORIGIN) return false
+  try {
+    const target = new URL(url, window.location.origin)
+    return target.origin === BACKEND_ORIGIN
+  } catch {
+    return false
+  }
+}
+
+// 全局 fetch 代理：对后端自动添加定位头
 const origFetch = window.fetch.bind(window)
 window.fetch = (input, init) => {
   const url =
     typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString()
-  if (!url.includes('/api/')) return origFetch(input, init)
+
+  if (!isOwnBackend(url)) return origFetch(input, init)
 
   const headers = new Headers(init?.headers)
   try {

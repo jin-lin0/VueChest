@@ -2,15 +2,16 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStorage, setStorage } from '@/lib/storage'
-import { api } from '@/lib/request'
 import { copyToClipboard } from '@/utils'
-import { MarkdownView } from '@/components'
+import { MarkdownView, CustomSelect, type SelectOption } from '@/components'
 import {
   AI_CHAT_SESSIONS_KEY,
-  AI_CHAT_API_KEY_STORAGE,
-  AI_CHAT_MODEL_STORAGE,
-  AI_CHAT_CONFIG,
-  AVAILABLE_MODELS,
+  AI_CHAT_PROVIDER_STORAGE,
+  modelStorageKey,
+  fetchProviders,
+  fetchConversation,
+  type ProviderMeta,
+  type ChatMessage,
 } from './config'
 import { suggestionPool } from './suggestions'
 import { useChatStream } from './composables/useChatStream'
@@ -18,16 +19,16 @@ import { useChatStream } from './composables/useChatStream'
 defineOptions({ name: 'AIChatView' })
 
 interface Message {
-  id: number
+  id: string
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: number
 }
 
+/** 会话元数据（不含消息，消息存在服务端，按 id 拉取） */
 interface ChatSession {
-  id: number
+  id: string
   title: string
-  messages: Message[]
   createdAt: number
   updatedAt: number
 }
@@ -35,12 +36,26 @@ interface ChatSession {
 const router = useRouter()
 
 const sessions = ref<ChatSession[]>([])
-const currentSessionId = ref<number | null>(null)
+const currentSessionId = ref<string | null>(null)
+const currentMessages = ref<Message[]>([])
 const inputMessage = ref('')
 const isLoading = ref(false)
-const defaultApiKey = import.meta.env.VITE_SILICONFLOW_API_KEY || ''
-const apiKey = ref(getStorage<string>(AI_CHAT_API_KEY_STORAGE, '') || defaultApiKey)
-const selectedModel = ref(getStorage<string>(AI_CHAT_MODEL_STORAGE, '') || AI_CHAT_CONFIG.defaultModel)
+const providers = ref<ProviderMeta[]>([])
+const selectedProviderId = ref(getStorage<string>(AI_CHAT_PROVIDER_STORAGE, '') || '')
+const selectedModel = ref('')
+
+const FALLBACK_PROVIDER: ProviderMeta = { id: '', name: 'AI 助手', models: [], defaultModel: '' }
+const currentProvider = computed<ProviderMeta>(
+  () => providers.value.find((p) => p.id === selectedProviderId.value) || FALLBACK_PROVIDER,
+)
+
+const providerOptions = computed<SelectOption[]>(() =>
+  providers.value.map((p) => ({ value: p.id, label: p.name })),
+)
+const modelOptions = computed<SelectOption[]>(() =>
+  currentProvider.value.models.map((m) => ({ value: m.id, label: m.name })),
+)
+
 const showSettings = ref(false)
 const showSidebar = ref(true)
 const error = ref('')
@@ -73,13 +88,25 @@ const goBack = () => {
   router.push('/')
 }
 
-const generateId = () => Date.now() + Math.random()
+/** 切换平台：更新选中值、持久化、并把模型重置为该平台的默认值（或本地记忆） */
+const selectProvider = (raw?: string | number) => {
+  const id = String(raw ?? selectedProviderId.value)
+  const meta = providers.value.find((p) => p.id === id)
+  if (!meta) return
+  selectedProviderId.value = id
+  setStorage(AI_CHAT_PROVIDER_STORAGE, id)
+  selectedModel.value = getStorage<string>(modelStorageKey(id), '') || meta.defaultModel
+}
+
+const generateId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`
 
 const createSession = (): ChatSession => {
   const session: ChatSession = {
     id: generateId(),
     title: '新对话',
-    messages: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
@@ -88,22 +115,22 @@ const createSession = (): ChatSession => {
   return session
 }
 
-const switchSession = (id: number) => {
+/** 新建并直接跳转到空会话：新会话必为空，不请求 /messages */
+const startNewConversation = () => {
+  const s = createSession()
+  currentSessionId.value = s.id
+  currentMessages.value = []
+  if (isMobile.value) {
+    showSidebar.value = false
+  }
+}
+
+const switchSession = (id: string) => {
   currentSessionId.value = id
   if (isMobile.value) {
     showSidebar.value = false
   }
-  nextTick(scrollToBottom)
-}
-
-const deleteSession = (id: number) => {
-  const idx = sessions.value.findIndex((s) => s.id === id)
-  if (idx === -1) return
-  sessions.value.splice(idx, 1)
-  if (currentSessionId.value === id) {
-    currentSessionId.value = sessions.value.length > 0 ? sessions.value[0].id : null
-  }
-  saveSessions()
+  loadMessages(id)
 }
 
 const saveSessions = () => {
@@ -113,8 +140,55 @@ const saveSessions = () => {
 const loadSessions = () => {
   const saved = getStorage<ChatSession[]>(AI_CHAT_SESSIONS_KEY, [])
   if (saved && saved.length > 0) {
+    // 兼容旧版本：把数字型 id（如 1784463468384.5688）归一化为字符串，
+    // 否则后端 typeof !== 'string' 校验会误判为“缺少 conversationId”
+    saved.forEach((s) => {
+      if (typeof s.id !== 'string') s.id = String(s.id)
+    })
     sessions.value = saved
     currentSessionId.value = saved[0].id
+  }
+}
+
+/** 拉取服务端已配置的平台 + 模型列表 */
+const loadProviders = async () => {
+  try {
+    const list = await fetchProviders()
+    providers.value = list
+    if (list.length === 0) return
+    const stored = getStorage<string>(AI_CHAT_PROVIDER_STORAGE, '')
+    const valid = list.some((p) => p.id === stored)
+    if (!valid) {
+      selectedProviderId.value = list[0].id
+      setStorage(AI_CHAT_PROVIDER_STORAGE, list[0].id)
+    }
+    const meta = list.find((p) => p.id === selectedProviderId.value)
+    selectedModel.value =
+      getStorage<string>(modelStorageKey(selectedProviderId.value), '') || meta?.defaultModel || ''
+  } catch {
+    error.value = '加载平台列表失败，请检查服务端是否已启动并配置 API Key'
+  }
+}
+
+/** 打开会话时，从服务端拉取历史消息并还原平台/模型 */
+const loadMessages = async (id: string) => {
+  try {
+    const data = await fetchConversation(id)
+    currentMessages.value = (data.messages || []).map((m: ChatMessage) => ({
+      id: generateId(),
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp || Date.now(),
+    }))
+    if (data.provider && providers.value.some((p) => p.id === data.provider)) {
+      selectedProviderId.value = data.provider
+      setStorage(AI_CHAT_PROVIDER_STORAGE, data.provider)
+    }
+    if (data.model) selectedModel.value = data.model
+    const sess = sessions.value.find((s) => s.id === id)
+    if (sess && data.title) sess.title = data.title
+  } catch {
+    currentMessages.value = []
   }
 }
 
@@ -158,34 +232,19 @@ const formatTime = (ts: number) => {
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`
 }
 
-const getSessionTitle = (session: ChatSession) => {
-  if (session.messages.length > 0) {
-    const firstUserMsg = session.messages.find((m) => m.role === 'user')
-    if (firstUserMsg) {
-      return firstUserMsg.content.slice(0, 20) + (firstUserMsg.content.length > 20 ? '...' : '')
-    }
-  }
-  return session.title
-}
-
-const saveMessageToServer = async (question: string, answer: string, model: string) => {
-  try {
-    await api.post('/api/messages', { question, answer, model }, { auth: false })
-  } catch {
-    // 静默失败，不影响用户体验
-  }
-}
+const getSessionTitle = (session: ChatSession) => session.title
 
 const sendMessage = async () => {
   if (!canSend.value) return
 
   error.value = ''
 
-  let session = currentSession.value
-  if (!session) {
-    session = createSession()
-    currentSessionId.value = session.id
+  if (!currentSessionId.value) {
+    const s = createSession()
+    currentSessionId.value = s.id
   }
+  // 强制转字符串（兼容旧版数字型 id），避免后端因 typeof !== 'string' 拒绝
+  const convId = String(currentSessionId.value)
 
   const userMessage: Message = {
     id: generateId(),
@@ -193,52 +252,49 @@ const sendMessage = async () => {
     content: inputMessage.value.trim(),
     timestamp: Date.now(),
   }
-  session.messages.push(userMessage)
-  session.updatedAt = Date.now()
+  currentMessages.value.push(userMessage)
 
-  if (session.messages.length === 1) {
+  const session = sessions.value.find((s) => s.id === convId)
+  if (session && session.title === '新对话') {
     session.title =
       userMessage.content.slice(0, 20) + (userMessage.content.length > 20 ? '...' : '')
+    session.updatedAt = Date.now()
+    saveSessions()
   }
 
   inputMessage.value = ''
   isLoading.value = true
-  saveSessions()
 
   await nextTick()
   scrollToBottom()
 
+  // 完整上下文发给服务端做转发；服务端只落库「最新一轮」user+assistant
+  const apiMessages = currentMessages.value
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({ role: m.role, content: m.content }))
+
+  currentMessages.value.push({
+    id: generateId(),
+    role: 'assistant',
+    content: '',
+    timestamp: Date.now(),
+  })
+  const assistantIndex = currentMessages.value.length - 1
+
+  const { streamChat } = useChatStream()
+  let fullContent = ''
+  let scrollFrame: number | null = null
+
   try {
-    const isDefaultKey = apiKey.value === defaultApiKey
-    const apiMessages = isDefaultKey
-      ? [{ role: userMessage.role, content: userMessage.content }]
-      : session.messages
-          .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .map((m) => ({
-            role: m.role,
-            content: m.content,
-          }))
-
-    session.messages.push({
-      id: generateId(),
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
-    })
-    const assistantIndex = session.messages.length - 1
-
-    const { streamChat } = useChatStream()
-    let fullContent = ''
-    let scrollFrame: number | null = null
-
     try {
       for await (const delta of streamChat({
-        apiKey: apiKey.value,
+        conversationId: convId,
+        provider: selectedProviderId.value,
         model: selectedModel.value,
         messages: apiMessages,
       })) {
         fullContent += delta
-        session.messages[assistantIndex].content = fullContent
+        currentMessages.value[assistantIndex].content = fullContent
         if (scrollFrame === null) {
           scrollFrame = requestAnimationFrame(() => {
             scrollFrame = null
@@ -248,20 +304,19 @@ const sendMessage = async () => {
       }
     } catch (err) {
       // SSE 启动失败（HTTP 非 2xx / 无法读取流 / 网络异常），移除空占位消息后向上抛出
-      session.messages.splice(assistantIndex, 1)
+      currentMessages.value.splice(assistantIndex, 1)
       throw err
     } finally {
       if (scrollFrame !== null) cancelAnimationFrame(scrollFrame)
     }
 
-    session.updatedAt = Date.now()
-    saveSessions()
-
-    if (fullContent) {
-      saveMessageToServer(userMessage.content, fullContent, selectedModel.value)
+    const sess = sessions.value.find((s) => s.id === convId)
+    if (sess) {
+      sess.updatedAt = Date.now()
+      saveSessions()
     }
   } catch (err: unknown) {
-    const errMsg = err instanceof Error ? err.message : '请求出错，请检查网络和 API Key'
+    const errMsg = err instanceof Error ? err.message : '请求出错，请检查网络'
     error.value = errMsg
     const errorMessage: Message = {
       id: generateId(),
@@ -269,7 +324,7 @@ const sendMessage = async () => {
       content: `❌ 错误: ${errMsg}`,
       timestamp: Date.now(),
     }
-    session.messages.push(errorMessage)
+    currentMessages.value.push(errorMessage)
     saveSessions()
   } finally {
     isLoading.value = false
@@ -285,15 +340,6 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 }
 
-const clearCurrentChat = () => {
-  if (currentSession.value) {
-    currentSession.value.messages = []
-    currentSession.value.title = '新对话'
-    currentSession.value.updatedAt = Date.now()
-    saveSessions()
-  }
-}
-
 const autoResize = () => {
   if (textareaRef.value) {
     textareaRef.value.style.height = 'auto'
@@ -306,11 +352,7 @@ watch(inputMessage, () => {
 })
 
 watch(selectedModel, (val) => {
-  setStorage(AI_CHAT_MODEL_STORAGE, val)
-})
-
-watch(apiKey, (val) => {
-  setStorage(AI_CHAT_API_KEY_STORAGE, val)
+  setStorage(modelStorageKey(selectedProviderId.value), val)
 })
 
 const handleResize = () => {
@@ -320,9 +362,9 @@ const handleResize = () => {
   }
 }
 
-const copiedMessageId = ref<number | null>(null)
+const copiedMessageId = ref<string | null>(null)
 
-const copyMessage = (content: string, messageId: number) =>
+const copyMessage = (content: string, messageId: string) =>
   copyToClipboard(content, () => {
     copiedMessageId.value = messageId
     setTimeout(() => {
@@ -330,12 +372,22 @@ const copyMessage = (content: string, messageId: number) =>
     }, 2000)
   })
 
-onMounted(() => {
+onMounted(async () => {
   loadSessions()
+  let isNew = false
   if (sessions.value.length === 0) {
-    createSession()
+    // 首次进入没有会话：新建并直接跳转到空会话（不请求 /messages）
+    const s = createSession()
+    currentSessionId.value = s.id
+    currentMessages.value = []
+    isNew = true
   } else {
     currentSessionId.value = sessions.value[0].id
+  }
+  await loadProviders()
+  // 仅已有会话需要拉历史；新建会话必为空，跳过 /messages 请求
+  if (!isNew && currentSessionId.value) {
+    await loadMessages(currentSessionId.value)
   }
   if (isMobile.value) {
     showSidebar.value = false
@@ -366,7 +418,7 @@ onUnmounted(() => {
           </svg>
         </button>
         <h3 v-if="showSidebar">AI 对话</h3>
-        <button class="btn-icon" @click="createSession" title="新对话">
+        <button class="btn-icon" @click="startNewConversation" title="新对话">
           <svg
             width="18"
             height="18"
@@ -388,18 +440,6 @@ onUnmounted(() => {
           @click="switchSession(session.id)"
         >
           <div class="session-title">{{ getSessionTitle(session) }}</div>
-          <button class="btn-delete" @click.stop="deleteSession(session.id)" title="删除对话">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
         </div>
         <div v-if="sortedSessions.length === 0" class="session-empty">暂无对话</div>
       </div>
@@ -420,28 +460,15 @@ onUnmounted(() => {
           </svg>
         </button>
         <div class="header-center">
-          <select v-model="selectedModel" class="model-select">
-            <option v-for="m in AVAILABLE_MODELS" :key="m.id" :value="m.id">
-              {{ m.name }}
-            </option>
-          </select>
+          <CustomSelect
+            v-model="selectedProviderId"
+            :options="providerOptions"
+            size="sm"
+            @change="(v) => selectProvider(v)"
+          />
+          <CustomSelect v-model="selectedModel" :options="modelOptions" size="sm" />
         </div>
         <div class="header-actions">
-          <button class="btn-icon" @click="clearCurrentChat" title="清空对话">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <polyline points="3 6 5 6 21 6" />
-              <path
-                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-              />
-            </svg>
-          </button>
           <button class="btn-icon" @click="showSettings = !showSettings" title="设置">
             <svg
               width="18"
@@ -463,30 +490,26 @@ onUnmounted(() => {
       <div v-if="showSettings" class="settings-panel">
         <div class="settings-content">
           <div class="setting-item">
-            <label>API Key</label>
-            <input v-model="apiKey" type="password" placeholder="输入你的硅基流动 API Key" />
-            <span class="setting-hint"
-              >请前往
-              <a href="https://cloud.siliconflow.cn" target="_blank" rel="noopener">硅基流动</a>
-              获取</span
-            >
+            <label>平台</label>
+            <CustomSelect
+              v-model="selectedProviderId"
+              :options="providerOptions"
+              @change="(v) => selectProvider(v)"
+            />
           </div>
           <div class="setting-item">
             <label>模型</label>
-            <select v-model="selectedModel">
-              <option v-for="m in AVAILABLE_MODELS" :key="m.id" :value="m.id">
-                {{ m.name }}
-              </option>
-            </select>
+            <CustomSelect v-model="selectedModel" :options="modelOptions" />
           </div>
+          <p class="setting-note">API Key 由服务端配置，无需在此填写。</p>
         </div>
       </div>
 
       <div ref="messagesContainer" class="messages-area" @scroll="handleScroll">
-        <div v-if="!currentSession || currentSession.messages.length === 0" class="welcome">
+        <div v-if="currentMessages.length === 0" class="welcome">
           <div class="welcome-icon">🤖</div>
           <h2>AI 智能助手</h2>
-          <p>基于 DeepSeek 大模型，随时为你解答问题</p>
+          <p>基于 {{ currentProvider.name || 'AI' }} 大模型，随时为你解答问题</p>
           <div class="welcome-suggestions">
             <button
               v-for="(suggestion, index) in randomSuggestions"
@@ -516,7 +539,7 @@ onUnmounted(() => {
 
         <template v-else>
           <div
-            v-for="(msg, index) in currentSession.messages"
+            v-for="(msg, index) in currentMessages"
             :key="msg.id"
             class="message"
             :class="msg.role"
@@ -531,7 +554,7 @@ onUnmounted(() => {
                   <MarkdownView :content="msg.content" />
                 </div>
                 <div
-                  v-else-if="isLoading && index === currentSession.messages.length - 1"
+                  v-else-if="isLoading && index === currentMessages.length - 1"
                   class="typing-indicator"
                 >
                   <span></span><span></span><span></span>
@@ -632,7 +655,7 @@ onUnmounted(() => {
           </button>
         </div>
         <div class="input-footer">
-          <span>DeepSeek · 硅基流动</span>
+          <span>{{ currentProvider.name || 'AI 助手' }}</span>
         </div>
       </div>
     </main>
@@ -731,28 +754,6 @@ onUnmounted(() => {
   margin-right: 4px;
 }
 
-.btn-delete {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
-  display: flex;
-  opacity: 0;
-  transition:
-    opacity 0.2s,
-    color 0.2s;
-}
-
-.session-item:hover .btn-delete {
-  opacity: 1;
-}
-
-.btn-delete:hover {
-  color: #ef4444;
-}
-
 .session-empty {
   text-align: center;
   color: var(--text-muted);
@@ -785,21 +786,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   justify-content: center;
-}
-
-.model-select {
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 13px;
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-  cursor: pointer;
-  outline: none;
-}
-
-.model-select:focus {
-  border-color: #6366f1;
+  gap: 12px;
 }
 
 .header-actions {
@@ -834,6 +821,11 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
+/* 设置面板里的下拉组件占满整行，与输入框对齐 */
+.settings-content :deep(.custom-select) {
+  width: 100%;
+}
+
 .setting-item {
   margin-bottom: 12px;
 }
@@ -850,38 +842,10 @@ onUnmounted(() => {
   margin-bottom: 4px;
 }
 
-.setting-item input,
-.setting-item select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 14px;
-  outline: none;
-  background: var(--bg-input);
-  color: var(--text-body);
-  transition: border-color 0.2s;
-}
-
-.setting-item input:focus,
-.setting-item select:focus {
-  border-color: #6366f1;
-}
-
-.setting-hint {
+.setting-note {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: 4px;
-  display: block;
-}
-
-.setting-hint a {
-  color: #6366f1;
-  text-decoration: none;
-}
-
-.setting-hint a:hover {
-  text-decoration: underline;
+  margin: 8px 0 0;
 }
 
 .messages-area {
@@ -1281,11 +1245,6 @@ onUnmounted(() => {
 
   .chat-header {
     padding: 8px 12px;
-  }
-
-  .model-select {
-    font-size: 12px;
-    padding: 5px 8px;
   }
 
   .welcome-icon {

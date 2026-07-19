@@ -1,27 +1,42 @@
+import { api } from '@/lib/request'
+
 export const AI_CHAT_SESSIONS_KEY = 'ai-chat-sessions'
-export const AI_CHAT_API_KEY_STORAGE = 'ai-chat-api-key'
-export const AI_CHAT_MODEL_STORAGE = 'ai-chat-model'
+export const AI_CHAT_PROVIDER_STORAGE = 'ai-chat-provider'
 
-export interface AiChatConfig {
-  defaultApiUrl: string
-  defaultMaxTokens: number
-  defaultTemperature: number
-  defaultModel: string
-}
-
-export const AI_CHAT_CONFIG: AiChatConfig = {
-  defaultApiUrl: 'https://api.siliconflow.cn/v1/chat/completions',
-  defaultMaxTokens: 4096,
-  defaultTemperature: 0.7,
-  defaultModel: 'deepseek-ai/DeepSeek-V3.2',
-}
-
-export interface AiChatModel {
+export interface ModelOption {
   id: string
   name: string
 }
 
-export const AVAILABLE_MODELS: AiChatModel[] = [
-  { id: 'deepseek-ai/DeepSeek-V3.2', name: 'DeepSeek V3.2' },
-  { id: 'deepseek-ai/DeepSeek-R1', name: 'DeepSeek R1' },
-]
+export interface ProviderMeta {
+  id: string
+  name: string
+  models: ModelOption[]
+  defaultModel: string
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  id?: number
+  timestamp?: number
+}
+
+export const modelStorageKey = (providerId: string) => `ai-chat-model-${providerId}`
+
+export async function fetchProviders(): Promise<ProviderMeta[]> {
+  const res = await api.get<{ data: ProviderMeta[] }>('/api/ai-chat/providers', { auth: false })
+  return res.data || []
+}
+
+export async function fetchConversation(id: string): Promise<{
+  messages: ChatMessage[]
+  provider: string | null
+  model: string | null
+  title: string
+}> {
+  const res = await api.get<{
+    data: { messages: ChatMessage[]; provider: string | null; model: string | null; title: string }
+  }>(`/api/ai-chat/conversations/${id}/messages`, { auth: false })
+  return res.data
+}
