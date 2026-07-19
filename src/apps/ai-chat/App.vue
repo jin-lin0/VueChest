@@ -725,6 +725,7 @@ onUnmounted(() => {
 .chat-page {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   background: var(--bg-page);
   overflow: hidden;
 }
@@ -1325,7 +1326,17 @@ onUnmounted(() => {
   }
 
   .chat-header {
-    padding: 8px 12px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .header-center {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .sidebar-toggle {
+    flex-shrink: 0;
   }
 
   .welcome-icon {

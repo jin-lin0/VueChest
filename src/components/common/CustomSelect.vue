@@ -1,5 +1,9 @@
 <template>
-  <div class="custom-select" :class="{ open: isOpen, disabled, [`size-${props.size}`]: true }" ref="selectRef">
+  <div
+    class="custom-select"
+    :class="{ open: isOpen, disabled, [`size-${props.size}`]: true }"
+    ref="selectRef"
+  >
     <div class="select-trigger" @click="toggleDropdown" :class="{ active: isOpen }">
       <span class="trigger-content">
         <span class="trigger-icon" v-if="selectedOption?.icon">{{ selectedOption.icon }}</span>
@@ -7,11 +11,17 @@
       </span>
       <span class="trigger-arrow">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path
+            d="M3 4.5L6 7.5L9 4.5"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
         </svg>
       </span>
     </div>
-    
+
     <Teleport to="body">
       <Transition name="dropdown">
         <div
@@ -38,27 +48,27 @@
               class="option-item"
               :class="{
                 selected: model === option.value,
-                disabled: option.disabled
+                disabled: option.disabled,
               }"
               @click="selectOption(option)"
             >
               <span class="option-icon" v-if="option.icon">{{ option.icon }}</span>
-              <slot
-                name="option"
-                :option="option"
-                :selected="model === option.value"
-              >
+              <slot name="option" :option="option" :selected="model === option.value">
                 <span class="option-label">{{ option.label }}</span>
                 <span class="option-check" v-if="model === option.value">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M4 8L7 11L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path
+                      d="M4 8L7 11L12 5"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
                   </svg>
                 </span>
               </slot>
             </div>
-            <div class="no-options" v-if="filteredOptions.length === 0">
-              暂无选项
-            </div>
+            <div class="no-options" v-if="filteredOptions.length === 0">暂无选项</div>
           </div>
         </div>
       </Transition>
@@ -78,20 +88,23 @@ export interface SelectOption {
 
 const model = defineModel<string | number | null>({ default: null })
 
-const props = withDefaults(defineProps<{
-  options: SelectOption[]
-  placeholder?: string
-  disabled?: boolean
-  searchable?: boolean
-  defaultFirst?: boolean
-  size?: 'sm' | 'md'
-}>(), {
-  placeholder: '请选择',
-  disabled: false,
-  searchable: false,
-  defaultFirst: false,
-  size: 'md',
-})
+const props = withDefaults(
+  defineProps<{
+    options: SelectOption[]
+    placeholder?: string
+    disabled?: boolean
+    searchable?: boolean
+    defaultFirst?: boolean
+    size?: 'sm' | 'md'
+  }>(),
+  {
+    placeholder: '请选择',
+    disabled: false,
+    searchable: false,
+    defaultFirst: false,
+    size: 'md',
+  },
+)
 
 const emit = defineEmits<{
   change: [value: string | number]
@@ -107,15 +120,15 @@ const dropdownStyle = ref<Record<string, string>>({})
 
 const selectedOption = computed(() => {
   if (model.value === null || model.value === undefined) return undefined
-  return props.options.find(opt => opt.value === model.value)
+  return props.options.find((opt) => opt.value === model.value)
 })
 
 const filteredOptions = computed(() => {
   if (!searchQuery.value) return props.options
   const query = searchQuery.value.toLowerCase()
-  return props.options.filter(opt => 
-    opt.label.toLowerCase().includes(query) || 
-    opt.value.toString().toLowerCase().includes(query)
+  return props.options.filter(
+    (opt) =>
+      opt.label.toLowerCase().includes(query) || opt.value.toString().toLowerCase().includes(query),
   )
 })
 
@@ -183,7 +196,7 @@ watch(isOpen, (val) => {
 
 watchEffect(() => {
   if (props.defaultFirst && model.value == null && props.options.length > 0) {
-    model.value = (props.options.find(o => !o.disabled) ?? props.options[0]).value
+    model.value = (props.options.find((o) => !o.disabled) ?? props.options[0]).value
   }
 })
 
@@ -202,7 +215,8 @@ onUnmounted(() => {
 .custom-select {
   position: relative;
   min-width: 150px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .select-trigger {
@@ -290,7 +304,9 @@ onUnmounted(() => {
   position: fixed;
   background: var(--bg-card);
   border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 2px 10px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.12),
+    0 2px 10px rgba(0, 0, 0, 0.08);
   z-index: 2000;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -449,12 +465,11 @@ onUnmounted(() => {
   }
 }
 
-/* 响应式 */
 @media (max-width: 768px) {
   .custom-select {
-    min-width: 100%;
+    min-width: 0;
   }
-  
+
   .select-trigger {
     padding: 12px 14px;
   }
