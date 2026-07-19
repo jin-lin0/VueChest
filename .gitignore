@@ -34,3 +34,6 @@ coverage
 
 *.tsbuildinfo
 AGENTS.md
+
+# 候选文件
+scripts/candidates/

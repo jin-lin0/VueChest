@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getStorage, setStorage, removeStorage } from '@/lib/storage'
+import { getStorage, setStorage } from '@/lib/storage'
 import { CustomSelect, type SelectOption } from '@/components'
 import { defaultApis, type ApiItem } from './defaults'
 
@@ -12,6 +12,8 @@ interface ApiResponse {
   time: number
   contentType?: string
   imageUrl?: string
+  truncated?: boolean
+  size?: number
 }
 
 const router = useRouter()
@@ -20,7 +22,8 @@ const goBack = () => {
   router.push('/')
 }
 
-const apis = ref<ApiItem[]>([])
+const userApis = ref<ApiItem[]>([])
+const pinnedSystemIds = ref<number[]>([])
 const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
 const selectedApi = ref<ApiItem | null>(null)
@@ -52,10 +55,24 @@ const typeOptions: SelectOption[] = [
 ]
 
 onMounted(() => {
-  apis.value = getStorage<ApiItem[]>('apis', defaultApis) ?? defaultApis
+  userApis.value = getStorage<ApiItem[]>('userApis', []) ?? []
+  pinnedSystemIds.value = getStorage<number[]>('pinnedSystemIds', []) ?? []
 })
 
-watch(apis, () => setStorage('apis', apis.value), { deep: true })
+watch(userApis, () => setStorage('userApis', userApis.value), { deep: true })
+watch(pinnedSystemIds, () => setStorage('pinnedSystemIds', pinnedSystemIds.value), { deep: true })
+
+// 系统 API 始终来源于源码 defaults.ts，并叠加用户的置顶偏好
+const systemApis = computed(() =>
+  defaultApis.map((a) => ({
+    ...a,
+    createdAt: a.createdAt ?? '2000-01-01T00:00:00.000Z',
+    pinned: pinnedSystemIds.value.includes(a.id),
+  })),
+)
+
+// 合并列表 = 系统定义 + 用户自定义（IndexedDB 只存用户自定义）
+const apis = computed<ApiItem[]>(() => [...systemApis.value, ...userApis.value])
 
 const categories = computed(() => {
   const cats = new Set(apis.value.map((a) => a.category).filter(Boolean))
@@ -74,7 +91,9 @@ const filteredApis = computed(() => {
       const pa = a.pinned ? 1 : 0
       const pb = b.pinned ? 1 : 0
       if (pa !== pb) return pb - pa
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return tb - ta
     })
 })
 
@@ -116,20 +135,57 @@ const buildUrl = (api: ApiItem): string => {
   return url
 }
 
+// 渲染安全上限：超过该体积的响应会被截断显示，避免超大 JSON 把页面卡死
+const MAX_PREVIEW_BYTES = 512 * 1024
+const maxPreviewLabel = '512 KB'
+
+const formatSize = (bytes?: number): string => {
+  if (bytes === undefined || bytes === null) return '-'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}
+
 const parseBody = async (
   res: Response,
   contentType: string,
-): Promise<{ data: unknown; imageUrl?: string }> => {
+): Promise<{ data: unknown; imageUrl?: string; truncated: boolean; size: number }> => {
   if (contentType.startsWith('image/')) {
-    return { data: null, imageUrl: URL.createObjectURL(await res.blob()) }
+    const blob = await res.blob()
+    return { data: null, imageUrl: URL.createObjectURL(blob), truncated: false, size: blob.size }
   }
-  if (contentType.includes('application/json')) return { data: await res.json() }
-  const text = await res.text()
+
+  // 文本 / JSON：流式读取并在达到上限时取消，防止超大响应卡死页面
+  const reader = res.body?.getReader()
+  const decoder = new TextDecoder()
+  let received = 0
+  let truncated = false
+  let text = ''
+  if (reader) {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (value) {
+        received += value.length
+        text += decoder.decode(value, { stream: true })
+        if (received >= MAX_PREVIEW_BYTES) {
+          truncated = true
+          await reader.cancel()
+          break
+        }
+      }
+    }
+    text += decoder.decode()
+  } else {
+    text = await res.text()
+    received = text.length
+  }
+
+  let data: unknown = text
   try {
-    return { data: JSON.parse(text) }
-  } catch {
-    return { data: text }
-  }
+    data = JSON.parse(text)
+  } catch {}
+  return { data, truncated, size: received }
 }
 
 const executeApi = async () => {
@@ -147,7 +203,7 @@ const executeApi = async () => {
     const res = await fetch(url, { method: selectedApi.value.method, headers: { Accept: '*/*' } })
     const endTime = Date.now()
     const contentType = res.headers.get('content-type') ?? ''
-    const { data, imageUrl } = await parseBody(res, contentType)
+    const { data, imageUrl, truncated, size } = await parseBody(res, contentType)
     response.value = {
       status: res.status,
       statusText: res.statusText,
@@ -155,6 +211,8 @@ const executeApi = async () => {
       time: endTime - startTime,
       contentType,
       imageUrl,
+      truncated,
+      size,
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : '请求失败，请检查网络或API地址'
@@ -207,10 +265,16 @@ const saveApi = () => {
   }
 
   if (editingId.value !== null) {
-    const index = apis.value.findIndex((a) => a.id === editingId.value)
-    if (index !== -1) apis.value[index] = { ...apis.value[index], ...payload }
+    const index = userApis.value.findIndex((a) => a.id === editingId.value)
+    if (index !== -1)
+      userApis.value[index] = { ...userApis.value[index], ...payload, userCreated: true }
   } else {
-    apis.value.push({ id: Date.now(), createdAt: new Date().toISOString(), ...payload })
+    userApis.value.push({
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      userCreated: true,
+      ...payload,
+    })
   }
 
   showAddForm.value = false
@@ -218,30 +282,22 @@ const saveApi = () => {
 }
 
 const deleteApi = (id: number) => {
-  apis.value = apis.value.filter((a) => a.id !== id)
+  userApis.value = userApis.value.filter((a) => a.id !== id)
   if (selectedApi.value?.id === id) {
     selectedApi.value = null
   }
 }
 
 const togglePin = (id: number) => {
-  const api = apis.value.find((a) => a.id === id)
-  if (api) api.pinned = !api.pinned
-}
-
-const resetApis = () => {
-  if (
-    !window.confirm(
-      '重置将清空本地保存的全部 API（含你自定义添加的），并恢复为系统默认列表。确定继续？',
-    )
-  ) {
-    return
+  const isUser = userApis.value.some((a) => a.id === id)
+  if (isUser) {
+    const u = userApis.value.find((a) => a.id === id)
+    if (u) u.pinned = !u.pinned
+  } else {
+    const i = pinnedSystemIds.value.indexOf(id)
+    if (i === -1) pinnedSystemIds.value.push(id)
+    else pinnedSystemIds.value.splice(i, 1)
   }
-  removeStorage('apis')
-  apis.value = JSON.parse(JSON.stringify(defaultApis)) as ApiItem[]
-  selectedApi.value = null
-  response.value = null
-  error.value = null
 }
 
 const addParam = () => {
@@ -271,9 +327,6 @@ const selectCategory = (cat: string) => {
     <header class="app-header">
       <button class="back-button" @click="goBack">返回</button>
       <h1>API管理器</h1>
-      <button class="reset-api-btn" @click="resetApis" title="清空本地数据，恢复系统默认API列表">
-        重置默认
-      </button>
       <button class="add-api-btn" @click="showAddFormPanel">+ 添加API</button>
     </header>
 
@@ -318,8 +371,16 @@ const selectCategory = (cat: string) => {
                 >
                   {{ api.pinned ? '取消置顶' : '置顶' }}
                 </button>
-                <button class="action-btn edit" @click.stop="editApi(api)">编辑</button>
-                <button class="action-btn delete" @click.stop="deleteApi(api.id)">删除</button>
+                <button v-if="api.userCreated" class="action-btn edit" @click.stop="editApi(api)">
+                  编辑
+                </button>
+                <button
+                  v-if="api.userCreated"
+                  class="action-btn delete"
+                  @click.stop="deleteApi(api.id)"
+                >
+                  删除
+                </button>
               </div>
             </div>
           </div>
@@ -455,8 +516,15 @@ const selectCategory = (cat: string) => {
                     {{ response.status }} {{ response.statusText }}
                   </span>
                   <span class="response-time">{{ response.time }}ms</span>
+                  <span class="response-size">{{ formatSize(response.size) }}</span>
                 </div>
               </div>
+
+              <div v-if="response.truncated" class="truncate-warning">
+                ⚠️ 响应约 {{ formatSize(response.size) }}，已超过
+                {{ maxPreviewLabel }} 上限。为避免页面卡顿，已截断显示前 {{ maxPreviewLabel }}。
+              </div>
+
               <pre v-if="!response.imageUrl" class="response-data">{{
                 formatJson(response.data)
               }}</pre>
@@ -549,22 +617,6 @@ const selectCategory = (cat: string) => {
 
 .add-api-btn:hover {
   background-color: #27ae60;
-}
-
-.reset-api-btn {
-  background-color: transparent;
-  color: var(--api-danger);
-  border: 1px solid var(--api-danger);
-  padding: 0.6rem 1.2rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.2s;
-}
-
-.reset-api-btn:hover {
-  background-color: var(--api-danger);
-  color: #fff;
 }
 
 /* CustomSelect 包裹层：让下拉组件撑满表单宽度 */
@@ -1200,6 +1252,29 @@ const selectCategory = (cat: string) => {
   color: #7f8c8d;
 }
 
+.response-size {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+  font-family: monospace;
+}
+
+.truncate-warning {
+  margin: 1rem 1rem 0;
+  padding: 0.7rem 1rem;
+  background-color: #fff8e1;
+  border: 1px solid #f0c36d;
+  border-radius: 6px;
+  color: #8a6d3b;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+:root.dark .truncate-warning {
+  background-color: rgba(240, 195, 109, 0.12);
+  border-color: rgba(240, 195, 109, 0.4);
+  color: #e0c089;
+}
+
 .response-data {
   padding: 1rem;
   margin: 0;
@@ -1412,12 +1487,6 @@ const selectCategory = (cat: string) => {
     padding: 0.4rem 0.8rem;
     font-size: 0.9rem;
     order: 0;
-  }
-
-  .reset-api-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    order: 2;
   }
 
   .add-api-btn {
