@@ -15,6 +15,7 @@ export interface ApiItem {
   description: string
   params: ApiParam[]
   createdAt: string
+  pinned?: boolean
 }
 
 export const defaultApis: ApiItem[] = [
@@ -151,14 +152,14 @@ export const defaultApis: ApiItem[] = [
     category: '图片',
     description: '返回随机动漫图片 URL，type 可选 neko/kitsune 等',
     params: [
-    {
-      name: 'type',
-      type: 'string',
-      defaultValue: 'neko',
-      required: true,
-      description: '图片类型，如 neko/kitsune',
-    }
-  ],
+      {
+        name: 'type',
+        type: 'string',
+        defaultValue: 'neko',
+        required: true,
+        description: '图片类型，如 neko/kitsune',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -169,21 +170,21 @@ export const defaultApis: ApiItem[] = [
     category: '图片',
     description: '按 seed 生成卡通头像 SVG（style 可选 bottts/personas 等）',
     params: [
-    {
-      name: 'style',
-      type: 'string',
-      defaultValue: 'bottts',
-      required: true,
-      description: '头像风格，如 bottts/personas/adventurer',
-    },
-    {
-      name: 'seed',
-      type: 'string',
-      defaultValue: 'demo',
-      required: false,
-      description: '随机种子，相同种子生成相同头像',
-    }
-  ],
+      {
+        name: 'style',
+        type: 'string',
+        defaultValue: 'bottts',
+        required: true,
+        description: '头像风格，如 bottts/personas/adventurer',
+      },
+      {
+        name: 'seed',
+        type: 'string',
+        defaultValue: 'demo',
+        required: false,
+        description: '随机种子，相同种子生成相同头像',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -194,14 +195,14 @@ export const defaultApis: ApiItem[] = [
     category: '图片',
     description: '按文本哈希生成机器人/怪物头像图片',
     params: [
-    {
-      name: 'text',
-      type: 'string',
-      defaultValue: 'demo',
-      required: true,
-      description: '用于生成头像的文本',
-    }
-  ],
+      {
+        name: 'text',
+        type: 'string',
+        defaultValue: 'demo',
+        required: true,
+        description: '用于生成头像的文本',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -212,21 +213,21 @@ export const defaultApis: ApiItem[] = [
     category: '图片',
     description: '返回随机用户资料（含头像 URL），可选 results/gender',
     params: [
-    {
-      name: 'results',
-      type: 'number',
-      defaultValue: '1',
-      required: false,
-      description: '返回用户数量',
-    },
-    {
-      name: 'gender',
-      type: 'string',
-      defaultValue: '',
-      required: false,
-      description: '性别筛选，male/female',
-    }
-  ],
+      {
+        name: 'results',
+        type: 'number',
+        defaultValue: '1',
+        required: false,
+        description: '返回用户数量',
+      },
+      {
+        name: 'gender',
+        type: 'string',
+        defaultValue: '',
+        required: false,
+        description: '性别筛选，male/female',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -347,14 +348,14 @@ export const defaultApis: ApiItem[] = [
     category: '工具',
     description: '按 IP 查询国家/城市/经纬度/时区（留空查本机）',
     params: [
-    {
-      name: 'ip',
-      type: 'string',
-      defaultValue: '',
-      required: true,
-      description: 'IP 地址，留空则查询当前 IP',
-    }
-  ],
+      {
+        name: 'ip',
+        type: 'string',
+        defaultValue: '',
+        required: true,
+        description: 'IP 地址，留空则查询当前 IP',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -365,21 +366,21 @@ export const defaultApis: ApiItem[] = [
     category: '工具',
     description: '生成二维码 PNG 图片，data 为内容，size 如 200x200',
     params: [
-    {
-      name: 'data',
-      type: 'string',
-      defaultValue: 'https://vuechest.com',
-      required: true,
-      description: '二维码内容',
-    },
-    {
-      name: 'size',
-      type: 'string',
-      defaultValue: '200x200',
-      required: false,
-      description: '尺寸，如 200x200',
-    }
-  ],
+      {
+        name: 'data',
+        type: 'string',
+        defaultValue: 'https://vuechest.com',
+        required: true,
+        description: '二维码内容',
+      },
+      {
+        name: 'size',
+        type: 'string',
+        defaultValue: '200x200',
+        required: false,
+        description: '尺寸，如 200x200',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -400,14 +401,14 @@ export const defaultApis: ApiItem[] = [
     category: '工具',
     description: '根据姓名预测年龄段',
     params: [
-    {
-      name: 'name',
-      type: 'string',
-      defaultValue: 'michael',
-      required: true,
-      description: '姓名',
-    }
-  ],
+      {
+        name: 'name',
+        type: 'string',
+        defaultValue: 'michael',
+        required: true,
+        description: '姓名',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -418,14 +419,14 @@ export const defaultApis: ApiItem[] = [
     category: '工具',
     description: '根据姓名预测性别',
     params: [
-    {
-      name: 'name',
-      type: 'string',
-      defaultValue: 'mary',
-      required: true,
-      description: '姓名',
-    }
-  ],
+      {
+        name: 'name',
+        type: 'string',
+        defaultValue: 'mary',
+        required: true,
+        description: '姓名',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -436,14 +437,14 @@ export const defaultApis: ApiItem[] = [
     category: '工具',
     description: '根据姓名预测最可能国籍',
     params: [
-    {
-      name: 'name',
-      type: 'string',
-      defaultValue: 'nathaniel',
-      required: true,
-      description: '姓名',
-    }
-  ],
+      {
+        name: 'name',
+        type: 'string',
+        defaultValue: 'nathaniel',
+        required: true,
+        description: '姓名',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -454,14 +455,14 @@ export const defaultApis: ApiItem[] = [
     category: '数据',
     description: '按国家名查询国家信息（如首都、人口、旗帜）',
     params: [
-    {
-      name: 'country',
-      type: 'string',
-      defaultValue: 'china',
-      required: true,
-      description: '国家英文名，如 china',
-    }
-  ],
+      {
+        name: 'country',
+        type: 'string',
+        defaultValue: 'china',
+        required: true,
+        description: '国家英文名，如 china',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -472,21 +473,21 @@ export const defaultApis: ApiItem[] = [
     category: '数据',
     description: '开放图书馆图书检索，返回书籍元数据',
     params: [
-    {
-      name: 'query',
-      type: 'string',
-      defaultValue: 'harry potter',
-      required: true,
-      description: '搜索关键词',
-    },
-    {
-      name: 'limit',
-      type: 'number',
-      defaultValue: '5',
-      required: false,
-      description: '返回条数',
-    }
-  ],
+      {
+        name: 'query',
+        type: 'string',
+        defaultValue: 'harry potter',
+        required: true,
+        description: '搜索关键词',
+      },
+      {
+        name: 'limit',
+        type: 'number',
+        defaultValue: '5',
+        required: false,
+        description: '返回条数',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -497,21 +498,21 @@ export const defaultApis: ApiItem[] = [
     category: '数据',
     description: '查询指定年份与国家代码的公共节假日',
     params: [
-    {
-      name: 'year',
-      type: 'string',
-      defaultValue: '2025',
-      required: true,
-      description: '年份，如 2025',
-    },
-    {
-      name: 'countryCode',
-      type: 'string',
-      defaultValue: 'CN',
-      required: true,
-      description: '国家代码，如 CN/US',
-    }
-  ],
+      {
+        name: 'year',
+        type: 'string',
+        defaultValue: '2025',
+        required: true,
+        description: '年份，如 2025',
+      },
+      {
+        name: 'countryCode',
+        type: 'string',
+        defaultValue: 'CN',
+        required: true,
+        description: '国家代码，如 CN/US',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -522,14 +523,14 @@ export const defaultApis: ApiItem[] = [
     category: '数据',
     description: '全球物种数据库，按物种 key 查询信息',
     params: [
-    {
-      name: 'key',
-      type: 'string',
-      defaultValue: '1',
-      required: true,
-      description: '物种 key，如 1',
-    }
-  ],
+      {
+        name: 'key',
+        type: 'string',
+        defaultValue: '1',
+        required: true,
+        description: '物种 key，如 1',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
   {
@@ -540,14 +541,14 @@ export const defaultApis: ApiItem[] = [
     category: '数据',
     description: '查询加密货币现货价格，pair 如 BTC-USD',
     params: [
-    {
-      name: 'pair',
-      type: 'string',
-      defaultValue: 'BTC-USD',
-      required: true,
-      description: '交易对，如 BTC-USD',
-    }
-  ],
+      {
+        name: 'pair',
+        type: 'string',
+        defaultValue: 'BTC-USD',
+        required: true,
+        description: '交易对，如 BTC-USD',
+      },
+    ],
     createdAt: new Date().toISOString(),
   },
 ]

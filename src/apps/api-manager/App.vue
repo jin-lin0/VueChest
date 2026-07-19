@@ -59,7 +59,12 @@ const filteredApis = computed(() => {
       if (!q) return true
       return [a.name, a.url, a.category, a.description].some((f) => f.toLowerCase().includes(q))
     })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => {
+      const pa = a.pinned ? 1 : 0
+      const pb = b.pinned ? 1 : 0
+      if (pa !== pb) return pb - pa
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
 })
 
 const selectApi = (api: ApiItem) => {
@@ -184,6 +189,11 @@ const deleteApi = (id: number) => {
   }
 }
 
+const togglePin = (id: number) => {
+  const api = apis.value.find((a) => a.id === id)
+  if (api) api.pinned = !api.pinned
+}
+
 const addParam = () => {
   if (!formData.value.params) formData.value.params = []
   formData.value.params.push({
@@ -237,16 +247,24 @@ const selectCategory = (cat: string) => {
             v-for="api in filteredApis"
             :key="api.id"
             class="api-item"
-            :class="{ active: selectedApi?.id === api.id }"
+            :class="{ active: selectedApi?.id === api.id, pinned: api.pinned }"
             @click="selectApi(api)"
           >
             <div class="api-item-header">
+              <span v-if="api.pinned" class="api-pin-icon" title="已置顶">📌</span>
               <span class="api-method" :class="api.method.toLowerCase()">{{ api.method }}</span>
               <span class="api-name">{{ api.name }}</span>
             </div>
             <div class="api-item-meta">
               <span class="api-category">{{ api.category }}</span>
               <div class="api-actions">
+                <button
+                  class="action-btn pin"
+                  :class="{ active: api.pinned }"
+                  @click.stop="togglePin(api.id)"
+                >
+                  {{ api.pinned ? '取消置顶' : '置顶' }}
+                </button>
                 <button class="action-btn edit" @click.stop="editApi(api)">编辑</button>
                 <button class="action-btn delete" @click.stop="deleteApi(api.id)">删除</button>
               </div>
@@ -644,6 +662,42 @@ const selectCategory = (cat: string) => {
 
 .action-btn.delete:hover {
   background-color: #c0392b;
+}
+
+.action-btn.pin {
+  background-color: #f39c12;
+}
+
+.action-btn.pin:hover {
+  background-color: #e67e22;
+}
+
+.action-btn.pin.active {
+  background-color: #d68910;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.api-pin-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.api-item.pinned {
+  background-color: #fff8e1;
+  border-left: 3px solid #f39c12;
+}
+
+.api-item.pinned:hover {
+  background-color: #fff3cd;
+}
+
+:root.dark .api-item.pinned {
+  background-color: rgba(243, 156, 18, 0.12);
+  border-left-color: #f39c12;
+}
+
+:root.dark .api-item.pinned:hover {
+  background-color: rgba(243, 156, 18, 0.2);
 }
 
 .empty-state {
