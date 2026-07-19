@@ -9,6 +9,8 @@ interface ApiResponse {
   statusText: string
   data: unknown
   time: number
+  contentType?: string
+  imageUrl?: string
 }
 
 const router = useRouter()
@@ -50,47 +52,49 @@ const categories = computed(() => {
 })
 
 const filteredApis = computed(() => {
-  let result = apis.value
-
-  if (selectedCategory.value) {
-    result = result.filter((a) => a.category === selectedCategory.value)
-  }
-
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase()
-    result = result.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.url.toLowerCase().includes(q) ||
-        a.category.toLowerCase().includes(q) ||
-        a.description.toLowerCase().includes(q),
-    )
-  }
-
-  return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const q = searchQuery.value.trim().toLowerCase()
+  return apis.value
+    .filter((a) => {
+      if (selectedCategory.value && a.category !== selectedCategory.value) return false
+      if (!q) return true
+      return [a.name, a.url, a.category, a.description].some((f) => f.toLowerCase().includes(q))
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 })
 
 const selectApi = (api: ApiItem) => {
   selectedApi.value = api
-  paramValues.value = {}
-  api.params.forEach((p) => {
-    paramValues.value[p.name] = p.defaultValue
-  })
+  paramValues.value = Object.fromEntries(api.params.map((p) => [p.name, p.defaultValue]))
   response.value = null
   error.value = null
 }
 
-const buildUrl = (api: ApiItem): string => {
-  let url = api.url
-  api.params.forEach((param) => {
-    const value = paramValues.value[param.name] || param.defaultValue
-    url = url.replace(`{${param.name}}`, encodeURIComponent(value))
-  })
-  return url
+const buildUrl = (api: ApiItem): string =>
+  api.params.reduce(
+    (url, p) =>
+      url.replace(`{${p.name}}`, encodeURIComponent(paramValues.value[p.name] || p.defaultValue)),
+    api.url,
+  )
+
+const parseBody = async (
+  res: Response,
+  contentType: string,
+): Promise<{ data: unknown; imageUrl?: string }> => {
+  if (contentType.startsWith('image/')) {
+    return { data: null, imageUrl: URL.createObjectURL(await res.blob()) }
+  }
+  if (contentType.includes('application/json')) return { data: await res.json() }
+  const text = await res.text()
+  try {
+    return { data: JSON.parse(text) }
+  } catch {
+    return { data: text }
+  }
 }
 
 const executeApi = async () => {
   if (!selectedApi.value) return
+  if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
 
   isLoading.value = true
   error.value = null
@@ -100,34 +104,17 @@ const executeApi = async () => {
   const url = buildUrl(selectedApi.value)
 
   try {
-    const fetchOptions: RequestInit = {
-      method: selectedApi.value.method,
-      headers: {
-        Accept: 'application/json',
-      },
-    }
-
-    const res = await fetch(url, fetchOptions)
+    const res = await fetch(url, { method: selectedApi.value.method, headers: { Accept: '*/*' } })
     const endTime = Date.now()
-
-    let data: unknown
-    const contentType = res.headers.get('content-type')
-    if (contentType && contentType.includes('application/json')) {
-      data = await res.json()
-    } else {
-      const text = await res.text()
-      try {
-        data = JSON.parse(text)
-      } catch {
-        data = text
-      }
-    }
-
+    const contentType = res.headers.get('content-type') ?? ''
+    const { data, imageUrl } = await parseBody(res, contentType)
     response.value = {
       status: res.status,
       statusText: res.statusText,
       data,
       time: endTime - startTime,
+      contentType,
+      imageUrl,
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : '请求失败，请检查网络或API地址'
@@ -145,8 +132,12 @@ const formatJson = (data: unknown): string => {
   }
 }
 
-const getStatusClass = (status: number): string =>
-  status >= 500 ? 'server-error' : status >= 400 ? 'client-error' : status >= 200 ? 'success' : 'info'
+const STATUS_CLASS: Record<number, string> = {
+  2: 'success',
+  4: 'client-error',
+  5: 'server-error',
+}
+const getStatusClass = (status: number): string => STATUS_CLASS[Math.floor(status / 100)] ?? 'info'
 
 const showAddFormPanel = () => {
   showAddForm.value = true
@@ -157,43 +148,29 @@ const showAddFormPanel = () => {
 const editApi = (api: ApiItem) => {
   showAddForm.value = true
   editingId.value = api.id
-  formData.value = {
-    name: api.name,
-    url: api.url,
-    method: api.method,
-    category: api.category,
-    description: api.description,
-    params: [...api.params],
-  }
+  formData.value = { ...api, params: [...api.params] }
 }
 
 const saveApi = () => {
-  if (!formData.value.name || !formData.value.url) return
+  const f = formData.value
+  const name = f.name?.trim()
+  const url = f.url?.trim()
+  if (!name || !url) return
+
+  const payload = {
+    name,
+    url,
+    method: f.method || 'GET',
+    category: f.category || '未分类',
+    description: f.description || '',
+    params: f.params || [],
+  }
 
   if (editingId.value !== null) {
     const index = apis.value.findIndex((a) => a.id === editingId.value)
-    if (index !== -1) {
-      apis.value[index] = {
-        ...apis.value[index],
-        name: formData.value.name!,
-        url: formData.value.url!,
-        method: formData.value.method || 'GET',
-        category: formData.value.category || '未分类',
-        description: formData.value.description || '',
-        params: formData.value.params || [],
-      }
-    }
+    if (index !== -1) apis.value[index] = { ...apis.value[index], ...payload }
   } else {
-    apis.value.push({
-      id: Date.now(),
-      name: formData.value.name!,
-      url: formData.value.url!,
-      method: formData.value.method || 'GET',
-      category: formData.value.category || '未分类',
-      description: formData.value.description || '',
-      params: formData.value.params || [],
-      createdAt: new Date().toISOString(),
-    })
+    apis.value.push({ id: Date.now(), createdAt: new Date().toISOString(), ...payload })
   }
 
   showAddForm.value = false
@@ -412,7 +389,15 @@ const selectCategory = (cat: string) => {
                   <span class="response-time">{{ response.time }}ms</span>
                 </div>
               </div>
-              <pre class="response-data">{{ formatJson(response.data) }}</pre>
+              <pre v-if="!response.imageUrl" class="response-data">{{
+                formatJson(response.data)
+              }}</pre>
+              <img
+                v-else
+                :src="response.imageUrl"
+                :alt="response.contentType"
+                class="response-image"
+              />
             </div>
           </div>
         </template>
@@ -1092,6 +1077,15 @@ const selectCategory = (cat: string) => {
   word-break: break-word;
   background-color: #263238;
   color: #eeffff;
+}
+
+.response-image {
+  max-width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+  margin: 0 auto;
 }
 
 .welcome-panel {
