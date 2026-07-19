@@ -1,0 +1,136 @@
+/* ============================================================
+   VueChest — 全站统一 Markdown 渲染样式
+   由 <MarkdownView> / 任意 .markdown-body 容器使用。
+   代码块语法高亮配色由 highlight.js github-dark 主题提供
+   （在 @/lib/markdown 中以 import 引入，作用于 .hljs）。
+   非代码元素尽量引用 design token，保证浅色/深色主题一致。
+   ============================================================ */
+
+.markdown-body {
+  white-space: normal;
+  line-height: 1.8;
+  color: var(--text-body);
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.markdown-body h1 {
+  font-size: 1.5em;
+}
+.markdown-body h2 {
+  font-size: 1.3em;
+}
+.markdown-body h3 {
+  font-size: 1.15em;
+}
+.markdown-body h4 {
+  font-size: 1.05em;
+}
+
+.markdown-body p {
+  margin-bottom: 1em;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin-bottom: 1em;
+  padding-left: 2em;
+}
+
+.markdown-body li {
+  margin-bottom: 0.4em;
+}
+
+.markdown-body blockquote {
+  border-left: 4px solid var(--accent);
+  padding: 12px 16px;
+  margin: 1em 0;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* 行内代码：保留红色调以区分，背景用 token */
+.markdown-body code:not(.hljs) {
+  background: var(--bg-subtle);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 0.9em;
+  color: #e11d48;
+}
+
+/* 代码块：固定深底（github-dark 高亮配色为浅色字，必须配深底才可读）
+   背景取 highlight.js github-dark 主题同款 #0d1117，使浅色高亮字清晰可见。
+   代码块不跟随浅/深主题切换，与 GitHub 等文档站一致。 */
+.markdown-body pre {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+.markdown-body pre code.hljs {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1em;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-body th {
+  background: var(--bg-subtle);
+  font-weight: 600;
+}
+
+.markdown-body strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5em 0;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+}

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useSnakeAiGame, type Difficulty } from '../composables/useSnakeAiGame'
+import { useSnakeGame } from '../composables/useSnakeGame'
+import { PLAYER_COLORS, DIR_MAP_WASD } from '../composables/snakeTypes'
+import type { Difficulty } from '../composables/snakeTypes'
 import SnakeCanvas from '../components/SnakeCanvas.vue'
 import SnakeResultModal from '../components/SnakeResultModal.vue'
 import SnakeTouchControl from '../components/SnakeTouchControl.vue'
+import '../styles/battleShared.css'
 
 defineOptions({ name: 'SnakeBattleAiView' })
 
@@ -14,13 +17,13 @@ const showSetup = ref(true)
 const selectedDifficulty = ref<Difficulty>('medium')
 const isMobile = ref(false)
 
-const game = useSnakeAiGame()
+const game = useSnakeGame({ mode: 'ai' })
 const canvasWidth = ref(360)
 
 const difficultyOptions: { key: Difficulty; label: string; desc: string; color: string }[] = [
-  { key: 'easy', label: '简单', desc: 'AI 血量越低越聪明，绝地反击', color: '#4CAF50' },
-  { key: 'medium', label: '中等', desc: 'AI 正常水平，偶有小失误', color: '#FF9800' },
-  { key: 'hard', label: '困难', desc: 'AI 初始更强，精准追击', color: '#f44336' },
+  { key: 'easy', label: '简单', desc: 'AI 血量越低越聪明，绝地反击', color: PLAYER_COLORS[1].head },
+  { key: 'medium', label: '中等', desc: 'AI 正常水平，偶有小失误', color: PLAYER_COLORS[4].head },
+  { key: 'hard', label: '困难', desc: 'AI 初始更强，精准追击', color: PLAYER_COLORS[2].head },
 ]
 
 onMounted(() => {
@@ -48,10 +51,9 @@ function onKeyDown(e: KeyboardEvent) {
   if (game.state.status !== 'playing') return
   const key = e.key.toLowerCase()
 
-  if (['w', 'a', 's', 'd'].includes(key)) {
+  if (key in DIR_MAP_WASD) {
     e.preventDefault()
-    const dirMap: Record<string, string> = { w: 'UP', a: 'LEFT', s: 'DOWN', d: 'RIGHT' }
-    game.changeDirection(game.HUMAN_ID, dirMap[key])
+    game.changeDirection(game.HUMAN_ID, DIR_MAP_WASD[key])
   }
 }
 
@@ -79,7 +81,7 @@ function restart() {
 </script>
 
 <template>
-  <div class="ai-page">
+  <div class="ai-page battle-view">
     <header class="top-bar">
       <button class="btn back" @click="goBack">← 返回</button>
       <h2>🤖 人机对战</h2>
@@ -110,7 +112,7 @@ function restart() {
 
         <div class="player-badge">
           <div class="badge-item">
-            <span class="badge-dot" style="background: #4caf50" />
+            <span class="badge-dot" :style="{ background: PLAYER_COLORS[1].head }" />
             <div>
               <div class="badge-title">你</div>
               <div class="badge-sub">
@@ -121,7 +123,7 @@ function restart() {
           </div>
           <div class="badge-divider">VS</div>
           <div class="badge-item">
-            <span class="badge-dot" style="background: #f44336" />
+            <span class="badge-dot" :style="{ background: PLAYER_COLORS[2].head }" />
             <div>
               <div class="badge-title">AI</div>
               <div class="badge-sub">
@@ -152,13 +154,13 @@ function restart() {
 
       <div class="hud-row">
         <div class="player-hud" :class="{ dead: !game.state.snakes[0]?.alive }">
-          <span class="dot" style="background: #4caf50" />
+          <span class="dot" :style="{ background: PLAYER_COLORS[1].head }" />
           <span class="pname">你</span>
           <span class="health">❤️ {{ game.state.snakes[0]?.health || 0 }}</span>
           <span class="len">📏 {{ game.state.snakes[0]?.length || 0 }}</span>
         </div>
         <div class="player-hud" :class="{ dead: !game.state.snakes[1]?.alive }">
-          <span class="dot" style="background: #f44336" />
+          <span class="dot" :style="{ background: PLAYER_COLORS[2].head }" />
           <span class="pname"> AI </span>
           <span class="health">❤️ {{ game.state.snakes[1]?.health || 0 }}</span>
           <span class="len">📏 {{ game.state.snakes[1]?.length || 0 }}</span>
@@ -195,59 +197,24 @@ function restart() {
 </template>
 
 <style scoped>
+/* 通用布局样式已抽到 ../styles/battleShared.css（.battle-view 命名空间） */
+
 .ai-page {
-  min-height: 100vh;
   min-height: 100dvh;
-  background: #0f0f23;
-  color: #e0e0e0;
-  display: flex;
-  flex-direction: column;
 }
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.game-area {
+  overflow: hidden;
+}
+.hud-row {
   flex-shrink: 0;
 }
-.top-bar h2 {
-  font-size: 16px;
-  font-weight: 700;
+.canvas-wrap {
+  min-height: 0;
 }
-.btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: #e0e0e0;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.setup-area {
-  flex: 1;
+.pname {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-}
-.setup-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 420px;
-  width: 100%;
-}
-.setup-card h3 {
-  text-align: center;
-  font-size: 18px;
-  margin-bottom: 20px;
+  gap: 4px;
 }
 
 .diff-options {
@@ -322,119 +289,6 @@ function restart() {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.3);
   font-weight: 700;
-}
-
-.start-btn {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.start-btn:hover {
-  opacity: 0.9;
-}
-.controls-hint {
-  margin-top: 16px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-  line-height: 2;
-}
-.controls-hint kbd {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  margin: 0 2px;
-}
-
-.game-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px;
-  gap: 8px;
-  overflow: hidden;
-}
-.countdown-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  pointer-events: none;
-}
-.countdown-number {
-  font-size: 120px;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
-  animation: pulse 0.5s ease;
-}
-@keyframes pulse {
-  0% {
-    transform: scale(1.5);
-    opacity: 0.3;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.hud-row {
-  display: flex;
-  gap: 16px;
-  width: 100%;
-  max-width: 520px;
-  flex-shrink: 0;
-}
-.player-hud {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  font-size: 13px;
-  flex: 1;
-}
-.player-hud.dead {
-  opacity: 0.4;
-  text-decoration: line-through;
-}
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.pname {
-  flex: 1;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.health {
-  color: #ef5350;
-}
-.len {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.canvas-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
 }
 
 .joystick-area {

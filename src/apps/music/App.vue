@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMusicStore } from '@/stores'
-import { debounce } from '@/utils'
+import { debounce, formatClock } from '@/utils'
 
 defineOptions({ name: 'MusicView' })
 
@@ -36,12 +36,8 @@ const searchFromHistory = (keyword: string) => {
   activeTab.value = 'search'
 }
 
-const formatDuration = (ms: number): string => {
-  const seconds = Math.floor(ms / 1000)
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
+// 秒→mm:ss（复用 @/utils 的 formatClock；<1h 等价，≥1h 自动升级为 h:mm:ss）
+const formatDuration = (ms: number): string => formatClock(ms / 1000)
 
 // --- Play a song from search results ---
 const playFromResults = (song: (typeof music.searchResults)[0]) => {
@@ -208,7 +204,6 @@ onMounted(() => {
 <style scoped>
 /* ===== Theme Variables ===== */
 .music-page {
-  --accent: #6c5ce7;
   --accent-light: #a29bfe;
   --accent-gradient: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
   --accent-gradient-vivid: linear-gradient(135deg, #6c5ce7 0%, #fd79a8 100%);

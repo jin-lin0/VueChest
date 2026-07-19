@@ -2,8 +2,18 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStorage, setStorage } from '@/lib/storage'
-import { renderMarkdown } from '@/lib/markdown'
+import { api } from '@/lib/request'
 import { copyToClipboard } from '@/utils'
+import { MarkdownView } from '@/components'
+import {
+  AI_CHAT_SESSIONS_KEY,
+  AI_CHAT_API_KEY_STORAGE,
+  AI_CHAT_MODEL_STORAGE,
+  AI_CHAT_CONFIG,
+  AVAILABLE_MODELS,
+} from './config'
+import { suggestionPool } from './suggestions'
+import { useChatStream } from './composables/useChatStream'
 
 defineOptions({ name: 'AIChatView' })
 
@@ -24,24 +34,13 @@ interface ChatSession {
 
 const router = useRouter()
 
-const STORAGE_KEY = 'ai-chat-sessions'
-const API_KEY_STORAGE = 'ai-chat-api-key'
-const MODEL_STORAGE = 'ai-chat-model'
-
-const DEFAULT_API_URL = 'https://api.siliconflow.cn/v1/chat/completions'
-
-const availableModels = [
-  { id: 'deepseek-ai/DeepSeek-V3.2', name: 'DeepSeek V3.2' },
-  { id: 'deepseek-ai/DeepSeek-R1', name: 'DeepSeek R1' },
-]
-
 const sessions = ref<ChatSession[]>([])
 const currentSessionId = ref<number | null>(null)
 const inputMessage = ref('')
 const isLoading = ref(false)
 const defaultApiKey = import.meta.env.VITE_SILICONFLOW_API_KEY || ''
-const apiKey = ref(getStorage<string>(API_KEY_STORAGE, '') || defaultApiKey)
-const selectedModel = ref(getStorage<string>(MODEL_STORAGE, '') || 'deepseek-ai/DeepSeek-V3.2')
+const apiKey = ref(getStorage<string>(AI_CHAT_API_KEY_STORAGE, '') || defaultApiKey)
+const selectedModel = ref(getStorage<string>(AI_CHAT_MODEL_STORAGE, '') || AI_CHAT_CONFIG.defaultModel)
 const showSettings = ref(false)
 const showSidebar = ref(true)
 const error = ref('')
@@ -50,42 +49,6 @@ const messagesContainer = ref<HTMLDivElement | null>(null)
 const isMobile = ref(window.innerWidth <= 768)
 const isUserScrolled = ref(false)
 const showScrollToBottom = ref(false)
-
-const suggestionPool = [
-  {
-    text: 'AI 前端项目架构',
-    message: '设计一个AI聊天应用的前端架构，包含消息流、状态管理和会话管理',
-  },
-  { text: 'Vue3 AI 聊天界面', message: '使用Vue3 + TypeScript实现一个现代化AI聊天界面' },
-  { text: 'AI 流式输出实现', message: '前端如何实现AI回答的流式输出效果' },
-  { text: 'Markdown 渲染方案', message: '前端如何优雅渲染AI返回的Markdown内容' },
-  { text: '代码高亮组件', message: '实现一个支持多语言的代码高亮组件，适用于AI聊天场景' },
-  { text: '聊天记录持久化', message: 'AI聊天应用如何实现本地聊天记录持久化' },
-  { text: 'SSE 与 WebSocket 对比', message: 'AI聊天为什么常用SSE而不是WebSocket，详细对比一下' },
-  { text: 'AI 输入框交互设计', message: '设计一个类似ChatGPT的输入框交互体验' },
-  { text: 'OpenAI 接口封装', message: '使用TypeScript封装一个优雅的OpenAI请求SDK' },
-  { text: 'AI 打字机效果', message: '前端如何实现AI逐字输出的打字机动画效果' },
-  { text: 'AI 聊天性能优化', message: 'AI聊天页面有哪些性能优化技巧' },
-  { text: '虚拟列表聊天优化', message: '聊天消息很多时，如何使用虚拟列表优化渲染性能' },
-  { text: 'AI 多轮对话实现', message: '前端如何管理AI多轮上下文对话' },
-  { text: 'Prompt 管理系统', message: '设计一个前端Prompt管理与收藏功能' },
-  { text: 'AI 聊天主题切换', message: '实现一个支持暗黑模式和主题切换的AI聊天UI' },
-  { text: '消息撤回与重试', message: 'AI聊天中如何实现消息重试、撤回与重新生成功能' },
-  { text: 'Vue3 组合式封装', message: '使用Composition API封装一个AI聊天hooks' },
-  { text: 'AI 聊天动画设计', message: '推荐一些适合AI聊天界面的前端动画效果' },
-  { text: '大模型 Token 计算', message: '前端如何估算和统计AI对话Token消耗' },
-  { text: 'AI 文件上传解析', message: '实现一个支持拖拽上传和AI文件解析的前端方案' },
-  { text: 'AI 图片生成界面', message: '设计一个AI绘图应用的前端交互界面' },
-  { text: 'RAG 前端展示方案', message: 'AI知识库问答中，前端如何展示引用来源和上下文' },
-  { text: 'AI 聊天移动端适配', message: 'AI聊天页面在移动端有哪些适配细节' },
-  { text: 'Tailwind 聊天UI', message: '使用Tailwind CSS实现一个高级感AI聊天界面' },
-  { text: 'AI Agent 前端设计', message: 'AI Agent产品的前端交互应该如何设计' },
-  { text: '聊天消息懒加载', message: '实现聊天记录分页加载与无限滚动' },
-  { text: 'AI 应用权限系统', message: 'AI SaaS系统如何设计前端权限管理' },
-  { text: '前端 AI SDK 对比', message: '对比OpenAI SDK、Vercel AI SDK和LangChain.js的使用场景' },
-  { text: 'AI 对话分享功能', message: '实现一个类似ChatGPT的对话分享页面' },
-  { text: 'AI 聊天错误处理', message: 'AI请求失败、超时、限流时前端如何处理用户体验' },
-]
 
 const getRandomSuggestions = (count: number = 4) => {
   const shuffled = [...suggestionPool].sort(() => Math.random() - 0.5)
@@ -144,11 +107,11 @@ const deleteSession = (id: number) => {
 }
 
 const saveSessions = () => {
-  setStorage(STORAGE_KEY, sessions.value)
+  setStorage(AI_CHAT_SESSIONS_KEY, sessions.value)
 }
 
 const loadSessions = () => {
-  const saved = getStorage<ChatSession[]>(STORAGE_KEY, [])
+  const saved = getStorage<ChatSession[]>(AI_CHAT_SESSIONS_KEY, [])
   if (saved && saved.length > 0) {
     sessions.value = saved
     currentSessionId.value = saved[0].id
@@ -204,8 +167,6 @@ const getSessionTitle = (session: ChatSession) => {
   }
   return session.title
 }
-
-import { api } from '@/lib/request'
 
 const saveMessageToServer = async (question: string, answer: string, model: string) => {
   try {
@@ -266,72 +227,32 @@ const sendMessage = async () => {
     })
     const assistantIndex = session.messages.length - 1
 
-    const response = await fetch(DEFAULT_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey.value}`,
-      },
-      body: JSON.stringify({
-        model: selectedModel.value,
-        messages: apiMessages,
-        stream: true,
-        max_tokens: 4096,
-        temperature: 0.7,
-      }),
-    })
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => null)
-      session.messages.splice(assistantIndex, 1)
-      throw new Error(errData?.error?.message || `请求失败: ${response.status}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) {
-      session.messages.splice(assistantIndex, 1)
-      throw new Error('无法读取响应流')
-    }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
+    const { streamChat } = useChatStream()
     let fullContent = ''
     let scrollFrame: number | null = null
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed || !trimmed.startsWith('data: ')) continue
-        const data = trimmed.slice(6)
-        if (data === '[DONE]') break
-
-        try {
-          const json = JSON.parse(data)
-          const delta = json.choices?.[0]?.delta?.content
-          if (delta) {
-            fullContent += delta
-            session.messages[assistantIndex].content = fullContent
-            if (scrollFrame === null) {
-              scrollFrame = requestAnimationFrame(() => {
-                scrollFrame = null
-                scrollToBottom()
-              })
-            }
-          }
-        } catch {
-          // skip invalid json
+    try {
+      for await (const delta of streamChat({
+        apiKey: apiKey.value,
+        model: selectedModel.value,
+        messages: apiMessages,
+      })) {
+        fullContent += delta
+        session.messages[assistantIndex].content = fullContent
+        if (scrollFrame === null) {
+          scrollFrame = requestAnimationFrame(() => {
+            scrollFrame = null
+            scrollToBottom()
+          })
         }
       }
+    } catch (err) {
+      // SSE 启动失败（HTTP 非 2xx / 无法读取流 / 网络异常），移除空占位消息后向上抛出
+      session.messages.splice(assistantIndex, 1)
+      throw err
+    } finally {
+      if (scrollFrame !== null) cancelAnimationFrame(scrollFrame)
     }
-
-    if (scrollFrame !== null) cancelAnimationFrame(scrollFrame)
 
     session.updatedAt = Date.now()
     saveSessions()
@@ -385,11 +306,11 @@ watch(inputMessage, () => {
 })
 
 watch(selectedModel, (val) => {
-  setStorage(MODEL_STORAGE, val)
+  setStorage(AI_CHAT_MODEL_STORAGE, val)
 })
 
 watch(apiKey, (val) => {
-  setStorage(API_KEY_STORAGE, val)
+  setStorage(AI_CHAT_API_KEY_STORAGE, val)
 })
 
 const handleResize = () => {
@@ -500,7 +421,7 @@ onUnmounted(() => {
         </button>
         <div class="header-center">
           <select v-model="selectedModel" class="model-select">
-            <option v-for="m in availableModels" :key="m.id" :value="m.id">
+            <option v-for="m in AVAILABLE_MODELS" :key="m.id" :value="m.id">
               {{ m.name }}
             </option>
           </select>
@@ -553,7 +474,7 @@ onUnmounted(() => {
           <div class="setting-item">
             <label>模型</label>
             <select v-model="selectedModel">
-              <option v-for="m in availableModels" :key="m.id" :value="m.id">
+              <option v-for="m in AVAILABLE_MODELS" :key="m.id" :value="m.id">
                 {{ m.name }}
               </option>
             </select>
@@ -606,11 +527,9 @@ onUnmounted(() => {
             </div>
             <div class="message-body">
               <template v-if="msg.role === 'assistant'">
-                <div
-                  v-if="msg.content"
-                  class="message-content markdown-body"
-                  v-html="renderMarkdown(msg.content)"
-                />
+                <div v-if="msg.content" class="message-content">
+                  <MarkdownView :content="msg.content" />
+                </div>
                 <div
                   v-else-if="isLoading && index === currentSession.messages.length - 1"
                   class="typing-indicator"
@@ -724,7 +643,7 @@ onUnmounted(() => {
 .chat-page {
   display: flex;
   height: 100vh;
-  background: #f5f7fa;
+  background: var(--bg-page);
   overflow: hidden;
 }
 
@@ -815,7 +734,7 @@ onUnmounted(() => {
 .btn-delete {
   background: none;
   border: none;
-  color: #888;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 2px;
   border-radius: 4px;
@@ -836,7 +755,7 @@ onUnmounted(() => {
 
 .session-empty {
   text-align: center;
-  color: #666;
+  color: var(--text-muted);
   font-size: 13px;
   padding: 20px 0;
 }
@@ -852,14 +771,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 10px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
   gap: 12px;
   flex-shrink: 0;
 }
 
 .chat-header .btn-icon {
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .header-center {
@@ -870,11 +789,11 @@ onUnmounted(() => {
 
 .model-select {
   padding: 6px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 13px;
-  background: #f9fafb;
-  color: #374151;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
   cursor: pointer;
   outline: none;
 }
@@ -889,12 +808,12 @@ onUnmounted(() => {
 }
 
 .header-actions .btn-icon {
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .settings-panel {
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
   padding: 16px 20px;
   animation: slideDown 0.2s ease;
 }
@@ -927,7 +846,7 @@ onUnmounted(() => {
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
@@ -935,10 +854,12 @@ onUnmounted(() => {
 .setting-item select {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
+  background: var(--bg-input);
+  color: var(--text-body);
   transition: border-color 0.2s;
 }
 
@@ -949,7 +870,7 @@ onUnmounted(() => {
 
 .setting-hint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-muted);
   margin-top: 4px;
   display: block;
 }
@@ -990,13 +911,13 @@ onUnmounted(() => {
 .welcome h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .welcome p {
   font-size: 15px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin-bottom: 32px;
 }
 
@@ -1009,12 +930,12 @@ onUnmounted(() => {
 }
 
 .suggestion-btn {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 14px 16px;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-primary);
   cursor: pointer;
   text-align: left;
   transition: all 0.2s;
@@ -1022,7 +943,7 @@ onUnmounted(() => {
 
 .suggestion-btn:hover {
   border-color: #6366f1;
-  background: #eef2ff;
+  background: var(--accent-bg);
   color: #4f46e5;
 }
 
@@ -1034,9 +955,9 @@ onUnmounted(() => {
   margin-top: 16px;
   padding: 8px 16px;
   background: transparent;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1045,7 +966,7 @@ onUnmounted(() => {
 .refresh-btn:hover {
   border-color: #6366f1;
   color: #6366f1;
-  background: #eef2ff;
+  background: var(--accent-bg);
 }
 
 .message {
@@ -1081,7 +1002,7 @@ onUnmounted(() => {
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
-  background: #f3f4f6;
+  background: var(--bg-subtle);
 }
 
 .message.user .message-avatar {
@@ -1110,9 +1031,9 @@ onUnmounted(() => {
 }
 
 .message.assistant .message-content {
-  background: #fff;
-  color: #1f2937;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   border-top-left-radius: 4px;
 }
 
@@ -1120,120 +1041,6 @@ onUnmounted(() => {
   background: #6366f1;
   color: #fff;
   border-top-right-radius: 4px;
-}
-
-.markdown-body {
-  white-space: normal;
-  line-height: 1.8;
-}
-
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3),
-.markdown-body :deep(h4) {
-  margin-top: 16px;
-  margin-bottom: 8px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.markdown-body :deep(h1) {
-  font-size: 1.3em;
-}
-
-.markdown-body :deep(h2) {
-  font-size: 1.2em;
-}
-
-.markdown-body :deep(h3) {
-  font-size: 1.1em;
-}
-
-.markdown-body :deep(p) {
-  margin-bottom: 10px;
-}
-
-.markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  padding-left: 20px;
-  margin-bottom: 10px;
-}
-
-.markdown-body :deep(li) {
-  margin-bottom: 4px;
-}
-
-.markdown-body :deep(blockquote) {
-  border-left: 3px solid #6366f1;
-  padding-left: 12px;
-  margin: 10px 0;
-  color: #6b7280;
-}
-
-.markdown-body :deep(code:not(.hljs)) {
-  background: #f3f4f6;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.9em;
-  color: #e11d48;
-}
-
-.markdown-body :deep(pre) {
-  background: #1e1e2e;
-  border-radius: 8px;
-  padding: 14px;
-  margin: 10px 0;
-  overflow-x: auto;
-}
-
-.markdown-body :deep(pre code.hljs) {
-  background: transparent;
-  padding: 0;
-  color: #cdd6f4;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.markdown-body :deep(table) {
-  border-collapse: collapse;
-  margin: 10px 0;
-  width: 100%;
-}
-
-.markdown-body :deep(th),
-.markdown-body :deep(td) {
-  border: 1px solid #e5e7eb;
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.markdown-body :deep(th) {
-  background: #f9fafb;
-  font-weight: 600;
-}
-
-.markdown-body :deep(hr) {
-  border: none;
-  border-top: 1px solid #e5e7eb;
-  margin: 16px 0;
-}
-
-.markdown-body :deep(a) {
-  color: #6366f1;
-  text-decoration: none;
-}
-
-.markdown-body :deep(a:hover) {
-  text-decoration: underline;
-}
-
-.markdown-body :deep(strong) {
-  font-weight: 600;
-}
-
-.markdown-body :deep(img) {
-  max-width: 100%;
-  border-radius: 8px;
 }
 
 .message-meta {
@@ -1246,7 +1053,7 @@ onUnmounted(() => {
 
 .message-time {
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .copy-btn {
@@ -1257,7 +1064,7 @@ onUnmounted(() => {
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: #9ca3af;
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -1267,7 +1074,7 @@ onUnmounted(() => {
 }
 
 .copy-btn.copied {
-  color: #059669;
+  color: var(--success);
 }
 
 .copy-btn svg {
@@ -1315,16 +1122,16 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  background: #fef2f2;
-  border-top: 1px solid #fecaca;
-  color: #dc2626;
+  background: var(--danger-bg);
+  border-top: 1px solid var(--border);
+  color: var(--danger);
   font-size: 13px;
 }
 
 .error-bar button {
   background: none;
   border: none;
-  color: #dc2626;
+  color: var(--danger);
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
@@ -1337,14 +1144,14 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: var(--text-secondary);
   transition: all 0.2s;
   z-index: 10;
 }
@@ -1373,8 +1180,8 @@ onUnmounted(() => {
 
 .input-area {
   padding: 8px 20px 12px;
-  background: #fff;
-  border-top: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-light);
   flex-shrink: 0;
 }
 
@@ -1384,8 +1191,8 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 4px 4px 4px 14px;
   transition: border-color 0.2s;
@@ -1405,12 +1212,12 @@ onUnmounted(() => {
   resize: none;
   outline: none;
   max-height: 120px;
-  color: #1f2937;
+  color: var(--text-primary);
   padding: 6px 0;
 }
 
 .input-wrapper textarea::placeholder {
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .send-btn {
@@ -1418,7 +1225,7 @@ onUnmounted(() => {
   height: 36px;
   border-radius: 10px;
   border: none;
-  background: #d1d5db;
+  background: var(--border);
   color: #fff;
   cursor: not-allowed;
   display: flex;
@@ -1440,7 +1247,7 @@ onUnmounted(() => {
 .input-footer {
   text-align: center;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--text-muted);
   margin-top: 8px;
 }
 

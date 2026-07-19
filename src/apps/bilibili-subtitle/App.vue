@@ -2,8 +2,11 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/lib/request'
-import { copyToClipboard } from '@/utils'
+import { getStorage, setStorage, removeStorage } from '@/lib/storage'
+import { copyToClipboard, downloadFile } from '@/utils'
 import { Tooltip } from '@/components'
+
+const STORAGE_KEY_BILI_SESSDATA = 'bili_sessdata'
 
 const router = useRouter()
 function goBack() {
@@ -50,8 +53,8 @@ interface AllResult {
 type ExtractResult = SingleResult | AllResult
 
 const url = ref('')
-const sessdata = ref(localStorage.getItem('bili_sessdata') || '')
-const remember = ref(!!localStorage.getItem('bili_sessdata'))
+const sessdata = ref(getStorage<string>(STORAGE_KEY_BILI_SESSDATA) ?? '')
+const remember = ref(!!sessdata.value.trim())
 
 const parsing = ref(false)
 const infoError = ref('')
@@ -87,9 +90,9 @@ const totalChars = computed(() =>
 
 function saveSessdata() {
   if (remember.value && sessdata.value.trim()) {
-    localStorage.setItem('bili_sessdata', sessdata.value.trim())
+    setStorage(STORAGE_KEY_BILI_SESSDATA, sessdata.value.trim())
   } else {
-    localStorage.removeItem('bili_sessdata')
+    removeStorage(STORAGE_KEY_BILI_SESSDATA)
   }
 }
 
@@ -144,15 +147,6 @@ async function extractSubtitle() {
   } finally {
     extracting.value = false
   }
-}
-
-function downloadFile(filename: string, content: string, type: string) {
-  const blob = new Blob([content], { type })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(a.href)
 }
 
 // 复制成功后的 UI 反馈（「已复制 ✓」状态 1.5s 后复原），copyText / copyAll 共用

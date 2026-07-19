@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { PLAYER_COLORS } from '../composables/snakeTypes'
+import type { StatItem } from '../composables/snakeTypes'
 
 const props = defineProps<{
   visible: boolean
   winnerName: string | null
-  stats: {
-    playerId: number
-    name: string
-    alive: boolean
-    length: number
-    health: number
-  }[]
+  stats: StatItem[]
   onRestart: () => void
   onBack: () => void
   // 本地双人对战胜场统计（可选）
@@ -19,13 +15,6 @@ const props = defineProps<{
   p1Name?: string
   p2Name?: string
 }>()
-
-const PLAYER_COLORS: Record<number, string> = {
-  1: '#4CAF50',
-  2: '#f44336',
-  3: '#2196F3',
-  4: '#FF9800',
-}
 
 const backCooldown = ref(0)
 let cooldownTimer: ReturnType<typeof setInterval> | null = null
@@ -83,13 +72,13 @@ function handleBack() {
         <!-- 本地双人对战胜场对比 -->
         <div v-if="props.p1Wins !== undefined && props.p2Wins !== undefined" class="win-tally">
           <div class="tally-row">
-            <span class="tally-dot" style="background:#4CAF50" />
+            <span class="tally-dot" :style="{ background: PLAYER_COLORS[1]?.head ?? '#888' }" />
             <span class="tally-name">{{ props.p1Name || '玩家1' }}</span>
             <span class="tally-score">{{ props.p1Wins }}</span>
           </div>
           <div class="tally-vs">VS</div>
           <div class="tally-row">
-            <span class="tally-dot" style="background:#f44336" />
+            <span class="tally-dot" :style="{ background: PLAYER_COLORS[2]?.head ?? '#888' }" />
             <span class="tally-name">{{ props.p2Name || '玩家2' }}</span>
             <span class="tally-score">{{ props.p2Wins }}</span>
           </div>
@@ -104,7 +93,7 @@ function handleBack() {
           >
             <span
               class="stat-dot"
-              :style="{ background: PLAYER_COLORS[s.playerId] || '#888' }"
+              :style="{ background: PLAYER_COLORS[s.playerId]?.head ?? '#888' }"
             />
             <span class="stat-name">{{ s.name }}</span>
             <span class="stat-health">❤️{{ Math.max(0, s.health) }}</span>

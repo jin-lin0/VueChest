@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from 'vue'
+import { BOARD_SIZE, PLAYER_COLORS } from '../composables/snakeTypes'
 import type { SnakeState, ItemState } from '../composables/snakeTypes'
 
 const props = defineProps<{
@@ -11,15 +12,6 @@ const props = defineProps<{
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-const BOARD_SIZE = 19
-
-// 玩家颜色（按 playerId 固定）
-const PLAYER_COLORS: Record<number, { head: string; body: string; outline: string }> = {
-  1: { head: '#4CAF50', body: '#66BB6A', outline: '#2E7D32' },
-  2: { head: '#f44336', body: '#ef5350', outline: '#c62828' },
-  3: { head: '#2196F3', body: '#42A5F5', outline: '#1565C0' },
-  4: { head: '#FF9800', body: '#FFB74D', outline: '#E65100' },
-}
 
 function draw() {
   const canvas = canvasRef.value

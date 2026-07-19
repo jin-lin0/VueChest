@@ -1,30 +1,8 @@
 <script setup lang="ts">
-import { ref, defineComponent, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStorage, setStorage } from '@/lib/storage'
-
-defineComponent({
-  name: 'ApiManagerView',
-})
-
-interface ApiParam {
-  name: string
-  type: 'string' | 'number' | 'boolean'
-  defaultValue: string
-  required: boolean
-  description: string
-}
-
-interface ApiItem {
-  id: number
-  name: string
-  url: string
-  method: 'GET' | 'POST'
-  category: string
-  description: string
-  params: ApiParam[]
-  createdAt: string
-}
+import { defaultApis, type ApiItem } from './defaults'
 
 interface ApiResponse {
   status: number
@@ -58,113 +36,6 @@ const formData = ref<Partial<ApiItem>>({
   description: '',
   params: [],
 })
-
-const defaultApis: ApiItem[] = [
-  {
-    id: 1,
-    name: '随机笑话',
-    url: 'https://official-joke-api.appspot.com/random_joke',
-    method: 'GET',
-    category: '娱乐',
-    description: '获取一个随机的英文笑话',
-    params: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    name: '随机猫咪图片',
-    url: 'https://api.thecatapi.com/v1/images/search',
-    method: 'GET',
-    category: '图片',
-    description: '获取一张随机的猫咪图片',
-    params: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    name: '随机狗狗图片',
-    url: 'https://dog.ceo/api/breeds/image/random',
-    method: 'GET',
-    category: '图片',
-    description: '获取一张随机的狗狗图片',
-    params: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 4,
-    name: '获取用户信息',
-    url: 'https://jsonplaceholder.typicode.com/users/1',
-    method: 'GET',
-    category: '测试',
-    description: '获取JSONPlaceholder的用户信息（测试用）',
-    params: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 5,
-    name: '随机名言',
-    url: 'https://api.quotable.io/random',
-    method: 'GET',
-    category: '娱乐',
-    description: '获取一条随机的名人名言',
-    params: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 6,
-    name: 'GitHub用户信息',
-    url: 'https://api.github.com/users/{username}',
-    method: 'GET',
-    category: '开发',
-    description: '通过用户名获取GitHub用户信息',
-    params: [
-      {
-        name: 'username',
-        type: 'string',
-        defaultValue: 'octocat',
-        required: true,
-        description: 'GitHub用户名',
-      },
-    ],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 7,
-    name: '天气查询',
-    url: 'https://wttr.in/{city}?format=j1',
-    method: 'GET',
-    category: '工具',
-    description: '查询指定城市的天气信息',
-    params: [
-      {
-        name: 'city',
-        type: 'string',
-        defaultValue: 'Beijing',
-        required: true,
-        description: '城市名称（英文）',
-      },
-    ],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 8,
-    name: 'IP地址查询',
-    url: 'https://ipapi.co/{ip}/json/',
-    method: 'GET',
-    category: '工具',
-    description: '查询IP地址的地理位置信息',
-    params: [
-      {
-        name: 'ip',
-        type: 'string',
-        defaultValue: '',
-        required: true,
-        description: 'IP地址（留空则查询当前IP）',
-      },
-    ],
-    createdAt: new Date().toISOString(),
-  },
-]
 
 const loadApis = (): ApiItem[] => {
   return getStorage<ApiItem[]>('apis', defaultApis) || defaultApis
@@ -598,6 +469,9 @@ const selectCategory = (cat: string) => {
 
 <style scoped>
 .app-container {
+  /* 业务色：#2ecc71/#e74c3c 与 token 的 --success/#dc2626 差异明显，集中为局部变量 */
+  --api-success: #2ecc71;
+  --api-danger: #e74c3c;
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
@@ -613,7 +487,7 @@ const selectCategory = (cat: string) => {
 }
 
 .back-button {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -630,12 +504,12 @@ const selectCategory = (cat: string) => {
 .app-header h1 {
   margin: 0;
   font-size: 2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   flex: 1;
 }
 
 .add-api-btn {
-  background-color: #2ecc71;
+  background-color: var(--api-success);
   color: white;
   border: none;
   padding: 0.6rem 1.2rem;
@@ -694,7 +568,7 @@ const selectCategory = (cat: string) => {
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.85rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   transition: all 0.2s;
 }
 
@@ -703,7 +577,7 @@ const selectCategory = (cat: string) => {
 }
 
 .tag-btn.active {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
 }
 
@@ -727,7 +601,7 @@ const selectCategory = (cat: string) => {
 
 .api-item.active {
   background-color: #e3f2fd;
-  border: 1px solid #3498db;
+  border: 1px solid var(--info);
 }
 
 .api-item-header {
@@ -758,7 +632,7 @@ const selectCategory = (cat: string) => {
 .api-name {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .api-item-meta {
@@ -769,7 +643,7 @@ const selectCategory = (cat: string) => {
 
 .api-category {
   font-size: 0.75rem;
-  color: #3498db;
+  color: var(--info);
   background-color: #e3f2fd;
   padding: 0.15rem 0.5rem;
   border-radius: 10px;
@@ -796,7 +670,7 @@ const selectCategory = (cat: string) => {
 }
 
 .action-btn.edit {
-  background-color: #3498db;
+  background-color: var(--info);
 }
 
 .action-btn.edit:hover {
@@ -804,7 +678,7 @@ const selectCategory = (cat: string) => {
 }
 
 .action-btn.delete {
-  background-color: #e74c3c;
+  background-color: var(--api-danger);
 }
 
 .action-btn.delete:hover {
@@ -832,7 +706,7 @@ const selectCategory = (cat: string) => {
 
 .form-panel h2 {
   margin: 0 0 1.5rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .form-group {
@@ -843,7 +717,7 @@ const selectCategory = (cat: string) => {
   display: block;
   margin-bottom: 0.4rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-size: 0.9rem;
 }
 
@@ -887,11 +761,11 @@ const selectCategory = (cat: string) => {
 
 .params-header label {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .add-param-btn {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.4rem 0.8rem;
@@ -959,7 +833,7 @@ const selectCategory = (cat: string) => {
   background: none;
   border: none;
   font-size: 1.2rem;
-  color: #e74c3c;
+  color: var(--api-danger);
   cursor: pointer;
   padding: 0 0.3rem;
 }
@@ -984,7 +858,7 @@ const selectCategory = (cat: string) => {
 }
 
 .save-btn {
-  background-color: #2ecc71;
+  background-color: var(--api-success);
   color: white;
   border: none;
   padding: 0.7rem 1.5rem;
@@ -1024,7 +898,7 @@ const selectCategory = (cat: string) => {
 
 .detail-header h2 {
   margin: 0;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .detail-method {
@@ -1058,7 +932,7 @@ const selectCategory = (cat: string) => {
   display: block;
   margin-bottom: 0.4rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-size: 0.9rem;
 }
 
@@ -1069,7 +943,7 @@ const selectCategory = (cat: string) => {
   border-radius: 4px;
   font-family: monospace;
   word-break: break-all;
-  color: #e74c3c;
+  color: var(--api-danger);
 }
 
 .params-config {
@@ -1078,7 +952,7 @@ const selectCategory = (cat: string) => {
 
 .params-config h3 {
   margin: 0 0 1rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .param-config-item {
@@ -1097,7 +971,7 @@ const selectCategory = (cat: string) => {
 
 .param-config-name {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-family: monospace;
 }
 
@@ -1111,7 +985,7 @@ const selectCategory = (cat: string) => {
 
 .param-config-required {
   font-size: 0.75rem;
-  color: #e74c3c;
+  color: var(--api-danger);
 }
 
 .param-config-desc {
@@ -1130,7 +1004,7 @@ const selectCategory = (cat: string) => {
 }
 
 .execute-btn {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.8rem 2rem;
@@ -1161,7 +1035,7 @@ const selectCategory = (cat: string) => {
 
 .error-panel h3 {
   margin: 0 0 0.8rem;
-  color: #e74c3c;
+  color: var(--api-danger);
 }
 
 .error-panel pre {
@@ -1189,7 +1063,7 @@ const selectCategory = (cat: string) => {
 
 .response-header h3 {
   margin: 0;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .response-meta {
@@ -1261,7 +1135,7 @@ const selectCategory = (cat: string) => {
 
 .welcome-panel h2 {
   margin: 0 0 0.8rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .welcome-panel > p {
@@ -1280,11 +1154,134 @@ const selectCategory = (cat: string) => {
   align-items: center;
   gap: 0.8rem;
   font-size: 1.1rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .feature-icon {
   font-size: 1.5rem;
+}
+
+/* ===== 深色模式适配：覆盖关键表面，跟随全局 token，不影响浅色外观 ===== */
+:root.dark .app-container {
+  color: var(--text-body);
+}
+
+:root.dark .sidebar,
+:root.dark .main-panel {
+  background-color: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+:root.dark .search-section,
+:root.dark .category-tags {
+  border-bottom-color: var(--border);
+}
+
+:root.dark .search-input,
+:root.dark .form-group input,
+:root.dark .form-group select,
+:root.dark .form-group textarea,
+:root.dark .param-name,
+:root.dark .param-type,
+:root.dark .param-default,
+:root.dark .param-desc,
+:root.dark .param-config-input {
+  background-color: var(--bg-input);
+  border-color: var(--border);
+  color: var(--text-body);
+}
+
+:root.dark .tag-btn {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+:root.dark .tag-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+:root.dark .tag-btn.active {
+  background-color: var(--info);
+  color: #fff;
+}
+
+:root.dark .api-item:hover {
+  background-color: var(--bg-hover);
+}
+
+:root.dark .api-item.active {
+  background-color: var(--accent-bg);
+  border-color: var(--info);
+}
+
+:root.dark .api-category {
+  background-color: var(--accent-bg);
+}
+
+:root.dark .param-item,
+:root.dark .params-section,
+:root.dark .param-config-item,
+:root.dark .response-panel {
+  background-color: var(--bg-subtle);
+}
+
+:root.dark .param-item {
+  border-color: var(--border);
+}
+
+:root.dark .param-config-type {
+  background-color: var(--bg-subtle);
+  color: var(--text-dim);
+}
+
+:root.dark .response-header {
+  background-color: var(--bg-hover);
+}
+
+:root.dark .detail-url code {
+  background-color: var(--bg-input);
+}
+
+:root.dark .empty-state,
+:root.dark .detail-description,
+:root.dark .welcome-panel > p,
+:root.dark .param-config-desc,
+:root.dark .response-time {
+  color: var(--text-dim);
+}
+
+:root.dark .error-panel {
+  background-color: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+:root.dark .error-panel h3,
+:root.dark .error-panel pre {
+  color: var(--danger);
+}
+
+:root.dark .response-status.success,
+:root.dark .api-method.get,
+:root.dark .detail-method.get {
+  background-color: var(--success-bg);
+  color: var(--success);
+}
+
+:root.dark .response-status.client-error,
+:root.dark .api-method.post,
+:root.dark .detail-method.post {
+  background-color: var(--warning-bg);
+  color: var(--warning);
+}
+
+:root.dark .response-status.server-error {
+  background-color: var(--danger-bg);
+  color: var(--danger);
+}
+
+:root.dark .response-status.info {
+  background-color: var(--accent-bg);
+  color: var(--info);
 }
 
 @media (max-width: 768px) {

@@ -12,3 +12,35 @@ export const debounce = <T extends (...args: unknown[]) => unknown>(
     timer = setTimeout(() => fn(...args), delay)
   }
 }
+
+/**
+ * 将秒数格式化为时钟字符串。
+ * < 1h 返回 mm:ss，否则返回 h:mm:ss。用于计时/赛车圈速/聊天时长等。
+ */
+export const formatClock = (totalSeconds: number): string => {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`
+}
+
+/**
+ * 前端触发文件下载（Blob 方案，兼容文本/二进制）。
+ */
+export const downloadFile = (
+  filename: string,
+  content: string | Blob,
+  mime = 'text/plain',
+): void => {
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}

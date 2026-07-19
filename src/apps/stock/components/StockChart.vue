@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick, inject } from 'vue'
 import { createChart, ColorType, CandlestickSeries, createSeriesMarkers } from 'lightweight-charts'
 import type { IChartApi, ISeriesApi, ISeriesMarkersPluginApi, Time } from 'lightweight-charts'
 import type { KlineData } from '@/stores/stock'
+import { STOCK_COLORS } from '../config'
 
 // 平台注入的主题对象（opt-in）：CSS 变量管不到 lightweight-charts 的 JS 上色，
 // 所以图表背景/文字/网格必须读 isDark 主动重绘。拿不到时降级为浅色。
@@ -64,12 +65,12 @@ const initChart = () => {
   })
 
   candlestickSeries = chart.addSeries(CandlestickSeries, {
-    upColor: '#e74c3c',
-    downColor: '#2ecc71',
-    borderDownColor: '#2ecc71',
-    borderUpColor: '#e74c3c',
-    wickDownColor: '#2ecc71',
-    wickUpColor: '#e74c3c',
+    upColor: STOCK_COLORS.UP,
+    downColor: STOCK_COLORS.DOWN,
+    borderDownColor: STOCK_COLORS.DOWN,
+    borderUpColor: STOCK_COLORS.UP,
+    wickDownColor: STOCK_COLORS.DOWN,
+    wickUpColor: STOCK_COLORS.UP,
   })
 
   chart.subscribeClick(handleClick)

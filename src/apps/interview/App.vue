@@ -7,7 +7,6 @@
       <p class="subtitle">前端面试高频题目，支持随机抽题和分类练习</p>
     </header>
 
-    <!-- 统计卡片 -->
     <div class="stats-cards">
       <div class="stat-card">
         <div class="stat-number">{{ stats.totalQuestions }}</div>
@@ -27,7 +26,6 @@
       </div>
     </div>
 
-    <!-- 搜索栏 -->
     <div class="search-bar">
       <div class="search-input-wrapper">
         <span class="search-icon">🔍</span>
@@ -43,7 +41,6 @@
       </div>
     </div>
 
-    <!-- 操作区 -->
     <div class="action-bar">
       <button class="btn btn-primary" @click="randomQuiz">🎲 随机抽题</button>
       <CustomSelect v-model="selectedCategory" :options="categoryOptions" placeholder="全部分类" />
@@ -55,7 +52,6 @@
       <CustomSelect v-model="selectedStatus" :options="statusOptions" placeholder="全部状态" />
     </div>
 
-    <!-- 题目列表 -->
     <div class="questions-list" v-if="!showDetail">
       <div v-if="loading" class="loading">
         <div class="spinner"></div>
@@ -102,7 +98,6 @@
       </div>
     </div>
 
-    <!-- 题目详情 -->
     <div class="question-detail" v-else>
       <button class="btn-back" @click="closeDetail">← 返回列表</button>
 
@@ -119,7 +114,6 @@
 
         <h2 class="detail-title">{{ currentQuestion.title }}</h2>
 
-        <!-- 选择题选项 -->
         <div v-if="currentQuestion.options?.length" class="options-section">
           <div
             v-for="(opt, idx) in currentQuestion.options"
@@ -143,7 +137,7 @@
 
         <div class="answer-section" v-if="showAnswer">
           <h4>答案：</h4>
-          <div class="answer-content" v-html="formatAnswer(currentQuestion.answer)"></div>
+          <MarkdownView :content="currentQuestion.answer" />
 
           <div class="analysis-section" v-if="currentQuestion.analysis">
             <h4>解析：</h4>
@@ -174,10 +168,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { CustomSelect, type SelectOption } from '@/components'
+import { CustomSelect, MarkdownView, type SelectOption } from '@/components'
 import type { Question, Category } from '@/types/interview'
 import { api } from '@/lib/request'
-import { renderMarkdown } from '@/lib/markdown'
+import { getStorage, setStorage } from '@/lib/storage'
+import { debounce } from '@/utils'
+import { INTERVIEW_PRACTICED_KEY, INTERVIEW_MASTERED_KEY, QUESTION_PAGE_SIZE } from './config'
+import { buildQuery } from './utils'
 
 const router = useRouter()
 
@@ -212,8 +209,6 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null
-
 // 本地存储的练习和掌握状态
 const practicedIds = ref<Set<number>>(new Set())
 const masteredIds = ref<Set<number>>(new Set())
@@ -237,20 +232,21 @@ const goDocs = () => {
 }
 
 // 搜索处理（防抖）
-const handleSearch = () => {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    currentPage.value = 1
-    fetchQuestions()
-  }, 300)
-}
-
-// 立即搜索（Enter 键）
-const handleSearchImmediate = () => {
-  if (searchTimer) clearTimeout(searchTimer)
+let lastSearchAt = 0
+const runSearch = () => {
+  lastSearchAt = Date.now()
   currentPage.value = 1
   fetchQuestions()
 }
+// 防抖收尾：若 300ms 内已因 Enter 立即搜索过，跳过冗余请求（工具 debounce 无 cancel）
+const debouncedSearch = debounce(() => {
+  if (Date.now() - lastSearchAt < 300) return
+  runSearch()
+}, 300)
+const handleSearch = () => debouncedSearch()
+
+// 立即搜索（Enter 键）
+const handleSearchImmediate = () => runSearch()
 
 // 清除搜索
 const clearSearch = () => {
@@ -259,13 +255,18 @@ const clearSearch = () => {
   fetchQuestions()
 }
 
+// 读取某 key 的本地状态（统一存储 @/lib/storage）
+const readLocalIds = (key: string): number[] | null => {
+  return getStorage<number[]>(key) ?? null
+}
+
 // 加载本地存储
 const loadLocalState = () => {
   try {
-    const practiced = localStorage.getItem('interview_practiced')
-    const mastered = localStorage.getItem('interview_mastered')
-    if (practiced) practicedIds.value = new Set(JSON.parse(practiced))
-    if (mastered) masteredIds.value = new Set(JSON.parse(mastered))
+    const practiced = readLocalIds(INTERVIEW_PRACTICED_KEY)
+    const mastered = readLocalIds(INTERVIEW_MASTERED_KEY)
+    if (practiced) practicedIds.value = new Set(practiced)
+    if (mastered) masteredIds.value = new Set(mastered)
   } catch (e) {
     console.error('加载本地状态失败:', e)
   }
@@ -273,8 +274,8 @@ const loadLocalState = () => {
 
 // 保存本地存储
 const saveLocalState = () => {
-  localStorage.setItem('interview_practiced', JSON.stringify([...practicedIds.value]))
-  localStorage.setItem('interview_mastered', JSON.stringify([...masteredIds.value]))
+  setStorage(INTERVIEW_PRACTICED_KEY, [...practicedIds.value])
+  setStorage(INTERVIEW_MASTERED_KEY, [...masteredIds.value])
 }
 
 // 获取分类列表
@@ -319,25 +320,22 @@ let cachedParamsHash = ''
 // 获取题目（支持服务端分页和客户端状态筛选）
 const fetchQuestions = async () => {
   loading.value = true
-  const pageSize = 12
   try {
     const hasStatusFilter = selectedStatus.value !== ''
 
     if (hasStatusFilter) {
-      // 状态筛选依赖 localStorage，需获取全部数据在客户端过滤
-      const params = new URLSearchParams({
-        page: '1',
-        limit: '1000',
+      // 状态筛选依赖本地练习/掌握状态，需获取全部数据在客户端过滤
+      const currentHash = buildQuery({
+        page: 1,
+        limit: 1000,
+        categoryId: selectedCategory.value,
+        difficulty: selectedDifficulty.value,
+        keyword: searchKeyword.value,
       })
-      if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
-      if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
-      if (searchKeyword.value) params.append('keyword', searchKeyword.value)
-
-      const currentHash = params.toString()
       if (currentHash !== cachedParamsHash) {
         cachedParamsHash = currentHash
         const data = await api.get<{ questions: Question[]; total: number }>(
-          `/api/questions?${params}`,
+          `/api/questions?${currentHash}`,
           { auth: false },
         )
         cachedAll.value = data.questions
@@ -353,25 +351,25 @@ const fetchQuestions = async () => {
         filtered = cachedAll.value.filter((q) => !practicedIds.value.has(q.id))
       }
 
-      totalPages.value = Math.ceil(filtered.length / pageSize)
+      totalPages.value = Math.ceil(filtered.length / QUESTION_PAGE_SIZE)
       if (currentPage.value > totalPages.value) {
         currentPage.value = Math.max(1, totalPages.value)
       }
-      const start = (currentPage.value - 1) * pageSize
-      questions.value = filtered.slice(start, start + pageSize)
+      const start = (currentPage.value - 1) * QUESTION_PAGE_SIZE
+      questions.value = filtered.slice(start, start + QUESTION_PAGE_SIZE)
     } else {
       // 正常浏览：服务端分页，每次只取当前页
       cachedParamsHash = ''
-      const params = new URLSearchParams({
-        page: String(currentPage.value),
-        limit: String(pageSize),
+      const query = buildQuery({
+        page: currentPage.value,
+        limit: QUESTION_PAGE_SIZE,
+        categoryId: selectedCategory.value,
+        difficulty: selectedDifficulty.value,
+        keyword: searchKeyword.value,
       })
-      if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
-      if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
-      if (searchKeyword.value) params.append('keyword', searchKeyword.value)
 
       const data = await api.get<{ questions: Question[]; total: number; totalPages: number }>(
-        `/api/questions?${params}`,
+        `/api/questions?${query}`,
         { auth: false },
       )
       questions.value = data.questions
@@ -392,11 +390,12 @@ const randomQuiz = async () => {
   showAnswer.value = false
   selectedAnswer.value = null
   try {
-    const params = new URLSearchParams()
-    if (selectedCategory.value) params.append('categoryId', selectedCategory.value)
-    if (selectedDifficulty.value) params.append('difficulty', selectedDifficulty.value)
+    const query = buildQuery({
+      categoryId: selectedCategory.value,
+      difficulty: selectedDifficulty.value,
+    })
 
-    const data = await api.get<Question[]>(`/api/questions/random/1?${params}`, { auth: false })
+    const data = await api.get<Question[]>(`/api/questions/random/1?${query}`, { auth: false })
     if (data && data.length > 0) {
       currentQuestion.value = data[0]
       // 标记为已练习
@@ -473,12 +472,6 @@ const getCategoryName = (categoryId: number) => {
   return cat ? cat.name : '未分类'
 }
 
-// 格式化答案（使用 markdown 渲染）
-const formatAnswer = (answer: string) => {
-  if (!answer) return ''
-  return renderMarkdown(answer)
-}
-
 // 更新统计
 const updateStats = () => {
   stats.value.practiced = practicedIds.value.size
@@ -502,6 +495,7 @@ onMounted(() => {
 
 <style scoped>
 .interview-quiz {
+  --quiz-success: #10b981;
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
@@ -518,7 +512,7 @@ onMounted(() => {
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  background-color: #667eea;
+  background-color: var(--accent);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -529,7 +523,7 @@ onMounted(() => {
 }
 
 .back-button:hover {
-  background-color: #764ba2;
+  background-color: var(--accent-strong);
   transform: translateY(-50%) translateX(-2px);
 }
 
@@ -538,9 +532,9 @@ onMounted(() => {
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  background: white;
-  color: #667eea;
-  border: 2px solid #667eea;
+  background: var(--bg-card);
+  color: var(--accent);
+  border: 2px solid var(--accent);
   padding: 0.5rem 1rem;
   border-radius: 8px;
   cursor: pointer;
@@ -550,19 +544,19 @@ onMounted(() => {
 }
 
 .docs-entry:hover {
-  background: #667eea;
+  background: var(--accent);
   color: white;
   transform: translateY(-50%) translateX(2px);
 }
 
 .quiz-header h1 {
   font-size: 2.5rem;
-  color: #1a1a1a;
+  color: var(--text-primary);
   margin-bottom: 10px;
 }
 
 .subtitle {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 1.1rem;
 }
 
@@ -575,12 +569,12 @@ onMounted(() => {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border-radius: 16px;
   padding: 20px;
   text-align: center;
   color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
 }
 
 .stat-number {
@@ -616,22 +610,23 @@ onMounted(() => {
 .search-input {
   width: 100%;
   padding: 14px 44px 14px 48px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   border-radius: 16px;
   font-size: 1rem;
-  background: white;
+  color: var(--text-body);
+  background: var(--bg-card);
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.15);
 }
 
 .search-input::placeholder {
-  color: #999;
+  color: var(--text-muted);
 }
 
 .clear-btn {
@@ -639,7 +634,7 @@ onMounted(() => {
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  background: #e0e0e0;
+  background: var(--border);
   border: none;
   width: 24px;
   height: 24px;
@@ -653,7 +648,7 @@ onMounted(() => {
 }
 
 .clear-btn:hover {
-  background: #667eea;
+  background: var(--accent);
   color: white;
 }
 
@@ -676,28 +671,28 @@ onMounted(() => {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   color: white;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.4);
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  background: linear-gradient(135deg, #11998e 0%, var(--quiz-success) 100%);
   color: white;
 }
 
 .btn-outline {
-  background: white;
-  color: #667eea;
-  border: 2px solid #667eea;
+  background: var(--bg-card);
+  color: var(--accent);
+  border: 2px solid var(--accent);
 }
 
 .btn-outline:hover {
-  background: #667eea;
+  background: var(--accent);
   color: white;
 }
 
@@ -709,7 +704,7 @@ onMounted(() => {
 }
 
 .question-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
@@ -721,11 +716,11 @@ onMounted(() => {
 .question-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 .question-card.practiced {
-  border-left: 4px solid #38ef7d;
+  border-left: 4px solid var(--quiz-success);
 }
 
 .card-header {
@@ -761,13 +756,13 @@ onMounted(() => {
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 0.85rem;
-  background: #e8eaf6;
+  background: var(--accent-bg);
   color: #3f51b5;
 }
 
 .question-title {
   font-size: 1.1rem;
-  color: #1a1a1a;
+  color: var(--text-primary);
   margin-bottom: 8px;
   line-height: 1.4;
 }
@@ -778,17 +773,17 @@ onMounted(() => {
   align-items: center;
   margin-top: 15px;
   padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-light);
 }
 
 .practiced-status {
-  color: #38ef7d;
+  color: var(--quiz-success);
   font-weight: 600;
   font-size: 0.9rem;
 }
 
 .click-hint {
-  color: #999;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -804,16 +799,16 @@ onMounted(() => {
 .page-btn {
   padding: 10px 20px;
   border-radius: 10px;
-  border: 2px solid #667eea;
-  background: white;
-  color: #667eea;
+  border: 2px solid var(--accent);
+  background: var(--bg-card);
+  color: var(--accent);
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s ease;
 }
 
 .page-btn:hover:not(:disabled) {
-  background: #667eea;
+  background: var(--accent);
   color: white;
 }
 
@@ -824,7 +819,7 @@ onMounted(() => {
 
 .page-info {
   font-size: 1rem;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 /* 题目详情 */
@@ -836,7 +831,7 @@ onMounted(() => {
 .btn-back {
   background: none;
   border: none;
-  color: #667eea;
+  color: var(--accent);
   font-size: 1.1rem;
   cursor: pointer;
   margin-bottom: 20px;
@@ -844,11 +839,11 @@ onMounted(() => {
 }
 
 .btn-back:hover {
-  color: #764ba2;
+  color: var(--accent-strong);
 }
 
 .detail-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
   padding: 30px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -872,154 +867,38 @@ onMounted(() => {
   padding: 4px 10px;
   border-radius: 15px;
   font-size: 0.8rem;
-  background: #f5f5f5;
-  color: #666;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
 }
 
 .detail-title {
   font-size: 1.5rem;
-  color: #1a1a1a;
+  color: var(--text-primary);
   margin-bottom: 20px;
   line-height: 1.4;
 }
 
 .answer-section {
-  background: #f8f9fa;
+  background: var(--bg-subtle);
   border-radius: 12px;
   padding: 25px;
   margin: 20px 0;
 }
 
 .answer-section h4 {
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 15px;
   font-size: 1.1rem;
-}
-
-.answer-content {
-  color: #444;
-  line-height: 1.8;
-  font-size: 0.95rem;
-}
-
-/* Markdown 渲染样式 */
-.answer-content :deep(h1),
-.answer-content :deep(h2),
-.answer-content :deep(h3),
-.answer-content :deep(h4),
-.answer-content :deep(h5),
-.answer-content :deep(h6) {
-  margin-top: 1.2em;
-  margin-bottom: 0.6em;
-  color: #1a1a1a;
-  font-weight: 600;
-}
-
-.answer-content :deep(h1) {
-  font-size: 1.5em;
-}
-.answer-content :deep(h2) {
-  font-size: 1.3em;
-}
-.answer-content :deep(h3) {
-  font-size: 1.15em;
-}
-
-.answer-content :deep(p) {
-  margin-bottom: 1em;
-}
-
-.answer-content :deep(ul),
-.answer-content :deep(ol) {
-  margin-bottom: 1em;
-  padding-left: 2em;
-}
-
-.answer-content :deep(li) {
-  margin-bottom: 0.4em;
-}
-
-.answer-content :deep(code) {
-  background: #f0f0f0;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 0.9em;
-  color: #e53935;
-}
-
-.answer-content :deep(pre) {
-  background: #1e1e1e;
-  border-radius: 8px;
-  padding: 16px;
-  overflow-x: auto;
-  margin-bottom: 1em;
-}
-
-.answer-content :deep(pre code) {
-  background: transparent;
-  color: #d4d4d4;
-  padding: 0;
-  font-size: 0.85em;
-  line-height: 1.6;
-}
-
-.answer-content :deep(blockquote) {
-  border-left: 4px solid #667eea;
-  padding-left: 16px;
-  margin: 1em 0;
-  color: #666;
-  background: #f8f9fa;
-  padding: 12px 16px;
-  border-radius: 0 8px 8px 0;
-}
-
-.answer-content :deep(table) {
-  border-collapse: collapse;
-  width: 100%;
-  margin-bottom: 1em;
-}
-
-.answer-content :deep(th),
-.answer-content :deep(td) {
-  border: 1px solid #ddd;
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.answer-content :deep(th) {
-  background: #f5f5f5;
-  font-weight: 600;
-}
-
-.answer-content :deep(strong) {
-  color: #1a1a1a;
-  font-weight: 600;
-}
-
-.answer-content :deep(a) {
-  color: #667eea;
-  text-decoration: none;
-}
-
-.answer-content :deep(a:hover) {
-  text-decoration: underline;
-}
-
-.answer-content :deep(hr) {
-  border: none;
-  border-top: 1px solid #e0e0e0;
-  margin: 1.5em 0;
 }
 
 .analysis-section {
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
 }
 
 .analysis-section p {
-  color: #555;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -1035,14 +914,14 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #667eea;
+  border: 4px solid var(--border-light);
+  border-top: 4px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 20px;
@@ -1074,56 +953,56 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 14px 18px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s ease;
-  background: white;
+  background: var(--bg-card);
 }
 
 .option-item:hover {
-  border-color: #667eea;
-  background: #f8f9ff;
+  border-color: var(--accent);
+  background: var(--accent-bg);
   transform: translateX(4px);
 }
 
 .option-item.option-selected {
-  border-color: #667eea;
-  background: #eef1ff;
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .option-item.option-reveal.option-selected {
-  border-color: #38ef7d;
-  background: #e6f9e6;
+  border-color: var(--quiz-success);
+  background: var(--success-bg);
 }
 
 .option-marker {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #f0f0f0;
+  background: var(--bg-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 0.9rem;
-  color: #555;
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .option-item.option-selected .option-marker {
-  background: #667eea;
+  background: var(--accent);
   color: white;
 }
 
 .option-item.option-reveal.option-selected .option-marker {
-  background: #38ef7d;
+  background: var(--quiz-success);
   color: white;
 }
 
 .option-text {
   font-size: 0.95rem;
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.5;
 }
 

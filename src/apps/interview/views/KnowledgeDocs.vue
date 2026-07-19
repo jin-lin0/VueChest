@@ -39,7 +39,7 @@
       </aside>
 
       <article class="docs-content" ref="contentRef">
-        <div class="markdown-body" v-html="renderedHtml"></div>
+        <MarkdownView :content="currentDoc.content" :toc-level="2" />
       </article>
     </div>
   </div>
@@ -48,8 +48,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { MarkdownView } from '@/components'
 import { knowledgeDocs as docs } from '../knowledge'
-import { renderMarkdown, extractToc, type TocItem } from '@/lib/markdown'
+import { extractToc, type TocItem } from '@/lib/markdown'
 
 const router = useRouter()
 const route = useRoute()
@@ -65,11 +66,6 @@ const currentDoc = computed(() => docs.find((d) => d.id === activeDocId.value) ?
 
 // 从 markdown 提取二级标题作为目录（跳过代码块内的 ```）
 const toc = computed<TocItem[]>(() => extractToc(currentDoc.value?.content ?? '', 2))
-
-// 渲染 markdown：二级标题注入锚点 id（与目录 id 对齐），代码块靠高亮后处理
-const renderedHtml = computed(() =>
-  renderMarkdown(currentDoc.value?.content ?? '', { tocLevel: 2 }),
-)
 
 const goBack = () => router.push('/interview')
 
@@ -134,7 +130,7 @@ onUnmounted(() => {
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  background-color: #667eea;
+  background-color: var(--accent);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -145,18 +141,18 @@ onUnmounted(() => {
 }
 
 .back-button:hover {
-  background-color: #764ba2;
+  background-color: var(--accent-strong);
   transform: translateY(-50%) translateX(-2px);
 }
 
 .docs-header h1 {
   font-size: 2.2rem;
-  color: #1a1a1a;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .subtitle {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 1.05rem;
 }
 
@@ -188,22 +184,22 @@ onUnmounted(() => {
   gap: 12px;
   padding: 14px 16px;
   border-radius: 14px;
-  border: 2px solid #eceafd;
-  background: white;
+  border: 2px solid var(--border-light);
+  background: var(--bg-card);
   cursor: pointer;
   text-align: left;
   transition: all 0.25s ease;
 }
 
 .doc-tab:hover {
-  border-color: #667eea;
+  border-color: var(--accent);
   transform: translateY(-2px);
 }
 
 .doc-tab.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border-color: transparent;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
 }
 
 .doc-tab-icon {
@@ -220,12 +216,12 @@ onUnmounted(() => {
 .doc-tab-name {
   font-weight: 700;
   font-size: 1rem;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 
 .doc-tab-desc {
   font-size: 0.78rem;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .doc-tab.active .doc-tab-name,
@@ -239,7 +235,7 @@ onUnmounted(() => {
 
 /* 目录 */
 .doc-toc {
-  background: white;
+  background: var(--bg-card);
   border-radius: 14px;
   padding: 16px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
@@ -250,7 +246,7 @@ onUnmounted(() => {
 .toc-title {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #999;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 10px;
@@ -261,148 +257,32 @@ onUnmounted(() => {
   padding: 7px 10px;
   border-radius: 8px;
   font-size: 0.9rem;
-  color: #555;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   border-left: 3px solid transparent;
 }
 
 .toc-item:hover {
-  background: #f5f4ff;
-  color: #667eea;
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .toc-item.active {
-  background: #eef1ff;
-  color: #667eea;
+  background: var(--accent-bg);
+  color: var(--accent);
   font-weight: 600;
-  border-left-color: #667eea;
+  border-left-color: var(--accent);
 }
 
 /* 内容区 */
 .docs-content {
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   padding: 32px 40px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   max-height: calc(100vh - 140px);
   overflow-y: auto;
-}
-
-/* Markdown 渲染样式 */
-.markdown-body {
-  color: #333;
-  line-height: 1.75;
-  font-size: 0.96rem;
-}
-
-.markdown-body :deep(h1) {
-  font-size: 1.9rem;
-  color: #1a1a1a;
-  margin-bottom: 0.6em;
-  padding-bottom: 0.3em;
-  border-bottom: 2px solid #eee;
-}
-
-.markdown-body :deep(h2) {
-  font-size: 1.45rem;
-  color: #667eea;
-  margin-top: 1.6em;
-  margin-bottom: 0.7em;
-  padding-bottom: 0.25em;
-  border-bottom: 1px solid #eef0fb;
-  scroll-margin-top: 20px;
-}
-
-.markdown-body :deep(h3) {
-  font-size: 1.15rem;
-  color: #1a1a1a;
-  margin-top: 1.4em;
-  margin-bottom: 0.5em;
-}
-
-.markdown-body :deep(h4) {
-  font-size: 1rem;
-  color: #444;
-  margin-top: 1em;
-  margin-bottom: 0.4em;
-}
-
-.markdown-body :deep(p) {
-  margin-bottom: 0.9em;
-}
-
-.markdown-body :deep(blockquote) {
-  border-left: 4px solid #667eea;
-  background: #f8f9ff;
-  padding: 12px 16px;
-  margin: 1em 0;
-  border-radius: 0 8px 8px 0;
-  color: #555;
-}
-
-.markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  margin-bottom: 1em;
-  padding-left: 1.6em;
-}
-
-.markdown-body :deep(li) {
-  margin-bottom: 0.4em;
-}
-
-.markdown-body :deep(strong) {
-  color: #1a1a1a;
-  font-weight: 700;
-}
-
-.markdown-body :deep(code) {
-  background: #f0f0f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 0.88em;
-  color: #d6336c;
-}
-
-.markdown-body :deep(pre) {
-  background: #1e1e1e;
-  border-radius: 8px;
-  padding: 16px;
-  overflow-x: auto;
-  margin: 1em 0;
-}
-
-.markdown-body :deep(pre code) {
-  background: transparent;
-  color: #d4d4d4;
-  padding: 0;
-  font-size: 0.85em;
-  line-height: 1.6;
-}
-
-.markdown-body :deep(table) {
-  border-collapse: collapse;
-  width: 100%;
-  margin-bottom: 1em;
-}
-
-.markdown-body :deep(th),
-.markdown-body :deep(td) {
-  border: 1px solid #e0e0e0;
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.markdown-body :deep(th) {
-  background: #f5f5f5;
-  font-weight: 600;
-}
-
-.markdown-body :deep(hr) {
-  border: none;
-  border-top: 1px solid #eee;
-  margin: 1.6em 0;
 }
 
 /* 响应式 */

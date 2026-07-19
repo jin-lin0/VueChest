@@ -227,10 +227,12 @@ function onContentClick(e: MouseEvent) {
   padding: var(--space-8) var(--space-8);
   display: flex;
   justify-content: center;
+  min-width: 0;
 }
 .docs-content {
   width: 100%;
   max-width: 820px;
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
@@ -240,6 +242,8 @@ function onContentClick(e: MouseEvent) {
   font-size: 15px;
   color: var(--text-body);
   overflow-x: auto;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ---------- Markdown 正文样式（作用于 v-html 内部） ---------- */
@@ -297,6 +301,8 @@ function onContentClick(e: MouseEvent) {
   border: 1px solid var(--border-light);
   padding: var(--space-2) var(--space-3);
   text-align: left;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .docs-content :deep(th) {
   background: var(--bg-subtle);
@@ -348,6 +354,9 @@ function onContentClick(e: MouseEvent) {
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 768px) {
+  .docs-header {
+    padding: var(--space-3) var(--space-4);
+  }
   .docs-body {
     grid-template-columns: 1fr;
   }
@@ -365,7 +374,23 @@ function onContentClick(e: MouseEvent) {
     padding: var(--space-5) var(--space-4);
   }
   .docs-content {
-    padding: var(--space-5);
+    padding: var(--space-5) var(--space-4);
+  }
+  /* 宽表格在窄屏允许横向滚动，避免撑破布局（长路径列） */
+  .docs-content :deep(table) {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  .docs-content {
+    padding: var(--space-4);
+    font-size: 14px;
+  }
+  .docs-title {
+    font-size: 15px;
   }
 }
 </style>

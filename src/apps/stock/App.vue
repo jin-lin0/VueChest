@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStockStore } from '@/stores'
 import type { KlineData } from '@/stores/stock'
@@ -7,6 +7,10 @@ import StockChart from './components/StockChart.vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 import draggable from 'vuedraggable'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { setStorage } from '@/lib/storage'
+import { debounce } from '@/utils'
+import { STOCK_COLORS } from './config'
 
 defineOptions({ name: 'StockAnalysisView' })
 
@@ -14,7 +18,6 @@ const router = useRouter()
 const stockStore = useStockStore()
 const activeKline = ref<KlineData | null>(null)
 const selectedDate = ref<Date | null>(null)
-let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 const displayKline = computed(() => activeKline.value ?? stockStore.klineResult)
 
@@ -67,22 +70,16 @@ const getChangeInfo = (open: string, close: string) => {
   return { percent, isUp: c >= o }
 }
 
-// 防抖搜索函数
-const debouncedSearch = (query: string) => {
-  if (searchTimeout) {
-    clearTimeout(searchTimeout)
-  }
-  searchTimeout = setTimeout(() => {
-    stockStore.searchStocks(query)
-  }, 300) // 300ms防抖延迟
-}
+const debouncedSearch = debounce(() => {
+  stockStore.searchStocks(stockStore.searchQuery)
+}, 300)
 
 // 监听搜索输入变化
 watch(
   () => stockStore.searchQuery,
   (val) => {
     if (val.trim()) {
-      debouncedSearch(val)
+      debouncedSearch()
     } else {
       stockStore.clearSearch()
     }
@@ -111,8 +108,8 @@ const onDragEnd = () => {
     name: item.name,
   }))
   stockStore.favorites = newOrder
-  // 保存到 localStorage
-  localStorage.setItem('stock_favorites', JSON.stringify(newOrder))
+  // 持久化自选股顺序（统一走 @/lib/storage，key 与 stock store 一致）
+  setStorage(STORAGE_KEYS.STOCK_FAVORITES, newOrder)
 }
 
 // 查询按钮点击事件
@@ -131,16 +128,10 @@ const handleQuery = async () => {
   }
 }
 
-// 清理定时器
-onUnmounted(() => {
-  if (searchTimeout) {
-    clearTimeout(searchTimeout)
-  }
-})
 </script>
 
 <template>
-  <div class="app-container">
+  <div class="app-container" :style="{ '--stock-up': STOCK_COLORS.UP, '--stock-down': STOCK_COLORS.DOWN }">
     <header class="app-header">
       <button class="back-button" @click="goBack">返回</button>
       <h1>股票查询</h1>
@@ -446,7 +437,7 @@ onUnmounted(() => {
   text-decoration: none;
   font-size: 0.9rem;
   color: var(--text-secondary, #555);
-  background: var(--bg-secondary, #f1f3f5);
+  background: var(--bg-subtle);
   border: 1px solid var(--border-color, #e0e0e0);
   transition: all 0.15s;
 }
@@ -788,11 +779,11 @@ onUnmounted(() => {
 }
 
 .stock-change.up {
-  color: #e74c3c;
+  color: var(--stock-up);
 }
 
 .stock-change.down {
-  color: #2ecc71;
+  color: var(--stock-down);
 }
 
 .remove-fav-btn {
@@ -926,7 +917,7 @@ onUnmounted(() => {
 }
 
 .price-card.close .price-value {
-  color: #e74c3c;
+  color: var(--stock-up);
 }
 
 .summary-row {
@@ -954,11 +945,11 @@ onUnmounted(() => {
 }
 
 .summary-value.up {
-  color: #e74c3c;
+  color: var(--stock-up);
 }
 
 .summary-value.down {
-  color: #2ecc71;
+  color: var(--stock-down);
 }
 
 .empty-state {

@@ -1,0 +1,169 @@
+/**
+ * 贪吃蛇对战视图共享布局样式（本地双人 / 人机共用）
+ * 通过 .battle-view 命名空间限定作用域，避免影响大厅页（.lobby-page）。
+ * 各视图中仅保留自身独有的规则（难度选择、昵称输入、摇杆区等）。
+ */
+
+.battle-view {
+  min-height: 100vh;
+  background: #0f0f23;
+  color: #e0e0e0;
+  display: flex;
+  flex-direction: column;
+}
+
+.battle-view .top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.battle-view .top-bar h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.battle-view .btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #e0e0e0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.battle-view .btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.battle-view .setup-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+.battle-view .setup-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+}
+.battle-view .setup-card h3 {
+  text-align: center;
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.battle-view .start-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--accent), #764ba2);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.battle-view .start-btn:hover {
+  opacity: 0.9;
+}
+
+.battle-view .controls-hint {
+  margin-top: 16px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 2;
+}
+.battle-view .controls-hint kbd {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 0 2px;
+}
+
+.battle-view .game-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  gap: 8px;
+}
+
+.battle-view .countdown-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+.battle-view .countdown-number {
+  font-size: 120px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+  animation: pulse 0.5s ease;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1.5);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.battle-view .hud-row {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  max-width: 520px;
+}
+.battle-view .player-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  flex: 1;
+}
+.battle-view .player-hud.dead {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.battle-view .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.battle-view .pname {
+  flex: 1;
+  font-weight: 600;
+}
+.battle-view .health {
+  color: #ef5350;
+}
+.battle-view .len {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.battle-view .canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
