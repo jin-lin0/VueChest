@@ -551,4 +551,1689 @@ export const defaultApis: ApiItem[] = [
     ],
     createdAt: new Date().toISOString(),
   },
+  {
+    id: 37,
+    name: "Chuck Norris 笑话",
+    url: "https://api.chucknorris.io/jokes/random",
+    method: "GET",
+    category: "娱乐",
+    description: "随机返回一条 Chuck Norris 风格的搞笑段子",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 38,
+    name: "动漫随机名言",
+    url: "https://api.animechan.io/v1/quotes/random",
+    method: "GET",
+    category: "娱乐",
+    description: "随机返回一句动漫台词及其出处与角色",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 39,
+    name: "随机梗图",
+    url: "https://meme-api.com/gimme",
+    method: "GET",
+    category: "娱乐",
+    description: "随机返回一张来自 Reddit 的搞笑梗图（含图片地址与标题）",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 40,
+    name: "趣味知识问答",
+    url: "https://opentdb.com/api.php?amount={amount}",
+    method: "GET",
+    category: "娱乐",
+    description: "Open Trivia DB 随机题库，返回选择题与答案",
+    params: [
+      {
+        name: "amount",
+        type: "number",
+        defaultValue: "1",
+        required: true,
+        description: "返回的题目数量",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 41,
+    name: "随机鸡尾酒配方",
+    url: "https://www.thecocktaildb.com/api/json/v1/1/random.php",
+    method: "GET",
+    category: "娱乐",
+    description: "随机返回一款鸡尾酒的名称、配方与做法",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 42,
+    name: "随机菜谱",
+    url: "https://www.themealdb.com/api/json/v1/1/random.php",
+    method: "GET",
+    category: "娱乐",
+    description: "随机返回一道菜的名称、食材与制作步骤",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 43,
+    name: "随机精酿啤酒厂",
+    url: "https://api.openbrewerydb.org/v1/breweries/random",
+    method: "GET",
+    category: "娱乐",
+    description: "随机返回一家精酿啤酒厂的信息（名称、地点、类型）",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 44,
+    name: "吉卜力电影资料",
+    url: "https://ghibliapi.vercel.app/films",
+    method: "GET",
+    category: "娱乐",
+    description: "返回吉卜力工作室全部电影列表（标题、导演、简介等）",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 45,
+    name: "哈利波特角色",
+    url: "https://hp-api.onrender.com/api/characters",
+    method: "GET",
+    category: "娱乐",
+    description: "返回《哈利波特》全部角色资料（姓名、学院、扮演者等）",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 46,
+    name: "瑞克和莫蒂角色",
+    url: "https://rickandmortyapi.com/api/character/{id}",
+    method: "GET",
+    category: "娱乐",
+    description: "按 ID 返回《瑞克和莫蒂》角色资料",
+    params: [
+      {
+        name: "id",
+        type: "number",
+        defaultValue: "1",
+        required: true,
+        description: "角色 ID，范围 1-826",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 47,
+    name: "宝可梦资料",
+    url: "https://pokeapi.co/api/v2/pokemon/{name}",
+    method: "GET",
+    category: "娱乐",
+    description: "按名称或 ID 查询宝可梦的属性、技能与形象",
+    params: [
+      {
+        name: "name",
+        type: "string",
+        defaultValue: "ditto",
+        required: true,
+        description: "宝可梦英文名或 ID，如 ditto、pikachu、25",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 48,
+    name: "星球大战人物",
+    url: "https://swapi.dev/api/people/{id}",
+    method: "GET",
+    category: "娱乐",
+    description: "按 ID 返回《星球大战》人物资料（姓名、身高、出生年份等）",
+    params: [
+      {
+        name: "id",
+        type: "number",
+        defaultValue: "1",
+        required: true,
+        description: "人物 ID，范围 1-82",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 49,
+    name: "Lorem Picsum 随机图片",
+    url: "https://picsum.photos/{width}/{height}",
+    method: "GET",
+    category: "图片",
+    description: "从 Picsum 图库随机返回一张指定尺寸的图片，免费无需 Key",
+    params: [
+      {
+        name: "width",
+        type: "number",
+        defaultValue: "400",
+        required: true,
+        description: "图片宽度(像素)",
+      },
+      {
+        name: "height",
+        type: "number",
+        defaultValue: "300",
+        required: true,
+        description: "图片高度(像素)",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 50,
+    name: "Picsum 种子图片",
+    url: "https://picsum.photos/seed/{seed}/{width}/{height}",
+    method: "GET",
+    category: "图片",
+    description: "用固定 seed 生成可复现的随机图片，相同 seed 永远返回同一张图",
+    params: [
+      {
+        name: "seed",
+        type: "string",
+        defaultValue: "vuechest",
+        required: true,
+        description: "随机种子，决定返回哪张图",
+      },
+      {
+        name: "width",
+        type: "number",
+        defaultValue: "400",
+        required: true,
+        description: "图片宽度(像素)",
+      },
+      {
+        name: "height",
+        type: "number",
+        defaultValue: "300",
+        required: true,
+        description: "图片高度(像素)",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 51,
+    name: "Picsum 图片图库",
+    url: "https://picsum.photos/v2/list?page={page}&limit={limit}",
+    method: "GET",
+    category: "图片",
+    description: "分页返回图片元数据列表(JSON)，含作者信息与原图下载地址，适合做画廊",
+    params: [
+      {
+        name: "page",
+        type: "number",
+        defaultValue: "1",
+        required: true,
+        description: "页码，从 1 开始",
+      },
+      {
+        name: "limit",
+        type: "number",
+        defaultValue: "10",
+        required: true,
+        description: "每页返回数量(最大100)",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 52,
+    name: "LoremFlickr 关键词图片",
+    url: "https://loremflickr.com/{width}/{height}/{keywords}",
+    method: "GET",
+    category: "图片",
+    description: "按关键词(英文标签)随机返回 Flickr 上的真实照片，免费无需 Key",
+    params: [
+      {
+        name: "width",
+        type: "number",
+        defaultValue: "400",
+        required: true,
+        description: "图片宽度(像素)",
+      },
+      {
+        name: "height",
+        type: "number",
+        defaultValue: "300",
+        required: true,
+        description: "图片高度(像素)",
+      },
+      {
+        name: "keywords",
+        type: "string",
+        defaultValue: "cat,dog",
+        required: true,
+        description: "英文关键词，逗号分隔，如 cat,dog",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 53,
+    name: "DummyImage 占位图",
+    url: "https://dummyimage.com/{width}x{height}/{bg}/{fg}&text={text}",
+    method: "GET",
+    category: "图片",
+    description: "生成自定义尺寸/颜色/文字的占位图，常用于界面原型与开发调试",
+    params: [
+      {
+        name: "width",
+        type: "number",
+        defaultValue: "400",
+        required: true,
+        description: "图片宽度(像素)",
+      },
+      {
+        name: "height",
+        type: "number",
+        defaultValue: "300",
+        required: true,
+        description: "图片高度(像素)",
+      },
+      {
+        name: "bg",
+        type: "string",
+        defaultValue: "0099ff",
+        required: true,
+        description: "背景色，十六进制不含#，如 0099ff",
+      },
+      {
+        name: "fg",
+        type: "string",
+        defaultValue: "ffffff",
+        required: true,
+        description: "前景/文字颜色，十六进制不含#，如 ffffff",
+      },
+      {
+        name: "text",
+        type: "string",
+        defaultValue: "VueChest",
+        required: false,
+        description: "图上显示的文字",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 54,
+    name: "Placehold 占位图",
+    url: "https://placehold.co/{width}x{height}?text={text}",
+    method: "GET",
+    category: "图片",
+    description: "生成简洁的占位图，支持自定义文字与尺寸，免费无需 Key",
+    params: [
+      {
+        name: "width",
+        type: "number",
+        defaultValue: "400",
+        required: true,
+        description: "图片宽度(像素)",
+      },
+      {
+        name: "height",
+        type: "number",
+        defaultValue: "300",
+        required: true,
+        description: "图片高度(像素)",
+      },
+      {
+        name: "text",
+        type: "string",
+        defaultValue: "VueChest",
+        required: false,
+        description: "图上显示的文字",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 55,
+    name: "RandomDog 随机狗图",
+    url: "https://random.dog/woof.json",
+    method: "GET",
+    category: "图片",
+    description: "随机返回一只狗的图片或视频地址(JSON)，可爱解压用",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 56,
+    name: "UI Avatars 文字头像",
+    url: "https://ui-avatars.com/api/?name={name}&size={size}",
+    method: "GET",
+    category: "图片",
+    description: "根据姓名首字母生成圆形头像图片，适合做默认用户头像",
+    params: [
+      {
+        name: "name",
+        type: "string",
+        defaultValue: "Vue Chest",
+        required: true,
+        description: "姓名，取首字母生成头像",
+      },
+      {
+        name: "size",
+        type: "number",
+        defaultValue: "128",
+        required: true,
+        description: "头像像素尺寸",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 57,
+    name: "wsrv.nl 图片代理处理",
+    url: "https://wsrv.nl/?url={imageUrl}&w={width}",
+    method: "GET",
+    category: "工具",
+    description: "图片代理与处理服务，可对任意外链图片做缩放/格式转换，解决跨域与尺寸问题",
+    params: [
+      {
+        name: "imageUrl",
+        type: "string",
+        defaultValue: "https://picsum.photos/400/300",
+        required: true,
+        description: "待处理的图片完整 URL(不含协议前缀也可)",
+      },
+      {
+        name: "width",
+        type: "number",
+        defaultValue: "300",
+        required: true,
+        description: "输出图片宽度(像素)",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 58,
+    name: "颜色查询",
+    url: "https://www.thecolorapi.com/id?hex={hex}",
+    method: "GET",
+    category: "工具",
+    description: "根据 HEX 颜色值返回颜色名称、RGB、HSL、CMYK 等详细信息",
+    params: [
+      {
+        name: "hex",
+        type: "string",
+        defaultValue: "4e79a7",
+        required: false,
+        description: "十六进制颜色值（不含 #）",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 59,
+    name: "条形码生成",
+    url: "https://barcodeapi.org/api/{format}/{data}",
+    method: "GET",
+    category: "工具",
+    description: "生成指定格式（Code128/EAN13/UPC 等）的条形码 SVG 图片",
+    params: [
+      {
+        name: "format",
+        type: "string",
+        defaultValue: "code128",
+        required: false,
+        description: "条码格式，如 code128、ean13、upc",
+      },
+      {
+        name: "data",
+        type: "string",
+        defaultValue: "hello",
+        required: true,
+        description: "要编码到条形码中的内容",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 60,
+    name: "邮编查询",
+    url: "https://api.zippopotam.us/{country}/{zip}",
+    method: "GET",
+    category: "地理",
+    description: "根据国家和邮政编码查询对应的城市、州省及经纬度等地址信息",
+    params: [
+      {
+        name: "country",
+        type: "string",
+        defaultValue: "us",
+        required: true,
+        description: "国家代码，如 us、de、gb",
+      },
+      {
+        name: "zip",
+        type: "string",
+        defaultValue: "90210",
+        required: true,
+        description: "邮政编码",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 61,
+    name: "假REST数据",
+    url: "https://jsonplaceholder.typicode.com/{resource}/{id}",
+    method: "GET",
+    category: "开发",
+    description: "提供可用于原型与测试的假 REST 数据（todos/users/posts/comments 等）",
+    params: [
+      {
+        name: "resource",
+        type: "string",
+        defaultValue: "todos",
+        required: false,
+        description: "资源名，如 todos、users、posts",
+      },
+      {
+        name: "id",
+        type: "string",
+        defaultValue: "1",
+        required: false,
+        description: "资源 ID",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 62,
+    name: "HTTP测试",
+    url: "https://httpbin.org/{path}",
+    method: "GET",
+    category: "开发",
+    description: "HTTP 请求/响应调试工具，回显请求头、客户端 IP、参数等信息",
+    params: [
+      {
+        name: "path",
+        type: "string",
+        defaultValue: "get",
+        required: false,
+        description: "端点路径，如 get、ip、headers、uuid",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 63,
+    name: "假数据(商品/用户)",
+    url: "https://dummyjson.com/{resource}/{id}",
+    method: "GET",
+    category: "开发",
+    description: "提供商品、用户、购物车等结构化假数据，适合前端开发联调",
+    params: [
+      {
+        name: "resource",
+        type: "string",
+        defaultValue: "products",
+        required: false,
+        description: "资源名，如 products、users、carts",
+      },
+      {
+        name: "id",
+        type: "string",
+        defaultValue: "1",
+        required: false,
+        description: "资源 ID",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 64,
+    name: "假电商数据",
+    url: "https://fakestoreapi.com/products/{id}",
+    method: "GET",
+    category: "数据",
+    description: "提供电商场景的假商品数据（含价格、图片、分类），用于演示与测试",
+    params: [
+      {
+        name: "id",
+        type: "string",
+        defaultValue: "1",
+        required: false,
+        description: "商品 ID，留空可不传以获取列表",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 65,
+    name: "趣味占位文本",
+    url: "https://baconipsum.com/api/?type={type}&sentences={sentences}",
+    method: "GET",
+    category: "工具",
+    description: "生成以培根为主题的趣味占位文本（Lorem Ipsum 变体），返回纯文本",
+    params: [
+      {
+        name: "type",
+        type: "string",
+        defaultValue: "all-meat",
+        required: false,
+        description: "文本类型，如 all-meat、meat-and-filler",
+      },
+      {
+        name: "sentences",
+        type: "number",
+        defaultValue: "1",
+        required: false,
+        description: "生成句子数量",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 66,
+    name: "真随机数",
+    url: "https://www.random.org/integers/?num={num}&min={min}&max={max}&col=1&base=10&format=plain&rnd=new",
+    method: "GET",
+    category: "工具",
+    description: "基于大气噪声生成真随机数，返回指定范围的随机整数（纯文本）",
+    params: [
+      {
+        name: "num",
+        type: "number",
+        defaultValue: "1",
+        required: false,
+        description: "生成随机数的个数",
+      },
+      {
+        name: "min",
+        type: "number",
+        defaultValue: "1",
+        required: false,
+        description: "最小值",
+      },
+      {
+        name: "max",
+        type: "number",
+        defaultValue: "100",
+        required: false,
+        description: "最大值",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 67,
+    name: "当前时间日期",
+    url: "https://timeapi.io/api/Time/current/zone?timeZone={timeZone}",
+    method: "GET",
+    category: "工具",
+    description: "根据 IANA 时区返回当前的日期、时间、星期与 Unix 时间戳",
+    params: [
+      {
+        name: "timeZone",
+        type: "string",
+        defaultValue: "Asia/Shanghai",
+        required: false,
+        description: "IANA 时区，如 Asia/Shanghai、Europe/London",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 68,
+    name: "公网IP查询 (ipify)",
+    url: "https://api.ipify.org?format=json",
+    method: "GET",
+    category: "地理",
+    description: "获取当前设备的公网 IP 地址，无需 Key、支持 CORS",
+    params: [
+      {
+        name: "format",
+        type: "string",
+        defaultValue: "json",
+        required: false,
+        description: "返回格式，json 或 text",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 69,
+    name: "IP地理定位 (geojs)",
+    url: "https://get.geojs.io/v1/ip/geo/{ip}.json",
+    method: "GET",
+    category: "地理",
+    description: "根据 IP 查询国家、城市、经纬度等地理位置信息",
+    params: [
+      {
+        name: "ip",
+        type: "string",
+        defaultValue: "",
+        required: false,
+        description: "目标 IP，留空则查询请求者自身 IP",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 70,
+    name: "IP信息查询 (ip.sb)",
+    url: "https://api.ip.sb/geoip/{ip}",
+    method: "GET",
+    category: "地理",
+    description: "根据 IP 查询 ASN、城市、经纬度等网络与地理信息",
+    params: [
+      {
+        name: "ip",
+        type: "string",
+        defaultValue: "",
+        required: false,
+        description: "目标 IP，留空则查询请求者自身 IP",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 71,
+    name: "IP归属国家 (country.is)",
+    url: "https://api.country.is/{ip}",
+    method: "GET",
+    category: "地理",
+    description: "根据 IP 快速查询所属 ISO 国家代码",
+    params: [
+      {
+        name: "ip",
+        type: "string",
+        defaultValue: "",
+        required: false,
+        description: "目标 IP，留空则查询请求者自身 IP",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 72,
+    name: "天气预报 (Open-Meteo)",
+    url: "https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true",
+    method: "GET",
+    category: "地理",
+    description: "免 Key 的天气预报，支持当前、逐小时与逐日数据",
+    params: [
+      {
+        name: "latitude",
+        type: "number",
+        defaultValue: "39.9042",
+        required: true,
+        description: "纬度，如北京 39.9042",
+      },
+      {
+        name: "longitude",
+        type: "number",
+        defaultValue: "116.4074",
+        required: true,
+        description: "经度，如北京 116.4074",
+      },
+      {
+        name: "current_weather",
+        type: "string",
+        defaultValue: "true",
+        required: false,
+        description: "是否返回当前天气",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 73,
+    name: "地理编码 (Open-Meteo)",
+    url: "https://geocoding-api.open-meteo.com/v1/search?name={name}&count=1",
+    method: "GET",
+    category: "地理",
+    description: "按城市/地名搜索并返回经纬度等地理编码结果",
+    params: [
+      {
+        name: "name",
+        type: "string",
+        defaultValue: "Beijing",
+        required: true,
+        description: "要搜索的地名或城市",
+      },
+      {
+        name: "count",
+        type: "number",
+        defaultValue: "1",
+        required: false,
+        description: "返回结果数量",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 74,
+    name: "邮编查位置 (Zippopotam)",
+    url: "https://api.zippopotam.us/{country}/{postcode}",
+    method: "GET",
+    category: "地理",
+    description: "通过邮编查询地理位置，支持多国（us/de/gb 等）",
+    params: [
+      {
+        name: "country",
+        type: "string",
+        defaultValue: "us",
+        required: true,
+        description: "国家代码，如 us、de、gb",
+      },
+      {
+        name: "postcode",
+        type: "string",
+        defaultValue: "90210",
+        required: true,
+        description: "邮政编码",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 75,
+    name: "英国邮编查询 (postcodes.io)",
+    url: "https://api.postcodes.io/postcodes/{postcode}",
+    method: "GET",
+    category: "地理",
+    description: "查询英国邮编对应的经纬度、地区与行政区划",
+    params: [
+      {
+        name: "postcode",
+        type: "string",
+        defaultValue: "SW1A1AA",
+        required: true,
+        description: "英国邮政编码",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 76,
+    name: "日出日落时间",
+    url: "https://api.sunrise-sunset.org/json?lat={lat}&lng={lng}",
+    method: "GET",
+    category: "地理",
+    description: "根据经纬度查询指定日期的日出、日落与黄金时刻",
+    params: [
+      {
+        name: "lat",
+        type: "number",
+        defaultValue: "36.72",
+        required: true,
+        description: "纬度",
+      },
+      {
+        name: "lng",
+        type: "number",
+        defaultValue: "-94.84",
+        required: true,
+        description: "经度",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 77,
+    name: "汇率换算 (Frankfurter)",
+    url: "https://api.frankfurter.app/latest?from={from}&to={to}",
+    method: "GET",
+    category: "地理",
+    description: "基于欧洲央行数据的免 Key 汇率换算",
+    params: [
+      {
+        name: "from",
+        type: "string",
+        defaultValue: "USD",
+        required: false,
+        description: "源货币代码，如 USD",
+      },
+      {
+        name: "to",
+        type: "string",
+        defaultValue: "CNY",
+        required: false,
+        description: "目标货币代码，如 CNY，可多选用逗号分隔",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 78,
+    name: "实时汇率 (ExchangeRate)",
+    url: "https://open.er-api.com/v6/latest/{base}",
+    method: "GET",
+    category: "地理",
+    description: "免 Key 的实时多币种汇率，返回以 base 为基准的全部汇率",
+    params: [
+      {
+        name: "base",
+        type: "string",
+        defaultValue: "USD",
+        required: true,
+        description: "基准货币代码，如 USD、CNY",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 79,
+    name: "维基百科摘要",
+    url: "https://en.wikipedia.org/api/rest_v1/page/summary/{title}",
+    method: "GET",
+    category: "数据",
+    description: "获取维基百科词条的标题、简介与缩略图，无需 Key、支持 CORS",
+    params: [
+      {
+        name: "title",
+        type: "string",
+        defaultValue: "NASA",
+        required: true,
+        description: "词条标题，支持空格（会自动编码），如 Albert Einstein",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 80,
+    name: "免费英语词典",
+    url: "https://api.dictionaryapi.dev/api/v2/entries/en/{word}",
+    method: "GET",
+    category: "数据",
+    description: "查询英语单词的发音、词性与释义，基于 Wiktionary，支持 CORS",
+    params: [
+      {
+        name: "word",
+        type: "string",
+        defaultValue: "hello",
+        required: true,
+        description: "要查询的英文单词",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 81,
+    name: "大都会艺术博物馆",
+    url: "https://collectionapi.metmuseum.org/public/collection/v1/objects/{id}",
+    method: "GET",
+    category: "数据",
+    description: "按编号获取纽约大都会博物馆藏品信息（作者、年代、高清图片）",
+    params: [
+      {
+        name: "id",
+        type: "string",
+        defaultValue: "1",
+        required: true,
+        description: "藏品编号，可先用 /public/collection/v1/objects 获取全部编号列表",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 82,
+    name: "太空新闻",
+    url: "https://api.spaceflightnewsapi.net/v4/articles/",
+    method: "GET",
+    category: "数据",
+    description: "获取最新太空与航天新闻文章（标题、摘要、来源、图片）",
+    params: [
+      {
+        name: "search",
+        type: "string",
+        defaultValue: "",
+        required: false,
+        description: "关键词搜索，留空返回最新文章列表",
+      },
+      {
+        name: "limit",
+        type: "number",
+        defaultValue: "10",
+        required: false,
+        description: "返回文章数量上限",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 83,
+    name: "火箭发射计划",
+    url: "https://ll.thespacedevs.com/2.2.0/launch/upcoming/",
+    method: "GET",
+    category: "数据",
+    description: "获取即将进行的全球火箭发射计划（时间、火箭、发射台）",
+    params: [
+      {
+        name: "limit",
+        type: "number",
+        defaultValue: "5",
+        required: false,
+        description: "返回发射条目数量上限",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 84,
+    name: "音乐百科 MusicBrainz",
+    url: "https://musicbrainz.org/ws/2/recording/?query={query}&fmt=json",
+    method: "GET",
+    category: "数据",
+    description: "搜索音乐录音/曲目信息（艺人、专辑、发行信息），免费开放数据",
+    params: [
+      {
+        name: "query",
+        type: "string",
+        defaultValue: "Love",
+        required: true,
+        description: "曲目或艺人搜索关键词",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 85,
+    name: "单词联想 Datamuse",
+    url: "https://api.datamuse.com/words?rel_rhy={word}",
+    method: "GET",
+    category: "数据",
+    description: "按押韵/同义/关联等关系查询英文单词，适合写作与词汇扩展",
+    params: [
+      {
+        name: "word",
+        type: "string",
+        defaultValue: "test",
+        required: true,
+        description: "基准词；rel_rhy 表示查询与其押韵的单词",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 86,
+    name: "开放食物库",
+    url: "https://world.openfoodfacts.org/api/v2/product/{barcode}.json",
+    method: "GET",
+    category: "数据",
+    description: "按条形码查询食品的营养成分、配料与标签等开放数据",
+    params: [
+      {
+        name: "barcode",
+        type: "string",
+        defaultValue: "737628064502",
+        required: true,
+        description: "商品条形码（EAN/UPC）",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 87,
+    name: "圣经经文",
+    url: "https://bible-api.com/{reference}",
+    method: "GET",
+    category: "数据",
+    description: "按书卷章节获取圣经经文文本，支持多译本（如 ?translation=kjv）",
+    params: [
+      {
+        name: "reference",
+        type: "string",
+        defaultValue: "john 3:16",
+        required: true,
+        description: "经文引用，如 john 3:16 或 romans 8",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 88,
+    name: "电视节目搜索 TVMaze",
+    url: "https://api.tvmaze.com/search/shows?q={q}",
+    method: "GET",
+    category: "娱乐",
+    description: "搜索电视剧/节目信息，含剧情简介、评分与海报图片",
+    params: [
+      {
+        name: "q",
+        type: "string",
+        defaultValue: "batman",
+        required: true,
+        description: "节目名称搜索关键词",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 89,
+    name: "全球食谱",
+    url: "https://www.themealdb.com/api/json/v1/1/search.php?s={s}",
+    method: "GET",
+    category: "数据",
+    description: "按名称搜索全球食谱，返回食材、做法步骤与成品图片",
+    params: [
+      {
+        name: "s",
+        type: "string",
+        defaultValue: "chicken",
+        required: true,
+        description: "食谱名称关键词；用 s= 空字符串可随机浏览",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 90,
+    name: "CoinGecko 加密货币价格",
+    url: "https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies={vs}",
+    method: "GET",
+    category: "金融",
+    description: "查询指定加密货币的实时价格，免费无需 Key（公共接口有频率限制），支持 CORS",
+    params: [
+      {
+        name: "ids",
+        type: "string",
+        defaultValue: "bitcoin,ethereum",
+        required: true,
+        description: "币种 id，逗号分隔，如 bitcoin,ethereum,solana",
+      },
+      {
+        name: "vs",
+        type: "string",
+        defaultValue: "usd,cny",
+        required: false,
+        description: "计价货币，逗号分隔，如 usd,cny,eur",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 91,
+    name: "CoinPaprika 币种行情",
+    url: "https://api.coinpaprika.com/v1/tickers/{coinId}",
+    method: "GET",
+    category: "金融",
+    description: "查询单个加密货币的实时行情、市值与流通量，免费无 Key，支持 CORS",
+    params: [
+      {
+        name: "coinId",
+        type: "string",
+        defaultValue: "btc-bitcoin",
+        required: true,
+        description: "币种 id，如 btc-bitcoin、eth-ethereum",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 92,
+    name: "CoinPaprika 全球市场",
+    url: "https://api.coinpaprika.com/v1/global",
+    method: "GET",
+    category: "金融",
+    description: "全球加密货币市场总市值、24h 成交量与 BTC 占比，免费无 Key，支持 CORS",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 93,
+    name: "Kraken 行情",
+    url: "https://api.kraken.com/0/public/Ticker?pair={pair}",
+    method: "GET",
+    category: "金融",
+    description: "查询 Kraken 交易所指定交易对的实时买/卖价、成交量与最新成交价，支持 CORS",
+    params: [
+      {
+        name: "pair",
+        type: "string",
+        defaultValue: "XBTUSD",
+        required: true,
+        description: "交易对，如 XBTUSD、ETHUSD、XBT EUR",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 94,
+    name: "Blockchain.info BTC 汇率",
+    url: "https://blockchain.info/ticker",
+    method: "GET",
+    category: "金融",
+    description: "比特币对各法币的实时汇率（含 15 分钟价与最新价），免费无 Key，支持 CORS",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 95,
+    name: "Frankfurter ECB 汇率",
+    url: "https://api.frankfurter.dev/v1/latest?base={base}&symbols={symbols}",
+    method: "GET",
+    category: "金融",
+    description: "欧洲央行（ECB）每日参考汇率，免费无 Key，支持 CORS",
+    params: [
+      {
+        name: "base",
+        type: "string",
+        defaultValue: "USD",
+        required: false,
+        description: "基准货币，如 USD、EUR",
+      },
+      {
+        name: "symbols",
+        type: "string",
+        defaultValue: "CNY,EUR",
+        required: false,
+        description: "目标货币，逗号分隔，如 CNY,EUR,GBP",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 96,
+    name: "NBP 波兰央行汇率",
+    url: "https://api.nbp.pl/api/exchangerates/rates/{table}/{code}/?format=json",
+    method: "GET",
+    category: "金融",
+    description: "波兰国家银行（NBP）发布的官方汇率，免费无 Key，支持 CORS",
+    params: [
+      {
+        name: "table",
+        type: "string",
+        defaultValue: "A",
+        required: false,
+        description: "汇率表：A（主要货币）、B（次要货币）、C（非交割远期）",
+      },
+      {
+        name: "code",
+        type: "string",
+        defaultValue: "USD",
+        required: true,
+        description: "货币代码，如 USD、EUR、GBP",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 97,
+    name: "Gold-API 贵金属价格",
+    url: "https://api.gold-api.com/price/{symbol}",
+    method: "GET",
+    category: "金融",
+    description: "实时黄金/贵金属价格（美元/盎司），免费无 Key，支持 CORS",
+    params: [
+      {
+        name: "symbol",
+        type: "string",
+        defaultValue: "XAU",
+        required: false,
+        description: "金属代码：XAU=黄金，XAG=白银，XPT=铂金，XPD=钯金",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 98,
+    name: "随机古诗词",
+    url: "https://poetry.palemoky.com/api/poems/random",
+    method: "GET",
+    category: "中文",
+    description: "诗泉随机古诗词接口，收录约37万首唐诗宋词元曲，返回标题、作者与正文数组，免费无需Key，支持CORS。",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 99,
+    name: "中文诗歌(唐诗)",
+    url: "https://api.timelessq.com/poetry",
+    method: "GET",
+    category: "中文",
+    description: "Timeless公共API·中文诗歌，随机/分页返回唐诗宋词（含作者、正文、标签），免费无需Key，支持CORS。",
+    params: [
+      {
+        name: "page",
+        type: "number",
+        defaultValue: "1",
+        required: false,
+        description: "页码，每页10条",
+      },
+      {
+        name: "pageSize",
+        type: "number",
+        defaultValue: "10",
+        required: false,
+        description: "每页条数",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 100,
+    name: "成语查询",
+    url: "https://api.timelessq.com/idiom",
+    method: "GET",
+    category: "中文",
+    description: "Timeless公共API·成语大全，3万+词库，返回拼音、释义、出处、近义词、反义词、例句等，免费无需Key，支持CORS。",
+    params: [
+      {
+        name: "wd",
+        type: "string",
+        defaultValue: "一心一意",
+        required: false,
+        description: "要查询的成语关键词",
+      },
+      {
+        name: "page",
+        type: "number",
+        defaultValue: "1",
+        required: false,
+        description: "页码",
+      },
+      {
+        name: "pageSize",
+        type: "number",
+        defaultValue: "10",
+        required: false,
+        description: "每页条数",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 101,
+    name: "毒鸡汤",
+    url: "https://api.oddfar.com/yl/q.php",
+    method: "GET",
+    category: "中文",
+    description: "奇远语录接口·毒鸡汤，句句“治愈”人心，免费无需Key，支持CORS。",
+    params: [
+      {
+        name: "c",
+        type: "string",
+        defaultValue: "1007",
+        required: true,
+        description: "句子类型，1007=毒鸡汤",
+      },
+      {
+        name: "encode",
+        type: "string",
+        defaultValue: "json",
+        required: false,
+        description: "返回编码 text / json",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 102,
+    name: "早安心语",
+    url: "https://api.qqsuu.cn/api/dm-zaoan",
+    method: "GET",
+    category: "中文",
+    description: "趣API·每日早安心语，返回温馨正能量短句，免费无需Key，支持CORS。",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 103,
+    name: "晚安心语",
+    url: "https://api.qqsuu.cn/api/dm-wanan",
+    method: "GET",
+    category: "中文",
+    description: "趣API·每日晚安心语，返回暖心短句，免费无需Key，支持CORS。",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 104,
+    name: "舔狗日记",
+    url: "https://api.qqsuu.cn/api/dm-tiangou",
+    method: "GET",
+    category: "中文",
+    description: "趣API·舔狗日记，返回搞笑自嘲短句，免费无需Key，支持CORS。",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 105,
+    name: "随机歇后语",
+    url: "https://api.vvhan.com/api/xiehou",
+    method: "GET",
+    category: "中文",
+    description: "VVHan公共API·随机歇后语（谜面+谜底）。国内可直连、免费无需Key、支持CORS；本沙箱环境（海外节点）无法连通，未在沙箱验证CORS，建议在国内环境二次确认。",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 106,
+    name: "npm 包信息",
+    url: "https://registry.npmjs.org/{package}",
+    method: "GET",
+    category: "开发",
+    description: "获取 npm 包的完整元数据，包括版本、依赖、描述与维护者信息。",
+    params: [
+      {
+        name: "package",
+        type: "string",
+        defaultValue: "vue",
+        required: true,
+        description: "npm 包名，例如 vue、react、express",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 107,
+    name: "npm 下载量",
+    url: "https://api.npmjs.org/downloads/point/{period}/{package}",
+    method: "GET",
+    category: "开发",
+    description: "获取 npm 包在指定时间段内的下载量统计数据。",
+    params: [
+      {
+        name: "period",
+        type: "string",
+        defaultValue: "last-week",
+        required: true,
+        description: "统计周期：last-day / last-week / last-month / last-year",
+      },
+      {
+        name: "package",
+        type: "string",
+        defaultValue: "vue",
+        required: true,
+        description: "npm 包名",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 108,
+    name: "jsDelivr 包版本",
+    url: "https://data.jsdelivr.com/v1/package/npm/{name}",
+    method: "GET",
+    category: "开发",
+    description: "获取 npm 包在 jsDelivr CDN 上的全部版本、标签与发布时间信息。",
+    params: [
+      {
+        name: "name",
+        type: "string",
+        defaultValue: "vue",
+        required: true,
+        description: "npm 包名",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 109,
+    name: "cdnjs 库信息",
+    url: "https://api.cdnjs.com/libraries/{name}",
+    method: "GET",
+    category: "开发",
+    description: "获取 cdnjs 上前端开源库的版本列表与文件资源信息。",
+    params: [
+      {
+        name: "name",
+        type: "string",
+        defaultValue: "vue",
+        required: true,
+        description: "cdnjs 库名，例如 vue、jquery、lodash",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 110,
+    name: "GitHub 仓库信息",
+    url: "https://api.github.com/repos/{owner}/{repo}",
+    method: "GET",
+    category: "开发",
+    description: "获取指定 GitHub 仓库的详细信息，包括星标数、描述、主要语言等。",
+    params: [
+      {
+        name: "owner",
+        type: "string",
+        defaultValue: "vuejs",
+        required: true,
+        description: "仓库所有者（组织或用户名）",
+      },
+      {
+        name: "repo",
+        type: "string",
+        defaultValue: "core",
+        required: true,
+        description: "仓库名称",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 111,
+    name: "GitHub 仓库搜索",
+    url: "https://api.github.com/search/repositories?q={keyword}",
+    method: "GET",
+    category: "开发",
+    description: "按关键词搜索 GitHub 公开仓库，返回匹配结果与排序信息。",
+    params: [
+      {
+        name: "keyword",
+        type: "string",
+        defaultValue: "vue",
+        required: true,
+        description: "搜索关键词，可附加语言/星标等限定，如 vue+language:typescript",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 112,
+    name: "GitHub 状态页",
+    url: "https://www.githubstatus.com/api/v2/status.json",
+    method: "GET",
+    category: "开发",
+    description: "获取 GitHub 各项服务的实时运行状态、事件与历史可用性。",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 113,
+    name: "shields 徽章",
+    url: "https://img.shields.io/badge/{label}-{message}-{color}",
+    method: "GET",
+    category: "开发",
+    description: "生成自定义静态 shields 徽章图片（SVG），常用于项目 README。",
+    params: [
+      {
+        name: "label",
+        type: "string",
+        defaultValue: "build",
+        required: true,
+        description: "徽章左侧标签文本",
+      },
+      {
+        name: "message",
+        type: "string",
+        defaultValue: "passing",
+        required: true,
+        description: "徽章右侧消息文本",
+      },
+      {
+        name: "color",
+        type: "string",
+        defaultValue: "brightgreen",
+        required: false,
+        description: "右侧颜色，如 brightgreen / blue / red / orange / lightgrey",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 114,
+    name: "Hacker News 热门",
+    url: "https://hacker-news.firebaseio.com/v0/topstories.json",
+    method: "GET",
+    category: "开发",
+    description: "获取 Hacker News 当前热门故事的 ID 列表，可配合 item 接口获取详情。",
+    params: [
+
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 115,
+    name: "Stack Exchange 站点信息",
+    url: "https://api.stackexchange.com/2.3/info?site={site}",
+    method: "GET",
+    category: "开发",
+    description: "获取指定 Stack Exchange 站点（如 Stack Overflow）的元信息与统计概况。",
+    params: [
+      {
+        name: "site",
+        type: "string",
+        defaultValue: "stackoverflow",
+        required: true,
+        description: "站点标识，如 stackoverflow / superuser / serverfault",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
+  {
+    id: 116,
+    name: "JSONPlaceholder 用户",
+    url: "https://jsonplaceholder.typicode.com/users/{id}",
+    method: "GET",
+    category: "开发",
+    description: "获取 JSONPlaceholder 提供的模拟用户数据，适用于接口联调与前端测试。",
+    params: [
+      {
+        name: "id",
+        type: "string",
+        defaultValue: "1",
+        required: false,
+        description: "用户 ID（1-10），留空则返回全部用户列表",
+      }
+    ],
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  },
 ]
