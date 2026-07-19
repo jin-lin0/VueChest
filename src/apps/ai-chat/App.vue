@@ -133,6 +133,22 @@ const switchSession = (id: string) => {
   loadMessages(id)
 }
 
+const deleteSession = (id: string) => {
+  const idx = sessions.value.findIndex((s) => s.id === id)
+  if (idx === -1) return
+  sessions.value.splice(idx, 1)
+  if (currentSessionId.value === id) {
+    if (sessions.value.length > 0) {
+      currentSessionId.value = sessions.value[0].id
+      loadMessages(currentSessionId.value)
+    } else {
+      currentSessionId.value = null
+      currentMessages.value = []
+    }
+  }
+  saveSessions()
+}
+
 const saveSessions = () => {
   setStorage(AI_CHAT_SESSIONS_KEY, sessions.value)
 }
@@ -340,6 +356,18 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 }
 
+const clearCurrentChat = () => {
+  if (!currentSessionId.value) return
+  const id = currentSessionId.value
+  currentMessages.value = []
+  const sess = sessions.value.find((s) => s.id === id)
+  if (sess) {
+    sess.title = '新对话'
+    sess.updatedAt = Date.now()
+    saveSessions()
+  }
+}
+
 const autoResize = () => {
   if (textareaRef.value) {
     textareaRef.value.style.height = 'auto'
@@ -440,6 +468,22 @@ onUnmounted(() => {
           @click="switchSession(session.id)"
         >
           <div class="session-title">{{ getSessionTitle(session) }}</div>
+          <button
+            class="btn-delete"
+            @click.stop="deleteSession(session.id)"
+            title="删除对话（仅本地）"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
         <div v-if="sortedSessions.length === 0" class="session-empty">暂无对话</div>
       </div>
@@ -469,6 +513,21 @@ onUnmounted(() => {
           <CustomSelect v-model="selectedModel" :options="modelOptions" size="sm" />
         </div>
         <div class="header-actions">
+          <button class="btn-icon" @click="clearCurrentChat" title="清空对话（仅本地）">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path
+                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+              />
+            </svg>
+          </button>
           <button class="btn-icon" @click="showSettings = !showSettings" title="设置">
             <svg
               width="18"
@@ -752,6 +811,28 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   flex: 1;
   margin-right: 4px;
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  opacity: 0;
+  transition:
+    opacity 0.2s,
+    color 0.2s;
+}
+
+.session-item:hover .btn-delete {
+  opacity: 1;
+}
+
+.btn-delete:hover {
+  color: #ef4444;
 }
 
 .session-empty {
