@@ -6,6 +6,7 @@ import interview from '@/apps/interview'
 import stock from '@/apps/stock'
 import bilibiliSubtitle from '@/apps/bilibili-subtitle'
 import snake from '@/apps/snake'
+import jsonTransform from '@/apps/json-transform'
 
 export interface AppModule {
   id: number
@@ -26,6 +27,7 @@ function appDef(
 export const APP_MODULES: AppModule[] = [
   appDef(14, bilibiliSubtitle),
   appDef(13, snake),
+  appDef(15, jsonTransform),
   appDef(12, interview),
   appDef(11, racing),
   appDef(9, stock),

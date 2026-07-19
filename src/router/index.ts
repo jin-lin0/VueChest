@@ -89,6 +89,12 @@ const router = createRouter({
       meta: { title: '贪吃蛇' },
     },
     {
+      path: '/json-transform',
+      name: 'json-transform',
+      component: () => import('../apps/json-transform/App.vue'),
+      meta: { title: 'JSON 转换' },
+    },
+    {
       path: '/snake/local',
       name: 'snake-local',
       component: () => import('../apps/snake/views/LocalBattle.vue'),

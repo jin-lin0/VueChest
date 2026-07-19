@@ -1,5 +1,5 @@
 <template>
-  <div class="custom-select" :class="{ open: isOpen, disabled }" ref="selectRef">
+  <div class="custom-select" :class="{ open: isOpen, disabled, [`size-${props.size}`]: true }" ref="selectRef">
     <div class="select-trigger" @click="toggleDropdown" :class="{ active: isOpen }">
       <span class="trigger-content">
         <span class="trigger-icon" v-if="selectedOption?.icon">{{ selectedOption.icon }}</span>
@@ -12,43 +12,57 @@
       </span>
     </div>
     
-    <Transition name="dropdown">
-      <div class="select-dropdown" v-if="isOpen">
-        <div class="dropdown-search" v-if="searchable">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="搜索..."
-            class="search-input"
-            ref="searchInput"
-            @click.stop
-          />
-        </div>
-        <div class="dropdown-options" :class="{ 'has-search': searchable }">
-          <div
-            v-for="option in filteredOptions"
-            :key="option.value"
-            class="option-item"
-            :class="{
-              selected: model === option.value,
-              disabled: option.disabled
-            }"
-            @click="selectOption(option)"
-          >
-            <span class="option-icon" v-if="option.icon">{{ option.icon }}</span>
-            <span class="option-label">{{ option.label }}</span>
-            <span class="option-check" v-if="model === option.value">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M4 8L7 11L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
+    <Teleport to="body">
+      <Transition name="dropdown">
+        <div
+          class="select-dropdown"
+          v-if="isOpen"
+          ref="dropdownRef"
+          :style="dropdownStyle"
+          @click.stop
+        >
+          <div class="dropdown-search" v-if="searchable">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="搜索..."
+              class="search-input"
+              ref="searchInput"
+              @click.stop
+            />
           </div>
-          <div class="no-options" v-if="filteredOptions.length === 0">
-            暂无选项
+          <div class="dropdown-options" :class="{ 'has-search': searchable }">
+            <div
+              v-for="option in filteredOptions"
+              :key="option.value"
+              class="option-item"
+              :class="{
+                selected: model === option.value,
+                disabled: option.disabled
+              }"
+              @click="selectOption(option)"
+            >
+              <span class="option-icon" v-if="option.icon">{{ option.icon }}</span>
+              <slot
+                name="option"
+                :option="option"
+                :selected="model === option.value"
+              >
+                <span class="option-label">{{ option.label }}</span>
+                <span class="option-check" v-if="model === option.value">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 8L7 11L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </span>
+              </slot>
+            </div>
+            <div class="no-options" v-if="filteredOptions.length === 0">
+              暂无选项
+            </div>
           </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -70,11 +84,13 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   searchable?: boolean
   defaultFirst?: boolean
+  size?: 'sm' | 'md'
 }>(), {
   placeholder: '请选择',
   disabled: false,
   searchable: false,
   defaultFirst: false,
+  size: 'md',
 })
 
 const emit = defineEmits<{
@@ -83,8 +99,11 @@ const emit = defineEmits<{
 
 const selectRef = ref<HTMLElement>()
 const searchInput = ref<HTMLInputElement>()
+const dropdownRef = ref<HTMLElement>()
 const isOpen = ref(false)
 const searchQuery = ref('')
+// 下拉面板用 Teleport 送到 body，按触发器坐标 fixed 定位，避免被 overflow:auto 的弹窗裁切
+const dropdownStyle = ref<Record<string, string>>({})
 
 const selectedOption = computed(() => {
   if (model.value === null || model.value === undefined) return undefined
@@ -110,6 +129,28 @@ const toggleDropdown = () => {
   }
 }
 
+// 根据触发器位置计算下拉面板 fixed 定位；底部空间不足时自动上翻
+function positionDropdown() {
+  const el = selectRef.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  const width = r.width
+  let top = r.bottom + 8
+  const dd = dropdownRef.value
+  if (dd) {
+    const ddHeight = dd.offsetHeight
+    if (top + ddHeight > window.innerHeight && r.top - 8 - ddHeight > 0) {
+      top = r.top - 8 - ddHeight
+    }
+  }
+  dropdownStyle.value = {
+    position: 'fixed',
+    top: `${top}px`,
+    left: `${r.left}px`,
+    width: `${width}px`,
+  }
+}
+
 const selectOption = (option: SelectOption) => {
   if (option.disabled) return
   model.value = option.value
@@ -128,8 +169,14 @@ const handleClickOutside = (event: MouseEvent) => {
 watch(isOpen, (val) => {
   if (val) {
     document.addEventListener('click', handleClickOutside)
+    // 弹窗/页面滚动或窗口尺寸变化时让下拉跟随触发器
+    window.addEventListener('scroll', positionDropdown, true)
+    window.addEventListener('resize', positionDropdown)
+    nextTick(positionDropdown)
   } else {
     document.removeEventListener('click', handleClickOutside)
+    window.removeEventListener('scroll', positionDropdown, true)
+    window.removeEventListener('resize', positionDropdown)
     searchQuery.value = ''
   }
 })
@@ -146,6 +193,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', positionDropdown, true)
+  window.removeEventListener('resize', positionDropdown)
 })
 </script>
 
@@ -186,6 +235,22 @@ onUnmounted(() => {
   background: var(--bg-subtle);
 }
 
+/* 紧凑尺寸：高度/圆角/字号对齐页面普通按钮 */
+.custom-select.size-sm .select-trigger {
+  padding: 0.5rem 0.85rem;
+  min-height: 34px;
+  border-width: 1px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+.custom-select.size-sm .trigger-text {
+  font-size: 0.85rem;
+}
+.custom-select.size-sm .trigger-arrow svg {
+  width: 10px;
+  height: 10px;
+}
+
 .trigger-content {
   display: flex;
   align-items: center;
@@ -220,16 +285,13 @@ onUnmounted(() => {
   color: var(--accent);
 }
 
-/* 下拉面板 */
+/* 下拉面板（已 Teleport 到 body，按触发器坐标 fixed 定位） */
 .select-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
+  position: fixed;
   background: var(--bg-card);
   border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 2px 10px rgba(0, 0, 0, 0.08);
-  z-index: 1000;
+  z-index: 2000;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
@@ -266,6 +328,9 @@ onUnmounted(() => {
   max-height: 280px;
   overflow-y: auto;
   padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .dropdown-options.has-search {
@@ -292,7 +357,7 @@ onUnmounted(() => {
 .option-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 10px 12px;
   border-radius: 10px;
   cursor: pointer;
@@ -343,6 +408,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
 }
+
+/* 行内操作（删除/改名/编辑态）由调用方通过 #option 插槽自定义，样式亦由调用方提供 */
 
 .no-options {
   padding: 20px;

@@ -38,7 +38,15 @@ const formData = ref<Partial<ApiItem>>({
 })
 
 const loadApis = (): ApiItem[] => {
-  return getStorage<ApiItem[]>('apis', defaultApis) || defaultApis
+  // [api-manager-merge-seed]
+  const stored = getStorage<ApiItem[]>('apis', null)
+  if (!Array.isArray(stored)) return defaultApis
+  const storedUrls = new Set(stored.map((a) => a.url))
+  const merged = stored.filter(Boolean)
+  for (const d of defaultApis) {
+    if (!storedUrls.has(d.url)) merged.push(d)
+  }
+  return merged
 }
 
 const saveApis = () => {
