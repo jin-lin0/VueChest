@@ -2,7 +2,7 @@
 
 VueChest 是一个**个人 Web "百宝箱"（chest）/工作空间**：它把多个常用的小工具与娱乐应用聚合在同一个站点中，并内置一个**应用市场（Market）**，让你可以像装浏览器插件一样，把自己或他人开发的轻量应用装进 VueChest 里使用。
 
-VueChest 本身是一个运行在浏览器中的单页应用（SPA），无需在本地安装任何客户端，打开网页即可使用。
+VueChest 本身是一个运行在浏览器中的单页应用（SPA），无需在本地安装任何客户端，打开网页即可使用。它**完全免费、无广告**，由作者个人维护；如果你觉得好用，欢迎通过底部的"打赏支持"表达一份心意（见 [给站主打赏](./site-donate.md)）。
 
 ## VueChest 能做什么
 
@@ -38,6 +38,8 @@ VueChest 提供账号与登录能力：
 - [账号与登录](./account.md)
 - [如何上传应用到市场](./market-upload.md)
 - [应用包开发规范](./market-spec.md)
+- [市场应用可用能力](./market-capabilities.md)
+- [主题变量与深色模式](./theme-variables.md)
 - [审核与发布流程](./market-review.md)
 - [安装与使用](./market-install.md)
 - [注意事项](./market-notes.md)

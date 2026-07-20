@@ -4,10 +4,13 @@ import gettingStarted from './getting-started.md?raw'
 import account from './account.md?raw'
 import marketUpload from './market-upload.md?raw'
 import marketSpec from './market-spec.md?raw'
+import marketCapabilities from './market-capabilities.md?raw'
+import themeVariables from './theme-variables.md?raw'
 import marketReview from './market-review.md?raw'
 import marketInstall from './market-install.md?raw'
 import marketNotes from './market-notes.md?raw'
 import faq from './faq.md?raw'
+import siteDonate from './site-donate.md?raw'
 
 /**
  * 文档注册表：按分类组织。
@@ -29,6 +32,8 @@ export const docSections: DocSection[] = [
     items: [
       { id: 'market-upload', title: '如何上传应用到市场', content: marketUpload },
       { id: 'market-spec', title: '应用包开发规范', content: marketSpec },
+      { id: 'market-capabilities', title: '市场应用可用能力', content: marketCapabilities },
+      { id: 'theme-variables', title: '主题变量与深色模式', content: themeVariables },
       { id: 'market-review', title: '审核与发布流程', content: marketReview },
       { id: 'market-install', title: '安装与使用', content: marketInstall },
       { id: 'market-notes', title: '注意事项', content: marketNotes },
@@ -38,6 +43,11 @@ export const docSections: DocSection[] = [
     id: 'faq',
     title: '常见问题',
     items: [{ id: 'faq', title: '常见问题 FAQ', content: faq }],
+  },
+  {
+    id: 'about',
+    title: '关于本站',
+    items: [{ id: 'site-donate', title: '给站主打赏', content: siteDonate }],
   },
 ]
 

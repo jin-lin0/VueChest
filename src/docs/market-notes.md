@@ -5,10 +5,13 @@
 ## 1. 文件格式与大小限制
 
 - 应用包**必须是 `.js`（IIFE 格式）**，且**大小不能超过 10MB**。
-- 这是**前端约束**：前端会在提交前拦截超大文件或非 `.js` 文件，使其无法进入提交流程。
-- 代码中的判断逻辑为：`if (file.size > 10 * 1024 * 1024) error = '应用包不能超过 10MB'`。
+- 前端会在提交前拦截超大文件或非 `.js` 文件：`if (file.size > 10 * 1024 * 1024) error = '应用包不能超过 10MB'`，文件框限制 `accept=".js"`。
+- **服务端同样会强制校验**，且不止一处：
+  1. 申请预签名 `POST /api/uploads/presign` 时校验 `contentType`（须为 JS 类型）与 `size`（整数、>0、≤10MB）。
+  2. `POST /api/uploads/complete` 时用对象存储的实际大小再次核对 ≤10MB，超限会删除文件并报错。
+  3. `POST /api/market/apps` 创建记录时，再次读取对象大小核对 ≤10MB。
 
-> 注意：虽然代码里**未见服务端强制校验**，但仍请自觉遵守。请勿试图绕过前端限制提交不符合规范的包。
+> 结论：10MB 是**前后端双重强制约束**，无法通过绕过前端来提交超大包。
 
 ## 2. 安全性（非常重要）
 
@@ -22,10 +25,12 @@
 
 ## 3. 必须正确导出定义
 
-应用包必须正确导出 `default.{component, route, meta}`：
+应用包必须正确导出 `default.{component, route, meta}`。校验分两个阶段：
 
-- 缺少其中任一字段，上传时会提示"**无法解析应用包**"。
-- 宿主侧读取 `window.MarketApp` 后，会校验 `default` 是否同时包含 `component && route && meta`，否则抛出 `Invalid market app definition`。
+- **上传解析阶段**（`extractMetaFromBundle`）：只要能取到 `meta` 即算解析成功、回填应用信息；取不到 `meta` 才提示"**无法解析应用包**"。也就是说，即便缺 `component / route`，只要有 `meta`，上传解析仍可能通过。
+- **安装 / 恢复阶段**（`loadMarketApp`）：若缺少 `component / route / meta` 中任一项，会在控制台 `console.warn('Invalid market app definition')` 并**返回 `null`（不抛异常）**，导致应用无法注册路由、无法使用。
+
+因此请务必三者齐全，避免"能上传却装不了"的情况。
 
 ## 4. Vue 必须外部化
 
@@ -55,6 +60,8 @@
 ## 相关文档
 
 - [应用包开发规范](./market-spec.md)
+- [市场应用可用能力](./market-capabilities.md)
+- [主题变量与深色模式](./theme-variables.md)
 - [如何上传应用到市场](./market-upload.md)
 - [安装与使用](./market-install.md)
 - [常见问题 FAQ](./faq.md)

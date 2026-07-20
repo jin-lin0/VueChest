@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { docSections, allDocs, findDoc } from '../docs'
 import { useTheme } from '../composables/useTheme'
 import { renderMarkdown } from '@/lib/markdown'
+import { DonatePanel, DonorsWall } from '@/components'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,11 +60,7 @@ function onContentClick(e: MouseEvent) {
     <div class="docs-body">
       <aside class="docs-sidebar">
         <nav>
-          <section
-            v-for="section in docSections"
-            :key="section.id"
-            class="docs-nav-section"
-          >
+          <section v-for="section in docSections" :key="section.id" class="docs-nav-section">
             <h3 class="docs-nav-title">{{ section.title }}</h3>
             <ul class="docs-nav-list">
               <li v-for="item in section.items" :key="item.id">
@@ -81,12 +78,16 @@ function onContentClick(e: MouseEvent) {
       </aside>
 
       <main class="docs-content-wrap">
+        <DonatePanel v-if="activeDoc.id === 'site-donate'" :show-wall="false" class="docs-donate" />
+
         <article
           class="docs-content"
           ref="contentRef"
           v-html="html"
           @click="onContentClick"
         ></article>
+
+        <DonorsWall v-if="activeDoc.id === 'site-donate'" class="docs-donate" />
       </main>
     </div>
   </div>
@@ -226,8 +227,20 @@ function onContentClick(e: MouseEvent) {
 .docs-content-wrap {
   padding: var(--space-8) var(--space-8);
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   min-width: 0;
+}
+.docs-donate {
+  width: 100%;
+  max-width: 820px;
+  min-width: 0;
+  margin-top: var(--space-6);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-sm);
 }
 .docs-content {
   width: 100%;

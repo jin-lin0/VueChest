@@ -724,8 +724,7 @@ onUnmounted(() => {
 <style scoped>
 .chat-page {
   display: flex;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
   background: var(--bg-page);
   overflow: hidden;
 }

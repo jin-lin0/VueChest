@@ -1,14 +1,27 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useMusicStore } from '@/stores'
 
 defineOptions({ name: 'MusicPlayer' })
 
 const music = useMusicStore()
 
+// 沉浸式游戏页（全屏 canvas）隐藏播放条，避免遮挡游戏画面
+const route = useRoute()
+const GAME_ROUTE_PREFIXES = ['/snake', '/racing']
+const isGameRoute = computed(() => GAME_ROUTE_PREFIXES.some((p) => route.path.startsWith(p)))
+
+// 播放条显示条件：有歌曲 + 未关闭 + 不在游戏页
+const showBar = computed(() => music.playerBarVisible && !!music.activeSong && !isGameRoute.value)
+
+// 播放条作为 App.vue 外壳的 flex 兄弟节点钉在底部（见 App.vue 的 .app / .app-main 布局），
+// 预留空间只在根布局发生一次，本组件不再操作 body / 不再向各页面注入逻辑。
+
 // --- Refs ---
 const audioRef = ref<HTMLAudioElement | null>(null)
 const showLyrics = ref(false)
+const drawerTab = ref<'playlist' | 'simi'>('playlist')
 const progressDragging = ref(false)
 const progressPercent = ref(0)
 const lyricContainerRef = ref<HTMLDivElement | null>(null)
@@ -175,7 +188,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
 })
-
 </script>
 
 <template>
@@ -188,10 +200,19 @@ onUnmounted(() => {
     >
       <div class="playlist-drawer">
         <div class="drawer-header">
-          <h3>播放列表 ({{ music.playlist.length }})</h3>
-          <button @click="music.showPlaylist = false">&times;</button>
+          <div class="drawer-tabs">
+            <button :class="{ active: drawerTab === 'playlist' }" @click="drawerTab = 'playlist'">
+              播放列表 ({{ music.playlist.length }})
+            </button>
+            <button :class="{ active: drawerTab === 'simi' }" @click="drawerTab = 'simi'">
+              相似推荐
+            </button>
+          </div>
+          <button class="drawer-close" @click="music.showPlaylist = false">&times;</button>
         </div>
-        <div class="drawer-body">
+
+        <!-- 播放列表 -->
+        <div v-if="drawerTab === 'playlist'" class="drawer-body">
           <div v-if="music.playlist.length === 0" class="empty-state">播放列表为空</div>
           <div
             v-for="(song, index) in music.playlist"
@@ -210,13 +231,45 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
+
+        <!-- 相似推荐 -->
+        <div v-else class="drawer-body">
+          <div v-if="music.isLoadingSimi" class="drawer-loading">加载中...</div>
+          <div v-else-if="music.simiSongs.length === 0" class="empty-state">暂无相似歌曲推荐</div>
+          <div
+            v-for="(song, index) in music.simiSongs"
+            :key="song.id"
+            class="song-item"
+            :class="{ playing: music.activeSong?.id === song.id }"
+            @click="music.playSong(song, music.simiSongs)"
+          >
+            <img
+              v-if="song.coverUrl"
+              :src="song.coverUrl + '?param=80y80'"
+              class="simi-cover"
+              alt=""
+              loading="lazy"
+            />
+            <div class="song-info">
+              <div class="song-name">{{ song.name }}</div>
+              <div class="song-artist">{{ song.artists }}</div>
+            </div>
+            <button
+              class="remove-btn"
+              :class="{ favorited: music.isFavoriteSong(song.id) }"
+              @click.stop="music.toggleFavoriteSong(song)"
+            >
+              {{ music.isFavoriteSong(song.id) ? '❤️' : '🤍' }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </Transition>
 
   <template v-if="music.playerBarVisible && music.activeSong">
-    <!-- Player bar -->
-    <div class="player-bar">
+    <!-- Player bar（游戏页用 v-show 隐藏，但 audio 仍挂载、音乐继续播放）-->
+    <div class="player-bar" v-show="!isGameRoute">
       <!-- Progress bar -->
       <div class="progress-bar-container" @mousedown="onProgressMouseDown">
         <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
@@ -419,7 +472,11 @@ onUnmounted(() => {
 
     <!-- Lyrics overlay -->
     <Transition name="lyrics-fade">
-      <div v-if="showLyrics" class="lyrics-overlay" @click.self="showLyrics = false">
+      <div
+        v-if="showLyrics && !isGameRoute"
+        class="lyrics-overlay"
+        @click.self="showLyrics = false"
+      >
         <div class="lyrics-panel">
           <div class="lyrics-header">
             <h2>{{ music.activeSong.name }}</h2>
@@ -463,12 +520,13 @@ onUnmounted(() => {
 }
 
 .player-bar {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  /* 改为流内元素：作为 App.vue 外壳的 flex 兄弟节点钉在底部，
+     播放条出现时自然把 .app-main 顶上去 72px，无需 fixed、无需各页面感知 */
+  position: relative;
+  flex-shrink: 0;
   width: 100%;
   max-width: 1060px;
+  margin: 0 auto;
   background: rgba(20, 20, 35, 0.88);
   backdrop-filter: blur(24px) saturate(1.5);
   -webkit-backdrop-filter: blur(24px) saturate(1.5);
@@ -485,10 +543,6 @@ onUnmounted(() => {
   border-radius: 2px;
   position: relative;
   transition: height 0.15s;
-}
-
-.progress-bar-container:hover {
-  height: 6px;
 }
 
 .progress-bar {
@@ -911,18 +965,44 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border);
+  gap: 8px;
 }
 
-.drawer-header h3 {
-  margin: 0;
-  font-size: 16px;
+.drawer-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.drawer-tabs button {
+  background: transparent;
+  border: none;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
-.drawer-header button {
+.drawer-tabs button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.drawer-tabs button.active {
+  color: #fff;
+  background: var(--accent);
+}
+
+.drawer-close {
   background: var(--bg-card);
   border: 1px solid var(--border);
   font-size: 18px;
@@ -934,14 +1014,35 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   transition:
     background 0.2s,
     color 0.2s;
 }
 
-.drawer-header button:hover {
+.drawer-close:hover {
   background: var(--bg-card-hover);
   color: var(--text);
+}
+
+.drawer-loading {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.simi-cover {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.remove-btn.favorited {
+  color: #fd79a8;
+  opacity: 1;
 }
 
 .drawer-body {

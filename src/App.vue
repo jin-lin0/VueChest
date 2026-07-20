@@ -23,11 +23,13 @@ router.afterEach(() => {
 <template>
   <div class="app">
     <RouteLoadingBar :loading="isRouteLoading" />
-    <RouterView v-slot="{ Component }">
-      <transition name="fade" mode="out-in">
-        <component :is="Component" />
-      </transition>
-    </RouterView>
+    <main class="app-main">
+      <RouterView v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </RouterView>
+    </main>
     <MusicPlayer />
   </div>
 </template>
@@ -55,6 +57,23 @@ body {
   overflow-x: hidden;
 }
 
+/* App-shell：内容区是唯一的滚动容器，播放条作为 flex 兄弟节点钉在底部。
+   预留空间只在根布局发生一次，各页面完全不需要感知音乐的存在（无需注入 store / 维护路由清单）。 */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 button,
 input,
 select,
@@ -79,4 +98,3 @@ textarea {
   opacity: 0;
 }
 </style>
-

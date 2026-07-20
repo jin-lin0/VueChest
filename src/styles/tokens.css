@@ -17,36 +17,36 @@
   --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --gradient-primary-soft: linear-gradient(135deg, #f5f7ff 0%, #eef1ff 100%);
 
-  --accent: #667eea;            /* 全站主强调色（覆盖 85 处 #667eea）*/
-  --accent-strong: #764ba2;     /* 渐变末端 / hover 加深 */
-  --accent-contrast: #ffffff;   /* 主色上的文字 */
-  --accent-bg: #eef2ff;         /* 浅色强调底（tab/选中行）*/
-  --accent-light: #c7d2fe;      /* 浅色描边 / 发光 */
-  --accent-rgb: 102, 126, 234;  /* 供 rgba(var(--accent-rgb), a) 使用 */
+  --accent: #667eea; /* 全站主强调色（覆盖 85 处 #667eea）*/
+  --accent-strong: #764ba2; /* 渐变末端 / hover 加深 */
+  --accent-contrast: #ffffff; /* 主色上的文字 */
+  --accent-bg: #eef2ff; /* 浅色强调底（tab/选中行）*/
+  --accent-light: #c7d2fe; /* 浅色描边 / 发光 */
+  --accent-rgb: 102, 126, 234; /* 供 rgba(var(--accent-rgb), a) 使用 */
 
   /* ---------- 语义色 ---------- */
   --success: #059669;
   --success-bg: #d1fae5;
   --warning: #d97706;
   --warning-bg: #fef3c7;
-  --danger: #dc2626;            /* 覆盖 #e74c3c/#f44336/#dc2626/#ff6b6b 红系 */
+  --danger: #dc2626; /* 覆盖 #e74c3c/#f44336/#dc2626/#ff6b6b 红系 */
   --danger-bg: #fee2e2;
   --info: #3498db;
 
   /* ---------- 表面 / 背景 ---------- */
-  --bg-page: #f5f7fa;           /* 公开站默认底（同 body 现状）*/
+  --bg-page: #f5f7fa; /* 公开站默认底（同 body 现状）*/
   --bg-card: #ffffff;
   --bg-elevated: #ffffff;
   --bg-hover: #f3f4f6;
-  --bg-subtle: #f3f4f6;         /* 图标底 / tag 底 */
+  --bg-subtle: #f3f4f6; /* 图标底 / tag 底 */
   --bg-input: #ffffff;
   --tag-bg: #f3f4f6;
-  --bg-glass: rgba(255, 255, 255, 0.92);        /* 卡片 / 搜索框玻璃底 */
-  --bg-glass-soft: rgba(255, 255, 255, 0.8);     /* 按钮 / tab 玻璃底 */
+  --bg-glass: rgba(255, 255, 255, 0.92); /* 卡片 / 搜索框玻璃底 */
+  --bg-glass-soft: rgba(255, 255, 255, 0.8); /* 按钮 / tab 玻璃底 */
 
   /* ---------- 文本 ---------- */
-  --text-primary: #2c3e50;      /* 标题 / 强文本（覆盖 42 处 #2c3e50）*/
-  --text-body: #333333;         /* 正文 */
+  --text-primary: #2c3e50; /* 标题 / 强文本（覆盖 42 处 #2c3e50）*/
+  --text-body: #333333; /* 正文 */
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
   --text-dim: #7f8c8d;
@@ -71,9 +71,9 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
-  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.20);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.2);
   /* 品牌着色阴影：聚焦 / 发光（rgba(102,126,234) 即 #667eea）*/
-  --shadow-brand-sm: 0 0 3px rgba(102, 126, 234, 0.10);
+  --shadow-brand-sm: 0 0 3px rgba(102, 126, 234, 0.1);
   --shadow-brand-md: 0 4px 14px rgba(102, 126, 234, 0.35);
   --shadow-brand-lg: 0 6px 20px rgba(102, 126, 234, 0.35);
 
@@ -123,9 +123,9 @@
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.15);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.30);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.40);
-  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.50);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.5);
   --shadow-brand-sm: 0 0 3px rgba(102, 126, 234, 0.25);
   --shadow-brand-md: 0 4px 14px rgba(102, 126, 234, 0.45);
   --shadow-brand-lg: 0 6px 20px rgba(102, 126, 234, 0.45);

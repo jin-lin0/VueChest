@@ -1,61 +1,52 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMusicStore } from '@/stores'
-import { debounce, formatClock } from '@/utils'
+import { useMusicStore, type FavoriteGroup } from '@/stores'
+import { useAuthStore } from '@/stores/auth'
+import DiscoverPanel from './components/DiscoverPanel.vue'
+import SearchPanel from './components/SearchPanel.vue'
+import ArtistDetail from './components/ArtistDetail.vue'
+import AlbumDetail from './components/AlbumDetail.vue'
+import FavoriteMenu from './components/FavoriteMenu.vue'
+import './components/music-shared.css'
 
 defineOptions({ name: 'MusicView' })
 
 const router = useRouter()
 const music = useMusicStore()
+const auth = useAuthStore()
 
 const goBack = () => router.push('/')
 
-// --- Refs ---
-const searchInput = ref('')
-const activeTab = ref<'search' | 'recommend' | 'favorites'>('recommend')
+const activeTab = ref<'discover' | 'search' | 'favorites'>('discover')
 
-// --- Search ---
-const doSearch = debounce(() => {
-  if (searchInput.value.trim()) {
-    music.searchSongs(searchInput.value)
-    activeTab.value = 'search'
+// ===== 收藏分组展示 =====
+const activeGroupId = ref<number | null>(null)
+
+// 未登录时退化为本地“我的喜欢”；登录后展示服务端分组
+const displayGroups = computed<FavoriteGroup[]>(() => {
+  if (auth.isAuthenticated && music.groupsLoaded) {
+    return music.favoriteGroups
   }
-}, 400)
+  return [{ id: 0, name: '我的喜欢', isDefault: true, songs: music.favorites }]
+})
 
-const onSearchKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Enter' && searchInput.value.trim()) {
-    music.searchSongs(searchInput.value)
-    activeTab.value = 'search'
-  }
-}
+const currentGroup = computed<FavoriteGroup | null>(() => {
+  const list = displayGroups.value
+  return list.find((g) => g.id === activeGroupId.value) || list[0] || null
+})
 
-const searchFromHistory = (keyword: string) => {
-  searchInput.value = keyword
-  music.searchSongs(keyword)
-  activeTab.value = 'search'
-}
+// 登录态变化时重新水合收藏分组
+watch(
+  () => auth.isAuthenticated,
+  async (val) => {
+    activeGroupId.value = null
+    if (val) await music.loadFavoriteGroups()
+  },
+)
 
-// 秒→mm:ss（复用 @/utils 的 formatClock；<1h 等价，≥1h 自动升级为 h:mm:ss）
-const formatDuration = (ms: number): string => formatClock(ms / 1000)
-
-// --- Play a song from search results ---
-const playFromResults = (song: (typeof music.searchResults)[0]) => {
-  music.playSong(song, music.searchResults)
-}
-
-const playFromFavorites = (song: (typeof music.favorites)[0]) => {
-  music.playSong(song, music.favorites)
-}
-
-// --- Recommend playlists ---
-const loadPlaylist = async (pl: (typeof music.recommendPlaylists)[0]) => {
-  await music.loadPlaylistTracks(pl.id, pl.server || 'netease')
-  music.showPlaylist = true
-}
-
-onMounted(() => {
-  music.fetchRecommendPlaylists()
+onMounted(async () => {
+  if (auth.isAuthenticated) await music.loadFavoriteGroups()
 })
 </script>
 
@@ -68,136 +59,94 @@ onMounted(() => {
     </div>
 
     <!-- Main content -->
-    <div class="main-content" :class="{ 'has-player': music.activeSong }">
-      <!-- Search bar -->
-      <div class="search-bar">
-        <input
-          v-model="searchInput"
-          type="text"
-          placeholder="搜索歌曲、歌手..."
-          @input="doSearch"
-          @keydown="onSearchKeydown"
-        />
-      </div>
-
+    <div class="main-content">
       <!-- Tabs -->
       <div class="tabs">
-        <button :class="{ active: activeTab === 'recommend' }" @click="activeTab = 'recommend'">
-          推荐歌单
+        <button :class="{ active: activeTab === 'discover' }" @click="activeTab = 'discover'">
+          发现
         </button>
         <button :class="{ active: activeTab === 'search' }" @click="activeTab = 'search'">
-          搜索结果
+          搜索
         </button>
         <button :class="{ active: activeTab === 'favorites' }" @click="activeTab = 'favorites'">
           我的收藏
         </button>
       </div>
 
-      <!-- Recommend playlists -->
-      <div v-if="activeTab === 'recommend'" class="content-section">
-        <div v-if="music.isLoadingRecommend" class="loading">加载中...</div>
-        <div v-else class="playlist-grid">
-          <div
-            v-for="pl in music.recommendPlaylists"
-            :key="pl.id"
-            class="playlist-card"
-            @click="loadPlaylist(pl)"
-          >
-            <div class="playlist-cover">
-              <img v-if="pl.coverUrl" :src="pl.coverUrl" alt="" loading="lazy" />
-              <div v-else class="cover-placeholder">🎵</div>
-              <span v-if="pl.trackCount" class="track-count">{{ pl.trackCount }}首</span>
-            </div>
-            <div class="playlist-name">{{ pl.name }}</div>
-          </div>
-        </div>
-      </div>
+      <!-- Discover -->
+      <DiscoverPanel v-show="activeTab === 'discover'" />
 
-      <!-- Search results -->
-      <div v-if="activeTab === 'search'" class="content-section">
-        <div v-if="music.isSearching" class="loading">搜索中...</div>
-        <template v-else-if="music.searchResults.length > 0">
-          <div class="result-count">共 {{ music.searchResults.length }} 首</div>
-          <div class="song-list">
-            <div
-              v-for="(song, index) in music.searchResults"
-              :key="song.id"
-              class="song-item"
-              :class="{ playing: music.activeSong?.id === song.id }"
-              @click="playFromResults(song)"
-            >
-              <span class="song-index">{{ index + 1 }}</span>
-              <div class="song-info">
-                <div class="song-name">
-                  {{ song.name }}
-                  <span v-if="song.sq" class="tag-sq">SQ</span>
-                  <span v-if="song.fee === 1" class="tag-vip">VIP</span>
-                  <span v-if="song.mvId" class="tag-mv">MV</span>
-                </div>
-                <div class="song-artist">{{ song.artists }} - {{ song.album }}</div>
-              </div>
-              <span v-if="song.duration" class="song-duration">{{
-                formatDuration(song.duration)
-              }}</span>
-              <button
-                class="fav-btn-small"
-                :class="{ favorited: music.isFavoriteSong(song.id) }"
-                @click.stop="music.toggleFavoriteSong(song)"
-              >
-                {{ music.isFavoriteSong(song.id) ? '❤️' : '🤍' }}
-              </button>
-            </div>
-          </div>
-        </template>
-        <div v-else-if="music.searchQuery && !music.isSearching" class="empty-state">
-          未找到相关歌曲
-        </div>
-        <div v-else class="search-history-section">
-          <div v-if="music.searchHistory.length > 0" class="history-header">
-            <span>搜索历史</span>
-            <button @click="music.clearSearchHistory()">清空</button>
-          </div>
-          <div class="history-tags">
-            <span
-              v-for="item in music.searchHistory"
-              :key="item"
-              class="history-tag"
-              @click="searchFromHistory(item)"
-            >
-              {{ item }}
-              <button class="history-remove" @click.stop="music.removeSearchHistory(item)">
-                &times;
-              </button>
-            </span>
-          </div>
-        </div>
-      </div>
+      <!-- Search -->
+      <SearchPanel v-show="activeTab === 'search'" />
 
       <!-- Favorites -->
-      <div v-if="activeTab === 'favorites'" class="content-section">
-        <div v-if="music.favorites.length === 0" class="empty-state">
+      <div v-show="activeTab === 'favorites'" class="content-section">
+        <!-- 分组切换（我的喜欢 + 用户自建分组） -->
+        <div v-if="displayGroups.length" class="fav-group-tabs">
+          <button
+            v-for="g in displayGroups"
+            :key="g.id"
+            :class="{ active: currentGroup?.id === g.id }"
+            @click="activeGroupId = g.id"
+          >
+            {{ g.name }}
+            <span class="fav-count">{{ g.songs.length }}</span>
+          </button>
+        </div>
+
+        <div v-if="!currentGroup || currentGroup.songs.length === 0" class="ms-empty">
           还没有收藏歌曲，搜索并点击心形图标收藏吧
         </div>
-        <div v-else class="song-list">
+        <div v-else class="ms-song-list">
           <div
-            v-for="(song, index) in music.favorites"
+            v-for="(song, index) in (currentGroup?.songs || [])"
             :key="song.id"
-            class="song-item"
+            class="ms-song-item"
             :class="{ playing: music.activeSong?.id === song.id }"
-            @click="playFromFavorites(song)"
+            @click="music.playSong(song, currentGroup?.songs || [])"
           >
-            <span class="song-index">{{ index + 1 }}</span>
-            <div class="song-info">
-              <div class="song-name">{{ song.name }}</div>
-              <div class="song-artist">{{ song.artists }} - {{ song.album }}</div>
+            <span class="ms-song-index">{{ index + 1 }}</span>
+            <img
+              v-if="song.coverUrl"
+              :src="song.coverUrl + '?param=100y100'"
+              class="ms-song-cover"
+              alt=""
+              loading="lazy"
+            />
+            <div class="ms-song-info">
+              <div class="ms-song-name">{{ song.name }}</div>
+              <div class="ms-song-artist">
+                <span
+                  v-if="song.artistId"
+                  class="ms-link"
+                  @click.stop="music.openArtist(song.artistId)"
+                  >{{ song.artists }}</span
+                >
+                <span v-else>{{ song.artists }}</span>
+                <template v-if="song.album">
+                  -
+                  <span
+                    v-if="song.albumId"
+                    class="ms-link"
+                    @click.stop="music.openAlbum(song.albumId)"
+                    >{{ song.album }}</span
+                  >
+                  <span v-else>{{ song.album }}</span>
+                </template>
+              </div>
             </div>
-            <button class="fav-btn-small favorited" @click.stop="music.toggleFavoriteSong(song)">
-              ❤️
-            </button>
+            <span v-if="song.duration" class="ms-song-duration">{{
+              music.formatDuration(song.duration)
+            }}</span>
+            <FavoriteMenu :song="song" />
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Detail overlays -->
+    <ArtistDetail v-if="music.detailView === 'artist'" />
+    <AlbumDetail v-if="music.detailView === 'album'" />
   </div>
 </template>
 
@@ -222,7 +171,7 @@ onMounted(() => {
 
   max-width: 1060px;
   margin: 0 auto;
-  min-height: 100vh;
+  min-height: 100%;
   background: var(--bg);
   color: var(--text);
   display: flex;
@@ -281,42 +230,6 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.main-content.has-player {
-  padding-bottom: 110px;
-}
-
-/* ===== Search Bar ===== */
-.search-bar {
-  margin-bottom: 20px;
-}
-
-.search-bar input {
-  width: 100%;
-  padding: 12px 20px;
-  border: 1px solid var(--border);
-  border-radius: 28px;
-  font-size: 15px;
-  outline: none;
-  box-sizing: border-box;
-  background: var(--bg-card);
-  color: var(--text);
-  backdrop-filter: blur(10px);
-  transition:
-    border-color 0.25s,
-    box-shadow 0.25s,
-    background 0.25s;
-}
-
-.search-bar input::placeholder {
-  color: var(--text-dim);
-}
-
-.search-bar input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
-  background: rgba(255, 255, 255, 0.08);
-}
-
 /* ===== Tabs ===== */
 .tabs {
   display: flex;
@@ -352,316 +265,53 @@ onMounted(() => {
   box-shadow: 0 2px 12px rgba(108, 92, 231, 0.35);
 }
 
-/* ===== Playlist Grid ===== */
-.playlist-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 16px;
-}
-
-.playlist-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  cursor: pointer;
-  transition:
-    transform 0.25s,
-    box-shadow 0.25s,
-    border-color 0.25s;
-}
-
-.playlist-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 8px 30px rgba(108, 92, 231, 0.2);
-  border-color: rgba(108, 92, 231, 0.3);
-}
-
-.playlist-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1;
-  overflow: hidden;
-}
-
-.playlist-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s;
-}
-
-.playlist-card:hover .playlist-cover img {
-  transform: scale(1.06);
-}
-
-.cover-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-gradient-vivid);
-  font-size: 44px;
-}
-
-.track-count {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  color: white;
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 10px;
-  font-weight: 500;
-}
-
-.playlist-name {
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* ===== Song List ===== */
-.song-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.song-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
-  background: var(--bg-card);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition:
-    background 0.2s,
-    border-color 0.2s;
-}
-
-.song-item:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border);
-}
-
-.song-item.playing {
-  background: rgba(108, 92, 231, 0.12);
-  border-color: rgba(108, 92, 231, 0.25);
-}
-
-.song-item.playing .song-index {
-  color: var(--accent-light);
-}
-
-.song-item.playing .song-name {
-  color: var(--accent-light);
-}
-
-.song-index {
-  width: 26px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--text-dim);
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.song-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.song-artist {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.song-duration {
-  font-size: 12px;
-  color: var(--text-dim);
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.song-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.tag-sq,
-.tag-vip,
-.tag-mv {
-  font-size: 10px;
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.tag-sq {
-  background: linear-gradient(135deg, #f093fb, #f5576c);
-  color: #fff;
-}
-
-.tag-vip {
-  background: linear-gradient(135deg, #f6d365, #fda085);
-  color: #7c3aed;
-}
-
-.tag-mv {
-  background: rgba(108, 92, 231, 0.15);
-  color: var(--accent-light);
-}
-
-.fav-btn-small {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  padding: 4px;
-  flex-shrink: 0;
-  opacity: 0.5;
-  transition:
-    opacity 0.2s,
-    transform 0.2s;
-}
-
-.fav-btn-small:hover {
-  opacity: 1;
-  transform: scale(1.15);
-}
-
-.fav-btn-small.favorited {
-  opacity: 1;
-}
-
-.result-count {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-bottom: 10px;
-}
-
-/* ===== Search History ===== */
-.search-history-section {
-  padding: 8px 0;
-}
-
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.history-header span {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.history-header button {
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: 13px;
-  transition: color 0.2s;
-}
-
-.history-header button:hover {
-  color: var(--text);
-}
-
-.history-tags {
+/* ===== 收藏分组标签页 ===== */
+.fav-group-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 18px;
 }
 
-.history-tag {
-  padding: 6px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
+.fav-group-tabs button {
   display: inline-flex;
   align-items: center;
-}
-
-.history-tag:hover {
-  background: rgba(108, 92, 231, 0.12);
-  color: var(--accent-light);
-  border-color: rgba(108, 92, 231, 0.3);
-}
-
-.history-remove {
-  margin-left: 6px;
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 13px;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
   cursor: pointer;
-  padding: 0;
-  line-height: 1;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  transition: all 0.2s;
 }
 
-.history-remove:hover {
-  color: #fd79a8;
+.fav-group-tabs button:hover {
+  color: var(--text);
+  background: var(--bg-card-hover);
 }
 
-/* ===== Empty / Loading ===== */
-.loading {
+.fav-group-tabs button.active {
+  background: var(--accent-gradient);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 12px rgba(108, 92, 231, 0.3);
+}
+
+.fav-count {
+  font-size: 11px;
+  opacity: 0.7;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  padding: 1px 7px;
+  min-width: 18px;
   text-align: center;
-  padding: 48px 16px;
-  color: var(--text-dim);
-  font-size: 14px;
 }
 
-.loading::before {
-  content: '';
-  display: block;
-  width: 28px;
-  height: 28px;
-  margin: 0 auto 12px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 48px 16px;
-  color: var(--text-dim);
-  font-size: 14px;
+.fav-group-tabs button.active .fav-count {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 /* ===== Scrollbar ===== */
@@ -682,11 +332,6 @@ onMounted(() => {
 @media (max-width: 640px) {
   .main-content {
     padding: 14px;
-  }
-
-  .playlist-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px;
   }
 }
 </style>

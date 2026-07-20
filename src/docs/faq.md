@@ -15,11 +15,12 @@
 
 ## Q2：为什么提示"无法解析应用包"？
 
-这是因为你的 `.js` 包在被读取文本后，未能通过 `extractMetaFromBundle(code)` 的校验。具体原因通常是：
+这是因为你的 `.js` 包在被读取文本后，未能通过 `extractMetaFromBundle(code)` 的校验（该阶段以能否取到 `meta` 为准）。具体原因通常是：
 
 - 包不是由 Vite 构建的 **IIFE** 格式，或未正确暴露 `window.MarketApp`。
-- 入口没有 `export default { component, route, meta }`，或三者缺一。
-- 把 Vue 打进了包里（未外部化），导致加载异常。
+- 入口没有 `export default`，或 `meta` 字段缺失。
+
+> 补充：把 Vue 打进包里（未外部化）通常**不会**表现为"无法解析应用包"，而是与主站 Vue 实例冲突导致运行时异常；缺少 `component / route`（但有 `meta`）也可能上传解析通过、却在安装时失败（详见 [注意事项](./market-notes.md)）。
 
 请严格按 [应用包开发规范](./market-spec.md) 重新构建。
 
@@ -39,10 +40,12 @@
 
 ## Q5：安装的应用会同步到其他设备吗？
 
-不会。已安装列表保存在当前浏览器的 **`localStorage['market_installed_apps']`**，应用包缓存于 **IndexedDB**：
+**登录用户会同步，未登录则只在本地。**
 
-- 这是**按浏览器 / 设备**本地保存的。
-- 换浏览器、清缓存或换设备后，需重新在市场里安装（见 [安装与使用](./market-install.md)）。
+- **已登录**：每次安装 / 卸载后，已安装应用的 **ID 列表**会通过 `PUT /api/auth/installed-apps` 同步到账号。换设备 / 换浏览器登录后，宿主启动时会自动比对并**下载补装**缺失的应用，保持各设备一致。
+- **未登录**：仅保存在当前浏览器本地（记录 + IndexedDB 缓存的应用包），换环境需重新安装；登录后本地记录会自动补传到账号。
+
+详见 [安装与使用](./market-install.md)。
 
 ## Q6：安装来源不明的应用安全吗？
 
@@ -63,11 +66,25 @@
 
 不建议。路径需**全局唯一**，避免与内置路由冲突。**建议统一以 `/m/` 开头**（如 `/m/counter`）。重复路径可能导致路由覆盖或无法访问。
 
+## Q10：上传时到底哪些内容是必填的？
+
+页面上你**只需要**：选一个 `.js` 文件（≤10MB）、选一个分类（默认"工具"）；说明文档选填。**名称 / 图标 / 简介 / 版本都不用手填**，它们由应用包内部的 `meta` 自动解析。其中 `meta.name` 与 `meta.icon` 必须写在包里（服务端会校验，缺失会被拒绝）。完整说明见 [如何上传应用到市场](./market-upload.md)。
+
+## Q11：市场应用能用宿主的哪些能力？
+
+宿主通过 `window.__VueChest__` 暴露 Vue、VueRouter、Pinia、本地存储（`storage`）、主题（`theme`）以及一批常用 Vue API；`window.__APP_THEME__` 用于跟随深色模式。多个应用还可共享同一个 Pinia store 实现状态互通。清单与示例见 [市场应用可用能力](./market-capabilities.md)。
+
+## Q12：应用怎么跟随深色 / 浅色模式？
+
+样式颜色**直接用 CSS 变量** `var(--xxx)`（如 `var(--bg-card)`、`var(--text-body)`），会随主题自动切换。canvas / 图表等 JS 决定的颜色够不到 CSS 变量，需用 `window.__APP_THEME__.isDark` 判断，并用 `onChange` 在切换时重绘。变量清单与用法见 [主题变量与深色模式](./theme-variables.md)。
+
 ## 相关文档
 
 - [项目简介](./getting-started.md)
 - [如何上传应用到市场](./market-upload.md)
 - [应用包开发规范](./market-spec.md)
+- [市场应用可用能力](./market-capabilities.md)
+- [主题变量与深色模式](./theme-variables.md)
 - [审核与发布流程](./market-review.md)
 - [安装与使用](./market-install.md)
 - [注意事项](./market-notes.md)

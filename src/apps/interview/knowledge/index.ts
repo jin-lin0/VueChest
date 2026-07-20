@@ -1,5 +1,7 @@
 import frontendMd from './frontend.md?raw'
 import agentMd from './agent.md?raw'
+import algorithmMd from './algorithm.md?raw'
+import scenarioMd from './scenario.md?raw'
 
 export interface KnowledgeDoc {
   id: string
@@ -27,5 +29,19 @@ export const knowledgeDocs: KnowledgeDoc[] = [
     icon: '🤖',
     description: '大模型 / Agent 应用开发',
     content: agentMd,
+  },
+  {
+    id: 'algorithm',
+    name: '算法章节',
+    icon: '🧮',
+    description: '手撕代码高频算法与数据结构',
+    content: algorithmMd,
+  },
+  {
+    id: 'scenario',
+    name: '场景题章节',
+    icon: '🛠️',
+    description: '前端手写场景题 / 代码实现题',
+    content: scenarioMd,
   },
 ]

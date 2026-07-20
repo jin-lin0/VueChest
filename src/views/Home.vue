@@ -489,6 +489,13 @@ const navigateToApp = (route: string) => {
             管理已隐藏的 {{ hiddenApps.length }} 个应用
           </button>
         </span>
+        ·
+        <button
+          class="donate-link"
+          @click="router.push({ path: '/docs', query: { doc: 'site-donate' } })"
+        >
+          ❤️ 打赏支持
+        </button>
       </p>
     </footer>
 
@@ -1137,6 +1144,22 @@ const navigateToApp = (route: string) => {
 
 .manage-btn:hover {
   color: #764ba2;
+}
+
+.donate-link {
+  background: none;
+  border: none;
+  color: #e0536b;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.donate-link:hover {
+  color: #c0344b;
 }
 
 .manage-panel {

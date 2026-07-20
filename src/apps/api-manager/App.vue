@@ -572,7 +572,7 @@ const selectCategory = (cat: string) => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }

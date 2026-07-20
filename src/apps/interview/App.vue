@@ -20,10 +20,6 @@
         <div class="stat-number">{{ stats.practiced }}</div>
         <div class="stat-label">已练习</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ stats.mastered }}</div>
-        <div class="stat-label">已掌握</div>
-      </div>
     </div>
 
     <div class="search-bar">
@@ -149,13 +145,6 @@
           <button class="btn btn-primary" @click="toggleAnswer">
             {{ showAnswer ? '隐藏答案' : '显示答案' }}
           </button>
-          <button
-            class="btn"
-            :class="masteredIds.has(currentQuestion.id) ? 'btn-success' : 'btn-outline'"
-            @click="toggleMastered(currentQuestion.id)"
-          >
-            {{ masteredIds.has(currentQuestion.id) ? '已掌握 ✓' : '标记掌握' }}
-          </button>
           <button class="btn btn-outline" :disabled="randomLoading" @click="randomQuiz">
             🎲 下一题
           </button>
@@ -173,7 +162,7 @@ import type { Question, Category } from '@/types/interview'
 import { api } from '@/lib/request'
 import { getStorage, setStorage } from '@/lib/storage'
 import { debounce } from '@/utils'
-import { INTERVIEW_PRACTICED_KEY, INTERVIEW_MASTERED_KEY, QUESTION_PAGE_SIZE } from './config'
+import { INTERVIEW_PRACTICED_KEY, QUESTION_PAGE_SIZE } from './config'
 import { buildQuery } from './utils'
 
 const router = useRouter()
@@ -189,7 +178,6 @@ const difficultyOptions: SelectOption[] = [
 const statusOptions: SelectOption[] = [
   { value: '', label: '全部状态', icon: '📋' },
   { value: 'practiced', label: '已练习', icon: '📝' },
-  { value: 'mastered', label: '已掌握', icon: '✅' },
   { value: 'unpracticed', label: '未练习', icon: '❓' },
 ]
 
@@ -209,16 +197,14 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
 
-// 本地存储的练习和掌握状态
+// 本地存储的练习状态
 const practicedIds = ref<Set<number>>(new Set())
-const masteredIds = ref<Set<number>>(new Set())
 
 // 统计
 const stats = ref({
   totalQuestions: 0,
   totalCategories: 0,
   practiced: 0,
-  mastered: 0,
 })
 
 // 返回首页
@@ -264,9 +250,7 @@ const readLocalIds = (key: string): number[] | null => {
 const loadLocalState = () => {
   try {
     const practiced = readLocalIds(INTERVIEW_PRACTICED_KEY)
-    const mastered = readLocalIds(INTERVIEW_MASTERED_KEY)
     if (practiced) practicedIds.value = new Set(practiced)
-    if (mastered) masteredIds.value = new Set(mastered)
   } catch (e) {
     console.error('加载本地状态失败:', e)
   }
@@ -275,7 +259,6 @@ const loadLocalState = () => {
 // 保存本地存储
 const saveLocalState = () => {
   setStorage(INTERVIEW_PRACTICED_KEY, [...practicedIds.value])
-  setStorage(INTERVIEW_MASTERED_KEY, [...masteredIds.value])
 }
 
 // 获取分类列表
@@ -345,8 +328,6 @@ const fetchQuestions = async () => {
       let filtered = cachedAll.value
       if (selectedStatus.value === 'practiced') {
         filtered = cachedAll.value.filter((q) => practicedIds.value.has(q.id))
-      } else if (selectedStatus.value === 'mastered') {
-        filtered = cachedAll.value.filter((q) => masteredIds.value.has(q.id))
       } else if (selectedStatus.value === 'unpracticed') {
         filtered = cachedAll.value.filter((q) => !practicedIds.value.has(q.id))
       }
@@ -398,9 +379,6 @@ const randomQuiz = async () => {
     const data = await api.get<Question[]>(`/api/questions/random/1?${query}`, { auth: false })
     if (data && data.length > 0) {
       currentQuestion.value = data[0]
-      // 标记为已练习
-      practicedIds.value.add(data[0].id)
-      saveLocalState()
     }
   } catch (e) {
     console.error('随机抽题失败:', e)
@@ -414,21 +392,32 @@ const showQuestionDetail = (question: Question) => {
   currentQuestion.value = question
   showDetail.value = true
   showAnswer.value = false
-  // 标记为已练习
-  practicedIds.value.add(question.id)
-  saveLocalState()
+}
+
+// 仅在用户真正互动（选选项 / 看答案）时标记为已练习
+const markPracticed = (id: number) => {
+  if (!practicedIds.value.has(id)) {
+    practicedIds.value.add(id)
+    saveLocalState()
+    updateStats()
+  }
 }
 
 // 选择选项
 const selectOption = (opt: string) => {
   selectedAnswer.value = opt
   showAnswer.value = true
+  markPracticed(currentQuestion.value.id)
 }
 
 // 切换答案显示
 const toggleAnswer = () => {
+  const willReveal = !showAnswer.value
   showAnswer.value = !showAnswer.value
-  if (!showAnswer.value) {
+  if (willReveal) {
+    // 真正看了答案才算练过
+    markPracticed(currentQuestion.value.id)
+  } else {
     selectedAnswer.value = null
   }
 }
@@ -437,17 +426,6 @@ const toggleAnswer = () => {
 const closeDetail = () => {
   showDetail.value = false
   selectedAnswer.value = null
-}
-
-// 切换掌握状态
-const toggleMastered = (id: number) => {
-  if (masteredIds.value.has(id)) {
-    masteredIds.value.delete(id)
-  } else {
-    masteredIds.value.add(id)
-  }
-  saveLocalState()
-  updateStats()
 }
 
 // 切换页码
@@ -475,7 +453,6 @@ const getCategoryName = (categoryId: number) => {
 // 更新统计
 const updateStats = () => {
   stats.value.practiced = practicedIds.value.size
-  stats.value.mastered = masteredIds.value.size
 }
 
 // 监听筛选条件变化
@@ -563,7 +540,7 @@ onMounted(() => {
 /* 统计卡片 */
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   margin-bottom: 30px;
 }

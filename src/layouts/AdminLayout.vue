@@ -34,7 +34,12 @@
           <label class="user-avatar" title="更换头像">
             <img v-if="authStore.user.avatar" :src="authStore.user.avatar" alt="用户头像" />
             <span v-else>{{ authStore.user.username.charAt(0).toUpperCase() }}</span>
-            <input type="file" accept="image/jpeg,image/png,image/webp" hidden @change="uploadAvatar" />
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              @change="uploadAvatar"
+            />
           </label>
           <div v-if="!isCollapsed" class="user-details">
             <div class="user-name">{{ authStore.user.username }}</div>
@@ -42,7 +47,11 @@
           </div>
         </div>
         <div class="footer-actions">
-          <button class="theme-toggle" @click="toggleDark" :title="isDark ? '亮色模式' : '暗色模式'">
+          <button
+            class="theme-toggle"
+            @click="toggleDark"
+            :title="isDark ? '亮色模式' : '暗色模式'"
+          >
             {{ isDark ? '☀️' : '🌙' }}
           </button>
           <button class="logout-btn" @click="handleLogout" title="退出登录">
@@ -140,7 +149,8 @@ const menuItems = computed(() => {
 const currentPageTitle = computed(() => {
   const items = menuItems.value
   const matched = items.find(
-    (item: { path: string; name: string }) => route.path === item.path || route.path.startsWith(item.path + '/')
+    (item: { path: string; name: string }) =>
+      route.path === item.path || route.path.startsWith(item.path + '/'),
   )
   return matched?.name ?? (route.meta.title as string) ?? '仪表盘'
 })
@@ -181,10 +191,12 @@ function goToHome() {
 <style scoped>
 .admin-layout {
   display: flex;
-  height: 100vh;
+  height: 100%;
   background: #f3f4f6;
   color: #111827;
-  transition: background 0.3s, color 0.3s;
+  transition:
+    background 0.3s,
+    color 0.3s;
 }
 
 .admin-layout.dark-mode {
@@ -213,7 +225,9 @@ function goToHome() {
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease, transform 0.3s ease;
+  transition:
+    width 0.3s ease,
+    transform 0.3s ease;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
   position: relative;
   z-index: 50;
@@ -664,4 +678,3 @@ function goToHome() {
   transform: translateY(-4px);
 }
 </style>
-

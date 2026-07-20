@@ -10,12 +10,16 @@
       ▼
   [待审核]  status = pending
       │   管理员在后台查看
+      ├──────────────► [已拒绝] status = rejected
+      │                 POST /api/market/apps/:id/reject
       ▼
-  [审核通过]  POST /api/market/apps/:id/approve
-      │
+  [审核通过]  status = approved
+      │   POST /api/market/apps/:id/approve
       ▼
   [已上架]  出现在市场中，其他用户可浏览 / 安装
 ```
+
+> 应用状态共有三种：`pending`（待审核）/ `approved`（已通过、上架）/ `rejected`（已拒绝）。
 
 ## 1. 上传后：进入待审核状态
 
@@ -41,7 +45,7 @@
 POST /api/market/apps/:id/approve
 ```
 
-> 注意：该接口需要登录态（管理员身份）。普通用户无权限调用。
+> 注意：该接口受 `adminOnly` 中间件保护，需要 `admin` / `super_admin` 角色。普通用户无权限调用。同理，拒绝（`/reject`）、更新（`PUT /apps/:id`）、删除（`DELETE /apps/:id`）也都是管理员接口。
 
 审核通过后，应用的 `status` 更新为已上架（公开可用），随后：
 
@@ -55,8 +59,8 @@ POST /api/market/apps/:id/approve
 | --- | --- | --- |
 | 用户上传成功 | 进入**待审核**状态 | 仅提交者 / 管理员可见 |
 | 管理员审核 | 人工核查 | 仍不可见 |
-| 调用 `:id/approve` | 审核通过、上架 | 对所有用户可见、可安装 |
-| （可选）驳回 / 下线 | 状态变更 | 按具体状态处理 |
+| 调用 `:id/approve` | 状态变为 `approved`、上架 | 对所有用户可见、可安装 |
+| 调用 `:id/reject` | 状态变为 `rejected` | 不上架；提交者 / 管理员可见 |
 
 > 提示：如果你上传的应用长时间未上架，请耐心等待审核；如确有必要，可联系管理员确认。审核时长请参见 [常见问题 FAQ](./faq.md)。
 

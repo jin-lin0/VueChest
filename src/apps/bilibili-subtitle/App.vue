@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { api } from '@/lib/request'
 import { getStorage, setStorage, removeStorage } from '@/lib/storage'
 import { copyToClipboard, downloadFile } from '@/utils'
-import { Tooltip } from '@/components'
+import { Tooltip, Collapse } from '@/components'
 
 const STORAGE_KEY_BILI_SESSDATA = 'bili_sessdata'
 
@@ -55,6 +55,8 @@ type ExtractResult = SingleResult | AllResult
 const url = ref('')
 const sessdata = ref(getStorage<string>(STORAGE_KEY_BILI_SESSDATA) ?? '')
 const remember = ref(!!sessdata.value.trim())
+// 默认无需填 SESSDATA（服务端已配置公共回落凭证）；只有想用自己账号的用户才展开
+const showAdvanced = ref(!!sessdata.value.trim())
 
 const parsing = ref(false)
 const infoError = ref('')
@@ -227,32 +229,36 @@ function exportAllTxt() {
         />
       </label>
 
-      <label class="field">
-        <span class="label">
-          SESSDATA
-          <Tooltip placement="bottom" max-width="min(300px, 88vw)">
-            <span class="hint-icon" role="button" aria-label="什么是 SESSDATA，如何获取">ⓘ</span>
-            <template #content>
-              <b>SESSDATA 是什么？</b><br />
-              登录 B站后，浏览器 Cookie 里的一个字段，相当于你的登录凭证。<br /><br />
-              部分视频的
-              <b>AI 字幕需登录后才可见</b>，填入可解锁更多字幕；留空也能抓取公开字幕。<br /><br />
-              <b>如何获取：</b>登录 bilibili.com → 按 F12 → Application → Cookies → 复制 SESSDATA
-              的值。<br /><br />
-              <span class="hint-warn">该值等同账号凭证，仅本地使用，请勿外传。</span>
-            </template>
-          </Tooltip>
-        </span>
-        <div class="sess-row">
-          <input
-            v-model="sessdata"
-            class="input"
-            type="password"
-            placeholder="留空即可，填了可解锁更多字幕"
-          />
-          <label class="remember"> <input v-model="remember" type="checkbox" /> 记住 </label>
-        </div>
-      </label>
+      <Collapse v-model="showAdvanced" class="adv-collapse">
+        <template #header>高级：使用我自己的 SESSDATA（可选）</template>
+        <label class="field">
+          <span class="label">
+            SESSDATA
+            <Tooltip placement="bottom" max-width="min(300px, 88vw)">
+              <span class="hint-icon" role="button" aria-label="什么是 SESSDATA，如何获取">ⓘ</span>
+              <template #content>
+                <b>SESSDATA 是什么？</b><br />
+                登录 B站后，浏览器 Cookie 里的一个字段，相当于你的登录凭证。<br /><br />
+                <b>默认无需填写</b> —— 服务端已配置公共凭证，留空即可抓取公开字幕及大部分 AI
+                字幕。<br /><br />
+                仅当你希望用<b>自己的账号</b>抓取（例如公共凭证失效时）才需填入。<br /><br />
+                <b>如何获取：</b>登录 bilibili.com → 按 F12 → Application → Cookies → 复制 SESSDATA
+                的值。<br /><br />
+                <span class="hint-warn">该值等同账号凭证，仅本地保存，请勿外传。</span>
+              </template>
+            </Tooltip>
+          </span>
+          <div class="sess-row">
+            <input
+              v-model="sessdata"
+              class="input"
+              type="password"
+              placeholder="留空即可，填了则改用你自己的账号抓取"
+            />
+            <label class="remember"> <input v-model="remember" type="checkbox" /> 记住 </label>
+          </div>
+        </label>
+      </Collapse>
 
       <button class="btn" :disabled="parsing" @click="parseVideo">
         {{ parsing ? '解析中…' : '解析视频' }}
@@ -478,6 +484,9 @@ h1 {
 .input:focus {
   border-color: var(--accent);
   box-shadow: var(--shadow-brand-sm);
+}
+.adv-collapse {
+  margin: 0.2rem 0 0.9rem;
 }
 .sess-row {
   display: flex;
