@@ -104,10 +104,6 @@ export const useMusicStore = defineStore('music', () => {
   const lyrics = ref<LyricLine[]>([])
   const isLoadingUrl = ref(false)
 
-  // Recommended playlists (官方榜单)
-  const recommendPlaylists = ref<Playlist[]>([])
-  const isLoadingRecommend = ref(false)
-
   // ===== Discover 发现页 =====
   const personalizedPlaylists = ref<Playlist[]>([]) // 推荐歌单
   const newSongs = ref<Song[]>([]) // 新歌速递
@@ -130,6 +126,21 @@ export const useMusicStore = defineStore('music', () => {
   const currentAlbum = ref<Album | null>(null)
   const albumSongs = ref<Song[]>([])
   const isLoadingAlbum = ref(false)
+
+  // ===== 推荐歌手 / 排行榜（发现页浅入口）=====
+  const topArtists = ref<Artist[]>([])
+  const isLoadingArtists = ref(false)
+  // 网易云歌手分类码
+  const artistCats = [
+    { key: '华语', cat: 1001 },
+    { key: '欧美', cat: 2001 },
+    { key: '日本', cat: 6001 },
+    { key: '韩国', cat: 7001 },
+    { key: '其他', cat: 4001 },
+  ]
+  const activeArtistCat = ref<number>(1001)
+  const topBoards = ref<Playlist[]>([]) // 全部榜单（排行榜入口用）
+  const isLoadingBoards = ref(false)
 
   // ===== 相似推荐 =====
   const simiSongs = ref<Song[]>([])
@@ -269,6 +280,16 @@ export const useMusicStore = defineStore('music', () => {
     }
   }
 
+  // 解析歌手（top_artists / artist_list 共用）
+  const parseArtist = (raw: Record<string, unknown>): Artist => ({
+    id: String(raw.id),
+    name: (raw.name as string) || '未知歌手',
+    picUrl: (raw.picUrl as string) || '',
+    musicSize: raw.musicSize as number | undefined,
+    albumSize: raw.albumSize as number | undefined,
+    briefDesc: raw.briefDesc as string | undefined,
+  })
+
   const searchSongs = async (keyword: string) => {
     const q = keyword.trim()
     if (!q) return
@@ -285,35 +306,6 @@ export const useMusicStore = defineStore('music', () => {
       searchResults.value = []
     } finally {
       isSearching.value = false
-    }
-  }
-
-  const fetchRecommendPlaylists = async () => {
-    isLoadingRecommend.value = true
-    try {
-      const data = (await musicApi.toplist()) as Record<string, unknown>
-
-      const toplist = data.list as Record<string, unknown>[]
-      if (toplist && Array.isArray(toplist)) {
-        recommendPlaylists.value = toplist.slice(0, 10).map((item) => ({
-          id: String(item.id),
-          name: item.name as string,
-          coverUrl: (item.coverImgUrl as string) || '',
-          trackCount: (item.trackCount as number) || 0,
-          description: (item.description as string) || '',
-          server: 'netease',
-        }))
-
-        // 预加载歌单内容（不阻塞UI）
-        toplist.slice(0, 10).forEach((item) => {
-          musicApi.preloadPlaylist('netease', String(item.id))
-        })
-      }
-    } catch (e) {
-      console.error('Fetch recommend failed:', e)
-      recommendPlaylists.value = []
-    } finally {
-      isLoadingRecommend.value = false
     }
   }
 
@@ -785,6 +777,61 @@ export const useMusicStore = defineStore('music', () => {
     detailView.value = 'none'
   }
 
+  // 热门歌手（推荐歌手），只需拉一次
+  const fetchTopArtists = async (limit = 50) => {
+    if (topArtists.value.length > 0) return
+    isLoadingArtists.value = true
+    try {
+      const data = (await musicApi.topArtists(limit)) as Record<string, unknown>
+      const list = (data.artists as Record<string, unknown>[]) || []
+      topArtists.value = list.map(parseArtist)
+    } catch (e) {
+      console.error('Fetch top artists failed:', e)
+      topArtists.value = []
+    } finally {
+      isLoadingArtists.value = false
+    }
+  }
+
+  // 分类歌手（切换分类时调用，刷新列表）
+  const fetchArtistList = async (cat: number, limit = 30) => {
+    isLoadingArtists.value = true
+    activeArtistCat.value = cat
+    try {
+      const data = (await musicApi.artistList(cat, limit)) as Record<string, unknown>
+      const list = (data.artists as Record<string, unknown>[]) || []
+      topArtists.value = list.map(parseArtist)
+    } catch (e) {
+      console.error('Fetch artist list failed:', e)
+      topArtists.value = []
+    } finally {
+      isLoadingArtists.value = false
+    }
+  }
+
+  // 全部榜单（排行榜入口用），只需拉一次
+  const fetchTopBoards = async () => {
+    if (topBoards.value.length > 0) return
+    isLoadingBoards.value = true
+    try {
+      const data = (await musicApi.toplist()) as Record<string, unknown>
+      const list = (data.list as Record<string, unknown>[]) || []
+      topBoards.value = list.map((item) => ({
+        id: String(item.id),
+        name: item.name as string,
+        coverUrl: (item.coverImgUrl as string) || '',
+        trackCount: (item.trackCount as number) || 0,
+        description: (item.description as string) || '',
+        server: 'netease',
+      }))
+    } catch (e) {
+      console.error('Fetch top boards failed:', e)
+      topBoards.value = []
+    } finally {
+      isLoadingBoards.value = false
+    }
+  }
+
   // ===== 相似推荐 =====
   const fetchSimiSongs = async (songId: string) => {
     if (!songId) {
@@ -828,8 +875,6 @@ export const useMusicStore = defineStore('music', () => {
     playerBarVisible,
     lyrics,
     isLoadingUrl,
-    recommendPlaylists,
-    isLoadingRecommend,
     // discover
     personalizedPlaylists,
     newSongs,
@@ -850,6 +895,13 @@ export const useMusicStore = defineStore('music', () => {
     currentAlbum,
     albumSongs,
     isLoadingAlbum,
+    // 推荐歌手 / 排行榜
+    topArtists,
+    isLoadingArtists,
+    artistCats,
+    activeArtistCat,
+    topBoards,
+    isLoadingBoards,
     // similar
     simiSongs,
     isLoadingSimi,
@@ -862,7 +914,6 @@ export const useMusicStore = defineStore('music', () => {
     currentLyricIndex,
     isFavorite,
     searchSongs,
-    fetchRecommendPlaylists,
     loadPlaylistTracks,
     playSong,
     // new methods
@@ -875,6 +926,9 @@ export const useMusicStore = defineStore('music', () => {
     openArtist,
     openAlbum,
     closeDetail,
+    fetchTopArtists,
+    fetchArtistList,
+    fetchTopBoards,
     fetchSimiSongs,
     togglePlay,
     closePlayer,

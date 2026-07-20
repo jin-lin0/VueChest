@@ -22,23 +22,20 @@ export const MUSIC_ENDPOINTS = {
   playlistCatlist: () => `/api/netease/playlist/catlist`,
   topPlaylist: (cat: string, limit = 18) =>
     `/api/netease/top/playlist?limit=${limit}&cat=${encodeURIComponent(cat)}`,
-  searchSuggest: (kw: string) =>
-    `/api/netease/search/suggest?keywords=${encodeURIComponent(kw)}`,
+  searchSuggest: (kw: string) => `/api/netease/search/suggest?keywords=${encodeURIComponent(kw)}`,
   searchHot: () => `/api/netease/search/hot`,
   artist: (id: string) => `/api/netease/artist?id=${id}`,
-  artistAlbum: (id: string, limit = 30) =>
-    `/api/netease/artist/album?id=${id}&limit=${limit}`,
+  artistAlbum: (id: string, limit = 30) => `/api/netease/artist/album?id=${id}&limit=${limit}`,
   album: (id: string) => `/api/netease/album?id=${id}`,
-  simiSong: (id: string, limit = 20) =>
-    `/api/netease/simi/song?id=${id}&limit=${limit}`,
+  topArtists: (limit = 50) => `/api/netease/top/artists?limit=${limit}`,
+  artistList: (cat: number, limit = 30) => `/api/netease/artist/list?cat=${cat}&limit=${limit}`,
+  simiSong: (id: string, limit = 20) => `/api/netease/simi/song?id=${id}&limit=${limit}`,
 
   // —— meting 代理 /meting-api（扁平结构，歌词为纯文本）——
   playlistTracks: (server: string, id: string) =>
     `/meting-api?server=${server}&type=playlist&id=${id}`,
-  songUrl: (server: string, id: string) =>
-    `/meting-api?server=${server}&type=url&id=${id}`,
-  lyric: (server: string, id: string) =>
-    `/meting-api?server=${server}&type=lrc&id=${id}`,
+  songUrl: (server: string, id: string) => `/meting-api?server=${server}&type=url&id=${id}`,
+  lyric: (server: string, id: string) => `/meting-api?server=${server}&type=lrc&id=${id}`,
 }
 
 // ===== 缓存 =====
@@ -144,6 +141,20 @@ export const musicApi = {
   },
   album(id: string) {
     return requestJson<Record<string, unknown>>(MUSIC_ENDPOINTS.album(id), BACKEND, `album:${id}`)
+  },
+  topArtists(limit = 50) {
+    return requestJson<Record<string, unknown>>(
+      MUSIC_ENDPOINTS.topArtists(limit),
+      BACKEND,
+      `topartists:${limit}`,
+    )
+  },
+  artistList(cat: number, limit = 30) {
+    return requestJson<Record<string, unknown>>(
+      MUSIC_ENDPOINTS.artistList(cat, limit),
+      BACKEND,
+      `artistlist:${cat}:${limit}`,
+    )
   },
   simiSong(id: string, limit = 20) {
     return requestJson<Record<string, unknown>>(
