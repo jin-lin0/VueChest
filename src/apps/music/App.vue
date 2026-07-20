@@ -160,6 +160,7 @@ onMounted(async () => {
   --bg-card: rgba(255, 255, 255, 0.06);
   --bg-card-hover: rgba(255, 255, 255, 0.1);
   --bg-surface: rgba(255, 255, 255, 0.04);
+  --bg-popover: #181826; /* 浮层/下拉框专用：实心不透明，避免玻璃拟态的半透明与背景混在一起 */
   --text: #f0f0f5;
   --text-secondary: #8888a0;
   --text-dim: #55556a;
