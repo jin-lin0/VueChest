@@ -7,6 +7,23 @@ defineOptions({ name: 'MusicPlayer' })
 
 const music = useMusicStore()
 
+// —— 播放失败提示 toast ——
+const playErrorToast = ref('')
+let playErrorTimer: ReturnType<typeof setTimeout> | null = null
+onUnmounted(() => {
+  if (playErrorTimer) clearTimeout(playErrorTimer)
+})
+
+const onAudioError = () => {
+  if (!music.songUrl) return
+  playErrorToast.value = '该歌曲暂不可播放（可能因版权 / 地区限制）'
+  music.isPlaying = false
+  if (playErrorTimer) clearTimeout(playErrorTimer)
+  playErrorTimer = setTimeout(() => {
+    playErrorToast.value = ''
+  }, 3200)
+}
+
 // 沉浸式游戏页（全屏 canvas）隐藏播放条，避免遮挡游戏画面
 const route = useRoute()
 const GAME_ROUTE_PREFIXES = ['/snake', '/racing']
@@ -468,7 +485,13 @@ onUnmounted(() => {
       @play="onAudioPlay"
       @pause="onAudioPause"
       @loadeddata="onAudioLoaded"
+      @error="onAudioError"
     ></audio>
+
+    <!-- 不可播放 / 加载失败 提示 -->
+    <Transition name="toast-fade">
+      <div v-if="playErrorToast" class="play-error-toast">{{ playErrorToast }}</div>
+    </Transition>
 
     <!-- Lyrics overlay -->
     <Transition name="lyrics-fade">
@@ -1146,6 +1169,40 @@ onUnmounted(() => {
 .lyrics-body::-webkit-scrollbar,
 .drawer-body::-webkit-scrollbar {
   width: 5px;
+}
+
+/* ===== 不可播放提示 toast ===== */
+.play-error-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 400;
+  max-width: 86vw;
+  padding: 10px 18px;
+  border-radius: 24px;
+  background: rgba(40, 20, 28, 0.92);
+  border: 1px solid rgba(253, 121, 168, 0.35);
+  color: #ffd5e2;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: none;
+  text-align: center;
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
 }
 
 .lyrics-body::-webkit-scrollbar-thumb,
