@@ -27,8 +27,7 @@ export const MUSIC_ENDPOINTS = {
   artist: (id: string) => `/api/netease/artist?id=${id}`,
   artistAlbum: (id: string, limit = 30) => `/api/netease/artist/album?id=${id}&limit=${limit}`,
   album: (id: string) => `/api/netease/album?id=${id}`,
-  topArtists: (limit = 50) => `/api/netease/top/artists?limit=${limit}`,
-  artistList: (cat: number, limit = 30) => `/api/netease/artist/list?cat=${cat}&limit=${limit}`,
+  artistList: (area: number, limit = 30) => `/api/netease/artist/list?area=${area}&limit=${limit}`,
   simiSong: (id: string, limit = 20) => `/api/netease/simi/song?id=${id}&limit=${limit}`,
 
   // —— meting 代理 /meting-api（扁平结构，歌词为纯文本）——
@@ -142,18 +141,11 @@ export const musicApi = {
   album(id: string) {
     return requestJson<Record<string, unknown>>(MUSIC_ENDPOINTS.album(id), BACKEND, `album:${id}`)
   },
-  topArtists(limit = 50) {
+  artistList(area: number, limit = 30) {
     return requestJson<Record<string, unknown>>(
-      MUSIC_ENDPOINTS.topArtists(limit),
+      MUSIC_ENDPOINTS.artistList(area, limit),
       BACKEND,
-      `topartists:${limit}`,
-    )
-  },
-  artistList(cat: number, limit = 30) {
-    return requestJson<Record<string, unknown>>(
-      MUSIC_ENDPOINTS.artistList(cat, limit),
-      BACKEND,
-      `artistlist:${cat}:${limit}`,
+      `artistlist:${area}:${limit}`,
     )
   },
   simiSong(id: string, limit = 20) {

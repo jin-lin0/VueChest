@@ -27,8 +27,8 @@ const onArtistClick = (e: Event, song: Song) => {
 onMounted(() => {
   music.fetchDiscover()
   music.fetchPlaylistCats().then(() => music.fetchCatPlaylists(music.activeCat || '全部'))
-  // 浅入口数据预取（缓存命中，不重复请求 toplist）
-  music.fetchTopArtists()
+  // 浅入口数据预取：默认华语歌手（activeArtistArea=7），进「推荐歌手」时华语 tab 即点亮
+  music.fetchArtistList(7)
   music.fetchTopBoards()
 })
 </script>
@@ -57,10 +57,10 @@ onMounted(() => {
       <div class="ms-chips">
         <button
           v-for="c in music.artistCats"
-          :key="c.cat"
+          :key="c.area"
           class="ms-chip"
-          :class="{ active: music.activeArtistCat === c.cat }"
-          @click="music.fetchArtistList(c.cat)"
+          :class="{ active: music.activeArtistArea === c.area }"
+          @click="music.fetchArtistList(c.area)"
         >
           {{ c.key }}
         </button>

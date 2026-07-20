@@ -130,15 +130,15 @@ export const useMusicStore = defineStore('music', () => {
   // ===== 推荐歌手 / 排行榜（发现页浅入口）=====
   const topArtists = ref<Artist[]>([])
   const isLoadingArtists = ref(false)
-  // 网易云歌手分类码
+  // 网易云歌手按地区筛选（area 码：华语 7 / 欧美 96 / 日本 8 / 韩国 16 / 其他 0）
   const artistCats = [
-    { key: '华语', cat: 1001 },
-    { key: '欧美', cat: 2001 },
-    { key: '日本', cat: 6001 },
-    { key: '韩国', cat: 7001 },
-    { key: '其他', cat: 4001 },
+    { key: '华语', area: 7 },
+    { key: '欧美', area: 96 },
+    { key: '日本', area: 8 },
+    { key: '韩国', area: 16 },
+    { key: '其他', area: 0 },
   ]
-  const activeArtistCat = ref<number>(1001)
+  const activeArtistArea = ref<number>(7) // 默认华语（7）点亮
   const topBoards = ref<Playlist[]>([]) // 全部榜单（排行榜入口用）
   const isLoadingBoards = ref(false)
 
@@ -777,28 +777,12 @@ export const useMusicStore = defineStore('music', () => {
     detailView.value = 'none'
   }
 
-  // 热门歌手（推荐歌手），只需拉一次
-  const fetchTopArtists = async (limit = 50) => {
-    if (topArtists.value.length > 0) return
+  // 分类歌手（默认华语，切换分类时调用，刷新列表）
+  const fetchArtistList = async (area: number, limit = 30) => {
     isLoadingArtists.value = true
+    activeArtistArea.value = area
     try {
-      const data = (await musicApi.topArtists(limit)) as Record<string, unknown>
-      const list = (data.artists as Record<string, unknown>[]) || []
-      topArtists.value = list.map(parseArtist)
-    } catch (e) {
-      console.error('Fetch top artists failed:', e)
-      topArtists.value = []
-    } finally {
-      isLoadingArtists.value = false
-    }
-  }
-
-  // 分类歌手（切换分类时调用，刷新列表）
-  const fetchArtistList = async (cat: number, limit = 30) => {
-    isLoadingArtists.value = true
-    activeArtistCat.value = cat
-    try {
-      const data = (await musicApi.artistList(cat, limit)) as Record<string, unknown>
+      const data = (await musicApi.artistList(area, limit)) as Record<string, unknown>
       const list = (data.artists as Record<string, unknown>[]) || []
       topArtists.value = list.map(parseArtist)
     } catch (e) {
@@ -899,7 +883,7 @@ export const useMusicStore = defineStore('music', () => {
     topArtists,
     isLoadingArtists,
     artistCats,
-    activeArtistCat,
+    activeArtistArea,
     topBoards,
     isLoadingBoards,
     // similar
@@ -926,7 +910,6 @@ export const useMusicStore = defineStore('music', () => {
     openArtist,
     openAlbum,
     closeDetail,
-    fetchTopArtists,
     fetchArtistList,
     fetchTopBoards,
     fetchSimiSongs,
