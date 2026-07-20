@@ -229,13 +229,13 @@ function onContentClick(e: MouseEvent) {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: var(--space-6);
   min-width: 0;
 }
 .docs-donate {
   width: 100%;
   max-width: 820px;
   min-width: 0;
-  margin-top: var(--space-6);
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
