@@ -52,93 +52,95 @@ onMounted(async () => {
 
 <template>
   <div class="music-page">
-    <!-- Header -->
-    <div class="page-header">
-      <button class="back-btn" @click="goBack">&larr;</button>
-      <h1>音乐播放器</h1>
-    </div>
-
-    <!-- Main content -->
-    <div class="main-content">
-      <!-- Tabs -->
-      <div class="tabs">
-        <button :class="{ active: activeTab === 'discover' }" @click="activeTab = 'discover'">
-          发现
-        </button>
-        <button :class="{ active: activeTab === 'search' }" @click="activeTab = 'search'">
-          搜索
-        </button>
-        <button :class="{ active: activeTab === 'favorites' }" @click="activeTab = 'favorites'">
-          我的收藏
-        </button>
+    <div class="music-page-inner">
+      <!-- Header -->
+      <div class="page-header">
+        <button class="back-btn" @click="goBack">&larr;</button>
+        <h1>音乐播放器</h1>
       </div>
 
-      <!-- Discover -->
-      <DiscoverPanel v-show="activeTab === 'discover'" />
-
-      <!-- Search -->
-      <SearchPanel v-show="activeTab === 'search'" />
-
-      <!-- Favorites -->
-      <div v-show="activeTab === 'favorites'" class="content-section">
-        <!-- 分组切换（我的喜欢 + 用户自建分组） -->
-        <div v-if="displayGroups.length" class="fav-group-tabs">
-          <button
-            v-for="g in displayGroups"
-            :key="g.id"
-            :class="{ active: currentGroup?.id === g.id }"
-            @click="activeGroupId = g.id"
-          >
-            {{ g.name }}
-            <span class="fav-count">{{ g.songs.length }}</span>
+      <!-- Main content -->
+      <div class="main-content">
+        <!-- Tabs -->
+        <div class="tabs">
+          <button :class="{ active: activeTab === 'discover' }" @click="activeTab = 'discover'">
+            发现
+          </button>
+          <button :class="{ active: activeTab === 'search' }" @click="activeTab = 'search'">
+            搜索
+          </button>
+          <button :class="{ active: activeTab === 'favorites' }" @click="activeTab = 'favorites'">
+            我的收藏
           </button>
         </div>
 
-        <div v-if="!currentGroup || currentGroup.songs.length === 0" class="ms-empty">
-          还没有收藏歌曲，搜索并点击心形图标收藏吧
-        </div>
-        <div v-else class="ms-song-list">
-          <div
-            v-for="(song, index) in (currentGroup?.songs || [])"
-            :key="song.id"
-            class="ms-song-item"
-            :class="{ playing: music.activeSong?.id === song.id }"
-            @click="music.playSong(song, currentGroup?.songs || [])"
-          >
-            <span class="ms-song-index">{{ index + 1 }}</span>
-            <img
-              v-if="song.coverUrl"
-              :src="song.coverUrl + '?param=100y100'"
-              class="ms-song-cover"
-              alt=""
-              loading="lazy"
-            />
-            <div class="ms-song-info">
-              <div class="ms-song-name">{{ song.name }}</div>
-              <div class="ms-song-artist">
-                <span
-                  v-if="song.artistId"
-                  class="ms-link"
-                  @click.stop="music.openArtist(song.artistId)"
-                  >{{ song.artists }}</span
-                >
-                <span v-else>{{ song.artists }}</span>
-                <template v-if="song.album">
-                  -
+        <!-- Discover -->
+        <DiscoverPanel v-show="activeTab === 'discover'" />
+
+        <!-- Search -->
+        <SearchPanel v-show="activeTab === 'search'" />
+
+        <!-- Favorites -->
+        <div v-show="activeTab === 'favorites'" class="content-section">
+          <!-- 分组切换（我的喜欢 + 用户自建分组） -->
+          <div v-if="displayGroups.length" class="fav-group-tabs">
+            <button
+              v-for="g in displayGroups"
+              :key="g.id"
+              :class="{ active: currentGroup?.id === g.id }"
+              @click="activeGroupId = g.id"
+            >
+              {{ g.name }}
+              <span class="fav-count">{{ g.songs.length }}</span>
+            </button>
+          </div>
+
+          <div v-if="!currentGroup || currentGroup.songs.length === 0" class="ms-empty">
+            还没有收藏歌曲，搜索并点击心形图标收藏吧
+          </div>
+          <div v-else class="ms-song-list">
+            <div
+              v-for="(song, index) in currentGroup?.songs || []"
+              :key="song.id"
+              class="ms-song-item"
+              :class="{ playing: music.activeSong?.id === song.id }"
+              @click="music.playSong(song, currentGroup?.songs || [])"
+            >
+              <span class="ms-song-index">{{ index + 1 }}</span>
+              <img
+                v-if="song.coverUrl"
+                :src="song.coverUrl + '?param=100y100'"
+                class="ms-song-cover"
+                alt=""
+                loading="lazy"
+              />
+              <div class="ms-song-info">
+                <div class="ms-song-name">{{ song.name }}</div>
+                <div class="ms-song-artist">
                   <span
-                    v-if="song.albumId"
+                    v-if="song.artistId"
                     class="ms-link"
-                    @click.stop="music.openAlbum(song.albumId)"
-                    >{{ song.album }}</span
+                    @click.stop="music.openArtist(song.artistId)"
+                    >{{ song.artists }}</span
                   >
-                  <span v-else>{{ song.album }}</span>
-                </template>
+                  <span v-else>{{ song.artists }}</span>
+                  <template v-if="song.album">
+                    -
+                    <span
+                      v-if="song.albumId"
+                      class="ms-link"
+                      @click.stop="music.openAlbum(song.albumId)"
+                      >{{ song.album }}</span
+                    >
+                    <span v-else>{{ song.album }}</span>
+                  </template>
+                </div>
               </div>
+              <span v-if="song.duration" class="ms-song-duration">{{
+                music.formatDuration(song.duration)
+              }}</span>
+              <FavoriteMenu :song="song" />
             </div>
-            <span v-if="song.duration" class="ms-song-duration">{{
-              music.formatDuration(song.duration)
-            }}</span>
-            <FavoriteMenu :song="song" />
           </div>
         </div>
       </div>
@@ -156,11 +158,11 @@ onMounted(async () => {
   --accent-light: #a29bfe;
   --accent-gradient: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
   --accent-gradient-vivid: linear-gradient(135deg, #6c5ce7 0%, #fd79a8 100%);
-  --bg: #0f0f1a;
+  --bg: #141423;
   --bg-card: rgba(255, 255, 255, 0.06);
   --bg-card-hover: rgba(255, 255, 255, 0.1);
   --bg-surface: rgba(255, 255, 255, 0.04);
-  --bg-popover: #181826; /* 浮层/下拉框专用：实心不透明，避免玻璃拟态的半透明与背景混在一起 */
+  --bg-popover: #181826;
   --text: #f0f0f5;
   --text-secondary: #8888a0;
   --text-dim: #55556a;
@@ -170,8 +172,7 @@ onMounted(async () => {
   --radius-sm: 8px;
   --radius-lg: 18px;
 
-  max-width: 1060px;
-  margin: 0 auto;
+  width: 100%;
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
@@ -182,12 +183,22 @@ onMounted(async () => {
     'Microsoft YaHei', sans-serif;
 }
 
+.music-page-inner {
+  max-width: 1060px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 /* ===== Header (glassmorphism) ===== */
 .page-header {
   display: flex;
   align-items: center;
   padding: 14px 20px;
-  background: rgba(15, 15, 26, 0.75);
+  background: rgba(20, 20, 35, 0.78);
   backdrop-filter: blur(20px) saturate(1.6);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   color: var(--text);

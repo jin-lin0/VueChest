@@ -545,8 +545,6 @@ onUnmounted(() => {
   position: relative;
   flex-shrink: 0;
   width: 100%;
-  max-width: 1060px;
-  margin: 0 auto;
   background: rgba(20, 20, 35, 0.88);
   backdrop-filter: blur(24px) saturate(1.5);
   -webkit-backdrop-filter: blur(24px) saturate(1.5);
