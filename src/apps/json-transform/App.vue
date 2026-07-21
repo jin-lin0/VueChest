@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import type { Plugin } from 'prettier'
 import { useRouter } from 'vue-router'
 import { copyToClipboard, downloadFile, debounce } from '@/utils'
 import { Toast } from '@/components'
@@ -8,32 +9,20 @@ import RuleSelect from './components/RuleSelect.vue'
 
 defineOptions({ name: 'JsonTransformView' })
 
-const DEFAULT_INPUT = `{
-  "name": "张三",
-  "age": 28,
-  "tags": ["a", "b", "c"],
-  "profile": { "city": "上海", "vip": true },
-  "scores": [88, 92, 75]
-}`
-
-const DEFAULT_CODE = `// 编写转换函数体：input 为输入框的原始字符串，请用 return 返回结果。
-// 如需按 JSON 处理，可在函数内自行 JSON.parse(input)。
-// 需要第三方库时可用 ESM import（例如：import _ from 'https://esm.sh/lodash-es'）
-// 返回字符串则原样输出，返回对象/数组则自动格式化并高亮。
-return input`
-
 const router = useRouter()
 
 const inputText = ref('')
-const codeText = ref(DEFAULT_CODE)
+const codeText = ref('')
 const outputText = ref('')
 const outputLang = ref<'json' | 'plaintext'>('json')
 const busy = ref(false)
 const showNewRuleModal = ref(false)
-const showViewModal = ref(false)
+const showEditModal = ref(false)
 const currentRule = ref('')
 const newRuleName = ref('')
-const newRuleCode = ref(DEFAULT_CODE)
+const newRuleCode = ref('')
+const editRuleName = ref('')
+const editRuleCode = ref('')
 
 const STORAGE = {
   rules: 'json-transform:rules',
@@ -49,11 +38,6 @@ interface Rule {
 }
 
 const rules = ref<Rule[]>([])
-
-const currentRuleCode = computed(() => {
-  const r = rules.value.find((x) => x.name === currentRule.value)
-  return r ? r.code : codeText.value
-})
 
 onMounted(() => {
   try {
@@ -288,17 +272,122 @@ function closeNewRuleModal() {
   showNewRuleModal.value = false
 }
 
-/* ---------- 查看当前规则函数（只读弹窗） ---------- */
-function openViewModal() {
+function openEditModal() {
   if (!currentRule.value) return
-  showViewModal.value = true
+  const r = rules.value.find((x) => x.name === currentRule.value)
+  editRuleName.value = currentRule.value
+  editRuleCode.value = r ? r.code : codeText.value
+  showEditModal.value = true
 }
-function closeViewModal() {
-  showViewModal.value = false
+function closeEditModal() {
+  showEditModal.value = false
 }
-async function copyViewCode() {
-  await copyToClipboard(currentRuleCode.value)
+async function copyEditCode() {
+  await copyToClipboard(editRuleCode.value)
   showToast('success', '已复制函数代码')
+}
+function saveEditRule() {
+  const name = editRuleName.value.trim()
+  if (!name) {
+    showToast('error', '请填写规则名称')
+    return
+  }
+  if (name !== currentRule.value && rules.value.some((x) => x.name === name)) {
+    showToast('error', `已存在规则「${name}」`)
+    return
+  }
+  const r = rules.value.find((x) => x.name === currentRule.value)
+  if (!r) {
+    rules.value.push({ id: makeId(), name, code: editRuleCode.value })
+  } else {
+    r.name = name
+    r.code = editRuleCode.value
+  }
+  persistRules()
+  currentRule.value = name
+  codeText.value = editRuleCode.value
+  showEditModal.value = false
+  showToast('success', `已更新规则「${name}」`)
+}
+
+function splitImports(code: string): { imports: string; body: string } {
+  const lines = code.split('\n')
+  let start = -1
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim()
+    if (/^import\s+(?:\*|\{|[A-Za-z$_])/.test(t) && !t.startsWith('import(')) {
+      start = i
+      break
+    }
+  }
+  if (start === -1) return { imports: '', body: code }
+  const importLines: string[] = []
+  let inImport = true
+  let i = start
+  for (; i < lines.length && inImport; i++) {
+    const t = lines[i].trim()
+    importLines.push(lines[i])
+    const closed = t.includes('}') && t.includes('from')
+    const endsSemi = t.endsWith(';')
+    const endsParen = t.trimEnd().endsWith(')')
+    inImport = !(closed || endsSemi || endsParen)
+  }
+  const imports = importLines.join('\n')
+  const body = lines.filter((_, idx) => idx < start || idx >= i).join('\n')
+  return { imports, body }
+}
+
+const PRETTIER_OPTS = {
+  parser: 'babel',
+  semi: false,
+  singleQuote: true,
+  printWidth: 100,
+} as const
+
+async function formatRuleCode(raw: string): Promise<string | null> {
+  if (!raw.trim()) return null
+  try {
+    const prettier = await import('prettier/standalone')
+    const babel = await import('prettier/plugins/babel')
+    const estree = await import('prettier/plugins/estree')
+    const { imports, body } = splitImports(raw)
+    let formattedBody = body
+    if (body.trim()) {
+      const wrapped = `async function __wrap(){\n${body}\n}`
+      const fmt = await prettier.format(wrapped, {
+        ...PRETTIER_OPTS,
+        plugins: [babel, estree] as unknown as Plugin[],
+      })
+      const open = fmt.indexOf('{')
+      const close = fmt.lastIndexOf('}')
+      formattedBody = fmt
+        .slice(open + 1, close)
+        .replace(/^\n+/, '')
+        .replace(/\n+$/, '')
+    }
+    return (imports ? imports + '\n\n' : '') + formattedBody
+  } catch {
+    return null
+  }
+}
+
+async function formatEditRule() {
+  const formatted = await formatRuleCode(editRuleCode.value)
+  if (formatted !== null) {
+    editRuleCode.value = formatted
+    showToast('success', '已格式化代码')
+  } else {
+    showToast('error', '格式化失败：代码存在语法错误')
+  }
+}
+async function formatNewRule() {
+  const formatted = await formatRuleCode(newRuleCode.value)
+  if (formatted !== null) {
+    newRuleCode.value = formatted
+    showToast('success', '已格式化代码')
+  } else {
+    showToast('error', '格式化失败：代码存在语法错误')
+  }
 }
 
 /* ---------- 结果操作 ---------- */
@@ -338,8 +427,8 @@ function downloadOutput() {
           @rename="handleRenameRule"
         />
       </div>
-      <button class="btn ghost view-btn" :disabled="!currentRule" @click="openViewModal">
-        👁 查看
+      <button class="btn ghost view-btn" :disabled="!currentRule" @click="openEditModal">
+        ✏️ 修改
       </button>
       <div class="tb-group push-right">
         <button class="btn primary" @click="openNewRuleModal">＋ 新增规则</button>
@@ -464,7 +553,13 @@ function downloadOutput() {
     <!-- 新增规则弹窗 -->
     <Teleport to="body">
       <div v-if="showNewRuleModal" class="modal-overlay" @click.self="closeNewRuleModal">
-        <div class="modal" role="dialog" aria-modal="true">
+        <div
+          class="modal"
+          role="dialog"
+          aria-modal="true"
+          @keydown.ctrl.s.prevent="formatNewRule"
+          @keydown.meta.s.prevent="formatNewRule"
+        >
           <div class="modal-head">
             <h2>新增规则</h2>
             <button class="modal-close" @click="closeNewRuleModal" aria-label="关闭">×</button>
@@ -472,7 +567,8 @@ function downloadOutput() {
           <p class="modal-desc">
             函数体接收 <code>input</code>（输入框的原始字符串），用 <code>return</code> 返回结果。
             如需按 JSON 处理可在函数内 <code>JSON.parse(input)</code>。返回字符串则原样输出，
-            返回对象/数组则自动格式化高亮。可用 <code>import</code> 引入第三方包。
+            返回对象/数组则自动格式化高亮。可用 <code>import</code> 引入第三方包。 按
+            <kbd>⌘S</kbd> / <kbd>Ctrl+S</kbd> 格式化代码。
           </p>
 
           <div class="modal-row">
@@ -494,24 +590,36 @@ function downloadOutput() {
       </div>
     </Teleport>
 
-    <!-- 查看当前规则函数（只读弹窗） -->
     <Teleport to="body">
-      <div v-if="showViewModal" class="modal-overlay" @click.self="closeViewModal">
-        <div class="modal" role="dialog" aria-modal="true">
+      <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
+        <div
+          class="modal"
+          role="dialog"
+          aria-modal="true"
+          @keydown.ctrl.s.prevent="formatEditRule"
+          @keydown.meta.s.prevent="formatEditRule"
+        >
           <div class="modal-head">
-            <h2>规则函数 · {{ currentRule }}</h2>
-            <button class="modal-close" @click="closeViewModal" aria-label="关闭">×</button>
+            <h2>修改规则 · {{ currentRule }}</h2>
+            <button class="modal-close" @click="closeEditModal" aria-label="关闭">×</button>
           </div>
           <p class="modal-desc">
-            以下为该规则当前的转换函数（只读）。如需修改，请在「新增规则」中基于它另存或覆盖。
+            直接修改该规则的名称与转换函数，保存后即时生效（当前应用即更新）。 按 <kbd>⌘S</kbd> /
+            <kbd>Ctrl+S</kbd> 格式化代码。
           </p>
+          <div class="modal-row">
+            <input class="rule-name" v-model="editRuleName" placeholder="规则名称" />
+          </div>
           <div class="editor-box modal-editor">
-            <CodeEditor :model-value="currentRuleCode" language="javascript" readonly />
+            <CodeEditor v-model="editRuleCode" language="javascript" placeholder="return input" />
           </div>
           <div class="modal-row">
             <span class="spacer"></span>
-            <button class="btn" @click="copyViewCode">复制代码</button>
-            <button class="btn primary" @click="closeViewModal">关闭</button>
+            <button class="btn" @click="copyEditCode">复制代码</button>
+            <button class="btn" @click="closeEditModal">取消</button>
+            <button class="btn primary" :disabled="!editRuleName.trim()" @click="saveEditRule">
+              保存修改
+            </button>
           </div>
         </div>
       </div>
@@ -525,7 +633,12 @@ function downloadOutput() {
 .jt-app {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 1.5rem 1rem 1.5rem;
   color: var(--text-body);
 }
 .jt-head {
@@ -626,8 +739,11 @@ function downloadOutput() {
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-auto-rows: minmax(0, 1fr);
   gap: 1rem;
   align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 .col {
   display: flex;
@@ -644,6 +760,7 @@ function downloadOutput() {
   box-shadow: var(--shadow-sm);
   padding: 1rem 1.1rem 1.15rem;
   min-height: 0;
+  flex: 1;
 }
 .card-head {
   display: flex;
@@ -712,7 +829,7 @@ function downloadOutput() {
 }
 .editor-box {
   flex: 1;
-  min-height: 360px;
+  min-height: 0;
 }
 
 /* 让项目下拉组件（CustomSelect）与布局更协调 */
@@ -728,7 +845,7 @@ function downloadOutput() {
     grid-template-columns: 1fr;
   }
   .editor-box {
-    min-height: 300px;
+    min-height: 0;
   }
 }
 
@@ -788,6 +905,18 @@ function downloadOutput() {
   border-radius: var(--radius-xs);
   font-family: var(--font-mono, monospace);
   font-size: 0.8rem;
+}
+.modal-desc kbd,
+.btn kbd {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.12rem 0.35rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border, #d0d0d0);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 .modal-row {
   display: flex;

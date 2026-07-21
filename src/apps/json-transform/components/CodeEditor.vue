@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import hljs from 'highlight.js'
 
 const props = withDefaults(
@@ -24,7 +24,11 @@ const highlighted = computed(() => {
   const src = props.modelValue
   if (!src) return ''
   const lang =
-    props.language === 'javascript' ? 'javascript' : props.language === 'plaintext' ? 'plaintext' : 'json'
+    props.language === 'javascript'
+      ? 'javascript'
+      : props.language === 'plaintext'
+        ? 'plaintext'
+        : 'json'
   try {
     return hljs.highlight(src, { language: lang }).value + (src.endsWith('\n') ? '\n' : '')
   } catch {
@@ -35,8 +39,7 @@ const highlighted = computed(() => {
 function escapeHtml(s: string): string {
   return s.replace(
     /[&<>"']/g,
-    (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
   )
 }
 
@@ -45,11 +48,19 @@ function onInput(e: Event) {
 }
 
 function syncScroll() {
-  if (taRef.value && preRef.value) {
-    preRef.value.scrollTop = taRef.value.scrollTop
-    preRef.value.scrollLeft = taRef.value.scrollLeft
+  const ta = taRef.value
+  const pre = preRef.value
+  if (!ta || !pre) return
+  const code = pre.querySelector('code')
+  if (code) {
+    code.style.transform = `translate(${-ta.scrollLeft}px, ${-ta.scrollTop}px)`
   }
 }
+
+watch(
+  () => props.modelValue,
+  () => nextTick(syncScroll),
+)
 
 function onKeydown(e: KeyboardEvent) {
   if (props.readonly) return
@@ -76,7 +87,11 @@ function onKeydown(e: KeyboardEvent) {
 
 <template>
   <div class="code-editor" :class="{ readonly }">
-    <pre ref="preRef" class="ce-pre" aria-hidden="true"><code class="hljs" v-html="highlighted"></code></pre>
+    <pre
+      ref="preRef"
+      class="ce-pre"
+      aria-hidden="true"
+    ><code class="hljs" v-html="highlighted"></code></pre>
     <textarea
       ref="taRef"
       class="ce-ta"
@@ -141,8 +156,8 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 13px;
   line-height: 1.6;
   tab-size: 2;
-  white-space: pre;
-  word-wrap: normal;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .code-editor .ce-pre {
@@ -156,13 +171,17 @@ function onKeydown(e: KeyboardEvent) {
   background: transparent !important;
   padding: 0;
   font: inherit;
+  display: block;
+  transform: translate(0px, 0px);
+  will-change: transform;
 }
 
 .code-editor .ce-ta {
   position: absolute;
   inset: 0;
   z-index: 2;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   resize: none;
   outline: none;
   background: transparent;
