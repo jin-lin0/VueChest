@@ -414,7 +414,7 @@ function downloadOutput() {
     <header class="jt-head">
       <button class="back-btn" @click="router.push('/')">← 返回</button>
       <div class="jt-title">
-        <h1>JSON 转换</h1>
+        <h1>文本转换</h1>
       </div>
     </header>
 
@@ -470,7 +470,7 @@ function downloadOutput() {
             <CodeEditor
               v-model="inputText"
               language="json"
-              placeholder="在此粘贴 JSON 或任意文本"
+              placeholder="在此粘贴文本或 JSON"
               @save="formatInputSilent"
             />
           </div>

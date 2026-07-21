@@ -4,8 +4,8 @@ export default {
   component: App,
   route: '/json-transform',
   meta: {
-    name: 'JSON 转换',
+    name: '文本转换',
     icon: '🔧',
-    description: '输入 JSON，编写自定义转换代码（支持导入第三方包），一键转换并高亮格式化，规则本地存储',
+    description: '粘贴文本/JSON，写 JS 转换代码，格式化输出，规则存本地',
   },
 }

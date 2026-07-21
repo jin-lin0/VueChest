@@ -92,7 +92,7 @@ const router = createRouter({
       path: '/json-transform',
       name: 'json-transform',
       component: () => import('../apps/json-transform/App.vue'),
-      meta: { title: 'JSON 转换' },
+      meta: { title: '文本转换' },
     },
     {
       path: '/snake/local',
