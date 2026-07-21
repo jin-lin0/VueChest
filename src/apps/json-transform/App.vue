@@ -153,6 +153,10 @@ async function convert() {
   }
 }
 
+function formatJsonText(raw: string): string {
+  return JSON.stringify(JSON.parse(raw), null, 2)
+}
+
 function formatInput() {
   const raw = inputText.value.trim()
   if (!raw) {
@@ -160,7 +164,7 @@ function formatInput() {
     return
   }
   try {
-    inputText.value = JSON.stringify(JSON.parse(raw), null, 2)
+    inputText.value = formatJsonText(raw)
     showToast('success', '输入已格式化')
   } catch (e) {
     showToast('error', '无法格式化：输入不是合法 JSON：' + (e as Error).message)
@@ -172,7 +176,7 @@ function formatInputSilent() {
   const raw = inputText.value.trim()
   if (!raw) return
   try {
-    inputText.value = JSON.stringify(JSON.parse(raw), null, 2)
+    inputText.value = formatJsonText(raw)
   } catch {
     // 静默：即使不是合法 JSON 也不提示
   }
@@ -185,7 +189,7 @@ function formatOutput() {
     return
   }
   try {
-    outputText.value = JSON.stringify(JSON.parse(raw), null, 2)
+    outputText.value = formatJsonText(raw)
     outputLang.value = 'json'
     showToast('success', '结果已格式化')
   } catch (e) {
@@ -835,9 +839,6 @@ function downloadOutput() {
 /* 让项目下拉组件（CustomSelect）与布局更协调 */
 .cs-wrap {
   display: inline-flex;
-}
-.cs-wrap :deep(.custom-select) {
-  min-width: 190px;
 }
 
 @media (max-width: 880px) {

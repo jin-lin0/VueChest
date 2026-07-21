@@ -283,7 +283,7 @@ import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import * as THREE from 'three'
 import { formatClock } from '@/utils'
-import { RACING_CARS, RACING_DRIFT, RACING_TRACK, RACING_SCORE } from './config'
+import { RACING_CARS, RACING_DRIFT, RACING_TRACK, RACING_SCORE, type RacingCar } from './config'
 import { getCarById, cycleCar, renderSplitScreenView } from './utils'
 
 const router = useRouter()
@@ -1018,16 +1018,17 @@ function activateShield(playerData: PlayerData, duration: number) {
   }, duration * 1000)
 }
 
-function getCarMaxSpeed(player: number): number {
+function getSelectedCarData(player: number): RacingCar | undefined {
   const carId = player === 1 ? selectedCar.value : selectedCar2.value
-  const selectedCarData = getCarById(carId)
-  return (selectedCarData?.speed || 80) / 5
+  return getCarById(carId)
+}
+
+function getCarMaxSpeed(player: number): number {
+  return (getSelectedCarData(player)?.speed || 80) / 5
 }
 
 function getCarHandling(player: number): number {
-  const carId = player === 1 ? selectedCar.value : selectedCar2.value
-  const selectedCarData = getCarById(carId)
-  return (selectedCarData?.handling || 70) / 100
+  return (getSelectedCarData(player)?.handling || 70) / 100
 }
 
 function updateMinimap() {
@@ -1339,15 +1340,7 @@ function gameLoop() {
       brake: keyboardControls.p1Brake || mobileControls.brake,
     }
     updatePlayer(player1Data, car1, controls, 1)
-
-    const cameraOffset = new THREE.Vector3(0, 8, -15)
-    cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), player1Data.rotation)
-    camera.position.set(
-      player1Data.position.x + cameraOffset.x,
-      cameraOffset.y,
-      player1Data.position.z + cameraOffset.z,
-    )
-    camera.lookAt(player1Data.position.x, 2, player1Data.position.z)
+    renderSplitScreenView(camera, player1Data, window.innerWidth)
   } else {
     const p1Controls = {
       left: keyboardControls.p1Left,

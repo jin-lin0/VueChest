@@ -20,12 +20,13 @@
           @input="onSearch"
         />
       </div>
-      <select v-model="roleFilter" class="form-select" @change="fetchUsers">
-        <option value="">全部角色</option>
-        <option value="user">普通用户</option>
-        <option value="admin">管理员</option>
-        <option value="super_admin">超级管理员</option>
-      </select>
+      <CustomSelect
+        v-model="roleFilter"
+        :options="roleFilterOptions"
+        placeholder="全部角色"
+        width="200px"
+        @change="fetchUsers"
+      />
     </div>
 
     <div v-if="isLoading" class="loading-state">
@@ -132,11 +133,7 @@
             </div>
             <div class="form-group">
               <label>角色</label>
-              <select v-model="form.role" class="form-input">
-                <option value="user">普通用户</option>
-                <option value="admin">管理员</option>
-                <option value="super_admin">超级管理员</option>
-              </select>
+              <CustomSelect v-model="form.role" :options="roleOptions" placeholder="请选择角色" />
             </div>
             <div class="form-group" v-if="editingUser">
               <label>状态</label>
@@ -164,11 +161,23 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { Toast } from '@/components'
+import { CustomSelect, Toast, type SelectOption } from '@/components'
 import { api } from '@/lib/request'
 const authStore = useAuthStore()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const currentUserId = computed(() => authStore.user?.id)
+
+const roleFilterOptions: SelectOption[] = [
+  { value: '', label: '全部角色' },
+  { value: 'user', label: '普通用户' },
+  { value: 'admin', label: '管理员' },
+  { value: 'super_admin', label: '超级管理员' },
+]
+const roleOptions: SelectOption[] = [
+  { value: 'user', label: '普通用户' },
+  { value: 'admin', label: '管理员' },
+  { value: 'super_admin', label: '超级管理员' },
+]
 
 function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
   toastRef.value?.addToast(type, message)
@@ -406,6 +415,7 @@ async function toggleStatus(u: UserItem) {
 
 .toolbar {
   display: flex;
+  align-items: center;
   gap: 12px;
   margin-bottom: 20px;
   flex-wrap: wrap;
@@ -436,21 +446,6 @@ async function toggleStatus(u: UserItem) {
   box-sizing: border-box;
 }
 .search-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-.form-select {
-  padding: 10px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  font-size: 14px;
-  outline: none;
-  background: var(--bg-input);
-  color: var(--text-primary);
-  min-width: 140px;
-  cursor: pointer;
-}
-.form-select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }

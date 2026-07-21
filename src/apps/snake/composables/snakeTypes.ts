@@ -3,17 +3,23 @@
  * 本地双人对战 / 人机对战共用。
  */
 
+/** 四向移动方向 */
+export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
+
+/** 棋盘道具类型 */
+export type ItemType = 'supply' | 'spider' | 'big_supply'
+
 export interface SnakeState {
   id: number
   body: { x: number; y: number }[]
-  direction: string
+  direction: Direction
   health: number
   alive: boolean
   length: number
 }
 
 export interface ItemState {
-  type: string
+  type: ItemType
   x: number
   y: number
 }
@@ -43,7 +49,7 @@ export interface GameState {
 export const BOARD_SIZE = 19
 
 /** 方向向量 */
-export const DIR_VEC: Record<string, { x: number; y: number }> = {
+export const DIR_VEC: Record<Direction, { x: number; y: number }> = {
   UP: { x: 0, y: -1 },
   DOWN: { x: 0, y: 1 },
   LEFT: { x: -1, y: 0 },
@@ -51,16 +57,16 @@ export const DIR_VEC: Record<string, { x: number; y: number }> = {
 }
 
 /** 方向列表（AI 寻路 / 安全方向枚举用） */
-export const DIRS: string[] = ['UP', 'DOWN', 'LEFT', 'RIGHT']
+export const DIRS: Direction[] = ['UP', 'DOWN', 'LEFT', 'RIGHT']
 
 /** 键盘按键 → 方向映射 */
-export const DIR_MAP_WASD: Record<string, string> = {
+export const DIR_MAP_WASD: Record<string, Direction> = {
   w: 'UP',
   a: 'LEFT',
   s: 'DOWN',
   d: 'RIGHT',
 }
-export const DIR_MAP_ARROWS: Record<string, string> = {
+export const DIR_MAP_ARROWS: Record<string, Direction> = {
   arrowup: 'UP',
   arrowleft: 'LEFT',
   arrowdown: 'DOWN',
@@ -89,6 +95,6 @@ export interface LocalPlayerConfig {
   name: string
   color: string
   startPos: { x: number; y: number }
-  startDir: string
+  startDir: Direction
   keys: string[]
 }

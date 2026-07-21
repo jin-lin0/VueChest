@@ -29,9 +29,6 @@ const route = useRoute()
 const GAME_ROUTE_PREFIXES = ['/snake', '/racing']
 const isGameRoute = computed(() => GAME_ROUTE_PREFIXES.some((p) => route.path.startsWith(p)))
 
-// 播放条显示条件：有歌曲 + 未关闭 + 不在游戏页
-const showBar = computed(() => music.playerBarVisible && !!music.activeSong && !isGameRoute.value)
-
 // 播放条作为 App.vue 外壳的 flex 兄弟节点钉在底部（见 App.vue 的 .app / .app-main 布局），
 // 预留空间只在根布局发生一次，本组件不再操作 body / 不再向各页面注入逻辑。
 
@@ -254,7 +251,7 @@ onUnmounted(() => {
           <div v-if="music.isLoadingSimi" class="drawer-loading">加载中...</div>
           <div v-else-if="music.simiSongs.length === 0" class="empty-state">暂无相似歌曲推荐</div>
           <div
-            v-for="(song, index) in music.simiSongs"
+            v-for="song in music.simiSongs"
             :key="song.id"
             class="song-item"
             :class="{ playing: music.activeSong?.id === song.id }"

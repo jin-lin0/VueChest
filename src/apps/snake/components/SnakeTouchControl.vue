@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import type { Direction } from '../composables/snakeTypes'
 
 const emit = defineEmits<{
-  direction: [dir: string]
+  direction: [dir: Direction]
 }>()
 
 const JOYSTICK_SIZE = 140
@@ -23,7 +24,7 @@ function getAngle( dx: number, dy: number): number {
   return Math.atan2(dy, dx) * (180 / Math.PI)
 }
 
-function dirFromAngle(angle: number): string {
+function dirFromAngle(angle: number): Direction {
   // Math.atan2 在屏幕坐标中：
   //   0°   = 右（dx>0, dy≈0）
   //   90°  = 下（dx≈0, dy>0）

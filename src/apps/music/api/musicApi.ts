@@ -164,14 +164,6 @@ export const musicApi = {
       `playlist:${server}:${id}`,
     )
   },
-  // 预加载歌单：仅写入缓存，供 playlistTracks 直接命中（fire-and-forget）
-  preloadPlaylist(server: string, id: string) {
-    return requestJson<Record<string, unknown>[]>(
-      MUSIC_ENDPOINTS.playlistTracks(server, id),
-      '',
-      `playlist:${server}:${id}`,
-    ).catch(() => undefined)
-  },
   // 返回可直接作为 <audio src> 的流地址（meting 端点本身）
   songUrlPath(server: string, id: string) {
     return MUSIC_ENDPOINTS.songUrl(server, id)

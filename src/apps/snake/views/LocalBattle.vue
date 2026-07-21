@@ -187,39 +187,4 @@ function restart() {
 .name-input:focus {
   border-color: #6366f1;
 }
-
-.win-tally {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  font-size: 14px;
-}
-.tally-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.tally-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.tally-name {
-  font-weight: 500;
-}
-.tally-score {
-  font-size: 20px;
-  font-weight: 700;
-  color: #ffd700;
-  min-width: 24px;
-  text-align: center;
-}
-.tally-vs {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-  font-weight: 600;
-}
 </style>

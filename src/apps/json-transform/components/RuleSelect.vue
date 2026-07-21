@@ -32,7 +32,7 @@ const editingValue = ref<string | number | null>(null)
 const editText = ref('')
 const editInputRef = ref<HTMLInputElement | null>(null)
 
-function bindEditRef(el: any) {
+function bindEditRef(el: unknown) {
   if (el) editInputRef.value = el as HTMLInputElement
 }
 
@@ -70,6 +70,7 @@ function onDelete(opt: SelectOption) {
     :model-value="modelValue"
     :options="options"
     size="sm"
+    width="190px"
     @update:model-value="onSelect"
     @change="onChange"
   >

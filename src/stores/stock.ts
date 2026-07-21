@@ -56,6 +56,20 @@ const decodeUnicode = (str: string): string => {
   return str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
 }
 
+// 股票代码 -> 带市场前缀的行情符号（沪市 sh / 深市 sz）
+const toSymbol = (code: string): string => {
+  const prefix = getMarketId(code) === 1 ? 'sh' : 'sz'
+  return `${prefix}${code}`
+}
+
+// 从腾讯行情文本中匹配指定符号的字段数组（字段数不足视为无效）
+const matchQuoteFields = (text: string, symbol: string): string[] | null => {
+  const match = text.match(new RegExp(`v_${symbol}="([^"]+)"`))
+  if (!match) return null
+  const fields = match[1].split('~')
+  return fields.length >= 50 ? fields : null
+}
+
 export const useStockStore = defineStore('stock', () => {
   const stockCode = ref('')
   const selectedDate = ref('')
@@ -87,8 +101,7 @@ export const useStockStore = defineStore('stock', () => {
   })
 
   const fetchStockQuote = async (code: string): Promise<StockResult> => {
-    const marketPrefix = getMarketId(code) === 1 ? 'sh' : 'sz'
-    const symbol = `${marketPrefix}${code}`
+    const symbol = toSymbol(code)
     const url = `/api/stock/q=${symbol}`
 
     const response = await fetch(url)
@@ -99,15 +112,9 @@ export const useStockStore = defineStore('stock', () => {
     const buffer = await response.arrayBuffer()
     const decoder = new TextDecoder('gbk')
     const text = decoder.decode(buffer)
-    const regex = new RegExp(`v_${symbol}="([^"]+)"`)
-    const match = text.match(regex)
-    if (!match) {
+    const fields = matchQuoteFields(text, symbol)
+    if (!fields) {
       throw new Error('未找到该股票的行情数据，请检查股票代码是否正确')
-    }
-
-    const fields = match[1].split('~')
-    if (fields.length < 50) {
-      throw new Error('数据格式异常，请稍后重试')
     }
 
     const name = fields[1] || `股票${code}`
@@ -275,14 +282,8 @@ export const useStockStore = defineStore('stock', () => {
   }
 
   const parseQuoteData = (code: string, text: string): FavoriteStockData | null => {
-    const marketPrefix = getMarketId(code) === 1 ? 'sh' : 'sz'
-    const symbol = `${marketPrefix}${code}`
-    const regex = new RegExp(`v_${symbol}="([^"]+)"`)
-    const match = text.match(regex)
-    if (!match) return null
-
-    const fields = match[1].split('~')
-    if (fields.length < 50) return null
+    const fields = matchQuoteFields(text, toSymbol(code))
+    if (!fields) return null
 
     const name = fields[1] || `股票${code}`
     const price = fields[3]
@@ -320,12 +321,7 @@ export const useStockStore = defineStore('stock', () => {
     isFavoritesLoading.value = true
 
     try {
-      const symbols = favorites.value
-        .map((f) => {
-          const marketPrefix = getMarketId(f.code) === 1 ? 'sh' : 'sz'
-          return `${marketPrefix}${f.code}`
-        })
-        .join(',')
+      const symbols = favorites.value.map((f) => toSymbol(f.code)).join(',')
 
       const url = `/api/stock/q=${symbols}`
       const response = await fetch(url)
@@ -359,8 +355,7 @@ export const useStockStore = defineStore('stock', () => {
     type: 'day' | 'week' | 'month' = 'day',
     count: number = 30,
   ): Promise<KlineData[]> => {
-    const marketPrefix = getMarketId(code) === 1 ? 'sh' : 'sz'
-    const symbol = `${marketPrefix}${code}`
+    const symbol = toSymbol(code)
     const url = `https://web.ifzq.gtimg.cn/appstock/app/kline/kline?param=${symbol},${type},,,${count},&qfq=1`
 
     const response = await fetch(url)

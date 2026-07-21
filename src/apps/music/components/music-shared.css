@@ -169,28 +169,6 @@
   color: var(--accent-light);
 }
 
-.ms-fav-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  padding: 4px;
-  flex-shrink: 0;
-  opacity: 0.5;
-  transition:
-    opacity 0.2s,
-    transform 0.2s;
-}
-
-.ms-fav-btn:hover {
-  opacity: 1;
-  transform: scale(1.15);
-}
-
-.ms-fav-btn.favorited {
-  opacity: 1;
-}
-
 /* ---- 歌单 / 专辑 / 歌手卡片网格 ---- */
 .ms-card-grid {
   display: grid;
@@ -281,24 +259,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* ---- 横向滚动条（新歌速递等） ---- */
-.ms-hscroll {
-  display: flex;
-  gap: 14px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  scroll-snap-type: x mandatory;
-}
-
-.ms-hscroll::-webkit-scrollbar {
-  height: 5px;
-}
-
-.ms-hscroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
 }
 
 /* ---- 通用状态 ---- */

@@ -35,11 +35,6 @@ export const dbRemove = async (key: string): Promise<void> => {
   await db.delete(STORE_NAME, key)
 }
 
-export const dbClear = async (): Promise<void> => {
-  const db = await getDB()
-  await db.clear(STORE_NAME)
-}
-
 export const dbGetAll = async (): Promise<Record<string, unknown>> => {
   const db = await getDB()
   const keys = await db.getAllKeys(STORE_NAME)

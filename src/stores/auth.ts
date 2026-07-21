@@ -40,15 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const savedUser = localStorage.getItem(USER_INFO_KEY)
       if (savedUser) {
-        const parsed = JSON.parse(savedUser)
-        if (parsed.installedApps && typeof parsed.installedApps === 'string') {
-          try {
-            parsed.installedApps = JSON.parse(parsed.installedApps)
-          } catch {
-            parsed.installedApps = []
-          }
-        }
-        user.value = parsed
+        user.value = JSON.parse(savedUser)
       } else {
         await fetchUserInfo()
       }

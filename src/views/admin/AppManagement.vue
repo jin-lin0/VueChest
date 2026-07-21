@@ -52,10 +52,13 @@
         />
       </div>
       <div class="filter-group">
-        <select v-model="filterCategory" class="form-select" @change="onFilterChange">
-          <option value="">全部分类</option>
-          <option v-for="c in categories" :key="c.name" :value="c.name">{{ c.name }}</option>
-        </select>
+        <CustomSelect
+          v-model="filterCategory"
+          :options="categoryOptions"
+          placeholder="全部分类"
+          width="200px"
+          @change="onFilterChange"
+        />
       </div>
     </div>
 
@@ -212,8 +215,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { Toast } from '@/components'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { CustomSelect, Toast, type SelectOption } from '@/components'
 import { api } from '@/lib/request'
 
 interface MarketAppItem {
@@ -254,6 +257,11 @@ const reviewingId = ref<number | null>(null)
 const searchKeyword = ref('')
 const filterCategory = ref('')
 let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+const categoryOptions = computed<SelectOption[]>(() => [
+  { value: '', label: '全部分类' },
+  ...categories.value.map((c) => ({ value: c.name, label: c.name })),
+])
 
 const stats = reactive({
   totalApps: 0,
@@ -680,9 +688,14 @@ async function deleteApp(app: MarketAppItem) {
 
 .toolbar {
   display: flex;
+  align-items: center;
   gap: 12px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+}
+.filter-group {
+  width: 200px;
+  flex-shrink: 0;
 }
 .search-box {
   flex: 1;
@@ -710,21 +723,6 @@ async function deleteApp(app: MarketAppItem) {
   box-sizing: border-box;
 }
 .search-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-.form-select {
-  padding: 10px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  font-size: 14px;
-  outline: none;
-  background: var(--bg-input);
-  color: var(--text-primary);
-  min-width: 140px;
-  cursor: pointer;
-}
-.form-select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }

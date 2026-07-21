@@ -76,10 +76,6 @@ const refreshSuggestions = () => {
   randomSuggestions.value = getRandomSuggestions()
 }
 
-const currentSession = computed(
-  () => sessions.value.find((s) => s.id === currentSessionId.value) || null,
-)
-
 const sortedSessions = computed(() => [...sessions.value].sort((a, b) => b.updatedAt - a.updatedAt))
 
 const canSend = computed(() => inputMessage.value.trim() && !isLoading.value)
@@ -154,13 +150,8 @@ const saveSessions = () => {
 }
 
 const loadSessions = () => {
-  const saved = getStorage<ChatSession[]>(AI_CHAT_SESSIONS_KEY, [])
-  if (saved && saved.length > 0) {
-    // 兼容旧版本：把数字型 id（如 1784463468384.5688）归一化为字符串，
-    // 否则后端 typeof !== 'string' 校验会误判为“缺少 conversationId”
-    saved.forEach((s) => {
-      if (typeof s.id !== 'string') s.id = String(s.id)
-    })
+  const saved = getStorage<ChatSession[]>(AI_CHAT_SESSIONS_KEY, []) ?? []
+  if (saved.length > 0) {
     sessions.value = saved
     currentSessionId.value = saved[0].id
   }
@@ -248,19 +239,13 @@ const formatTime = (ts: number) => {
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`
 }
 
-const getSessionTitle = (session: ChatSession) => session.title
-
 const sendMessage = async () => {
   if (!canSend.value) return
 
   error.value = ''
 
-  if (!currentSessionId.value) {
-    const s = createSession()
-    currentSessionId.value = s.id
-  }
-  // 强制转字符串（兼容旧版数字型 id），避免后端因 typeof !== 'string' 拒绝
-  const convId = String(currentSessionId.value)
+  const convId = currentSessionId.value || createSession().id
+  currentSessionId.value = convId
 
   const userMessage: Message = {
     id: generateId(),
@@ -467,7 +452,7 @@ onUnmounted(() => {
           :class="{ active: session.id === currentSessionId }"
           @click="switchSession(session.id)"
         >
-          <div class="session-title">{{ getSessionTitle(session) }}</div>
+          <div class="session-title">{{ session.title }}</div>
           <button
             class="btn-delete"
             @click.stop="deleteSession(session.id)"
@@ -553,12 +538,13 @@ onUnmounted(() => {
             <CustomSelect
               v-model="selectedProviderId"
               :options="providerOptions"
+              block
               @change="(v) => selectProvider(v)"
             />
           </div>
           <div class="setting-item">
             <label>模型</label>
-            <CustomSelect v-model="selectedModel" :options="modelOptions" />
+            <CustomSelect v-model="selectedModel" :options="modelOptions" block />
           </div>
           <p class="setting-note">API Key 由服务端配置，无需在此填写。</p>
         </div>
@@ -900,11 +886,6 @@ onUnmounted(() => {
 .settings-content {
   max-width: 480px;
   margin: 0 auto;
-}
-
-/* 设置面板里的下拉组件占满整行，与输入框对齐 */
-.settings-content :deep(.custom-select) {
-  width: 100%;
 }
 
 .setting-item {

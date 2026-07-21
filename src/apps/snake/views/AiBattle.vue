@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnakeGame } from '../composables/useSnakeGame'
 import { PLAYER_COLORS, DIR_MAP_WASD } from '../composables/snakeTypes'
-import type { Difficulty } from '../composables/snakeTypes'
+import type { Difficulty, Direction } from '../composables/snakeTypes'
 import SnakeCanvas from '../components/SnakeCanvas.vue'
 import SnakeResultModal from '../components/SnakeResultModal.vue'
 import SnakeTouchControl from '../components/SnakeTouchControl.vue'
@@ -57,7 +57,7 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
-function onJoystickDir(dir: string) {
+function onJoystickDir(dir: Direction) {
   if (game.state.status === 'playing') {
     game.changeDirection(game.HUMAN_ID, dir)
   }

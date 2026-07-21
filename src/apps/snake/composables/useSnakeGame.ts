@@ -5,6 +5,7 @@ import {
   DIRS,
   PLAYER_COLORS,
   type Difficulty,
+  type Direction,
   type LocalPlayerConfig,
   type SnakeState,
   type GameState,
@@ -32,7 +33,7 @@ const HUMAN_ID = 1
 const AI_ID = 2
 
 /** 相反方向 */
-function isOpposite(a: string, b: string): boolean {
+function isOpposite(a: Direction, b: Direction): boolean {
   return (
     (a === 'UP' && b === 'DOWN') ||
     (a === 'DOWN' && b === 'UP') ||
@@ -193,13 +194,10 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
     }
   }
 
-  /** 移动蛇，返回碰撞结果 */
-  function moveSnake(
-    snake: SnakeState,
-    allSnakes: SnakeState[],
-  ): { died: boolean; tookDamage: boolean } {
+  /** 移动蛇（副作用：更新蛇身 / 血量 / 存活状态） */
+  function moveSnake(snake: SnakeState, allSnakes: SnakeState[]): void {
     const vec = DIR_VEC[snake.direction]
-    if (!vec) return { died: false, tookDamage: false }
+    if (!vec) return
 
     const head = snake.body[0]
     const newHead = { x: head.x + vec.x, y: head.y + vec.y }
@@ -245,7 +243,7 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
         if (wrappedHead.y >= BOARD_SIZE) wrappedHead.y = 0
         snake.body.unshift(wrappedHead)
         if (snake.body.length > snake.length) snake.body.pop()
-        return { died: false, tookDamage: false }
+        return
       }
       // 非无敌状态：扣血
       const damage = wallHit ? WALL_DAMAGE : BODY_DAMAGE
@@ -254,10 +252,10 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
       invincibleTimers.set(snake.id, INVINCIBLE_TICKS)
       if (snake.health <= 0) {
         snake.alive = false
-        return { died: true, tookDamage: true }
+        return
       }
       // 未死亡，停在原地（不移动）
-      return { died: false, tookDamage: true }
+      return
     }
 
     // 正常移动（无碰撞）
@@ -265,8 +263,6 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
     if (snake.body.length > snake.length) {
       snake.body.pop()
     }
-
-    return { died: false, tookDamage: false }
   }
 
   /** 检查头碰头 */
@@ -407,29 +403,14 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
   }
 
   /** 改变方向（防止 180 度 + 防止快速换向自撞） */
-  function changeDirection(playerId: number, dir: string) {
+  function changeDirection(playerId: number, dir: Direction) {
     // 人机模式：只有人类玩家能控制方向
     if (isAi && playerId !== HUMAN_ID) return
     const snake = state.snakes.find((s) => s.id === playerId)
     if (!snake || !snake.alive) return
     if (isOpposite(snake.direction, dir)) return
-
-    // 预判：新方向下一步是否撞到自己身体（防止快速多次换向导致自撞）
-    const head = snake.body[0]
-    const vec = DIR_VEC[dir]
-    const nextHead = { x: head.x + vec.x, y: head.y + vec.y }
-
-    const bodyWithoutTail = snake.body.slice(0, snake.body.length - 1)
-    for (const seg of bodyWithoutTail) {
-      if (seg.x === nextHead.x && seg.y === nextHead.y) return
-    }
-    // 检查是否撞到对手
-    for (const other of state.snakes) {
-      if (other.id === playerId || !other.alive) continue
-      for (const seg of other.body) {
-        if (seg.x === nextHead.x && seg.y === nextHead.y) return
-      }
-    }
+    // 预判：新方向下一步是否撞到自己身体 / 对手（撞墙允许，下一 tick 才扣血）
+    if (wouldHitBodyOrOpponent(snake, dir)) return
 
     snake.direction = dir
   }
@@ -461,7 +442,7 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
   // ============ AI 逻辑（仅 mode === 'ai' 时参与） ============
 
   /** 检查某个格子是否可通过（非障碍物） */
-  function isWalkable(x: number, y: number, _selfId: number): boolean {
+  function isWalkable(x: number, y: number): boolean {
     if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) return false
     for (const s of state.snakes) {
       if (!s.alive) continue
@@ -480,15 +461,14 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
     startY: number,
     targetX: number,
     targetY: number,
-    selfId: number,
-  ): string[] | null {
-    if (!isWalkable(targetX, targetY, selfId)) {
+  ): Direction[] | null {
+    if (!isWalkable(targetX, targetY)) {
       // 目标本身不可到达
       return null
     }
 
     const visited = new Set<string>()
-    const queue: { x: number; y: number; path: string[] }[] = []
+    const queue: { x: number; y: number; path: Direction[] }[] = []
     queue.push({ x: startX, y: startY, path: [] })
     visited.add(`${startX},${startY}`)
 
@@ -503,7 +483,7 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
         const nx = cur.x + vec.x
         const ny = cur.y + vec.y
         const key = `${nx},${ny}`
-        if (!visited.has(key) && isWalkable(nx, ny, selfId)) {
+        if (!visited.has(key) && isWalkable(nx, ny)) {
           visited.add(key)
           queue.push({ x: nx, y: ny, path: [...cur.path, dir] })
         }
@@ -512,8 +492,32 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
     return null // 无路可达
   }
 
+  /** 新方向的下一步是否会撞到自己身体（除尾巴）或对手 */
+  function wouldHitBodyOrOpponent(snake: SnakeState, dir: Direction): boolean {
+    const vec = DIR_VEC[dir]
+    const head = snake.body[0]
+    const nx = head.x + vec.x
+    const ny = head.y + vec.y
+
+    // 撞自己（除尾巴）
+    const bodyWithoutTail = snake.body.slice(0, snake.body.length - 1)
+    for (const seg of bodyWithoutTail) {
+      if (seg.x === nx && seg.y === ny) return true
+    }
+
+    // 撞对方
+    for (const other of state.snakes) {
+      if (other.id === snake.id || !other.alive) continue
+      for (const seg of other.body) {
+        if (seg.x === nx && seg.y === ny) return true
+      }
+    }
+
+    return false
+  }
+
   /** 评估一个方向是否安全（不会立即撞墙/撞身） */
-  function isSafeDirection(snake: SnakeState, dir: string): boolean {
+  function isSafeDirection(snake: SnakeState, dir: Direction): boolean {
     const vec = DIR_VEC[dir]
     const head = snake.body[0]
     const nx = head.x + vec.x
@@ -522,21 +526,7 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
     // 撞墙
     if (nx < 0 || nx >= BOARD_SIZE || ny < 0 || ny >= BOARD_SIZE) return false
 
-    // 撞自己（除尾巴）
-    const bodyWithoutTail = snake.body.slice(0, snake.body.length - 1)
-    for (const seg of bodyWithoutTail) {
-      if (seg.x === nx && seg.y === ny) return false
-    }
-
-    // 撞对方
-    for (const other of state.snakes) {
-      if (other.id === snake.id || !other.alive) continue
-      for (const seg of other.body) {
-        if (seg.x === nx && seg.y === ny) return false
-      }
-    }
-
-    return true
+    return !wouldHitBodyOrOpponent(snake, dir)
   }
 
   /** AI 决策：为 AI 蛇选择最佳方向 */
@@ -623,11 +613,11 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
     // 按得分排序，找 BFS 可达的最佳目标
     targets.sort((a, b) => b.score - a.score)
 
-    let bestDir: string | null = null
+    let bestDir: Direction | null = null
     let bestScore = -Infinity
 
     for (const target of targets) {
-      const path = bfs(head.x, head.y, target.x, target.y, AI_ID)
+      const path = bfs(head.x, head.y, target.x, target.y)
       if (path && path.length > 0) {
         const combined = target.score - path.length * 0.5
         if (combined > bestScore && safeDirs.includes(path[0])) {
@@ -678,9 +668,7 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
     for (const s of state.snakes) {
       if (!s.alive) continue
       if (graceTimer >= GRACE_TICKS) {
-        const result = moveSnake(s, state.snakes)
-        // 如果 result.died 为 true，蛇已死；如果 result.tookDamage 为 true 但 result.died 为 false
-        // 说明扣血了但未死亡，蛇停在原地（moveSnake 里没有执行移动逻辑）
+        moveSnake(s, state.snakes)
       } else {
         // grace 期间只移动不检测碰撞
         const vec = DIR_VEC[s.direction]

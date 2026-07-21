@@ -1,7 +1,8 @@
 <template>
   <div
     class="custom-select"
-    :class="{ open: isOpen, disabled, [`size-${props.size}`]: true }"
+    :class="{ open: isOpen, disabled, block: props.block, [`size-${props.size}`]: true }"
+    :style="props.width ? { width: props.width } : undefined"
     ref="selectRef"
   >
     <div class="select-trigger" @click="toggleDropdown" :class="{ active: isOpen }">
@@ -95,7 +96,9 @@ const props = withDefaults(
     disabled?: boolean
     searchable?: boolean
     defaultFirst?: boolean
-    size?: 'sm' | 'md'
+    size?: 'sm' | 'md' | 'lg'
+    block?: boolean
+    width?: string
   }>(),
   {
     placeholder: '请选择',
@@ -103,6 +106,8 @@ const props = withDefaults(
     searchable: false,
     defaultFirst: false,
     size: 'md',
+    block: false,
+    width: '',
   },
 )
 
@@ -223,14 +228,16 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--bg-card);
-  border: 2px solid var(--border-light);
-  border-radius: 12px;
+  box-sizing: border-box;
+  height: 42px;
+  padding: 0 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
-  min-height: 44px;
+  font-size: 14px;
 }
 
 .select-trigger:hover {
@@ -249,10 +256,10 @@ onUnmounted(() => {
   background: var(--bg-subtle);
 }
 
-/* 紧凑尺寸：高度/圆角/字号对齐页面普通按钮 */
+/* 紧凑尺寸：表格操作列、气泡内等空间有限处 */
 .custom-select.size-sm .select-trigger {
-  padding: 0.5rem 0.85rem;
-  min-height: 34px;
+  height: 34px;
+  padding: 0 0.85rem;
   border-width: 1px;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
@@ -263,6 +270,20 @@ onUnmounted(() => {
 .custom-select.size-sm .trigger-arrow svg {
   width: 10px;
   height: 10px;
+}
+
+/* 大尺寸：强调场景（如筛选栏主分类） */
+.custom-select.size-lg .select-trigger {
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+/* 撑满父容器宽度（等价于 width="100%"） */
+.custom-select.block {
+  display: block;
+  width: 100%;
 }
 
 .trigger-content {
@@ -280,7 +301,6 @@ onUnmounted(() => {
 
 .trigger-text {
   color: var(--text-body);
-  font-size: 0.95rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -468,10 +488,6 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .custom-select {
     min-width: 0;
-  }
-
-  .select-trigger {
-    padding: 12px 14px;
   }
 }
 </style>

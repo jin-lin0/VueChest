@@ -140,7 +140,7 @@ const MAX_PREVIEW_BYTES = 512 * 1024
 const maxPreviewLabel = '512 KB'
 
 const formatSize = (bytes?: number): string => {
-  if (bytes === undefined || bytes === null) return '-'
+  if (bytes === undefined) return '-'
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
@@ -411,7 +411,7 @@ const selectCategory = (cat: string) => {
               <div class="form-group">
                 <label>方法</label>
                 <div class="cs-wrap">
-                  <CustomSelect v-model="formData.method" :options="methodOptions" size="sm" />
+                  <CustomSelect v-model="formData.method" :options="methodOptions" size="sm" block />
                 </div>
               </div>
               <div class="form-group">
@@ -437,7 +437,7 @@ const selectCategory = (cat: string) => {
                 <div class="param-row">
                   <input v-model="param.name" type="text" placeholder="参数名" class="param-name" />
                   <div class="param-type cs-wrap">
-                    <CustomSelect v-model="param.type" :options="typeOptions" size="sm" />
+                    <CustomSelect v-model="param.type" :options="typeOptions" size="sm" block />
                   </div>
                   <input
                     v-model="param.defaultValue"
@@ -621,10 +621,6 @@ const selectCategory = (cat: string) => {
 
 /* CustomSelect 包裹层：让下拉组件撑满表单宽度 */
 .cs-wrap {
-  width: 100%;
-}
-
-.cs-wrap :deep(.custom-select) {
   width: 100%;
 }
 

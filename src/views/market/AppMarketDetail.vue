@@ -32,8 +32,8 @@ async function handleInstall() {
   installing.value = true
   try {
     await market.installApp(app.value.id)
-  } catch (e: any) {
-    error.value = e.message || '安装失败'
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '安装失败'
   } finally {
     installing.value = false
   }

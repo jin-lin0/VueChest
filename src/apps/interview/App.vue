@@ -243,7 +243,7 @@ const clearSearch = () => {
 
 // 读取某 key 的本地状态（统一存储 @/lib/storage）
 const readLocalIds = (key: string): number[] | null => {
-  return getStorage<number[]>(key) ?? null
+  return getStorage<number[]>(key)
 }
 
 // 加载本地存储
@@ -655,11 +655,6 @@ onMounted(() => {
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.4);
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #11998e 0%, var(--quiz-success) 100%);
-  color: white;
 }
 
 .btn-outline {
