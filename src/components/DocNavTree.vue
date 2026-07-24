@@ -19,11 +19,15 @@ const props = withDefaults(
 )
 const emit = defineEmits<{ (e: 'select', id: string): void }>()
 
-// 共享展开表：缺失视为收起（undefined 当作 false）
+// 共享展开表：默认展开（undefined 视为展开），只有显式置 false 才收起
 const expanded = inject<Record<string, boolean>>(DOC_EXPANDED_KEY, {})
 
 function toggle(n: DocItem) {
-  expanded[n.id] = !expanded[n.id]
+  // 当前展开（非 false）→ 收起；当前收起（false）→ 展开
+  expanded[n.id] = expanded[n.id] === false ? true : false
+}
+function isOpen(n: DocItem) {
+  return expanded[n.id] !== false
 }
 function onSelect(id: string) {
   emit('select', id)
@@ -35,11 +39,11 @@ function onSelect(id: string) {
     <li v-for="n in nodes" :key="n.id">
       <!-- 文件夹节点：可折叠分组（只切换自身展开状态，不影响其它文件夹） -->
       <template v-if="isFolder(n)">
-        <button class="doc-nav-folder" :class="{ open: expanded[n.id] }" @click="toggle(n)">
+        <button class="doc-nav-folder" :class="{ open: isOpen(n) }" @click="toggle(n)">
           <span class="doc-caret">▸</span>
           <span class="doc-folder-title">{{ n.title }}</span>
         </button>
-        <div v-show="expanded[n.id]" class="doc-nav-children">
+        <div v-show="isOpen(n)" class="doc-nav-children">
           <DocNavTree
             :nodes="n.children!"
             :active-id="activeId"

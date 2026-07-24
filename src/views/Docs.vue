@@ -51,10 +51,10 @@ function ensureAncestorsOpen(active: string) {
     walk(s.items)
   })
 }
-// 全量展开 / 收起。收起时保留激活路径，确保当前文档仍可见
+// 全量展开 / 收起。默认即全展开（undefined 视为展开），故「全开」=没有任何文件夹被显式收起（false）
 const allFoldersOpen = computed(() => {
   const ids = allFolderIds()
-  return ids.length > 0 && ids.every((id) => expandedMap[id])
+  return ids.length > 0 && ids.every((id) => expandedMap[id] !== false)
 })
 function toggleAllFolders() {
   const ids = allFolderIds()
@@ -155,8 +155,7 @@ watch(
   },
 )
 onMounted(() => {
-  // 初始化展开表：默认全部展开，再确保当前激活文档所在路径展开（已经是 true，保持幂等）
-  allFolderIds().forEach((id) => (expandedMap[id] = true))
+  // 默认即全展开（undefined 视为展开），这里只需确保激活文档所在路径展开（已默认展开，保持幂等）
   ensureAncestorsOpen(activeDoc.value?.id ?? '')
   // 挂到真正的滚动容器 .app-main（而非 window）
   scroller.value = document.querySelector('.app-main')
