@@ -13,13 +13,18 @@ const { isDark, toggleTheme } = useTheme()
 
 const contentRef = ref<HTMLElement | null>(null)
 
+// 移动端目录抽屉开关
+const tocOpen = ref(false)
+
 // ---- 顶部 Tab：帮助中心 / 知识库 ----
 type DocTab = 'help' | 'kb'
 const kbAllDocs = computed(() => knowledgeSections.flatMap((s) => s.items))
 const activeTab = computed<DocTab>(() =>
   route.query.doc && kbAllDocs.value.some((d) => d.id === route.query.doc) ? 'kb' : 'help',
 )
-const currentSections = computed(() => (activeTab.value === 'kb' ? knowledgeSections : helpSections))
+const currentSections = computed(() =>
+  activeTab.value === 'kb' ? knowledgeSections : helpSections,
+)
 const currentAllDocs = computed(() => currentSections.value.flatMap((s) => s.items))
 
 function firstDocIdOf(tab: DocTab): string | undefined {
@@ -46,6 +51,7 @@ const html = computed(() => {
 function selectDoc(id: string) {
   router.push({ path: '/docs', query: { doc: id } })
   if (contentRef.value) contentRef.value.scrollTop = 0
+  tocOpen.value = false
 }
 
 // 将文档内的相对 .md 链接（如 ./market-upload.md）在站内导航，而非发起文件请求
@@ -64,12 +70,53 @@ function onContentClick(e: MouseEvent) {
 <template>
   <div class="docs-page">
     <header class="docs-header">
-      <div class="docs-brand" @click="router.push('/')">
-        <span class="docs-logo">⚡</span>
-        <span class="docs-title">VueChest 文档中心</span>
+      <div class="docs-header-left">
+        <button class="docs-back" @click="router.push('/')" title="返回首页" aria-label="返回首页">
+          <svg
+            class="docs-back-icon"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
+        <button class="docs-toc-toggle" @click="tocOpen = true" title="目录" aria-label="打开目录">
+          <svg
+            class="docs-toc-icon"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div class="docs-brand" @click="router.push('/')">
+          <span class="docs-logo">⚡</span>
+          <span class="docs-title">VueChest 文档中心</span>
+        </div>
       </div>
       <nav class="docs-tabs">
-        <button class="docs-tab" :class="{ active: activeTab === 'help' }" @click="selectTab('help')">
+        <button
+          class="docs-tab"
+          :class="{ active: activeTab === 'help' }"
+          @click="selectTab('help')"
+        >
           帮助中心
         </button>
         <button class="docs-tab" :class="{ active: activeTab === 'kb' }" @click="selectTab('kb')">
@@ -77,7 +124,6 @@ function onContentClick(e: MouseEvent) {
         </button>
       </nav>
       <div class="docs-header-actions">
-        <button class="docs-link" @click="router.push('/')">← 返回首页</button>
         <button
           class="docs-theme"
           @click="toggleTheme"
@@ -88,8 +134,16 @@ function onContentClick(e: MouseEvent) {
       </div>
     </header>
 
+    <div class="docs-drawer-backdrop" :class="{ open: tocOpen }" @click="tocOpen = false"></div>
+
     <div class="docs-body">
-      <aside class="docs-sidebar">
+      <aside class="docs-sidebar" :class="{ 'is-open': tocOpen }">
+        <div class="docs-drawer-header">
+          <span>目录</span>
+          <button class="docs-drawer-close" @click="tocOpen = false" aria-label="关闭目录">
+            ✕
+          </button>
+        </div>
         <nav>
           <section v-for="section in currentSections" :key="section.id" class="docs-nav-section">
             <h3 class="docs-nav-title">{{ section.title }}</h3>
@@ -200,7 +254,7 @@ function onContentClick(e: MouseEvent) {
   align-items: center;
   gap: var(--space-2);
 }
-.docs-link,
+.docs-back,
 .docs-theme {
   border: 1px solid var(--border);
   background: var(--bg-glass-soft);
@@ -211,10 +265,32 @@ function onContentClick(e: MouseEvent) {
   cursor: pointer;
   transition: var(--transition);
 }
-.docs-link:hover,
+.docs-back:hover,
 .docs-theme:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+.docs-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+/* 移动端才出现的元素，桌面端默认隐藏 */
+.docs-toc-toggle,
+.docs-drawer-backdrop,
+.docs-drawer-header {
+  display: none;
+}
+.docs-back {
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.docs-back-icon {
+  display: block;
 }
 .docs-theme {
   width: 38px;
@@ -432,18 +508,104 @@ function onContentClick(e: MouseEvent) {
   .docs-header {
     padding: var(--space-3) var(--space-4);
   }
+  /* 移动端隐藏品牌文字，仅保留返回与目录图标 */
+  .docs-brand {
+    display: none;
+  }
+  /* 移动端目录按钮（汉堡图标） */
+  .docs-toc-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid var(--border);
+    background: var(--bg-glass-soft);
+    color: var(--text-body);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .docs-toc-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .docs-toc-icon {
+    display: block;
+  }
   .docs-body {
     grid-template-columns: 1fr;
   }
+  /* 侧拉抽屉：默认移出视口左侧，打开时滑入 */
   .docs-sidebar {
-    position: static;
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--border-light);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    max-width: 82vw;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    border-right: 1px solid var(--border-light);
+    box-shadow: var(--shadow-lg);
+    padding-top: 0;
+  }
+  .docs-sidebar.is-open {
+    transform: translateX(0);
   }
   .docs-nav-list {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
+  }
+  /* 抽屉标题栏（含关闭按钮） */
+  .docs-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-3);
+    border-bottom: 1px solid var(--border-light);
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+  }
+  .docs-drawer-header span {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .docs-drawer-close {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    transition: var(--transition-fast);
+  }
+  .docs-drawer-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  /* 抽屉遮罩 */
+  .docs-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.25s ease,
+      visibility 0.25s ease;
+    z-index: 40;
+  }
+  .docs-drawer-backdrop.open {
+    opacity: 1;
+    visibility: visible;
   }
   .docs-content-wrap {
     padding: var(--space-5) var(--space-4);
