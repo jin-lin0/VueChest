@@ -20,11 +20,6 @@ import stockKnowledge from './stock-knowledge.md?raw'
  */
 export const helpSections: DocSection[] = [
   {
-    id: 'about',
-    title: '关于本站',
-    items: [{ id: 'site-donate', title: '给站主打赏', content: siteDonate }],
-  },
-  {
     id: 'getting-started',
     title: '开始使用',
     items: [
@@ -55,6 +50,11 @@ export const helpSections: DocSection[] = [
     id: 'stock',
     title: '股票知识库',
     items: [{ id: 'stock-knowledge', title: 'A 股短线交易知识库', content: stockKnowledge }],
+  },
+  {
+    id: 'about',
+    title: '关于本站',
+    items: [{ id: 'site-donate', title: '给站主打赏', content: siteDonate }],
   },
 ]
 
