@@ -17,11 +17,16 @@ const ANCHOR_PREFIX = 'mdh-'
 /**
  * 渲染 markdown 为 HTML。
  * @param md        原始 markdown 文本
- * @param tocLevel  若 > 0，则为该级标题（如 2 = ##）注入连续锚点 id（mdh-0、mdh-1…），
- *                  供 extractToc 生成的目录跳转使用；只对该级计数，其余标题不加 id。
+ * @param opts.tocLevel   若 > 0，为「单级」标题（如 2 = ##）注入连续锚点 id（mdh-0、mdh-1…）。
+ * @param opts.tocLevels  若提供数组（如 [2,3]），为该数组内各级标题统一注入连续锚点 id，
+ *                        供 extractToc 生成的「本页目录」多级跳转使用。
+ *                        二者同时提供时，tocLevels 优先。
  */
-export function renderMarkdown(md: string, opts: { tocLevel?: number } = {}): string {
-  const tocLevel = opts.tocLevel ?? 0
+export function renderMarkdown(
+  md: string,
+  opts: { tocLevel?: number; tocLevels?: number[] } = {},
+): string {
+  const tocLevels = opts.tocLevels
   let index = 0
   const renderer = new marked.Renderer()
   // 代码块默认在 parse 阶段同步高亮（输出带 hljs 类），调用方无需再后处理
@@ -29,7 +34,14 @@ export function renderMarkdown(md: string, opts: { tocLevel?: number } = {}): st
     const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext'
     return `<pre><code class="hljs language-${language}">${hljs.highlight(text, { language }).value}</code></pre>`
   }
-  if (tocLevel > 0) {
+  if (tocLevels && tocLevels.length) {
+    renderer.heading = (token: Tokens.Heading) => {
+      const inner = marked.parseInline(token.text)
+      const id = tocLevels.includes(token.depth) ? ` id="${ANCHOR_PREFIX}${index++}"` : ''
+      return `<h${token.depth}${id}>${inner}</h${token.depth}>`
+    }
+  } else if (opts.tocLevel && opts.tocLevel > 0) {
+    const tocLevel = opts.tocLevel
     renderer.heading = (token: Tokens.Heading) => {
       const inner = marked.parseInline(token.text)
       const id = token.depth === tocLevel ? ` id="${ANCHOR_PREFIX}${index++}"` : ''
@@ -40,24 +52,31 @@ export function renderMarkdown(md: string, opts: { tocLevel?: number } = {}): st
 }
 
 /**
- * 从 markdown 提取标题作为目录（默认二级标题）。
- * 跳过围栏代码块（```）内的标题，避免误匹配。
- * 锚点 id 生成规则与 renderMarkdown 保持一致，确保点击跳转命中。
+ * 从 markdown 提取标题作为「本页目录」。
+ * @param levels  要提取的标题级别（如 [2] 仅二级、[2,3] 二级+三级），默认 [2]。
+ *                 各级标题共用一个连续 id 计数器（mdh-0、mdh-1…），与 renderMarkdown
+ *                 的 tocLevels 注入规则一致，确保点击跳转命中。
+ * 跳过围栏代码块（```）内的标题，避免误匹配；多级别按从大到小匹配避免 ## 误吞 ###。
  */
-export function extractToc(md: string, level = 2): TocItem[] {
+export function extractToc(md: string, levels: number[] = [2]): TocItem[] {
   const items: TocItem[] = []
   let index = 0
   let inCodeBlock = false
-  const re = new RegExp(`^${'#'.repeat(level)}\\s+(.+)$`)
+  const sorted = [...levels].sort((a, b) => b - a) // 大级别优先，避免 ## 匹配到 ###
+  const res = sorted.map((lv) => ({ lv, re: new RegExp(`^${'#'.repeat(lv)}\\s+(.+)$`) }))
   for (const line of md.split('\n')) {
     if (line.trim().startsWith('```')) {
       inCodeBlock = !inCodeBlock
       continue
     }
     if (inCodeBlock) continue
-    const m = re.exec(line)
-    if (m) items.push({ id: `${ANCHOR_PREFIX}${index++}`, text: m[1].trim(), depth: level })
+    for (const { lv, re } of res) {
+      const m = re.exec(line)
+      if (m) {
+        items.push({ id: `${ANCHOR_PREFIX}${index++}`, text: m[1].trim(), depth: lv })
+        break
+      }
+    }
   }
   return items
 }
-

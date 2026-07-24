@@ -1,35 +1,104 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, nextTick, reactive, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { helpSections } from '../docs'
-import { knowledgeSections } from '../docs/knowledge'
+import { helpSections, knowledgeSections, flattenDocs, firstLeafIdOf, containsId } from '../docs'
+import type { DocItem } from '../docs/types'
 import { useTheme } from '../composables/useTheme'
-import { renderMarkdown } from '@/lib/markdown'
-import { DonatePanel, DonorsWall } from '@/components'
+import { renderMarkdown, extractToc } from '@/lib/markdown'
+import { DonatePanel, DonorsWall, DocNavTree, DOC_EXPANDED_KEY } from '@/components'
 
 const route = useRoute()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 
 const contentRef = ref<HTMLElement | null>(null)
+// 真正的滚动容器是 .app-main（App.vue 中 overflow-y:auto），不是 window
+const scroller = ref<HTMLElement | null>(null)
+
+// ---- 侧边栏文件夹展开状态：提升到 Docs.vue 统一管理（共享响应式表） ----
+const expandedMap = reactive<Record<string, boolean>>({})
+provide(DOC_EXPANDED_KEY, expandedMap)
+
+// 当前 Tab 下所有文件夹 id（含 section 主文件夹与嵌套子目录）
+function allFolderIds(): string[] {
+  const ids: string[] = []
+  currentSections.value.forEach((s) => {
+    // section 自身成为可折叠主文件夹
+    ids.push(s.id)
+    const walk = (list: DocItem[]) =>
+      list.forEach((n) => {
+        if (n.children?.length) {
+          ids.push(n.id)
+          walk(n.children)
+        }
+      })
+    walk(s.items)
+  })
+  return ids
+}
+// 仅打开「包含激活文档」的文件夹路径；不动其它文件夹的状态（修复：切文档时其它文件夹被收起）
+function ensureAncestorsOpen(active: string) {
+  currentSections.value.forEach((s) => {
+    // 激活文档在本 section 内时，展开该主文件夹
+    if (containsId(s.items, active)) expandedMap[s.id] = true
+    const walk = (list: DocItem[]) =>
+      list.forEach((n) => {
+        if (n.children?.length) {
+          if (containsId(n.children, active)) expandedMap[n.id] = true
+          walk(n.children)
+        }
+      })
+    walk(s.items)
+  })
+}
+// 全量展开 / 收起。收起时保留激活路径，确保当前文档仍可见
+const allFoldersOpen = computed(() => {
+  const ids = allFolderIds()
+  return ids.length > 0 && ids.every((id) => expandedMap[id])
+})
+function toggleAllFolders() {
+  const ids = allFolderIds()
+  const target = !allFoldersOpen.value
+  if (!target) {
+    // 收起：保留激活路径（含 section 主文件夹及其下的激活路径）
+    const keep = new Set<string>()
+    const active = activeDoc.value?.id ?? ''
+    currentSections.value.forEach((s) => {
+      const onSection = containsId(s.items, active)
+      if (onSection) keep.add(s.id)
+      const mark = (list: DocItem[], onPath: boolean) =>
+        list.forEach((n) => {
+          if (n.children?.length) {
+            const on = onPath || containsId(n.children, active)
+            if (on) keep.add(n.id)
+            mark(n.children, on)
+          }
+        })
+      mark(s.items, onSection)
+    })
+    ids.forEach((id) => (expandedMap[id] = keep.has(id)))
+  } else {
+    ids.forEach((id) => (expandedMap[id] = true))
+  }
+}
 
 // 移动端目录抽屉开关
 const tocOpen = ref(false)
 
 // ---- 顶部 Tab：帮助中心 / 知识库 ----
 type DocTab = 'help' | 'kb'
-const kbAllDocs = computed(() => knowledgeSections.flatMap((s) => s.items))
+const kbAllDocs = computed(() => flattenDocs(knowledgeSections.flatMap((s) => s.items)))
 const activeTab = computed<DocTab>(() =>
   route.query.doc && kbAllDocs.value.some((d) => d.id === route.query.doc) ? 'kb' : 'help',
 )
 const currentSections = computed(() =>
   activeTab.value === 'kb' ? knowledgeSections : helpSections,
 )
-const currentAllDocs = computed(() => currentSections.value.flatMap((s) => s.items))
+const currentAllDocs = computed(() => flattenDocs(currentSections.value.flatMap((s) => s.items)))
 
 function firstDocIdOf(tab: DocTab): string | undefined {
   const sections = tab === 'kb' ? knowledgeSections : helpSections
-  return sections[0]?.items[0]?.id
+  return firstLeafIdOf(sections)
 }
 
 function selectTab(tab: DocTab) {
@@ -38,19 +107,67 @@ function selectTab(tab: DocTab) {
 }
 
 const activeDoc = computed(() => {
-  const found = currentAllDocs.value.find((d) => d.id === route.query.doc)
-  return found ?? currentAllDocs.value[0]
+  const found = currentAllDocs.value.find((d) => d.id === route.query.doc && d.content)
+  return found ?? currentAllDocs.value.find((d) => d.content) ?? currentAllDocs.value[0]
 })
 
 const html = computed(() => {
   const doc = activeDoc.value
-  if (!doc) return ''
-  return renderMarkdown(doc.content)
+  if (!doc?.content) return ''
+  return renderMarkdown(doc.content, { tocLevels: [2, 3] })
 })
+
+// ---- 本页目录（TOC）：从二级/三级标题提取 ----
+const toc = computed(() =>
+  activeDoc.value?.content ? extractToc(activeDoc.value.content, [2, 3]) : [],
+)
+const activeHeading = ref('')
+
+function scrollToHeading(id: string) {
+  const el = contentRef.value?.querySelector(`#${CSS.escape(id)}`)
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+let headingEls: HTMLElement[] = []
+function collectHeadings() {
+  const root = contentRef.value
+  headingEls = root ? (Array.from(root.querySelectorAll('h2, h3')) as HTMLElement[]) : []
+  onScroll()
+}
+function onScroll() {
+  if (!headingEls.length) return
+  const offset = 88 // 顶栏高度 + 余量
+  let current = headingEls[0].id
+  for (const el of headingEls) {
+    if (el.getBoundingClientRect().top - offset <= 0) current = el.id
+    else break
+  }
+  activeHeading.value = current
+}
+
+watch(
+  () => activeDoc.value?.id,
+  (id) => {
+    activeHeading.value = ''
+    // 切换文档时只打开其所属路径的文件夹，不收起其它文件夹
+    if (id) ensureAncestorsOpen(id)
+    nextTick(collectHeadings)
+  },
+)
+onMounted(() => {
+  // 初始化展开表：默认全部展开，再确保当前激活文档所在路径展开（已经是 true，保持幂等）
+  allFolderIds().forEach((id) => (expandedMap[id] = true))
+  ensureAncestorsOpen(activeDoc.value?.id ?? '')
+  // 挂到真正的滚动容器 .app-main（而非 window）
+  scroller.value = document.querySelector('.app-main')
+  scroller.value?.addEventListener('scroll', onScroll, { passive: true })
+  nextTick(collectHeadings)
+})
+onUnmounted(() => scroller.value?.removeEventListener('scroll', onScroll))
 
 function selectDoc(id: string) {
   router.push({ path: '/docs', query: { doc: id } })
-  if (contentRef.value) contentRef.value.scrollTop = 0
+  nextTick(() => scroller.value?.scrollTo({ top: 0 }))
   tocOpen.value = false
 }
 
@@ -146,24 +263,59 @@ function onContentClick(e: MouseEvent) {
         </div>
         <nav>
           <section v-for="section in currentSections" :key="section.id" class="docs-nav-section">
-            <h3 class="docs-nav-title">{{ section.title }}</h3>
-            <ul class="docs-nav-list">
-              <li v-for="item in section.items" :key="item.id">
-                <button
-                  class="docs-nav-item"
-                  :class="{ active: item.id === activeDoc.id }"
-                  @click="selectDoc(item.id)"
-                >
-                  {{ item.title }}
-                </button>
-              </li>
-            </ul>
+            <!-- 每个 section 本身作为可折叠的主文件夹；展开后才是里面的子目录/文档 -->
+            <DocNavTree
+              :nodes="[{ id: section.id, title: section.title, children: section.items }]"
+              :active-id="activeDoc?.id ?? ''"
+              @select="selectDoc"
+            />
           </section>
         </nav>
+        <button
+          class="docs-header-btn docs-fab"
+          @click="toggleAllFolders"
+          :title="allFoldersOpen ? '收起全部目录' : '展开全部目录'"
+          :aria-label="allFoldersOpen ? '收起全部目录' : '展开全部目录'"
+        >
+          <svg
+            v-if="allFoldersOpen"
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="7 11 12 6 17 11" />
+            <polyline points="7 18 12 13 17 18" />
+          </svg>
+          <svg
+            v-else
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="7 13 12 18 17 13" />
+            <polyline points="7 6 12 11 17 6" />
+          </svg>
+        </button>
       </aside>
 
       <main class="docs-content-wrap">
-        <DonatePanel v-if="activeDoc.id === 'site-donate'" :show-wall="false" class="docs-donate" />
+        <DonatePanel
+          v-if="activeDoc?.id === 'site-donate'"
+          :show-wall="false"
+          class="docs-donate"
+        />
 
         <article
           class="docs-content"
@@ -172,8 +324,27 @@ function onContentClick(e: MouseEvent) {
           @click="onContentClick"
         ></article>
 
-        <DonorsWall v-if="activeDoc.id === 'site-donate'" class="docs-donate" />
+        <DonorsWall v-if="activeDoc?.id === 'site-donate'" class="docs-donate" />
       </main>
+
+      <!-- 本页目录（右侧大纲） -->
+      <aside v-if="toc.length" class="docs-toc">
+        <div class="docs-toc-inner">
+          <h4 class="docs-toc-title">本页目录</h4>
+          <ul class="docs-toc-list">
+            <li
+              v-for="item in toc"
+              :key="item.id"
+              class="docs-toc-item"
+              :class="[`lv-${item.depth}`, { active: item.id === activeHeading }]"
+            >
+              <button class="docs-toc-link" @click="scrollToHeading(item.id)">
+                {{ item.text }}
+              </button>
+            </li>
+          </ul>
+        </div>
+      </aside>
     </div>
   </div>
 </template>
@@ -270,6 +441,26 @@ function onContentClick(e: MouseEvent) {
   border-color: var(--accent);
   color: var(--accent);
 }
+.docs-header-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--bg-glass-soft);
+  color: var(--text-body);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.docs-header-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.docs-header-btn svg {
+  display: block;
+}
 .docs-header-left {
   display: flex;
   align-items: center;
@@ -299,11 +490,11 @@ function onContentClick(e: MouseEvent) {
   font-size: 15px;
 }
 
-/* ---------- 主体两栏 ---------- */
+/* ---------- 主体三栏：侧边栏 / 内容 / 本页目录 ---------- */
 .docs-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 248px 1fr;
+  grid-template-columns: 248px minmax(0, 1fr) 240px;
   align-items: stretch;
 }
 
@@ -316,49 +507,89 @@ function onContentClick(e: MouseEvent) {
   align-self: start;
   height: calc(100vh - 57px);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+/* 侧边栏右下角的悬浮折叠按钮：sticky 吸底，不随目录列表滚动而移动 */
+.docs-fab {
+  position: sticky;
+  bottom: 0;
+  align-self: flex-end;
+  margin-top: auto;
+  flex-shrink: 0;
+  z-index: 2;
 }
 
 .docs-nav-section + .docs-nav-section {
   margin-top: var(--space-5);
 }
-.docs-nav-title {
+
+/* ---------- 本页目录（右侧大纲） ---------- */
+.docs-toc {
+  border-left: 1px solid var(--border-light);
+  background: var(--bg-card);
+  padding: var(--space-5) var(--space-4);
+  position: sticky;
+  top: 57px;
+  align-self: start;
+  height: calc(100vh - 57px);
+  overflow-y: auto;
+}
+.docs-toc-inner {
+  position: sticky;
+  top: 0;
+}
+.docs-toc-title {
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--text-muted);
-  margin: 0 0 var(--space-2) var(--space-2);
+  margin: 0 0 var(--space-3);
 }
-.docs-nav-list {
+.docs-toc-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  border-left: 2px solid var(--border-light);
 }
-.docs-nav-item {
+.docs-toc-item {
+  margin: 0;
+  padding-left: var(--space-3);
+  margin-left: -2px;
+  border-left: 2px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+.docs-toc-item.lv-3 {
+  padding-left: var(--space-6);
+}
+.docs-toc-item.active {
+  border-left-color: var(--accent);
+}
+.docs-toc-link {
+  display: block;
   width: 100%;
   text-align: left;
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  padding: var(--space-2) var(--space-3);
+  padding: 4px 6px;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.5;
   cursor: pointer;
   transition: var(--transition-fast);
-  border-left: 3px solid transparent;
 }
-.docs-nav-item:hover {
-  background: var(--bg-hover);
+.docs-toc-link:hover {
   color: var(--text-primary);
+  background: var(--bg-hover);
 }
-.docs-nav-item.active {
-  background: var(--accent-bg);
+.docs-toc-item.active .docs-toc-link {
   color: var(--accent);
   font-weight: 600;
-  border-left-color: var(--accent);
 }
 
 /* ---------- 内容区 ---------- */
@@ -395,6 +626,7 @@ function onContentClick(e: MouseEvent) {
   overflow-x: auto;
   overflow-wrap: break-word;
   word-break: break-word;
+  scroll-margin-top: 72px;
 }
 
 /* ---------- Markdown 正文样式（作用于 v-html 内部） ---------- */
@@ -404,16 +636,19 @@ function onContentClick(e: MouseEvent) {
   margin: 0 0 var(--space-5);
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border-light);
+  scroll-margin-top: 72px;
 }
 .docs-content :deep(h2) {
   font-size: 21px;
   color: var(--text-primary);
   margin: var(--space-7) 0 var(--space-3);
+  scroll-margin-top: 72px;
 }
 .docs-content :deep(h3) {
   font-size: 17px;
   color: var(--text-primary);
   margin: var(--space-5) 0 var(--space-2);
+  scroll-margin-top: 72px;
 }
 .docs-content :deep(p) {
   margin: var(--space-3) 0;
@@ -504,6 +739,15 @@ function onContentClick(e: MouseEvent) {
 }
 
 /* ---------- 响应式 ---------- */
+@media (max-width: 1180px) {
+  /* 中屏隐藏右侧本页目录，避免三栏过挤 */
+  .docs-body {
+    grid-template-columns: 248px minmax(0, 1fr);
+  }
+  .docs-toc {
+    display: none;
+  }
+}
 @media (max-width: 768px) {
   .docs-header {
     padding: var(--space-3) var(--space-4);
@@ -554,9 +798,6 @@ function onContentClick(e: MouseEvent) {
   }
   .docs-sidebar.is-open {
     transform: translateX(0);
-  }
-  .docs-nav-list {
-    flex-direction: column;
   }
   /* 抽屉标题栏（含关闭按钮） */
   .docs-drawer-header {

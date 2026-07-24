@@ -8,9 +8,14 @@ import langgraph from './langgraph.md?raw'
 import agentPatterns from './agent-patterns.md?raw'
 import rag from './rag.md?raw'
 import promptEng from './prompt-eng.md?raw'
+import frontendMd from './frontend.md?raw'
+import agentMd from './agent.md?raw'
+import algorithmMd from './algorithm.md?raw'
+import scenarioMd from './scenario.md?raw'
+import niukeMd from './niuke.md?raw'
 
 /**
- * 知识库文档注册表：按分类组织（前端开发 / AI·Agent）。
+ * 知识库文档注册表：按分类组织（前端开发 / AI·Agent / 面试题库）。
  * 新增知识文档时，在此追加一项并在上方 import 对应 .md?raw 即可，
  * 侧边栏与路由会自动同步（Docs.vue 通过 activeTab 切换展示）。
  *
@@ -36,6 +41,29 @@ export const knowledgeSections: DocSection[] = [
       { id: 'agent-patterns', title: 'Agent 设计模式与架构', content: agentPatterns },
       { id: 'rag', title: 'RAG 检索增强生成实战', content: rag },
       { id: 'prompt-eng', title: '提示词工程实践', content: promptEng },
+    ],
+  },
+  {
+    id: 'kb-interview',
+    title: '面试题库',
+    items: [
+      {
+        id: 'interview-bag',
+        title: '八股',
+        children: [
+          { id: 'frontend', title: '前端面试', content: frontendMd },
+          { id: 'agent', title: 'AI Agent 面试', content: agentMd },
+        ],
+      },
+      {
+        id: 'interview-practice',
+        title: '刷题',
+        children: [
+          { id: 'algorithm', title: '算法章节', content: algorithmMd },
+          { id: 'scenario', title: '场景题章节', content: scenarioMd },
+          { id: 'niuke', title: '牛客面试题库', content: niukeMd },
+        ],
+      },
     ],
   },
 ]

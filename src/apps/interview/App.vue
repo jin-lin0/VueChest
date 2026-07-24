@@ -214,7 +214,7 @@ const goBack = () => {
 
 // 进入知识文档
 const goDocs = () => {
-  router.push('/interview/docs')
+  router.push({ path: '/docs', query: { doc: 'niuke' } })
 }
 
 // 搜索处理（防抖）
