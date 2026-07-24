@@ -112,6 +112,52 @@ pnpm build:market     # 构建 market-apps/ 到产物目录
 pnpm publish:market   # 发布到后端 R2 存储
 ```
 
+## A 股短线交易知识库
+
+股票分析应用内置一个持续成长的「A 股短线交易知识库」（路由 `/stock/knowledge`，从股票分析页的「🧠 知识中心」进入）。知识以「原子（atom）」为单位组织，每条带分类、标签、可信度、引用与关联，支持分类/标签筛选、全文搜索、详情阅读与知识图谱浏览。
+
+知识数据**不进前端仓库**：原始原子聚合后发布到 Cloudflare R2 公开桶，前端运行时直连 R2 拉取，更新知识库**无需重新构建前端**。
+
+### 本地数据目录
+
+`src/apps/stock/knowledge/data/`：
+
+```
+data/
+├── raw/         源知识原子（输入）：每个 <domain>.json 是一个 KnowledgeAtom[] 数组
+└── generated/   聚合产物（输出，由 build 生成）：atoms / index / graph 三个 JSON
+```
+
+> `data/` 整体已加入 `.gitignore`，不进版本控制；R2 为权威源。
+
+### 脚本（scripts/knowledge/）
+
+| 脚本 | 作用 |
+| --- | --- |
+| `r2-kb.mjs` | R2 共用助手：复用 `VueChestServer/.env` 的 R2 凭证与 `@aws-sdk`，提供 getR2 / 上传 / 列举 / 下载 / 删除 / 复制。前端不引 aws-sdk。 |
+| `kb-sync-raw.mjs` | `--pull` 把 R2 的 `stock/knowledge/raw/*` 下载到本地 `data/raw/`；`--push` 把本地 `data/raw/*` 上传到 R2。 |
+| `build-knowledge.mjs` | 聚合本地 `data/raw/*` → 产出 `atoms.json` / `index.json` / `graph.json`（写入 `data/generated/`），并发布到 R2 的 `stock/knowledge/generated/`。发布前校验本地 raw 是否覆盖 R2 全量（防止误覆盖成子集），可用 `--force` 跳过。 |
+| `validate-knowledge.mjs` | 质量门禁：检查 raw 原子是否合规（必需小节 / category / confidence / citations）。 |
+
+### npm 命令
+
+```sh
+pnpm kb:pull      # 拉取 R2 上的全部 raw 到本地（改 JSON 前先跑，避免覆盖他人改动）
+pnpm kb:validate  # 只读自检 raw 是否合规
+pnpm kb:publish   # 上传 raw 到 R2 → 聚合并发布 3 个产物到 R2（前端直连自动生效）
+```
+
+### R2 存储
+
+- 桶：`vuechest`，公开基地址 `https://files.020201.xyz`（可用 `VITE_KB_R2_BASE` 覆盖）。
+- 路径：`stock/knowledge/raw/*.json`（源原子）与 `stock/knowledge/generated/*.json`（聚合产物）。
+- 前端 `loader.ts` 运行时拉取 `index.json` / `atoms.json` / `graph.json` 三个文件，并以 `index.generatedAt` 作为缓存版本号自动绕过 CDN / 浏览器缓存。
+- R2 已配置 CORS，放行前端域名（`app.020201.xyz` / `localhost:5173` / `localhost:3000`）。
+
+### 持续扩展
+
+每周一 09:00 有一个自动化任务（`automation-1784654144242`）自动研究一个新子主题、写入 `data/raw/auto-YYYY-MM-DD.json`、推送并重新聚合发布，知识库因此持续成长。
+
 ## 部署
 
 已配置 `vercel.json`：

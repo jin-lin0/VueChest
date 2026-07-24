@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { docSections, allDocs, findDoc } from '../docs'
+import { helpSections } from '../docs'
+import { knowledgeSections } from '../docs/knowledge'
 import { useTheme } from '../composables/useTheme'
 import { renderMarkdown } from '@/lib/markdown'
 import { DonatePanel, DonorsWall } from '@/components'
@@ -12,7 +13,29 @@ const { isDark, toggleTheme } = useTheme()
 
 const contentRef = ref<HTMLElement | null>(null)
 
-const activeDoc = computed(() => findDoc(route.query.doc as string | undefined) ?? allDocs[0])
+// ---- 顶部 Tab：帮助中心 / 知识库 ----
+type DocTab = 'help' | 'kb'
+const kbAllDocs = computed(() => knowledgeSections.flatMap((s) => s.items))
+const activeTab = computed<DocTab>(() =>
+  route.query.doc && kbAllDocs.value.some((d) => d.id === route.query.doc) ? 'kb' : 'help',
+)
+const currentSections = computed(() => (activeTab.value === 'kb' ? knowledgeSections : helpSections))
+const currentAllDocs = computed(() => currentSections.value.flatMap((s) => s.items))
+
+function firstDocIdOf(tab: DocTab): string | undefined {
+  const sections = tab === 'kb' ? knowledgeSections : helpSections
+  return sections[0]?.items[0]?.id
+}
+
+function selectTab(tab: DocTab) {
+  const id = firstDocIdOf(tab)
+  if (id) selectDoc(id)
+}
+
+const activeDoc = computed(() => {
+  const found = currentAllDocs.value.find((d) => d.id === route.query.doc)
+  return found ?? currentAllDocs.value[0]
+})
 
 const html = computed(() => {
   const doc = activeDoc.value
@@ -43,8 +66,16 @@ function onContentClick(e: MouseEvent) {
     <header class="docs-header">
       <div class="docs-brand" @click="router.push('/')">
         <span class="docs-logo">⚡</span>
-        <span class="docs-title">VueChest 帮助文档</span>
+        <span class="docs-title">VueChest 文档中心</span>
       </div>
+      <nav class="docs-tabs">
+        <button class="docs-tab" :class="{ active: activeTab === 'help' }" @click="selectTab('help')">
+          帮助中心
+        </button>
+        <button class="docs-tab" :class="{ active: activeTab === 'kb' }" @click="selectTab('kb')">
+          知识库
+        </button>
+      </nav>
       <div class="docs-header-actions">
         <button class="docs-link" @click="router.push('/')">← 返回首页</button>
         <button
@@ -60,7 +91,7 @@ function onContentClick(e: MouseEvent) {
     <div class="docs-body">
       <aside class="docs-sidebar">
         <nav>
-          <section v-for="section in docSections" :key="section.id" class="docs-nav-section">
+          <section v-for="section in currentSections" :key="section.id" class="docs-nav-section">
             <h3 class="docs-nav-title">{{ section.title }}</h3>
             <ul class="docs-nav-list">
               <li v-for="item in section.items" :key="item.id">
@@ -131,6 +162,37 @@ function onContentClick(e: MouseEvent) {
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: 0.3px;
+}
+
+/* ---------- 顶部 Tab（帮助中心 / 知识库） ---------- */
+.docs-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--bg-glass-soft);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+.docs-tab {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-4);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+.docs-tab:hover {
+  color: var(--text-primary);
+}
+.docs-tab.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
 }
 
 .docs-header-actions {

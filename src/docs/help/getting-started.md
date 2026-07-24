@@ -44,3 +44,4 @@ VueChest 提供账号与登录能力：
 - [安装与使用](./market-install.md)
 - [注意事项](./market-notes.md)
 - [常见问题 FAQ](./faq.md)
+- [A 股短线交易知识库](./stock-knowledge.md)

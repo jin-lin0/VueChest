@@ -37,3 +37,6 @@ AGENTS.md
 
 # 候选文件
 scripts/candidates/
+
+# 知识库数据：源(raw)+聚合产物均在 R2，不进前端仓库
+src/apps/stock/knowledge/data/

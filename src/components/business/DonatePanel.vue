@@ -29,16 +29,10 @@ onMounted(async () => {
 
 <template>
   <section class="donate-panel">
-    <h3 class="donate-panel-title">
-      <span>💝</span> 打赏支持
-    </h3>
-    <p class="donate-panel-hint">
-      以下收款方式由站长配置，资金直达站长个人账户，平台不经手。扫码即可支持，感谢你的每一份心意。
-    </p>
+    <h3 class="donate-panel-title"><span>💝</span> 打赏支持</h3>
+    <p class="donate-panel-hint">扫码即可支持，感谢你的每一份心意。</p>
 
-    <div v-if="!hasAny" class="donate-empty">
-      站长尚未配置收款码，敬请期待 🙏
-    </div>
+    <div v-if="!hasAny" class="donate-empty">站长尚未配置收款码，敬请期待 🙏</div>
 
     <div v-else class="donate-grid">
       <div v-if="wechat" class="donate-channel">

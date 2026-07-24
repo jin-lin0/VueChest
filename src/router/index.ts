@@ -65,6 +65,12 @@ const router = createRouter({
       meta: { title: '面试题库 · 知识文档' },
     },
     {
+      path: '/stock/knowledge',
+      name: 'knowledge',
+      component: () => import('../apps/stock/knowledge/App.vue'),
+      meta: { title: 'A股短线交易 · 知识中心' },
+    },
+    {
       path: '/market',
       name: 'market',
       component: () => import('../views/market/AppMarket.vue'),

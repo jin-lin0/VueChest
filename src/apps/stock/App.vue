@@ -137,6 +137,7 @@ const handleQuery = async () => {
       <h1>股票查询</h1>
         <nav class="module-tabs">
           <RouterLink to="/stock" exact-active-class="active">行情分析</RouterLink>
+          <RouterLink to="/stock/knowledge" exact-active-class="active">🧠 知识中心</RouterLink>
         </nav>
     </header>
 
