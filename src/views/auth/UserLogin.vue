@@ -12,11 +12,11 @@
 
         <form @submit.prevent="handleLogin" class="login-form">
           <div class="form-group">
-            <label>用户名</label>
+            <label>用户名 / 邮箱</label>
             <input
               v-model="username"
               type="text"
-              placeholder="输入用户名"
+              placeholder="输入用户名或邮箱"
               class="form-input"
               :disabled="authStore.isLoading"
               autocomplete="username"

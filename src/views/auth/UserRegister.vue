@@ -16,7 +16,7 @@
             <input
               v-model="username"
               type="text"
-              placeholder="至少3个字符"
+              placeholder="至少3个字符，不能使用邮箱格式"
               class="form-input"
               :disabled="authStore.isLoading"
               autocomplete="username"
@@ -173,6 +173,7 @@ async function handleSendCode() {
 const isFormValid = computed(
   () =>
     username.value.length >= 3 &&
+    !EMAIL_RE.test(username.value) &&
     EMAIL_RE.test(email.value) &&
     code.value.length === 6 &&
     password.value.length >= 6 &&
@@ -184,6 +185,10 @@ async function handleRegister() {
 
   if (username.value.length < 3) {
     error.value = '用户名至少需要3个字符'
+    return
+  }
+  if (EMAIL_RE.test(username.value)) {
+    error.value = '用户名不能是邮箱格式，请使用普通用户名'
     return
   }
   if (!EMAIL_RE.test(email.value)) {
