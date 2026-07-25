@@ -48,6 +48,8 @@
           <router-link to="/register" class="link">立即注册</router-link>
         </div>
         <div class="login-footer">
+          <router-link to="/forgot-password" class="link">忘记密码？</router-link>
+          <span class="sep">·</span>
           <router-link to="/" class="link">返回首页</router-link>
         </div>
       </div>

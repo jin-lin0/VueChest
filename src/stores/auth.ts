@@ -135,6 +135,54 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function sendResetCode(
+    email: string,
+  ): Promise<{ success: boolean; message: string; expiresIn?: number; cooldown?: number }> {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { data } = await api.post<{ data: { expiresIn: number; cooldown: number } }>(
+        '/api/auth/forgot-password',
+        { email },
+        { auth: false },
+      )
+
+      return {
+        success: true,
+        message: '验证码已发送',
+        expiresIn: data.expiresIn,
+        cooldown: data.cooldown,
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '验证码发送失败'
+      error.value = message
+      return { success: false, message }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function resetPassword(payload: {
+    email: string
+    code: string
+    newPassword: string
+  }): Promise<{ success: boolean; message: string }> {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      await api.post('/api/auth/reset-password', payload, { auth: false })
+      return { success: true, message: '密码重置成功' }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '密码重置失败'
+      error.value = message
+      return { success: false, message }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   async function fetchUserInfo(): Promise<boolean> {
     if (!token.value) return false
 
@@ -169,6 +217,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     sendVerificationCode,
+    sendResetCode,
+    resetPassword,
     fetchUserInfo,
     logout,
   }

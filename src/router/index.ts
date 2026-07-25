@@ -119,6 +119,12 @@ const router = createRouter({
       meta: { title: '注册' },
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('../views/auth/ForgotPassword.vue'),
+      meta: { title: '找回密码' },
+    },
+    {
       path: '/admin',
       component: () => import('../layouts/AdminLayout.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
