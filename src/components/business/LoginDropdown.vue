@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import { api } from '@/lib/request'
@@ -60,8 +60,45 @@ async function uploadAvatar(event: Event) {
     if (!uploaded.ok) throw new Error('upload failed')
     await api.post('/api/uploads/complete', { kind: 'avatar', key: data.key })
     await authStore.fetchUserInfo()
+    showToast('success', '头像已更新')
   } catch (error) {
     showToast('error', error instanceof Error ? error.message : '头像上传失败，请稍后重试')
+  }
+}
+
+// ─── 修改昵称（内联编辑）───────────────────────
+const editingName = ref(false)
+const nameDraft = ref('')
+const savingName = ref(false)
+const nameInput = ref<HTMLInputElement | null>(null)
+
+function startEditName() {
+  nameDraft.value = authStore.user?.username || ''
+  editingName.value = true
+  nextTick(() => nameInput.value?.focus())
+}
+
+function cancelEditName() {
+  editingName.value = false
+  nameDraft.value = ''
+}
+
+async function saveName() {
+  const next = nameDraft.value.trim()
+  if (!next) return showToast('warning', '昵称不能为空')
+  if (next === authStore.user?.username) return cancelEditName()
+
+  savingName.value = true
+  try {
+    const result = await authStore.updateProfile({ username: next })
+    if (result.success) {
+      showToast('success', result.message)
+      editingName.value = false
+    } else {
+      showToast('error', result.message)
+    }
+  } finally {
+    savingName.value = false
   }
 }
 </script>
@@ -79,19 +116,46 @@ async function uploadAvatar(event: Event) {
     <div v-if="showDropdown" class="dropdown-menu" @click="closeDropdown">
       <template v-if="authStore.isAuthenticated">
         <div class="dropdown-info">
-          <div class="profile-row">
-            <div class="profile-avatar">
+          <div class="profile-row" @click.stop>
+            <label class="profile-avatar" title="点击更换头像">
               <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="用户头像" />
               <span v-else>{{ authStore.user?.username?.charAt(0).toUpperCase() }}</span>
-            </div>
-            <div class="profile-meta">
-              <strong>{{ authStore.user?.username }}</strong>
-              <span class="dropdown-role">{{ getRoleLabel(authStore.user?.role) }}</span>
-            </div>
-            <label class="avatar-upload">
-              更换
               <input type="file" accept="image/jpeg,image/png,image/webp" hidden @change="uploadAvatar" />
             </label>
+
+            <template v-if="!editingName">
+              <div class="profile-meta">
+                <span class="profile-name-line">
+                  <strong>{{ authStore.user?.username }}</strong>
+                  <button class="name-edit-icon" title="修改昵称" @click.stop="startEditName">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z" />
+                    </svg>
+                  </button>
+                </span>
+                <span class="dropdown-role">{{ getRoleLabel(authStore.user?.role) }}</span>
+              </div>
+            </template>
+
+            <div v-else class="name-edit">
+              <input
+                ref="nameInput"
+                v-model="nameDraft"
+                class="name-input"
+                type="text"
+                maxlength="20"
+                placeholder="请输入新昵称"
+                @keyup.enter="saveName"
+                @keyup.esc="cancelEditName"
+              />
+              <div class="name-edit-actions">
+                <button class="name-save" :disabled="savingName" @click.stop="saveName">
+                  {{ savingName ? '保存中…' : '保存' }}
+                </button>
+                <button class="name-cancel" @click.stop="cancelEditName">取消</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="dropdown-divider"></div>
@@ -164,6 +228,7 @@ async function uploadAvatar(event: Event) {
 }
 
 .profile-avatar {
+  position: relative;
   width: 34px;
   height: 34px;
   display: grid;
@@ -174,6 +239,14 @@ async function uploadAvatar(event: Event) {
   background: var(--accent-bg);
   color: var(--accent);
   font-weight: 700;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.profile-avatar:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
 }
 
 .profile-avatar img {
@@ -197,19 +270,31 @@ async function uploadAvatar(event: Event) {
   white-space: nowrap;
 }
 
-.avatar-upload {
-  flex: 0 0 auto;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid var(--accent-light);
-  border-radius: 6px;
-  background: var(--accent-bg);
-  color: var(--accent);
-  font-size: 0.85rem;
-  cursor: pointer;
+.profile-name-line {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
 }
 
-.avatar-upload:hover {
-  background: var(--accent-light);
+.name-edit-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.name-edit-icon:hover {
+  color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .user-name {
@@ -225,7 +310,8 @@ async function uploadAvatar(event: Event) {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 180px;
+  min-width: 200px;
+  max-width: 260px;
   background: var(--bg-glass);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
@@ -254,6 +340,72 @@ async function uploadAvatar(event: Event) {
 
 .dropdown-role {
   font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 内联修改昵称 */
+.name-edit {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.name-input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--accent-light);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.name-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.name-edit-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.name-save,
+.name-cancel {
+  flex: 1;
+  padding: 0.35rem 0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.name-save {
+  background: var(--accent);
+  color: #fff;
+}
+
+.name-save:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.name-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.name-cancel {
+  background: transparent;
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+.name-cancel:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .dropdown-divider {

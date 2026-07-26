@@ -197,6 +197,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateProfile(payload: {
+    username?: string
+  }): Promise<{ success: boolean; message: string }> {
+    try {
+      const { data } = await api.put<{ data: UserInfo }>('/api/auth/me', payload)
+      user.value = data
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(data))
+      return { success: true, message: '资料已更新' }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '资料更新失败，请稍后重试'
+      error.value = message
+      return { success: false, message }
+    }
+  }
+
   function logout() {
     token.value = null
     user.value = null
@@ -220,6 +235,7 @@ export const useAuthStore = defineStore('auth', () => {
     sendResetCode,
     resetPassword,
     fetchUserInfo,
+    updateProfile,
     logout,
   }
 })
