@@ -51,7 +51,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="music-page">
+  <div class="music-page vc-dark">
     <div class="music-page-inner">
       <!-- Header -->
       <div class="page-header">
@@ -60,7 +60,7 @@ onMounted(async () => {
       </div>
 
       <!-- Main content -->
-      <div class="main-content vc-scrollbar vc-scrollbar--thin vc-scrollbar--on-dark">
+      <div class="main-content vc-scrollbar vc-scrollbar--thin">
         <!-- Tabs -->
         <div class="tabs">
           <button :class="{ active: activeTab === 'discover' }" @click="activeTab = 'discover'">

@@ -6,8 +6,9 @@
    - 全局生效：所有原生滚动容器（含 .app-main 主窗口）都会套用，
      直接修复「深色模式下滚动条仍是白色」与「默认滚动条太丑」；
    - 工具类 .vc-scrollbar 供容器显式使用；
-   - 变体：--thin 更细（下拉/抽屉等紧凑区）；--on-dark 用于永远暗色的
-     表面（如音乐播放器），始终用浅色 thumb，不跟随全局主题。
+   - 变体：--thin 更细（下拉/抽屉等紧凑区）。
+   - 强制暗色表面（如音乐播放器）只需在其根节点加 .vc-dark 作用域类，
+     全局 token 随之取暗色值，滚动条自动变浅，无需额外变体。
    ============================================================ */
 
 /* 1) 全局 WebKit 滚动条外观 */
@@ -51,15 +52,4 @@
   height: 6px;
 }
 
-/* 5) 变体：永远暗色表面（不跟随全局主题，始终浅色 thumb） */
-.vc-scrollbar--on-dark {
-  scrollbar-color: var(--scrollbar-thumb-on-dark) var(--scrollbar-track);
-}
-.vc-scrollbar--on-dark::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-on-dark);
-  background-clip: padding-box;
-}
-.vc-scrollbar--on-dark::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-on-dark-hover);
-  background-clip: padding-box;
-}
+/* 强制暗色表面（音乐播放器等）在其根节点加 .vc-dark 作用域即可，滚动条随 token 自动变浅。 */

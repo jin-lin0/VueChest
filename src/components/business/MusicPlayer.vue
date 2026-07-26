@@ -209,7 +209,7 @@ onUnmounted(() => {
   <Transition name="drawer-slide">
     <div
       v-if="music.showPlaylist"
-      class="playlist-drawer-overlay"
+      class="playlist-drawer-overlay vc-dark"
       @click.self="music.showPlaylist = false"
     >
       <div class="playlist-drawer">
@@ -226,7 +226,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 播放列表 -->
-        <div v-if="drawerTab === 'playlist'" class="drawer-body vc-scrollbar vc-scrollbar--thin vc-scrollbar--on-dark">
+        <div v-if="drawerTab === 'playlist'" class="drawer-body vc-scrollbar vc-scrollbar--thin">
           <div v-if="music.playlist.length === 0" class="empty-state">播放列表为空</div>
           <div
             v-for="(song, index) in music.playlist"
@@ -247,7 +247,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 相似推荐 -->
-        <div v-else class="drawer-body vc-scrollbar vc-scrollbar--thin vc-scrollbar--on-dark">
+        <div v-else class="drawer-body vc-scrollbar vc-scrollbar--thin">
           <div v-if="music.isLoadingSimi" class="drawer-loading">加载中...</div>
           <div v-else-if="music.simiSongs.length === 0" class="empty-state">暂无相似歌曲推荐</div>
           <div
@@ -283,7 +283,7 @@ onUnmounted(() => {
 
   <template v-if="music.playerBarVisible && music.activeSong">
     <!-- Player bar（游戏页用 v-show 隐藏，但 audio 仍挂载、音乐继续播放）-->
-    <div class="player-bar" v-show="!isGameRoute">
+    <div class="player-bar vc-dark" v-show="!isGameRoute">
       <!-- Progress bar -->
       <div class="progress-bar-container" @mousedown="onProgressMouseDown">
         <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
@@ -494,7 +494,7 @@ onUnmounted(() => {
     <Transition name="lyrics-fade">
       <div
         v-if="showLyrics && !isGameRoute"
-        class="lyrics-overlay"
+        class="lyrics-overlay vc-dark"
         @click.self="showLyrics = false"
       >
         <div class="lyrics-panel">
@@ -503,7 +503,7 @@ onUnmounted(() => {
             <p>{{ music.activeSong.artists }}</p>
             <button class="close-lyrics" @click="showLyrics = false">&times;</button>
           </div>
-          <div ref="lyricContainerRef" class="lyrics-body vc-scrollbar vc-scrollbar--thin vc-scrollbar--on-dark">
+          <div ref="lyricContainerRef" class="lyrics-body vc-scrollbar vc-scrollbar--thin">
             <div v-if="music.lyrics.length === 0" class="no-lyrics">暂无歌词</div>
             <div
               v-for="(line, idx) in music.lyrics"

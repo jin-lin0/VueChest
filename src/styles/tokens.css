@@ -4,6 +4,9 @@
    用法：所有组件用 var(--xxx) 取代硬编码颜色/圆角/阴影。
    浅色为默认（:root），深色通过 <html class="dark"> 切换
    （AdminLayout 已用 documentElement.classList.toggle('dark') 触发）。
+   此外，任何元素加 .vc-dark 即成为「强制暗色作用域」——
+   其子树内全局 token 全部取暗色值，无需逐个组件适配
+   （用于音乐播放器等自带暗色皮肤的模块）。
 
    词汇沿用项目既有命名（--text-primary / --accent / --bg-card /
    --border-light / --shadow-sm / --radius-sm …），并在此基础上补全
@@ -97,14 +100,13 @@
   --scrollbar-track: transparent;
   --scrollbar-thumb: rgba(15, 23, 42, 0.2);
   --scrollbar-thumb-hover: rgba(15, 23, 42, 0.34);
-  /* 永远暗色表面（如音乐播放器）使用的浅色 thumb */
-  --scrollbar-thumb-on-dark: rgba(255, 255, 255, 0.22);
-  --scrollbar-thumb-on-dark-hover: rgba(255, 255, 255, 0.36);
 }
 
 /* 深色：值对齐 AdminLayout 既有 .dark-mode 设定，
    由 <html class="dark">（documentElement.toggle）驱动，全局生效。*/
-:root.dark {
+:root.dark,
+.vc-dark {
+  color-scheme: dark;
   --gradient-primary-soft: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
 
   --accent-bg: #1e293b;
