@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { RouteLoadingBar, MusicPlayer } from '@/components'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const router = useRouter()
 const isRouteLoading = ref(false)
@@ -31,6 +32,7 @@ router.afterEach(() => {
       </RouterView>
     </main>
     <MusicPlayer />
+    <ConfirmDialog />
   </div>
 </template>
 

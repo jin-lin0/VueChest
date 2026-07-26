@@ -120,8 +120,8 @@ function updateKnob(touchX: number, touchY: number) {
 .joystick-container {
   position: relative;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-subtle);
+  border: 2px solid var(--border-light);
   touch-action: none;
   user-select: none;
   flex-shrink: 0;
@@ -133,15 +133,15 @@ function updateKnob(touchX: number, touchY: number) {
   border-radius: 50%;
   background: radial-gradient(
     circle at center,
-    rgba(255, 255, 255, 0.02) 0%,
-    rgba(255, 255, 255, 0.06) 100%
+    var(--bg-hover) 0%,
+    var(--bg-subtle) 100%
   );
 }
 
 .dir-marker {
   position: absolute;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--text-muted);
   pointer-events: none;
 }
 .dir-marker.up {

@@ -566,15 +566,16 @@ const selectCategory = (cat: string) => {
 
 <style scoped>
 .app-container {
-  /* 业务色：#2ecc71/#e74c3c 与 token 的 --success/#dc2626 差异明显，集中为局部变量 */
-  --api-success: #2ecc71;
-  --api-danger: #e74c3c;
+  /* 业务色直接用全局 token（success/danger 深浅同值，已对齐主题） */
+  --api-success: var(--success);
+  --api-danger: var(--danger);
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
   height: 100%;
   display: flex;
   flex-direction: column;
+  color: var(--text-body);
 }
 
 .app-header {
@@ -586,10 +587,10 @@ const selectCategory = (cat: string) => {
 
 .back-button {
   background-color: var(--info);
-  color: white;
+  color: var(--text-inverse);
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: 1rem;
 }
@@ -607,10 +608,10 @@ const selectCategory = (cat: string) => {
 
 .add-api-btn {
   background-color: var(--api-success);
-  color: white;
+  color: var(--text-inverse);
   border: none;
   padding: 0.6rem 1.2rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: 1rem;
 }
@@ -639,9 +640,9 @@ const selectCategory = (cat: string) => {
 
 .sidebar {
   width: 320px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-card);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -649,16 +650,18 @@ const selectCategory = (cat: string) => {
 
 .search-section {
   padding: 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .search-input {
   width: 100%;
   padding: 0.7rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
   font-size: 0.95rem;
   box-sizing: border-box;
+  background-color: var(--bg-input);
+  color: var(--text-body);
 }
 
 .category-tags {
@@ -666,11 +669,11 @@ const selectCategory = (cat: string) => {
   flex-wrap: wrap;
   gap: 0.4rem;
   padding: 0.8rem 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .tag-btn {
-  background-color: #f1f1f1;
+  background-color: var(--tag-bg);
   border: none;
   padding: 0.3rem 0.7rem;
   border-radius: 20px;
@@ -681,12 +684,12 @@ const selectCategory = (cat: string) => {
 }
 
 .tag-btn:hover {
-  background-color: #e0e0e0;
+  background-color: var(--bg-hover);
 }
 
 .tag-btn.active {
   background-color: var(--info);
-  color: white;
+  color: var(--text-inverse);
 }
 
 .api-list {
@@ -704,11 +707,11 @@ const selectCategory = (cat: string) => {
 }
 
 .api-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
 }
 
 .api-item.active {
-  background-color: #e3f2fd;
+  background-color: var(--accent-bg);
   border: 1px solid var(--info);
 }
 
@@ -728,13 +731,13 @@ const selectCategory = (cat: string) => {
 }
 
 .api-method.get {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--success-bg);
+  color: var(--success);
 }
 
 .api-method.post {
-  background-color: #fff3e0;
-  color: #ef6c00;
+  background-color: var(--warning-bg);
+  color: var(--warning);
 }
 
 .api-name {
@@ -752,7 +755,7 @@ const selectCategory = (cat: string) => {
 .api-category {
   font-size: 0.75rem;
   color: var(--info);
-  background-color: #e3f2fd;
+  background-color: var(--accent-bg);
   padding: 0.15rem 0.5rem;
   border-radius: 10px;
 }
@@ -774,7 +777,7 @@ const selectCategory = (cat: string) => {
   border-radius: 3px;
   cursor: pointer;
   font-size: 0.75rem;
-  color: white;
+  color: var(--text-inverse);
 }
 
 .action-btn.edit {
@@ -794,7 +797,7 @@ const selectCategory = (cat: string) => {
 }
 
 .action-btn.pin {
-  background-color: #f39c12;
+  background-color: var(--warning);
 }
 
 .action-btn.pin:hover {
@@ -812,35 +815,22 @@ const selectCategory = (cat: string) => {
 }
 
 .api-item.pinned {
-  background-color: #fff8e1;
-  border-left: 3px solid #f39c12;
-}
-
-.api-item.pinned:hover {
-  background-color: #fff3cd;
-}
-
-:root.dark .api-item.pinned {
-  background-color: rgba(243, 156, 18, 0.12);
-  border-left-color: #f39c12;
-}
-
-:root.dark .api-item.pinned:hover {
-  background-color: rgba(243, 156, 18, 0.2);
+  background-color: var(--warning-bg);
+  border-left: 3px solid var(--warning);
 }
 
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-style: italic;
 }
 
 .main-panel {
   flex: 1;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-card);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
   overflow-y: auto;
 }
 
@@ -870,10 +860,12 @@ const selectCategory = (cat: string) => {
 .form-group textarea {
   width: 100%;
   padding: 0.7rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
   font-size: 0.95rem;
   box-sizing: border-box;
+  background-color: var(--bg-input);
+  color: var(--text-body);
 }
 
 .form-group textarea {
@@ -892,7 +884,7 @@ const selectCategory = (cat: string) => {
 .params-section {
   margin: 1.5rem 0;
   padding: 1rem;
-  background-color: #f9f9f9;
+  background-color: var(--bg-subtle);
   border-radius: 6px;
 }
 
@@ -910,10 +902,10 @@ const selectCategory = (cat: string) => {
 
 .add-param-btn {
   background-color: var(--info);
-  color: white;
+  color: var(--text-inverse);
   border: none;
   padding: 0.4rem 0.8rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: 0.85rem;
 }
@@ -923,11 +915,11 @@ const selectCategory = (cat: string) => {
 }
 
 .param-item {
-  background-color: #fff;
+  background-color: var(--bg-card);
   padding: 0.8rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   margin-bottom: 0.6rem;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-light);
 }
 
 .param-row {
@@ -940,25 +932,31 @@ const selectCategory = (cat: string) => {
 .param-name {
   flex: 2;
   padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
   font-size: 0.9rem;
+  background-color: var(--bg-input);
+  color: var(--text-body);
 }
 
 .param-type {
   flex: 1;
   padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
   font-size: 0.9rem;
+  background-color: var(--bg-input);
+  color: var(--text-body);
 }
 
 .param-default {
   flex: 2;
   padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
   font-size: 0.9rem;
+  background-color: var(--bg-input);
+  color: var(--text-body);
 }
 
 .param-required {
@@ -989,10 +987,12 @@ const selectCategory = (cat: string) => {
 .param-desc {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
   font-size: 0.85rem;
   box-sizing: border-box;
+  background-color: var(--bg-input);
+  color: var(--text-body);
 }
 
 .form-actions {
@@ -1003,10 +1003,10 @@ const selectCategory = (cat: string) => {
 
 .save-btn {
   background-color: var(--api-success);
-  color: white;
+  color: var(--text-inverse);
   border: none;
   padding: 0.7rem 1.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: 1rem;
 }
@@ -1017,10 +1017,10 @@ const selectCategory = (cat: string) => {
 
 .cancel-btn {
   background-color: #95a5a6;
-  color: white;
+  color: var(--text-inverse);
   border: none;
   padding: 0.7rem 1.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: 1rem;
 }
@@ -1049,22 +1049,22 @@ const selectCategory = (cat: string) => {
   font-size: 0.8rem;
   font-weight: 700;
   padding: 0.3rem 0.6rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-family: monospace;
 }
 
 .detail-method.get {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--success-bg);
+  color: var(--success);
 }
 
 .detail-method.post {
-  background-color: #fff3e0;
-  color: #ef6c00;
+  background-color: var(--warning-bg);
+  color: var(--warning);
 }
 
 .detail-description {
-  color: #7f8c8d;
+  color: var(--text-dim);
   margin-bottom: 1.5rem;
 }
 
@@ -1083,8 +1083,8 @@ const selectCategory = (cat: string) => {
 .detail-url code {
   display: block;
   padding: 0.8rem;
-  background-color: #f5f5f5;
-  border-radius: 4px;
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-xs);
   font-family: monospace;
   word-break: break-all;
   color: var(--api-danger);
@@ -1100,7 +1100,7 @@ const selectCategory = (cat: string) => {
 }
 
 .param-config-item {
-  background-color: #f9f9f9;
+  background-color: var(--bg-subtle);
   padding: 1rem;
   border-radius: 6px;
   margin-bottom: 0.8rem;
@@ -1121,8 +1121,8 @@ const selectCategory = (cat: string) => {
 
 .param-config-type {
   font-size: 0.75rem;
-  color: #7f8c8d;
-  background-color: #eee;
+  color: var(--text-dim);
+  background-color: var(--tag-bg);
   padding: 0.15rem 0.4rem;
   border-radius: 3px;
 }
@@ -1134,25 +1134,27 @@ const selectCategory = (cat: string) => {
 
 .param-config-desc {
   font-size: 0.85rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   margin-bottom: 0.6rem;
 }
 
 .param-config-input {
   width: 100%;
   padding: 0.6rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
   font-size: 0.95rem;
   box-sizing: border-box;
+  background-color: var(--bg-input);
+  color: var(--text-body);
 }
 
 .execute-btn {
   background-color: var(--info);
-  color: white;
+  color: var(--text-inverse);
   border: none;
   padding: 0.8rem 2rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
@@ -1172,9 +1174,9 @@ const selectCategory = (cat: string) => {
 .error-panel {
   margin-top: 1.5rem;
   padding: 1rem;
-  background-color: #fdecea;
+  background-color: var(--danger-bg);
   border-radius: 6px;
-  border: 1px solid #f5c6cb;
+  border: 1px solid var(--danger);
 }
 
 .error-panel h3 {
@@ -1186,13 +1188,13 @@ const selectCategory = (cat: string) => {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  color: #721c24;
+  color: var(--danger);
   font-size: 0.9rem;
 }
 
 .response-panel {
   margin-top: 1.5rem;
-  background-color: #f9f9f9;
+  background-color: var(--bg-subtle);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -1202,7 +1204,7 @@ const selectCategory = (cat: string) => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background-color: #f1f1f1;
+  background-color: var(--bg-subtle);
 }
 
 .response-header h3 {
@@ -1220,55 +1222,49 @@ const selectCategory = (cat: string) => {
   font-weight: 600;
   font-size: 0.9rem;
   padding: 0.3rem 0.6rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .response-status.success {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--success-bg);
+  color: var(--success);
 }
 
 .response-status.client-error {
-  background-color: #fff3e0;
-  color: #ef6c00;
+  background-color: var(--warning-bg);
+  color: var(--warning);
 }
 
 .response-status.server-error {
-  background-color: #fdecea;
-  color: #c62828;
+  background-color: var(--danger-bg);
+  color: var(--danger);
 }
 
 .response-status.info {
-  background-color: #e3f2fd;
-  color: #1565c0;
+  background-color: var(--accent-bg);
+  color: var(--info);
 }
 
 .response-time {
   font-size: 0.9rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
 }
 
 .response-size {
   font-size: 0.85rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-family: monospace;
 }
 
 .truncate-warning {
   margin: 1rem 1rem 0;
   padding: 0.7rem 1rem;
-  background-color: #fff8e1;
-  border: 1px solid #f0c36d;
+  background-color: var(--warning-bg);
+  border: 1px solid var(--warning);
   border-radius: 6px;
-  color: #8a6d3b;
+  color: var(--warning);
   font-size: 0.85rem;
   line-height: 1.5;
-}
-
-:root.dark .truncate-warning {
-  background-color: rgba(240, 195, 109, 0.12);
-  border-color: rgba(240, 195, 109, 0.4);
-  color: #e0c089;
 }
 
 .response-data {
@@ -1289,7 +1285,7 @@ const selectCategory = (cat: string) => {
   max-width: 100%;
   max-height: 420px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: block;
   margin: 0 auto;
 }
@@ -1315,7 +1311,7 @@ const selectCategory = (cat: string) => {
 }
 
 .welcome-panel > p {
-  color: #7f8c8d;
+  color: var(--text-dim);
   margin-bottom: 2rem;
 }
 
@@ -1335,129 +1331,6 @@ const selectCategory = (cat: string) => {
 
 .feature-icon {
   font-size: 1.5rem;
-}
-
-/* ===== 深色模式适配：覆盖关键表面，跟随全局 token，不影响浅色外观 ===== */
-:root.dark .app-container {
-  color: var(--text-body);
-}
-
-:root.dark .sidebar,
-:root.dark .main-panel {
-  background-color: var(--bg-card);
-  box-shadow: var(--shadow-md);
-}
-
-:root.dark .search-section,
-:root.dark .category-tags {
-  border-bottom-color: var(--border);
-}
-
-:root.dark .search-input,
-:root.dark .form-group input,
-:root.dark .form-group select,
-:root.dark .form-group textarea,
-:root.dark .param-name,
-:root.dark .param-type,
-:root.dark .param-default,
-:root.dark .param-desc,
-:root.dark .param-config-input {
-  background-color: var(--bg-input);
-  border-color: var(--border);
-  color: var(--text-body);
-}
-
-:root.dark .tag-btn {
-  background-color: var(--bg-subtle);
-  color: var(--text-primary);
-}
-
-:root.dark .tag-btn:hover {
-  background-color: var(--bg-hover);
-}
-
-:root.dark .tag-btn.active {
-  background-color: var(--info);
-  color: #fff;
-}
-
-:root.dark .api-item:hover {
-  background-color: var(--bg-hover);
-}
-
-:root.dark .api-item.active {
-  background-color: var(--accent-bg);
-  border-color: var(--info);
-}
-
-:root.dark .api-category {
-  background-color: var(--accent-bg);
-}
-
-:root.dark .param-item,
-:root.dark .params-section,
-:root.dark .param-config-item,
-:root.dark .response-panel {
-  background-color: var(--bg-subtle);
-}
-
-:root.dark .param-item {
-  border-color: var(--border);
-}
-
-:root.dark .param-config-type {
-  background-color: var(--bg-subtle);
-  color: var(--text-dim);
-}
-
-:root.dark .response-header {
-  background-color: var(--bg-hover);
-}
-
-:root.dark .detail-url code {
-  background-color: var(--bg-input);
-}
-
-:root.dark .empty-state,
-:root.dark .detail-description,
-:root.dark .welcome-panel > p,
-:root.dark .param-config-desc,
-:root.dark .response-time {
-  color: var(--text-dim);
-}
-
-:root.dark .error-panel {
-  background-color: var(--danger-bg);
-  border-color: var(--danger);
-}
-
-:root.dark .error-panel h3,
-:root.dark .error-panel pre {
-  color: var(--danger);
-}
-
-:root.dark .response-status.success,
-:root.dark .api-method.get,
-:root.dark .detail-method.get {
-  background-color: var(--success-bg);
-  color: var(--success);
-}
-
-:root.dark .response-status.client-error,
-:root.dark .api-method.post,
-:root.dark .detail-method.post {
-  background-color: var(--warning-bg);
-  color: var(--warning);
-}
-
-:root.dark .response-status.server-error {
-  background-color: var(--danger-bg);
-  color: var(--danger);
-}
-
-:root.dark .response-status.info {
-  background-color: var(--accent-bg);
-  color: var(--info);
 }
 
 @media (max-width: 768px) {

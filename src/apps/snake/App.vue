@@ -48,8 +48,8 @@ onMounted(() => {
 <style scoped>
 .lobby-page {
   min-height: 100vh;
-  background: #0f0f23;
-  color: #e0e0e0;
+  background: var(--bg-page);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
 }
@@ -58,24 +58,24 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-light);
 }
 .lobby-header h2 {
   font-size: 16px;
   font-weight: 700;
 }
 .btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
   border: none;
-  color: #e0e0e0;
+  color: var(--text-primary);
   padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
 }
 .btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--bg-subtle);
 }
 
 .mode-cards {
@@ -92,8 +92,8 @@ onMounted(() => {
   position: relative;
   width: 100%;
   max-width: 360px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 28px 24px;
   cursor: pointer;
@@ -102,10 +102,10 @@ onMounted(() => {
   overflow: hidden;
 }
 .mode-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: #6366f1;
+  background: var(--bg-subtle);
+  border-color: var(--accent);
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+  box-shadow: var(--shadow-brand-md);
 }
 
 .card-icon {
@@ -119,7 +119,7 @@ onMounted(() => {
 }
 .card-desc {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
 }
 .card-badge {
   display: inline-block;
@@ -128,23 +128,23 @@ onMounted(() => {
   border-radius: 20px;
   font-size: 11px;
   font-weight: 700;
-  background: rgba(99, 102, 241, 0.2);
-  color: #818cf8;
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 .card-badge.desktop {
-  background: rgba(76, 175, 80, 0.2);
-  color: #66bb6a;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .tips {
   text-align: center;
   padding: 16px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-muted);
 }
 .tips .small {
   font-size: 11px;
   margin-top: 4px;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--text-muted);
 }
 </style>

@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import hljs from 'highlight.js'
+// 仅引入核心 + 按需语言，避免全量 highlight.js 打包
+import hljs from 'highlight.js/lib/core'
+import json from 'highlight.js/lib/languages/json'
+import javascript from 'highlight.js/lib/languages/javascript'
+import plaintext from 'highlight.js/lib/languages/plaintext'
+
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('plaintext', plaintext)
 
 const props = withDefaults(
   defineProps<{

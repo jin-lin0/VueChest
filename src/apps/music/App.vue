@@ -60,7 +60,7 @@ onMounted(async () => {
       </div>
 
       <!-- Main content -->
-      <div class="main-content">
+      <div class="main-content vc-scrollbar vc-scrollbar--thin vc-scrollbar--on-dark">
         <!-- Tabs -->
         <div class="tabs">
           <button :class="{ active: activeTab === 'discover' }" @click="activeTab = 'discover'">
@@ -324,20 +324,6 @@ onMounted(async () => {
 
 .fav-group-tabs button.active .fav-count {
   background: rgba(255, 255, 255, 0.22);
-}
-
-/* ===== Scrollbar ===== */
-.main-content::-webkit-scrollbar {
-  width: 5px;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-.main-content::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 /* ===== Responsive ===== */

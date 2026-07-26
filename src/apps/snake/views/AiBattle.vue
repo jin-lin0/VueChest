@@ -101,7 +101,7 @@ function restart() {
             :class="{ active: selectedDifficulty === opt.key }"
             :style="{
               '--active-color': opt.color,
-              borderColor: selectedDifficulty === opt.key ? opt.color : 'rgba(255,255,255,0.1)',
+              borderColor: selectedDifficulty === opt.key ? opt.color : 'var(--border-light)',
             }"
             @click="selectedDifficulty = opt.key"
           >
@@ -229,29 +229,29 @@ function restart() {
   align-items: center;
   gap: 4px;
   padding: 14px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-light);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  color: #e0e0e0;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
 }
 .diff-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
 }
 .diff-btn.active {
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 20px rgba(var(--active-color), 0.15);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-brand-sm);
   transform: translateY(-2px);
 }
 .diff-label {
   font-size: 16px;
   font-weight: 700;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 .diff-desc {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
   text-align: center;
   line-height: 1.3;
 }
@@ -263,7 +263,7 @@ function restart() {
   gap: 16px;
   margin-bottom: 20px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-subtle);
   border-radius: 12px;
 }
 .badge-item {
@@ -283,11 +283,11 @@ function restart() {
 }
 .badge-sub {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
 }
 .badge-divider {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-muted);
   font-weight: 700;
 }
 

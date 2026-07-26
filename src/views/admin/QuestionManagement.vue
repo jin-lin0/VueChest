@@ -137,13 +137,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { renderMarkdown } from '@/lib/markdown'
 import { Toast } from '@/components'
 import { CustomSelect, type SelectOption } from '@/components'
 import type { Question, Category } from '@/types/interview'
 import { api } from '@/lib/request'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 const router = useRouter()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -212,6 +215,10 @@ onMounted(async () => {
   await Promise.all([fetchCategories(), fetchQuestions()])
 })
 
+onUnmounted(() => {
+  clearTimeout(searchTimer)
+})
+
 async function fetchCategories() {
   try {
     categories.value = await api.get<Category[]>('/api/questions/categories')
@@ -274,8 +281,9 @@ function goEdit(question: Question) {
   router.push(`/admin/questions/${question.id}/edit`)
 }
 
-function confirmDelete(question: Question) {
-  if (!window.confirm(`确定删除「${question.title}」？`)) return
+async function confirmDelete(question: Question) {
+  const ok = await confirm(`确定删除「${question.title}」？`)
+  if (!ok) return
   deleteQuestion(question.id)
 }
 
@@ -290,7 +298,8 @@ async function deleteQuestion(id: number) {
 }
 
 async function batchDelete() {
-  if (!window.confirm(`确定删除 ${selectedIds.value.length} 道题目？`)) return
+  const ok = await confirm(`确定删除 ${selectedIds.value.length} 道题目？`)
+  if (!ok) return
   try {
     await Promise.all(selectedIds.value.map((id) => api.delete(`/api/questions/${id}`)))
     showToast('success', `已删除 ${selectedIds.value.length} 道题目`)

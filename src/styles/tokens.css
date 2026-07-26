@@ -91,6 +91,15 @@
   --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --transition-fast: 0.15s ease;
   --transition: 0.2s ease;
+
+  /* ---------- 滚动条（跟随主题，见 styles/scrollbar.css）---------- */
+  --scrollbar-size: 10px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(15, 23, 42, 0.2);
+  --scrollbar-thumb-hover: rgba(15, 23, 42, 0.34);
+  /* 永远暗色表面（如音乐播放器）使用的浅色 thumb */
+  --scrollbar-thumb-on-dark: rgba(255, 255, 255, 0.22);
+  --scrollbar-thumb-on-dark-hover: rgba(255, 255, 255, 0.36);
 }
 
 /* 深色：值对齐 AdminLayout 既有 .dark-mode 设定，
@@ -133,4 +142,8 @@
   --success-bg: #064e3b;
   --warning-bg: #78350f;
   --danger-bg: #450a0a;
+
+  /* 滚动条：深色下用浅色 thumb */
+  --scrollbar-thumb: rgba(241, 245, 249, 0.22);
+  --scrollbar-thumb-hover: rgba(241, 245, 249, 0.36);
 }

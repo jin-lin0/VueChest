@@ -215,9 +215,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { CustomSelect, Toast, type SelectOption } from '@/components'
 import { api } from '@/lib/request'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 interface MarketAppItem {
   id: number
@@ -285,6 +288,10 @@ const saving = ref(false)
 onMounted(() => {
   fetchCategories()
   fetchApps()
+})
+
+onUnmounted(() => {
+  if (searchTimer) clearTimeout(searchTimer)
 })
 
 function truncate(text: string, max: number) {
@@ -445,8 +452,9 @@ async function saveEdit() {
   }
 }
 
-function confirmDelete(app: MarketAppItem) {
-  if (!window.confirm(`确定要删除应用「${app.name}」吗？此操作无法撤销。`)) return
+async function confirmDelete(app: MarketAppItem) {
+  const ok = await confirm(`确定要删除应用「${app.name}」吗？此操作无法撤销。`)
+  if (!ok) return
   deleteApp(app)
 }
 

@@ -8,18 +8,4 @@ export default {
     icon: '🐍',
     description: '贪吃蛇双人对战 & 人机对战，在方块中一决高下',
   },
-  children: [
-    {
-      path: 'local',
-      name: 'snake-local',
-      component: () => import('./views/LocalBattle.vue'),
-      meta: { title: '贪吃蛇 · 本地对战' },
-    },
-    {
-      path: 'ai',
-      name: 'snake-ai',
-      component: () => import('./views/AiBattle.vue'),
-      meta: { title: '贪吃蛇 · 人机对战' },
-    },
-  ],
 }

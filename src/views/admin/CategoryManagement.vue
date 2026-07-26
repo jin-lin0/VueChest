@@ -98,6 +98,9 @@
 import { ref, onMounted } from 'vue'
 import { Toast } from '@/components'
 import { api } from '@/lib/request'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 interface Category {
   id: number
@@ -201,12 +204,13 @@ async function saveCategory() {
   }
 }
 
-function confirmDelete(category: Category) {
+async function confirmDelete(category: Category) {
   if (getQuestionCount(category) > 0) {
     showToast('warning', '该分类下有题目，无法删除')
     return
   }
-  if (!window.confirm(`确定要删除分类「${category.name}」吗？`)) return
+  const ok = await confirm(`确定要删除分类「${category.name}」吗？`)
+  if (!ok) return
   deleteCategory(category.id)
 }
 

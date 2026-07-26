@@ -3,9 +3,15 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import { api } from '@/lib/request'
+import { Toast } from '@/components'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
+  toastRef.value?.addToast(type, message)
+}
 
 const showDropdown = ref(false)
 
@@ -39,7 +45,7 @@ function handleLogout() {
 async function uploadAvatar(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
-  if (file.size > 2 * 1024 * 1024) return window.alert('头像不能超过 2MB')
+  if (file.size > 2 * 1024 * 1024) return showToast('error', '头像不能超过 2MB')
 
   try {
     const { data } = await api.post<{ data: { key: string; uploadUrl: string } }>(
@@ -55,7 +61,7 @@ async function uploadAvatar(event: Event) {
     await api.post('/api/uploads/complete', { kind: 'avatar', key: data.key })
     await authStore.fetchUserInfo()
   } catch (error) {
-    window.alert(error instanceof Error ? error.message : '头像上传失败，请稍后重试')
+    showToast('error', error instanceof Error ? error.message : '头像上传失败，请稍后重试')
   }
 }
 </script>
@@ -106,6 +112,8 @@ async function uploadAvatar(event: Event) {
         </button>
       </template>
     </div>
+
+    <Toast ref="toastRef" />
   </div>
 </template>
 

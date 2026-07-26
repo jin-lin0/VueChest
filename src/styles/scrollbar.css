@@ -1,0 +1,65 @@
+/* ============================================================
+   VueChest — 主题滚动条（通用）
+   ------------------------------------------------------------
+   - 颜色取自 tokens.css 的 --scrollbar-* 变量，自动跟随浅/深主题；
+   - 同时兼容 WebKit(Chrome/Safari/Edge) 与 Firefox；
+   - 全局生效：所有原生滚动容器（含 .app-main 主窗口）都会套用，
+     直接修复「深色模式下滚动条仍是白色」与「默认滚动条太丑」；
+   - 工具类 .vc-scrollbar 供容器显式使用；
+   - 变体：--thin 更细（下拉/抽屉等紧凑区）；--on-dark 用于永远暗色的
+     表面（如音乐播放器），始终用浅色 thumb，不跟随全局主题。
+   ============================================================ */
+
+/* 1) 全局 WebKit 滚动条外观 */
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 2) Firefox 全局 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* 3) 工具类：显式使用（开启滚动即可；Firefox 的 slim 与配色由下方全局 * 规则统一提供，无需重复） */
+.vc-scrollbar {
+  overflow: auto;
+}
+
+/* 4) 变体：细滚动条。仅作用于 WebKit/Chrome/Safari/Edge——
+      把滚动条宽度从基础 10px(--scrollbar-size) 降到 6px，
+      用于下拉、抽屉等紧凑区域。Firefox 的 slim 已由全局 * 设置，无需重复。 */
+.vc-scrollbar--thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* 5) 变体：永远暗色表面（不跟随全局主题，始终浅色 thumb） */
+.vc-scrollbar--on-dark {
+  scrollbar-color: var(--scrollbar-thumb-on-dark) var(--scrollbar-track);
+}
+.vc-scrollbar--on-dark::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-on-dark);
+  background-clip: padding-box;
+}
+.vc-scrollbar--on-dark::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-on-dark-hover);
+  background-clip: padding-box;
+}

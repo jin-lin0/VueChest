@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useMusicStore, type Song, type Playlist } from '@/stores'
+import { Skeleton } from '@/components'
 import FavoriteMenu from './FavoriteMenu.vue'
 
 defineOptions({ name: 'DiscoverPanel' })
@@ -66,8 +67,9 @@ onMounted(() => {
         </button>
       </div>
 
-      <div v-if="music.isLoadingArtists && music.topArtists.length === 0" class="ms-loading">
-        加载中...
+      <div v-if="music.isLoadingArtists && music.topArtists.length === 0" class="ms-loading ms-skel">
+        <Skeleton :width="160" :height="14" text />
+        <Skeleton :width="120" :height="14" text />
       </div>
       <div v-else-if="music.topArtists.length === 0" class="ms-empty">暂无歌手</div>
       <div v-else class="ms-card-grid">
@@ -93,8 +95,9 @@ onMounted(() => {
         <h2>排行榜</h2>
       </div>
 
-      <div v-if="music.isLoadingBoards && music.topBoards.length === 0" class="ms-loading">
-        加载中...
+      <div v-if="music.isLoadingBoards && music.topBoards.length === 0" class="ms-loading ms-skel">
+        <Skeleton :width="160" :height="14" text />
+        <Skeleton :width="120" :height="14" text />
       </div>
       <div v-else-if="music.topBoards.length === 0" class="ms-empty">暂无榜单</div>
       <div v-else class="ms-card-grid">
@@ -121,8 +124,9 @@ onMounted(() => {
         <div class="ms-section-head">
           <div class="ms-section-title"><span class="ms-accent-bar"></span>推荐歌单</div>
         </div>
-        <div v-if="music.isLoadingDiscover && music.personalizedPlaylists.length === 0" class="ms-loading">
-          加载中...
+        <div v-if="music.isLoadingDiscover && music.personalizedPlaylists.length === 0" class="ms-loading ms-skel">
+          <Skeleton :width="160" :height="14" text />
+          <Skeleton :width="120" :height="14" text />
         </div>
         <div v-else-if="music.personalizedPlaylists.length === 0" class="ms-empty">暂无推荐歌单</div>
         <div v-else class="ms-card-grid">
@@ -147,8 +151,9 @@ onMounted(() => {
         <div class="ms-section-head">
           <div class="ms-section-title"><span class="ms-accent-bar"></span>新歌速递</div>
         </div>
-        <div v-if="music.isLoadingDiscover && music.newSongs.length === 0" class="ms-loading">
-          加载中...
+        <div v-if="music.isLoadingDiscover && music.newSongs.length === 0" class="ms-loading ms-skel">
+          <Skeleton :width="160" :height="14" text />
+          <Skeleton :width="120" :height="14" text />
         </div>
         <div v-else-if="music.newSongs.length === 0" class="ms-empty">暂无新歌</div>
         <div v-else class="ms-song-list">
@@ -205,7 +210,10 @@ onMounted(() => {
             {{ cat }}
           </button>
         </div>
-        <div v-if="music.isLoadingCat" class="ms-loading">加载中...</div>
+        <div v-if="music.isLoadingCat" class="ms-loading ms-skel">
+          <Skeleton :width="160" :height="14" text />
+          <Skeleton :width="120" :height="14" text />
+        </div>
         <div v-else-if="music.catPlaylists.length === 0" class="ms-empty">暂无该分类歌单</div>
         <div v-else class="ms-card-grid">
           <div

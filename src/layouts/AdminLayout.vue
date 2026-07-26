@@ -88,6 +88,8 @@
         </router-view>
       </div>
     </main>
+
+    <Toast ref="toastRef" />
   </div>
 </template>
 
@@ -97,10 +99,16 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/lib/request'
 import { useTheme } from '@/composables/useTheme'
+import { Toast } from '@/components'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+
+const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
+  toastRef.value?.addToast(type, message)
+}
 
 const isCollapsed = ref(false)
 const mobileOpen = ref(false)
@@ -111,7 +119,7 @@ async function uploadAvatar(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   if (file.size > 2 * 1024 * 1024) {
-    window.alert('头像不能超过 2MB')
+    showToast('error', '头像不能超过 2MB')
     return
   }
 
@@ -129,7 +137,7 @@ async function uploadAvatar(event: Event) {
     await api.post('/api/uploads/complete', { kind: 'avatar', key: data.key })
     await authStore.fetchUserInfo()
   } catch (error) {
-    window.alert(error instanceof Error ? error.message : '头像上传失败，请稍后重试')
+    showToast('error', error instanceof Error ? error.message : '头像上传失败，请稍后重试')
   }
 }
 

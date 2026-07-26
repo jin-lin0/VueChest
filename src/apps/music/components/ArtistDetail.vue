@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useMusicStore, type Album } from '@/stores'
+import { Skeleton } from '@/components'
 import FavoriteMenu from './FavoriteMenu.vue'
 
 defineOptions({ name: 'ArtistDetail' })
@@ -28,7 +29,10 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
     </div>
 
     <!-- 加载中 -->
-    <div v-if="music.isLoadingArtist && !music.currentArtist" class="ms-loading">加载中...</div>
+    <div v-if="music.isLoadingArtist && !music.currentArtist" class="ms-loading ms-skel">
+      <Skeleton :width="200" :height="14" text />
+      <Skeleton :width="160" :height="14" text />
+    </div>
 
     <!-- 内容 -->
     <template v-else-if="music.currentArtist">

@@ -131,13 +131,13 @@ function handleBack() {
 }
 
 .modal-content {
-  background: #1e1e2e;
+  background: var(--bg-elevated);
   border-radius: 16px;
   padding: 24px;
   width: 90%;
   max-width: 360px;
-  color: #fff;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xl);
 }
 
 .modal-title {
@@ -165,7 +165,7 @@ function handleBack() {
 
 .winner-sub {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -181,7 +181,7 @@ function handleBack() {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-subtle);
   border-radius: 8px;
   font-size: 14px;
 }
@@ -207,7 +207,7 @@ function handleBack() {
 .stat-length,
 .stat-status {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
 }
 
 .modal-actions {
@@ -227,28 +227,28 @@ function handleBack() {
 }
 
 .btn-restart {
-  background: #6366f1;
+  background: var(--accent);
   color: #fff;
 }
 
 .btn-restart:hover {
-  background: #4f46e5;
+  background: var(--accent-strong);
 }
 
 .btn-back {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ccc;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .btn-back:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--bg-subtle);
 }
 .btn-back.disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 .btn-back.disabled:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
 }
 
 .win-tally {
@@ -287,7 +287,7 @@ function handleBack() {
 
 .tally-vs {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
   font-weight: 600;
 }
 

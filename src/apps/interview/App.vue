@@ -50,8 +50,9 @@
 
     <div class="questions-list" v-if="!showDetail">
       <div v-if="loading" class="loading">
-        <div class="spinner"></div>
-        <p>加载中...</p>
+        <Skeleton :width="220" :height="16" text />
+        <Skeleton :width="180" :height="16" text />
+        <Skeleton :width="200" :height="16" text />
       </div>
       <div v-else-if="questions.length === 0" class="empty-state">
         <p>暂无题目</p>
@@ -127,8 +128,8 @@
         </div>
 
         <div v-if="randomLoading" class="loading loading-detail">
-          <div class="spinner"></div>
-          <p>随机抽题中...</p>
+          <Skeleton :width="200" :height="16" text />
+          <Skeleton :width="160" :height="16" text />
         </div>
 
         <div class="answer-section" v-if="showAnswer">
@@ -157,7 +158,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { CustomSelect, MarkdownView, type SelectOption } from '@/components'
+import { CustomSelect, MarkdownView, Skeleton, type SelectOption } from '@/components'
 import type { Question, Category } from '@/types/interview'
 import { api } from '@/lib/request'
 import { getStorage, setStorage } from '@/lib/storage'

@@ -226,7 +226,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 播放列表 -->
-        <div v-if="drawerTab === 'playlist'" class="drawer-body">
+        <div v-if="drawerTab === 'playlist'" class="drawer-body vc-scrollbar vc-scrollbar--thin vc-scrollbar--on-dark">
           <div v-if="music.playlist.length === 0" class="empty-state">播放列表为空</div>
           <div
             v-for="(song, index) in music.playlist"
@@ -247,7 +247,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 相似推荐 -->
-        <div v-else class="drawer-body">
+        <div v-else class="drawer-body vc-scrollbar vc-scrollbar--thin vc-scrollbar--on-dark">
           <div v-if="music.isLoadingSimi" class="drawer-loading">加载中...</div>
           <div v-else-if="music.simiSongs.length === 0" class="empty-state">暂无相似歌曲推荐</div>
           <div
@@ -503,7 +503,7 @@ onUnmounted(() => {
             <p>{{ music.activeSong.artists }}</p>
             <button class="close-lyrics" @click="showLyrics = false">&times;</button>
           </div>
-          <div ref="lyricContainerRef" class="lyrics-body">
+          <div ref="lyricContainerRef" class="lyrics-body vc-scrollbar vc-scrollbar--thin vc-scrollbar--on-dark">
             <div v-if="music.lyrics.length === 0" class="no-lyrics">暂无歌词</div>
             <div
               v-for="(line, idx) in music.lyrics"
@@ -1160,12 +1160,6 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
-/* Scrollbar */
-.lyrics-body::-webkit-scrollbar,
-.drawer-body::-webkit-scrollbar {
-  width: 5px;
-}
-
 /* ===== 不可播放提示 toast ===== */
 .play-error-toast {
   position: fixed;
@@ -1198,17 +1192,6 @@ onUnmounted(() => {
 .toast-fade-leave-to {
   opacity: 0;
   transform: translateX(-50%) translateY(8px);
-}
-
-.lyrics-body::-webkit-scrollbar-thumb,
-.drawer-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-.lyrics-body::-webkit-scrollbar-track,
-.drawer-body::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 /* Responsive */

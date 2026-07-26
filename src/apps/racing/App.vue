@@ -1502,7 +1502,7 @@ canvas {
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 25px;
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 16px;
   cursor: pointer;
   transition: all 0.3s;
@@ -1532,13 +1532,13 @@ canvas {
 
 .game-menu h1 {
   font-size: 2.5rem;
-  color: #fff;
+  color: var(--text-inverse);
   text-shadow: 0 0 20px var(--racing-accent);
   margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 1.2rem;
   margin-bottom: 1.5rem;
 }
@@ -1551,7 +1551,7 @@ canvas {
 }
 
 .mode-select h3 {
-  color: #fff;
+  color: var(--text-inverse);
   margin-bottom: 1rem;
   text-align: center;
 }
@@ -1570,7 +1570,7 @@ canvas {
   cursor: pointer;
   transition: all 0.3s;
   text-align: center;
-  color: #fff;
+  color: var(--text-inverse);
   flex: 1;
 }
 
@@ -1597,7 +1597,7 @@ canvas {
 }
 
 .car-select h3 {
-  color: #fff;
+  color: var(--text-inverse);
   margin-bottom: 1rem;
   text-align: center;
 }
@@ -1615,7 +1615,7 @@ canvas {
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 1.5rem;
   cursor: pointer;
   transition: all 0.3s;
@@ -1656,7 +1656,7 @@ canvas {
 }
 
 .car-card h4 {
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 1.3rem;
   margin-bottom: 15px;
 }
@@ -1674,7 +1674,7 @@ canvas {
 }
 
 .stat span {
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 0.85rem;
   min-width: 35px;
 }
@@ -1724,7 +1724,7 @@ canvas {
   padding: 14px 50px;
   font-size: 1.2rem;
   background: linear-gradient(135deg, var(--racing-accent) 0%, var(--racing-accent-2) 100%);
-  color: #fff;
+  color: var(--text-inverse);
   border: none;
   border-radius: 50px;
   cursor: pointer;
@@ -1740,7 +1740,7 @@ canvas {
 }
 
 .controls-hint {
-  color: #666;
+  color: var(--text-dim);
   font-size: 0.85rem;
   text-align: center;
 }
@@ -1768,7 +1768,7 @@ canvas {
 }
 
 .pause-content h2 {
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 2rem;
   margin-bottom: 30px;
 }
@@ -1790,22 +1790,22 @@ canvas {
 
 .pause-buttons button:first-child {
   background: linear-gradient(135deg, var(--racing-accent) 0%, var(--racing-accent-2) 100%);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .pause-buttons button:nth-child(2) {
   background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .pause-buttons button:nth-child(3) {
   background: rgba(255, 255, 255, 0.12);
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .pause-buttons button:last-child {
   background: rgba(255, 255, 255, 0.08);
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .pause-buttons button:hover {
@@ -1833,7 +1833,7 @@ canvas {
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
   background: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 1.2rem;
   cursor: pointer;
   pointer-events: auto;
@@ -1888,7 +1888,7 @@ canvas {
 
 .speed-unit {
   font-size: 0.75rem;
-  color: #aaa;
+  color: var(--text-muted);
   margin-left: 4px;
 }
 
@@ -1933,8 +1933,8 @@ canvas {
   background: rgba(0, 0, 0, 0.7);
   padding: 8px 14px;
   border-radius: 12px;
-  border: 2px solid #666;
-  color: #fff;
+  border: 2px solid var(--border-light);
+  color: var(--text-inverse);
   font-size: 1rem;
   min-width: 80px;
   display: flex;
@@ -1971,7 +1971,7 @@ canvas {
   background: rgba(0, 0, 0, 0.7);
   padding: 6px 14px;
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-inverse);
   font-weight: bold;
 }
 
@@ -1998,7 +1998,7 @@ canvas {
   width: 52px;
   height: 52px;
   background: rgba(0, 0, 0, 0.7);
-  border: 2px solid #444;
+  border: 2px solid var(--border-light);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -2031,7 +2031,7 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--text-inverse);
   font-weight: bold;
   font-size: 0.9rem;
 }
@@ -2041,7 +2041,7 @@ canvas {
   bottom: -6px;
   right: -4px;
   background: var(--racing-accent);
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 0.6rem;
   padding: 2px 5px;
   border-radius: 4px;
@@ -2053,7 +2053,7 @@ canvas {
   right: 15px;
   background: rgba(0, 0, 0, 0.7);
   border-radius: 12px;
-  border: 2px solid #444;
+  border: 2px solid var(--border-light);
   overflow: hidden;
 }
 
@@ -2116,7 +2116,7 @@ canvas {
 .left-btn,
 .right-btn {
   background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .gas-btn {
@@ -2169,7 +2169,7 @@ canvas {
   gap: 40px;
   padding: 10px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 1.1rem;
 }
 
@@ -2201,17 +2201,17 @@ canvas {
 
 .result-buttons button:first-child {
   background: linear-gradient(135deg, var(--racing-accent) 0%, var(--racing-accent-2) 100%);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .result-buttons button:nth-child(2) {
   background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .result-buttons button:last-child {
   background: rgba(255, 255, 255, 0.1);
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .result-buttons button:hover {

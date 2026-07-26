@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useMusicStore } from '@/stores'
+import { Skeleton } from '@/components'
 import { debounce } from '@/utils'
 import FavoriteMenu from './FavoriteMenu.vue'
 
@@ -141,7 +142,10 @@ onMounted(() => {
     </div>
 
     <!-- 主体区 -->
-    <div v-if="music.isSearching" class="ms-loading">搜索中...</div>
+    <div v-if="music.isSearching" class="ms-loading ms-skel">
+      <Skeleton :width="160" :height="14" text />
+      <Skeleton :width="120" :height="14" text />
+    </div>
 
     <template v-else-if="music.searchResults.length > 0">
       <div class="result-head">共 {{ music.searchResults.length }} 首</div>

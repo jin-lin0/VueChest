@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
+import { Skeleton } from '@/components'
 
 const router = useRouter()
 const market = useMarketStore()
@@ -108,8 +109,14 @@ onMounted(() => {
       </button>
     </div>
 
-    <div v-if="market.isLoading" class="loading-state">
-      <p>加载中...</p>
+    <div v-if="market.isLoading" class="loading-state market-skel">
+      <div class="skel-grid">
+        <div v-for="n in 8" :key="n" class="skel-card">
+          <Skeleton :width="72" :height="72" :radius="16" />
+          <Skeleton :width="120" :height="16" text />
+          <Skeleton :width="80" :height="12" text />
+        </div>
+      </div>
     </div>
 
     <div v-else-if="filteredApps.length === 0" class="empty-state">
@@ -303,6 +310,25 @@ onMounted(() => {
   text-align: center;
   padding: 4rem 2rem;
   color: var(--text-muted);
+}
+
+.market-skel .skel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+.market-skel .skel-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--bg-glass-soft);
+  border-radius: var(--radius-lg);
+  padding: 2rem 1.5rem;
 }
 
 .empty-icon {

@@ -42,7 +42,7 @@
               @click.stop
             />
           </div>
-          <div class="dropdown-options" :class="{ 'has-search': searchable }">
+          <div class="dropdown-options vc-scrollbar vc-scrollbar--thin" :class="{ 'has-search': searchable }">
             <div
               v-for="option in filteredOptions"
               :key="option.value"
@@ -371,23 +371,6 @@ onUnmounted(() => {
 
 .dropdown-options.has-search {
   max-height: 220px;
-}
-
-.dropdown-options::-webkit-scrollbar {
-  width: 6px;
-}
-
-.dropdown-options::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.dropdown-options::-webkit-scrollbar-thumb {
-  background: var(--border-light);
-  border-radius: 3px;
-}
-
-.dropdown-options::-webkit-scrollbar-thumb:hover {
-  background: var(--border);
 }
 
 .option-item {

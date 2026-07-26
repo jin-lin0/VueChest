@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { MarkdownView } from '@/components'
+import { MarkdownView, Skeleton } from '@/components'
 import type {
   KnowledgeAtom,
   IndexData,
@@ -235,7 +235,14 @@ const confidenceLabel = (c: number) => {
       </div>
     </header>
 
-    <div v-if="loading" class="kb-state">⏳ 正在从 R2 加载知识库…</div>
+    <div v-if="loading" class="kb-state kb-loading-skel">
+      <div class="kb-skel-wrap">
+        <Skeleton :width="260" :height="18" text />
+        <Skeleton :width="200" :height="14" text />
+        <Skeleton :width="220" :height="14" text />
+        <Skeleton :width="180" :height="14" text />
+      </div>
+    </div>
     <div v-else-if="error" class="kb-state err">⚠️ {{ error }}</div>
     <div v-else class="kb-body">
       <aside class="kb-side">
@@ -472,26 +479,12 @@ const confidenceLabel = (c: number) => {
 
 <style scoped>
 .kb {
-  --bg: #f7f8fa;
-  --panel: #ffffff;
-  --border: #e6e8eb;
-  --text: #1f2329;
-  --muted: #8a919f;
-  --accent: #2f6fed;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-size: 14px;
-}
-:root.dark .kb {
-  --bg: #0f1115;
-  --panel: #171a21;
-  --border: #262b33;
-  --text: #e6e8eb;
-  --muted: #8a919f;
-  --accent: #5b8cff;
 }
 .kb-header {
   display: flex;
@@ -499,8 +492,8 @@ const confidenceLabel = (c: number) => {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 20px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
   flex-wrap: wrap;
 }
 .kb-title {
@@ -511,9 +504,9 @@ const confidenceLabel = (c: number) => {
 .kb-back {
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-light);
+  background: var(--bg-page);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 13px;
   white-space: nowrap;
@@ -531,7 +524,7 @@ const confidenceLabel = (c: number) => {
 }
 .kb-sub {
   margin: 2px 0 0;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 12px;
 }
 .kb-actions {
@@ -545,9 +538,9 @@ const confidenceLabel = (c: number) => {
   max-width: 50vw;
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-light);
+  background: var(--bg-page);
+  color: var(--text-primary);
   outline: none;
 }
 .kb-search:focus {
@@ -556,9 +549,9 @@ const confidenceLabel = (c: number) => {
 .kb-btn {
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-light);
+  background: var(--bg-page);
+  color: var(--text-primary);
   cursor: pointer;
 }
 .kb-btn:hover {
@@ -569,20 +562,20 @@ const confidenceLabel = (c: number) => {
 }
 .kb-viewtoggle {
   display: flex;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   overflow: hidden;
 }
 .kb-viewtoggle button {
   padding: 8px 12px;
   border: none;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-page);
+  color: var(--text-primary);
   cursor: pointer;
 }
 .kb-viewtoggle button.on {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .kb-body {
@@ -596,19 +589,28 @@ const confidenceLabel = (c: number) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 14px;
   padding: 40px;
   text-align: center;
 }
+.kb-loading-skel {
+  flex-direction: column;
+}
+.kb-skel-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(420px, 80%);
+}
 .kb-state.err {
-  color: #dc2626;
+  color: var(--danger);
 }
 .kb-side {
   width: 230px;
   flex-shrink: 0;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-light);
   overflow-y: auto;
   padding: 14px;
 }
@@ -617,7 +619,7 @@ const confidenceLabel = (c: number) => {
 }
 .kb-side-h {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-muted);
   margin-bottom: 8px;
   font-weight: 600;
 }
@@ -630,17 +632,17 @@ const confidenceLabel = (c: number) => {
   padding: 7px 8px;
   border: none;
   background: transparent;
-  color: var(--text);
+  color: var(--text-primary);
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
 }
 .kb-cat:hover {
-  background: var(--bg);
+  background: var(--bg-page);
 }
 .kb-cat.on {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-inverse);
 }
 .kb-cat .dot {
   width: 8px;
@@ -662,14 +664,14 @@ const confidenceLabel = (c: number) => {
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 20px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-light);
+  background: var(--bg-page);
+  color: var(--text-primary);
   cursor: pointer;
 }
 .kb-tag.on {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-inverse);
   border-color: var(--accent);
 }
 .kb-tag em {
@@ -688,7 +690,7 @@ const confidenceLabel = (c: number) => {
   align-items: center;
   gap: 14px;
   margin-bottom: 12px;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 .kb-sort {
@@ -701,8 +703,9 @@ const confidenceLabel = (c: number) => {
 }
 .kb-card {
   text-align: left;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 10px;
   padding: 12px;
   cursor: pointer;
@@ -717,7 +720,7 @@ const confidenceLabel = (c: number) => {
 }
 .kb-card.on {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(47, 111, 237, 0.2);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
 }
 .kb-card-top {
   display: flex;
@@ -725,7 +728,7 @@ const confidenceLabel = (c: number) => {
   justify-content: space-between;
 }
 .kb-badge {
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 6px;
@@ -734,23 +737,23 @@ const confidenceLabel = (c: number) => {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 6px;
-  background: var(--bg);
-  color: var(--muted);
+  background: var(--bg-page);
+  color: var(--text-muted);
 }
 .kb-conf.lv5 {
-  color: #047857;
+  color: var(--success);
 }
 .kb-conf.lv4 {
-  color: #2563eb;
+  color: var(--info);
 }
 .kb-conf.lv3 {
-  color: #b45309;
+  color: var(--warning);
 }
 .kb-conf.lv2 {
-  color: #c2410c;
+  color: var(--danger);
 }
 .kb-conf.lv1 {
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 .kb-card h3 {
   margin: 0;
@@ -758,7 +761,7 @@ const confidenceLabel = (c: number) => {
 }
 .kb-summary {
   margin: 0;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -770,7 +773,7 @@ const confidenceLabel = (c: number) => {
 .kb-ctag {
   font-size: 11px;
   color: var(--accent);
-  background: rgba(47, 111, 237, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   padding: 1px 6px;
   border-radius: 4px;
 }
@@ -782,8 +785,8 @@ const confidenceLabel = (c: number) => {
   bottom: 0;
   width: 460px;
   max-width: 92%;
-  background: var(--panel);
-  border-left: 1px solid var(--border);
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-light);
   overflow-y: auto;
   padding: 18px;
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08);
@@ -805,7 +808,7 @@ const confidenceLabel = (c: number) => {
   border: none;
   background: transparent;
   font-size: 16px;
-  color: var(--muted);
+  color: var(--text-muted);
   cursor: pointer;
 }
 .kb-detail-title {
@@ -814,14 +817,14 @@ const confidenceLabel = (c: number) => {
 }
 .kb-detail-sum {
   margin: 0 0 10px;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 .kb-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 .kb-tagsrow {
@@ -831,7 +834,7 @@ const confidenceLabel = (c: number) => {
   margin-bottom: 12px;
 }
 .kb-detail-body {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-light);
   padding-top: 12px;
 }
 .kb-h {
@@ -844,7 +847,7 @@ const confidenceLabel = (c: number) => {
   margin: 0;
   padding-left: 18px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 .kb-cits li {
   margin-bottom: 4px;
@@ -856,9 +859,9 @@ const confidenceLabel = (c: number) => {
 }
 .kb-rel-item {
   text-align: left;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-light);
+  background: var(--bg-page);
+  color: var(--text-primary);
   border-radius: 6px;
   padding: 6px 8px;
   cursor: pointer;
@@ -881,23 +884,23 @@ const confidenceLabel = (c: number) => {
   position: relative;
 }
 .kb-graph-bar {
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 13px;
   margin-bottom: 6px;
 }
 .kb-graph-bar b {
-  color: var(--text);
+  color: var(--text-primary);
 }
 .kb-svg {
   width: 100%;
   height: calc(100vh - 160px);
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 10px;
   touch-action: manipulation;
 }
 .kb-edge {
-  stroke: var(--border);
+  stroke: var(--border-light);
   stroke-width: 1;
 }
 .kb-node {
@@ -908,7 +911,7 @@ const confidenceLabel = (c: number) => {
   fill: transparent;
 }
 .kb-node circle:not(.kb-hit) {
-  stroke: #fff;
+  stroke: var(--bg-card);
   stroke-width: 2;
   transition: 0.15s;
 }
@@ -920,12 +923,12 @@ const confidenceLabel = (c: number) => {
   stroke-width: 3;
 }
 .kb-node.sel circle:not(.kb-hit) {
-  stroke: #f59e0b;
+  stroke: var(--warning);
   stroke-width: 3;
 }
 .kb-node-label {
   font-size: 10px;
-  fill: var(--text);
+  fill: var(--text-primary);
   text-anchor: middle;
   pointer-events: none;
 }
@@ -934,8 +937,8 @@ const confidenceLabel = (c: number) => {
   left: 16px;
   bottom: 16px;
   max-width: 320px;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 10px;
   padding: 12px 14px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
@@ -954,10 +957,140 @@ const confidenceLabel = (c: number) => {
 .kb-gi-sum {
   margin: 0 0 10px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-muted);
   line-height: 1.5;
 }
 .muted {
-  color: var(--muted);
+  color: var(--text-muted);
+}
+
+/* ===== 移动端适配（≤768px 手机/小平板） ===== */
+@media (max-width: 768px) {
+  .kb {
+    height: 100vh;
+    height: 100dvh;
+  }
+  .kb-header {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  .kb-title {
+    gap: 8px;
+  }
+  .kb-logo {
+    font-size: 22px;
+  }
+  .kb-title h1 {
+    font-size: 16px;
+  }
+  .kb-actions {
+    width: 100%;
+  }
+  .kb-search {
+    width: 100%;
+    max-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+  /* 主体改为纵向：侧栏置顶，主内容在下 */
+  .kb-body {
+    flex-direction: column;
+  }
+  /* 左侧栏移到顶部，分类/标签改为横向滚动，节省纵向空间 */
+  .kb-side {
+    width: 100%;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+    padding: 10px 12px;
+    max-height: none;
+  }
+  .kb-side-sec {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 10px;
+    padding-bottom: 2px;
+  }
+  .kb-side-sec:last-child {
+    margin-bottom: 0;
+  }
+  .kb-side-h {
+    flex-shrink: 0;
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+  .kb-cat {
+    width: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .kb-cat span {
+    margin-left: 6px;
+  }
+  .kb-tags {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+    min-width: 0;
+    padding-bottom: 2px;
+  }
+  .kb-main {
+    padding: 12px;
+  }
+  .kb-cards {
+    grid-template-columns: 1fr;
+  }
+  /* 详情面板移动端全屏覆盖 */
+  .kb-detail {
+    width: 100%;
+    max-width: 100%;
+    padding: 14px;
+  }
+  .kb-svg {
+    height: calc(100dvh - 230px);
+    min-height: 300px;
+  }
+  /* 移动端 SVG 受容器宽度限制被等比缩放（约 0.4 倍），viewBox 内字号会缩到 ~4px；
+     放大 viewBox 单位的字号与节点半径，使缩放后实际像素接近桌面可读尺寸 */
+  .kb-node-label {
+    font-size: 22px;
+  }
+  .kb-node circle:not(.kb-hit) {
+    r: 14;
+  }
+  .kb-node.focus circle:not(.kb-hit) {
+    r: 18;
+  }
+  .kb-hit {
+    r: 26;
+  }
+  .kb-graph-info {
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+}
+
+/* 小屏手机（≤480px）微调 */
+@media (max-width: 480px) {
+  .kb-logo {
+    font-size: 20px;
+  }
+  .kb-title h1 {
+    font-size: 15px;
+  }
+  .kb-sub {
+    display: none;
+  }
+  .kb-actions {
+    gap: 8px;
+  }
+  .kb-svg {
+    height: calc(100dvh - 260px);
+  }
 }
 </style>

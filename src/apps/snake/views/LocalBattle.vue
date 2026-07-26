@@ -171,20 +171,20 @@ function restart() {
 }
 .player-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
 }
 .name-input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  background: var(--bg-input);
+  color: var(--text-primary);
   font-size: 14px;
   outline: none;
   box-sizing: border-box;
 }
 .name-input:focus {
-  border-color: #6366f1;
+  border-color: var(--accent);
 }
 </style>

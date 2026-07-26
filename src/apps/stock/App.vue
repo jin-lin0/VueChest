@@ -407,7 +407,7 @@ const handleQuery = async () => {
 
 .back-button {
   background-color: var(--info);
-  color: white;
+  color: var(--text-inverse);
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 4px;
@@ -437,9 +437,9 @@ const handleQuery = async () => {
   border-radius: 6px;
   text-decoration: none;
   font-size: 0.9rem;
-  color: var(--text-secondary, #555);
+  color: var(--text-secondary);
   background: var(--bg-subtle);
-  border: 1px solid var(--border-color, #e0e0e0);
+  border: 1px solid var(--border-color);
   transition: all 0.15s;
 }
 
@@ -448,9 +448,9 @@ const handleQuery = async () => {
 }
 
 .module-tabs a.active {
-  color: #fff;
-  background: var(--info, #3498db);
-  border-color: var(--info, #3498db);
+  color: var(--text-inverse);
+  background: var(--info);
+  border-color: var(--info);
 }
 
 .stock-layout {
@@ -573,7 +573,7 @@ const handleQuery = async () => {
 }
 
 .clear-search:hover {
-  color: #e74c3c;
+  color: var(--danger);
 }
 
 .search-results {
@@ -629,7 +629,7 @@ const handleQuery = async () => {
 
 .result-market {
   font-size: 0.75rem;
-  color: #fff;
+  color: var(--text-inverse);
   background-color: var(--info);
   padding: 0.15rem 0.4rem;
   border-radius: 3px;
@@ -667,7 +667,8 @@ const handleQuery = async () => {
 }
 
 .query-btn:disabled {
-  background-color: #bdc3c7;
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
@@ -798,7 +799,7 @@ const handleQuery = async () => {
 }
 
 .remove-fav-btn:hover {
-  color: #e74c3c;
+  color: var(--danger);
 }
 
 .error-message {
@@ -814,8 +815,8 @@ const handleQuery = async () => {
 }
 
 .error-icon {
-  background-color: #e74c3c;
-  color: white;
+  background-color: var(--danger);
+  color: var(--text-inverse);
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -876,14 +877,14 @@ const handleQuery = async () => {
 }
 
 .fav-btn:hover {
-  border-color: #f39c12;
-  color: #f39c12;
+  border-color: var(--warning);
+  color: var(--warning);
 }
 
 .fav-btn.active {
-  background-color: #fff3e0;
-  border-color: #f39c12;
-  color: #f39c12;
+  background-color: var(--warning-bg);
+  border-color: var(--warning);
+  color: var(--warning);
 }
 
 .result-date {

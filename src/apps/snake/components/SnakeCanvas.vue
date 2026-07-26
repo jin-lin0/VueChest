@@ -1,7 +1,34 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { BOARD_SIZE, PLAYER_COLORS } from '../composables/snakeTypes'
 import type { SnakeState, ItemState } from '../composables/snakeTypes'
+import { getAppTheme } from '../../../composables/useTheme'
+
+/**
+ * 画布配色：底色与网格必须跟随全站主题，道具内部对比标记（十字/爱心/边框）
+ * 也需随主题切换，否则浅色底上白色标记会“看不见”。
+ * 蛇身/道具的品牌色（绿/红/紫）保留，保证游戏美术一致性。
+ */
+interface CanvasPalette {
+  bg: string
+  grid: string
+  mark: string
+}
+const DARK_PALETTE: CanvasPalette = {
+  bg: '#1a1a2e',
+  grid: 'rgba(255,255,255,0.05)',
+  mark: '#ffffff',
+}
+const LIGHT_PALETTE: CanvasPalette = {
+  bg: '#f1f5f9',
+  grid: 'rgba(15,23,42,0.07)',
+  mark: '#0f172a',
+}
+
+const appTheme = getAppTheme()
+function getPalette(): CanvasPalette {
+  return appTheme.isDark ? DARK_PALETTE : LIGHT_PALETTE
+}
 
 const props = defineProps<{
   snakes: SnakeState[]
@@ -23,12 +50,14 @@ function draw() {
   const w = canvas.width
   const cellSize = Math.floor(w / BOARD_SIZE)
 
-  // 清屏
-  ctx.fillStyle = '#1a1a2e'
+  const palette = getPalette()
+
+  // 清屏（画布底色跟随主题）
+  ctx.fillStyle = palette.bg
   ctx.fillRect(0, 0, w, w)
 
-  // 网格线
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)'
+  // 网格线（跟随主题）
+  ctx.strokeStyle = palette.grid
   ctx.lineWidth = 0.5
   for (let i = 0; i <= BOARD_SIZE; i++) {
     ctx.beginPath()
@@ -54,8 +83,8 @@ function draw() {
       ctx.arc(cx, cy, r, 0, Math.PI * 2)
       ctx.fill()
 
-      // + 符号
-      ctx.strokeStyle = '#fff'
+      // + 符号（跟随主题的对比色）
+      ctx.strokeStyle = palette.mark
       ctx.lineWidth = 2.5
       ctx.beginPath()
       ctx.moveTo(cx - r * 0.4, cy)
@@ -75,15 +104,15 @@ function draw() {
       ctx.fill()
       ctx.shadowBlur = 0
 
-      // 白色边框
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)'
+      // 白色边框（跟随主题的对比色）
+      ctx.strokeStyle = palette.mark
       ctx.lineWidth = 1.5
       ctx.beginPath()
       ctx.arc(cx, cy, br, 0, Math.PI * 2)
       ctx.stroke()
 
-      // ♥ 符号
-      ctx.fillStyle = '#fff'
+      // ♥ 符号（跟随主题的对比色）
+      ctx.fillStyle = palette.mark
       ctx.font = `bold ${Math.round(br * 1.1)}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -213,8 +242,18 @@ watch(
   { deep: true }
 )
 
+let unsubscribe: (() => void) | null = null
+
 onMounted(() => {
   nextTick(draw)
+  // 订阅主题切换：切换时立即用新配色重绘（画布底色/网格/标记跟随主题）
+  unsubscribe = appTheme.onChange(() => {
+    draw()
+  })
+})
+
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe()
 })
 </script>
 
@@ -231,7 +270,7 @@ onMounted(() => {
 .snake-canvas {
   display: block;
   border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-md);
   width: v-bind('canvasWidth + "px"');
   height: v-bind('canvasWidth + "px"');
   max-width: 100%;

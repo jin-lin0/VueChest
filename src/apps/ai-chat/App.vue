@@ -717,8 +717,8 @@ onUnmounted(() => {
 
 .sidebar {
   width: 260px;
-  background: #1a1a2e;
-  color: #e0e0e0;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
@@ -739,7 +739,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .sidebar-header h3 {
@@ -762,7 +762,7 @@ onUnmounted(() => {
 }
 
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
 }
 
 .session-list {
@@ -783,11 +783,11 @@ onUnmounted(() => {
 }
 
 .session-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
 }
 
 .session-item.active {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(var(--accent-rgb), 0.3);
 }
 
 .session-title {
@@ -818,7 +818,7 @@ onUnmounted(() => {
 }
 
 .btn-delete:hover {
-  color: #ef4444;
+  color: var(--danger);
 }
 
 .session-empty {
@@ -968,9 +968,9 @@ onUnmounted(() => {
 }
 
 .suggestion-btn:hover {
-  border-color: #6366f1;
+  border-color: var(--accent);
   background: var(--accent-bg);
-  color: #4f46e5;
+  color: var(--accent-strong);
 }
 
 .refresh-btn {
@@ -990,8 +990,8 @@ onUnmounted(() => {
 }
 
 .refresh-btn:hover {
-  border-color: #6366f1;
-  color: #6366f1;
+  border-color: var(--accent);
+  color: var(--accent);
   background: var(--accent-bg);
 }
 
@@ -1032,7 +1032,7 @@ onUnmounted(() => {
 }
 
 .message.user .message-avatar {
-  background: #6366f1;
+  background: var(--accent);
 }
 
 .message-body {
@@ -1064,8 +1064,8 @@ onUnmounted(() => {
 }
 
 .message.user .message-content {
-  background: #6366f1;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-inverse);
   border-top-right-radius: 4px;
 }
 
@@ -1096,7 +1096,7 @@ onUnmounted(() => {
 }
 
 .copy-btn:hover {
-  color: #6366f1;
+  color: var(--accent);
 }
 
 .copy-btn.copied {
@@ -1118,7 +1118,7 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #9ca3af;
+  background: var(--text-muted);
   animation: bounce 1.4s infinite;
 }
 
@@ -1183,11 +1183,11 @@ onUnmounted(() => {
 }
 
 .scroll-to-bottom-btn:hover {
-  background: #6366f1;
-  color: #fff;
-  border-color: #6366f1;
+  background: var(--accent);
+  color: var(--text-inverse);
+  border-color: var(--accent);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
 }
 
 .fade-enter-active,
@@ -1225,8 +1225,8 @@ onUnmounted(() => {
 }
 
 .input-wrapper:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
 }
 
 .input-wrapper textarea {
@@ -1252,7 +1252,7 @@ onUnmounted(() => {
   border-radius: 10px;
   border: none;
   background: var(--border);
-  color: #fff;
+  color: var(--text-inverse);
   cursor: not-allowed;
   display: flex;
   align-items: center;
@@ -1262,12 +1262,12 @@ onUnmounted(() => {
 }
 
 .send-btn.active {
-  background: #6366f1;
+  background: var(--accent);
   cursor: pointer;
 }
 
 .send-btn.active:hover {
-  background: #4f46e5;
+  background: var(--accent-strong);
 }
 
 .input-footer {

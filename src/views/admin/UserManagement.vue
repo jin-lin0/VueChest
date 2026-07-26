@@ -159,10 +159,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { CustomSelect, Toast, type SelectOption } from '@/components'
 import { api } from '@/lib/request'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 const authStore = useAuthStore()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const currentUserId = computed(() => authStore.user?.id)
@@ -209,6 +212,10 @@ const form = ref({ username: '', email: '', password: '', role: 'user', isActive
 const saving = ref(false)
 
 onMounted(() => fetchUsers())
+
+onUnmounted(() => {
+  clearTimeout(searchTimer)
+})
 
 function roleLabel(role: string) {
   const map: Record<string, string> = { user: '普通用户', admin: '管理员', super_admin: '超管' }
@@ -318,7 +325,8 @@ async function saveUser() {
 
 async function toggleStatus(u: UserItem) {
   const action = u.isActive ? '停用' : '恢复'
-  if (!window.confirm(`确定要${action}用户「${u.username}」吗？`)) return
+  const ok = await confirm(`确定要${action}用户「${u.username}」吗？`)
+  if (!ok) return
 
   try {
     await api.put(`/api/users/${u.id}`, { isActive: !u.isActive })
