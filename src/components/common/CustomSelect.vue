@@ -42,7 +42,10 @@
               @click.stop
             />
           </div>
-          <div class="dropdown-options vc-scrollbar vc-scrollbar--thin" :class="{ 'has-search': searchable }">
+          <div
+            class="dropdown-options vc-scrollbar vc-scrollbar--thin"
+            :class="{ 'has-search': searchable }"
+          >
             <div
               v-for="option in filteredOptions"
               :key="option.value"

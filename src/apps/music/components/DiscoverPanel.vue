@@ -67,7 +67,10 @@ onMounted(() => {
         </button>
       </div>
 
-      <div v-if="music.isLoadingArtists && music.topArtists.length === 0" class="ms-loading ms-skel">
+      <div
+        v-if="music.isLoadingArtists && music.topArtists.length === 0"
+        class="ms-loading ms-skel"
+      >
         <Skeleton :width="160" :height="14" text />
         <Skeleton :width="120" :height="14" text />
       </div>
@@ -101,12 +104,7 @@ onMounted(() => {
       </div>
       <div v-else-if="music.topBoards.length === 0" class="ms-empty">暂无榜单</div>
       <div v-else class="ms-card-grid">
-        <div
-          v-for="b in music.topBoards"
-          :key="b.id"
-          class="ms-card"
-          @click="openPlaylist(b)"
-        >
+        <div v-for="b in music.topBoards" :key="b.id" class="ms-card" @click="openPlaylist(b)">
           <div class="ms-card-cover">
             <img v-if="b.coverUrl" :src="b.coverUrl + '?param=300y300'" alt="" loading="lazy" />
             <div v-else class="ms-cover-ph">🎵</div>
@@ -124,11 +122,16 @@ onMounted(() => {
         <div class="ms-section-head">
           <div class="ms-section-title"><span class="ms-accent-bar"></span>推荐歌单</div>
         </div>
-        <div v-if="music.isLoadingDiscover && music.personalizedPlaylists.length === 0" class="ms-loading ms-skel">
+        <div
+          v-if="music.isLoadingDiscover && music.personalizedPlaylists.length === 0"
+          class="ms-loading ms-skel"
+        >
           <Skeleton :width="160" :height="14" text />
           <Skeleton :width="120" :height="14" text />
         </div>
-        <div v-else-if="music.personalizedPlaylists.length === 0" class="ms-empty">暂无推荐歌单</div>
+        <div v-else-if="music.personalizedPlaylists.length === 0" class="ms-empty">
+          暂无推荐歌单
+        </div>
         <div v-else class="ms-card-grid">
           <div
             v-for="pl in music.personalizedPlaylists"
@@ -151,7 +154,10 @@ onMounted(() => {
         <div class="ms-section-head">
           <div class="ms-section-title"><span class="ms-accent-bar"></span>新歌速递</div>
         </div>
-        <div v-if="music.isLoadingDiscover && music.newSongs.length === 0" class="ms-loading ms-skel">
+        <div
+          v-if="music.isLoadingDiscover && music.newSongs.length === 0"
+          class="ms-loading ms-skel"
+        >
           <Skeleton :width="160" :height="14" text />
           <Skeleton :width="120" :height="14" text />
         </div>
@@ -188,7 +194,9 @@ onMounted(() => {
                 <template v-if="song.album"> - {{ song.album }}</template>
               </div>
             </div>
-            <span v-if="song.duration" class="ms-song-duration">{{ music.formatDuration(song.duration) }}</span>
+            <span v-if="song.duration" class="ms-song-duration">{{
+              music.formatDuration(song.duration)
+            }}</span>
             <FavoriteMenu :song="song" />
           </div>
         </div>

@@ -414,7 +414,12 @@ const selectCategory = (cat: string) => {
               <div class="form-group">
                 <label>方法</label>
                 <div class="cs-wrap">
-                  <CustomSelect v-model="formData.method" :options="methodOptions" size="sm" block />
+                  <CustomSelect
+                    v-model="formData.method"
+                    :options="methodOptions"
+                    size="sm"
+                    block
+                  />
                 </div>
               </div>
               <div class="form-group">

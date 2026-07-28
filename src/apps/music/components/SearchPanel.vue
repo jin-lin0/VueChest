@@ -116,12 +116,7 @@ onMounted(() => {
             class="suggest-item"
             @mousedown.prevent="onSuggestArtist(item)"
           >
-            <img
-              v-if="item.picUrl"
-              :src="item.picUrl"
-              class="suggest-avatar"
-              alt=""
-            />
+            <img v-if="item.picUrl" :src="item.picUrl" class="suggest-avatar" alt="" />
             <span class="suggest-name">{{ item.name }}</span>
           </div>
         </template>
@@ -181,7 +176,10 @@ onMounted(() => {
               >
               <span v-else>{{ song.artists }}</span>
               <template v-if="song.albumId">
-                - <span class="ms-link" @click.stop="music.openAlbum(song.albumId)">{{ song.album }}</span>
+                -
+                <span class="ms-link" @click.stop="music.openAlbum(song.albumId)">{{
+                  song.album
+                }}</span>
               </template>
               <template v-else> - {{ song.album }}</template>
             </div>

@@ -187,11 +187,26 @@ function draw() {
         ctx.beginPath()
         ctx.moveTo(x + padding + radius, y + padding)
         ctx.lineTo(x + padding + size - radius, y + padding)
-        ctx.quadraticCurveTo(x + padding + size, y + padding, x + padding + size, y + padding + radius)
+        ctx.quadraticCurveTo(
+          x + padding + size,
+          y + padding,
+          x + padding + size,
+          y + padding + radius,
+        )
         ctx.lineTo(x + padding + size, y + padding + size - radius)
-        ctx.quadraticCurveTo(x + padding + size, y + padding + size, x + padding + size - radius, y + padding + size)
+        ctx.quadraticCurveTo(
+          x + padding + size,
+          y + padding + size,
+          x + padding + size - radius,
+          y + padding + size,
+        )
         ctx.lineTo(x + padding + radius, y + padding + size)
-        ctx.quadraticCurveTo(x + padding, y + padding + size, x + padding, y + padding + size - radius)
+        ctx.quadraticCurveTo(
+          x + padding,
+          y + padding + size,
+          x + padding,
+          y + padding + size - radius,
+        )
         ctx.lineTo(x + padding, y + padding + radius)
         ctx.quadraticCurveTo(x + padding, y + padding, x + padding + radius, y + padding)
         ctx.closePath()
@@ -214,10 +229,22 @@ function draw() {
         ctx.fill()
         ctx.fillStyle = '#111'
         ctx.beginPath()
-        ctx.arc(x + cellSize / 2 - eyeOffset, y + cellSize / 2 - eyeOffset, eyeR * 0.5, 0, Math.PI * 2)
+        ctx.arc(
+          x + cellSize / 2 - eyeOffset,
+          y + cellSize / 2 - eyeOffset,
+          eyeR * 0.5,
+          0,
+          Math.PI * 2,
+        )
         ctx.fill()
         ctx.beginPath()
-        ctx.arc(x + cellSize / 2 + eyeOffset, y + cellSize / 2 - eyeOffset, eyeR * 0.5, 0, Math.PI * 2)
+        ctx.arc(
+          x + cellSize / 2 + eyeOffset,
+          y + cellSize / 2 - eyeOffset,
+          eyeR * 0.5,
+          0,
+          Math.PI * 2,
+        )
         ctx.fill()
       } else {
         // 蛇身 - 圆点
@@ -239,7 +266,7 @@ watch(
   () => {
     nextTick(draw)
   },
-  { deep: true }
+  { deep: true },
 )
 
 let unsubscribe: (() => void) | null = null
@@ -258,12 +285,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <canvas
-    ref="canvasRef"
-    :width="canvasWidth"
-    :height="canvasWidth"
-    class="snake-canvas"
-  />
+  <canvas ref="canvasRef" :width="canvasWidth" :height="canvasWidth" class="snake-canvas" />
 </template>
 
 <style scoped>

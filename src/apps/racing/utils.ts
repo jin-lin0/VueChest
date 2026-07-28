@@ -7,10 +7,7 @@ import { RACING_CARS, type RacingCar } from './config'
  * 按 id 查找赛车配置。合并 createCar / getCarMaxSpeed / getCarHandling
  * 中重复的 cars.find((c) => c.id === id) 逻辑。
  */
-export function getCarById(
-  id: number,
-  cars: RacingCar[] = RACING_CARS,
-): RacingCar | undefined {
+export function getCarById(id: number, cars: RacingCar[] = RACING_CARS): RacingCar | undefined {
   return cars.find((c) => c.id === id)
 }
 
@@ -43,11 +40,7 @@ export function renderSplitScreenView(
 ): void {
   const offset = new THREE.Vector3(0, 8, -15)
   offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerData.rotation)
-  camera.position.set(
-    playerData.position.x + offset.x,
-    offset.y,
-    playerData.position.z + offset.z,
-  )
+  camera.position.set(playerData.position.x + offset.x, offset.y, playerData.position.z + offset.z)
   camera.lookAt(playerData.position.x, 2, playerData.position.z)
   camera.aspect = halfWidth / window.innerHeight
   camera.updateProjectionMatrix()

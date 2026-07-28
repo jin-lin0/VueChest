@@ -18,4 +18,3 @@ export interface Question {
   tags: string[]
   createdAt?: string
 }
-

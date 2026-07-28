@@ -20,7 +20,7 @@ const knobStyle = computed(() => ({
   transform: `translate(calc(-50% + ${knobOffset.value.x}px), calc(-50% + ${knobOffset.value.y}px))`,
 }))
 
-function getAngle( dx: number, dy: number): number {
+function getAngle(dx: number, dy: number): number {
   return Math.atan2(dy, dx) * (180 / Math.PI)
 }
 
@@ -31,10 +31,10 @@ function dirFromAngle(angle: number): Direction {
   //   ±180°= 左（dx<0, dy≈0）
   //  -90°  = 上（dx≈0, dy<0）
   const a = ((angle % 360) + 360) % 360
-  if (a >= 315 || a < 45) return 'RIGHT'   // 右
-  if (a >= 45 && a < 135) return 'DOWN'    // 下
-  if (a >= 135 && a < 225) return 'LEFT'   // 左
-  return 'UP'                               // 上
+  if (a >= 315 || a < 45) return 'RIGHT' // 右
+  if (a >= 45 && a < 135) return 'DOWN' // 下
+  if (a >= 135 && a < 225) return 'LEFT' // 左
+  return 'UP' // 上
 }
 
 function handleTouchStart(e: TouchEvent) {
@@ -108,11 +108,7 @@ function updateKnob(touchX: number, touchY: number) {
     <div class="dir-marker down">▼</div>
     <div class="dir-marker left">◀</div>
     <!-- 摇杆 knob -->
-    <div
-      class="joystick-knob"
-      :class="{ active: isTouching }"
-      :style="knobStyle"
-    />
+    <div class="joystick-knob" :class="{ active: isTouching }" :style="knobStyle" />
   </div>
 </template>
 
@@ -131,11 +127,7 @@ function updateKnob(touchX: number, touchY: number) {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(
-    circle at center,
-    var(--bg-hover) 0%,
-    var(--bg-subtle) 100%
-  );
+  background: radial-gradient(circle at center, var(--bg-hover) 0%, var(--bg-subtle) 100%);
 }
 
 .dir-marker {

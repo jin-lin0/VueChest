@@ -127,18 +127,20 @@ const handleQuery = async () => {
     }
   }
 }
-
 </script>
 
 <template>
-  <div class="app-container" :style="{ '--stock-up': STOCK_COLORS.UP, '--stock-down': STOCK_COLORS.DOWN }">
+  <div
+    class="app-container"
+    :style="{ '--stock-up': STOCK_COLORS.UP, '--stock-down': STOCK_COLORS.DOWN }"
+  >
     <header class="app-header">
       <button class="back-button" @click="goBack">返回</button>
       <h1>股票查询</h1>
-        <nav class="module-tabs">
-          <RouterLink to="/stock" exact-active-class="active">行情分析</RouterLink>
-          <RouterLink to="/stock/knowledge" exact-active-class="active">🧠 知识中心</RouterLink>
-        </nav>
+      <nav class="module-tabs">
+        <RouterLink to="/stock" exact-active-class="active">行情分析</RouterLink>
+        <RouterLink to="/stock/knowledge" exact-active-class="active">🧠 知识中心</RouterLink>
+      </nav>
     </header>
 
     <main class="stock-layout">

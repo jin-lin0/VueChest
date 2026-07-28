@@ -18,20 +18,20 @@
 
 入口文件必须 `export default` 一个包含以下三个字段的对象：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `component` | Vue 组件 | 应用安装后渲染的 Vue 组件 |
-| `route` | string | 安装后的访问路径，如 `/m/counter` |
-| `meta` | object | 应用元信息（见下表） |
+| 字段        | 类型     | 说明                              |
+| ----------- | -------- | --------------------------------- |
+| `component` | Vue 组件 | 应用安装后渲染的 Vue 组件         |
+| `route`     | string   | 安装后的访问路径，如 `/m/counter` |
+| `meta`      | object   | 应用元信息（见下表）              |
 
 `meta` 字段说明：
 
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `name` | string | **是** | 应用名称；缺失时服务端会拒绝创建（"名称、图标和应用文件不能为空"） |
-| `icon` | string | **是** | 应用图标（如 emoji）；缺失时服务端拒绝创建 |
-| `description` | string | 建议 | 应用描述；缺省时按空串 `''` 处理 |
-| `version` | string | 否 | 版本号；缺省时回退为 `1.0.0` |
+| 字段          | 类型   | 必填   | 说明                                                               |
+| ------------- | ------ | ------ | ------------------------------------------------------------------ |
+| `name`        | string | **是** | 应用名称；缺失时服务端会拒绝创建（"名称、图标和应用文件不能为空"） |
+| `icon`        | string | **是** | 应用图标（如 emoji）；缺失时服务端拒绝创建                         |
+| `description` | string | 建议   | 应用描述；缺省时按空串 `''` 处理                                   |
+| `version`     | string | 否     | 版本号；缺省时回退为 `1.0.0`                                       |
 
 > 说明：上传页面**不提供**这些字段的输入框，它们全部从 `meta` 自动解析回填。因此 `name`、`icon` 实际上是"上传时的必填内容"（写在包里）。详见 [如何上传应用到市场](./market-upload.md)。
 
@@ -98,18 +98,18 @@ export default defineConfig({
       name: 'MarketApp',
       formats: ['iife'],
       // 产物文件名固定为 app.js
-      fileName: () => 'app.js'
+      fileName: () => 'app.js',
     },
     rollupOptions: {
       // vue 必须外部化，运行时复用宿主 Vue
       external: ['vue'],
       output: {
         globals: {
-          vue: 'window.__VueChest__.Vue'
-        }
-      }
-    }
-  }
+          vue: 'window.__VueChest__.Vue',
+        },
+      },
+    },
+  },
 })
 ```
 
@@ -125,12 +125,8 @@ const App = defineComponent({
     return { count: 0 }
   },
   render() {
-    return h(
-      'button',
-      { onClick: () => this.count++ },
-      `点击了 ${this.count} 次`
-    )
-  }
+    return h('button', { onClick: () => this.count++ }, `点击了 ${this.count} 次`)
+  },
 })
 
 // 入口必须 export default { component, route, meta }
@@ -141,8 +137,8 @@ export default {
     name: '计数器',
     icon: '🔢',
     description: '一个最小可运行的市场应用示例',
-    version: '1.0.0'
-  }
+    version: '1.0.0',
+  },
 }
 ```
 
@@ -159,42 +155,42 @@ export default {
 
 应用在市场后端以如下字段存储（供参考）：
 
-| 字段 | 说明 |
-| --- | --- |
-| `id` | 应用唯一 ID |
-| `name` | 名称 |
-| `icon` | 图标 |
-| `description` | 描述 |
-| `version` | 版本 |
-| `author` | 作者 |
-| `category` | 分类 |
-| `size` | 包大小 |
-| `screenshots` | 截图（可选） |
-| `readme` | 说明文档（可选） |
-| `isOfficial` | 是否官方应用 |
-| `downloads` | 下载 / 安装次数 |
-| `status` | 状态（如待审核 / 已上架） |
-| `createdAt` | 创建时间 |
-| `updatedAt` | 更新时间 |
+| 字段          | 说明                      |
+| ------------- | ------------------------- |
+| `id`          | 应用唯一 ID               |
+| `name`        | 名称                      |
+| `icon`        | 图标                      |
+| `description` | 描述                      |
+| `version`     | 版本                      |
+| `author`      | 作者                      |
+| `category`    | 分类                      |
+| `size`        | 包大小                    |
+| `screenshots` | 截图（可选）              |
+| `readme`      | 说明文档（可选）          |
+| `isOfficial`  | 是否官方应用              |
+| `downloads`   | 下载 / 安装次数           |
+| `status`      | 状态（如待审核 / 已上架） |
+| `createdAt`   | 创建时间                  |
+| `updatedAt`   | 更新时间                  |
 
 ## 9. 相关 API 端点
 
-| 方法 | 路径 | 说明 | 鉴权 |
-| --- | --- | --- | --- |
-| GET | `/api/market/categories` → `[{name,count}]` | 分类及数量（仅统计已通过） | 否 |
-| GET | `/api/market/apps?category=&keyword=&page=&limit=` | 应用列表（公开只见已通过；管理员可见全部） | 可选 |
-| GET | `/api/market/apps/:id` | 应用详情（非管理员 / 非上传者只能看已通过） | 可选 |
-| GET | `/api/market/apps/:id/download` → `{name,version,fileUrl}` | 获取 bundle 地址（仅已通过，含下载计数） | 否 |
-| POST | `/api/uploads/presign` `{kind:'app',contentType,size,name}` → `{key,uploadUrl,expiresIn}` | 申请预签名直传地址（校验类型 / 大小 ≤10MB） | 是 |
-| PUT | `uploadUrl` | 用预签名 URL 直传文件到 R2 | 否 |
-| POST | `/api/uploads/complete` `{kind:'app',key}` | 完成上传（再次校验文件大小） | 是 |
-| POST | `/api/market/apps` `{name,icon,description,version,category,readme,fileKey,fileSize}` | 创建应用（`name`/`icon`/`fileKey` 必填，`fileKey` 须以 `apps/{userId}/` 开头，状态 pending） | 是 |
-| POST | `/api/market/apps/:id/approve` | 审核通过（上架） | 管理员 |
-| POST | `/api/market/apps/:id/reject` | 审核拒绝 | 管理员 |
-| PUT | `/api/market/apps/:id` | 更新应用（名称 / 分类 / 状态 / 文件等） | 管理员 |
-| DELETE | `/api/market/apps/:id` | 删除应用（同时删 R2 文件） | 管理员 |
-| GET | `/api/auth/installed-apps` → `[id]` | 读取当前用户已安装应用 ID 列表 | 是 |
-| PUT | `/api/auth/installed-apps` `{installedApps:[id]}` | 全量更新已安装应用 ID 列表（跨设备同步） | 是 |
+| 方法   | 路径                                                                                      | 说明                                                                                         | 鉴权   |
+| ------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |
+| GET    | `/api/market/categories` → `[{name,count}]`                                               | 分类及数量（仅统计已通过）                                                                   | 否     |
+| GET    | `/api/market/apps?category=&keyword=&page=&limit=`                                        | 应用列表（公开只见已通过；管理员可见全部）                                                   | 可选   |
+| GET    | `/api/market/apps/:id`                                                                    | 应用详情（非管理员 / 非上传者只能看已通过）                                                  | 可选   |
+| GET    | `/api/market/apps/:id/download` → `{name,version,fileUrl}`                                | 获取 bundle 地址（仅已通过，含下载计数）                                                     | 否     |
+| POST   | `/api/uploads/presign` `{kind:'app',contentType,size,name}` → `{key,uploadUrl,expiresIn}` | 申请预签名直传地址（校验类型 / 大小 ≤10MB）                                                  | 是     |
+| PUT    | `uploadUrl`                                                                               | 用预签名 URL 直传文件到 R2                                                                   | 否     |
+| POST   | `/api/uploads/complete` `{kind:'app',key}`                                                | 完成上传（再次校验文件大小）                                                                 | 是     |
+| POST   | `/api/market/apps` `{name,icon,description,version,category,readme,fileKey,fileSize}`     | 创建应用（`name`/`icon`/`fileKey` 必填，`fileKey` 须以 `apps/{userId}/` 开头，状态 pending） | 是     |
+| POST   | `/api/market/apps/:id/approve`                                                            | 审核通过（上架）                                                                             | 管理员 |
+| POST   | `/api/market/apps/:id/reject`                                                             | 审核拒绝                                                                                     | 管理员 |
+| PUT    | `/api/market/apps/:id`                                                                    | 更新应用（名称 / 分类 / 状态 / 文件等）                                                      | 管理员 |
+| DELETE | `/api/market/apps/:id`                                                                    | 删除应用（同时删 R2 文件）                                                                   | 管理员 |
+| GET    | `/api/auth/installed-apps` → `[id]`                                                       | 读取当前用户已安装应用 ID 列表                                                               | 是     |
+| PUT    | `/api/auth/installed-apps` `{installedApps:[id]}`                                         | 全量更新已安装应用 ID 列表（跨设备同步）                                                     | 是     |
 
 > 鉴权列的"可选"表示接口对匿名开放，但携带管理员令牌时可见到更多内容（如未通过审核的应用）。"管理员"表示需要 `admin` / `super_admin` 角色。
 

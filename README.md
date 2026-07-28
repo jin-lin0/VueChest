@@ -1,6 +1,6 @@
 # VueChest（前端）
 
-基于 **Vue 3 + TypeScript + Vite** 的单页应用，是 [VueChest](https://server.020201.xyz) 的「应用中心」前端。提供 AI 对话、股票分析、音乐、面试题库、API 管理、文本转换等内置工具，并内置可安装第三方应用的「应用市场」。
+基于 **Vue 3 + TypeScript + Vite** 的单页应用，是 [VueChest](https://server.020201.xyz) 的「应用中心」前端。提供 AI 对话、股票分析、音乐、面试题库、API 管理、开发工具箱（42 个开发小工具）等内置工具，并内置可安装第三方应用的「应用市场」。
 
 > 后端服务见同级目录 `../VueChestServer`，项目总览见根目录 [`README.md`](../README.md)。
 
@@ -33,7 +33,7 @@
 | 音乐 | `/music` | 网易云音乐播放 + 收藏分组 |
 | 面试题库 | `/interview` | 题目练习 + 知识文档（后台管理题库） |
 | API 管理 | `/api-manager` | 免费系统接口种子 + 用户自定义，支持调试 |
-| 文本转换 | `/json-transform` | 写 JS 转换代码，粘贴文本/JSON 一键格式化输出，规则本地保存 |
+| 开发工具箱 | `/dev-toolbox` | 42 个开发小工具，分 8 类（编码解码 / 时间日期 / 格式化转换 / 加密生成 / 文本处理 / 前端网络 / 图片媒体 / 单位换算）：TOML/INI/Query/FormData、HTTP 状态码/Curl/JSON Schema、Punycode/Hex/Gzip、图片→Base64/主色调/占位图、单位换算等；侧边栏支持搜索、分组折叠、最近使用、?tool= 深链，右键可「置顶」常用工具 |
 | 赛车游戏 | `/racing` | 3D 赛车小游戏 |
 | 贪吃蛇 | `/snake` | 本地双人 / 人机对战 |
 | 帮助文档 | `/docs` | Markdown 文档中心（`src/docs/`） |

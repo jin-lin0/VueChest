@@ -1,12 +1,7 @@
 <template>
   <div class="toast-container">
     <transition-group name="toast">
-      <div
-        v-for="toast in toasts"
-        :key="toast.id"
-        class="toast"
-        :class="toast.type"
-      >
+      <div v-for="toast in toasts" :key="toast.id" class="toast" :class="toast.type">
         <span class="toast-icon">{{ icons[toast.type] }}</span>
         <span class="toast-message">{{ toast.message }}</span>
         <button class="toast-close" @click="removeToast(toast.id)">&times;</button>

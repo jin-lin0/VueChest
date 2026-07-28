@@ -128,7 +128,19 @@ async function handleSubmit() {
       <div class="upload-header">
         <div class="header-left">
           <button class="back-btn" @click="router.push('/')">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M19 12H5" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
             返回
           </button>
         </div>
@@ -160,7 +172,10 @@ async function handleSubmit() {
 
           <div
             class="file-zone"
-            :class="{ 'file-zone-filled': fileContent && !parseFailed, 'file-zone-error': parseFailed }"
+            :class="{
+              'file-zone-filled': fileContent && !parseFailed,
+              'file-zone-error': parseFailed,
+            }"
             @click="triggerFileInput"
             @dragenter.prevent="dragOver = true"
             @dragover.prevent="dragOver = true"
@@ -177,7 +192,20 @@ async function handleSubmit() {
 
             <template v-if="!fileContent && !parseFailed">
               <div class="file-icon-wrap">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#667eea"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
               </div>
               <p class="file-zone-text">
                 <span class="file-zone-link">点击选择</span> 或将 .js 文件拖拽到这里
@@ -187,7 +215,21 @@ async function handleSubmit() {
 
             <template v-else-if="fileContent && !parseFailed">
               <div class="file-selected">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#059669"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
                 <span class="file-name">app.js</span>
                 <span class="file-size">{{ (fileContent.length / 1024).toFixed(1) }} KB</span>
                 <button type="button" class="file-change" @click.stop="changeFile">更换</button>
@@ -196,7 +238,20 @@ async function handleSubmit() {
 
             <template v-else>
               <div class="file-icon-wrap">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#dc2626"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
               </div>
               <p class="file-zone-text file-error-text">解析失败，请确认文件是有效的市场应用</p>
               <button type="button" class="file-change" @click.stop="changeFile">重新选择</button>
@@ -215,9 +270,13 @@ async function handleSubmit() {
               <div class="meta-body">
                 <div class="meta-name">
                   {{ parsedMeta.name }}
-                  <span v-if="parsedMeta.version" class="meta-version">v{{ parsedMeta.version }}</span>
+                  <span v-if="parsedMeta.version" class="meta-version"
+                    >v{{ parsedMeta.version }}</span
+                  >
                 </div>
-                <div v-if="parsedMeta.description" class="meta-desc">{{ parsedMeta.description }}</div>
+                <div v-if="parsedMeta.description" class="meta-desc">
+                  {{ parsedMeta.description }}
+                </div>
               </div>
             </div>
           </div>
@@ -609,7 +668,9 @@ async function handleSubmit() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Success state */
@@ -634,9 +695,15 @@ async function handleSubmit() {
 }
 
 @keyframes success-bounce {
-  0% { transform: scale(0); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .success-icon {

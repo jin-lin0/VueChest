@@ -6,14 +6,14 @@ LangGraph 是 LangChain 团队开源的 **LLM 智能体（Agent）编排库**。
 
 ## 一、为什么需要 LangGraph
 
-| 能力 | 传统线性 Chain | LangGraph |
-| --- | --- | --- |
-| 执行结构 | 只能顺序执行 | 支持 **循环 / 分支 / 并行** |
-| 状态管理 | 无内建状态 | 显式 **State** 对象，可被 reducer 合并 |
-| 持久化与记忆 | 需自行拼接 | **Checkpointer** 自动存快照 |
-| 断点续跑 | 不支持 | 中断后可恢复 |
-| Human-in-the-loop | 需手动实现 | `interrupt_before/after` 一等公民 |
-| 工具调用循环 | 需手写 | `tools_condition` / `create_react_agent` |
+| 能力              | 传统线性 Chain | LangGraph                                |
+| ----------------- | -------------- | ---------------------------------------- |
+| 执行结构          | 只能顺序执行   | 支持 **循环 / 分支 / 并行**              |
+| 状态管理          | 无内建状态     | 显式 **State** 对象，可被 reducer 合并   |
+| 持久化与记忆      | 需自行拼接     | **Checkpointer** 自动存快照              |
+| 断点续跑          | 不支持         | 中断后可恢复                             |
+| Human-in-the-loop | 需手动实现     | `interrupt_before/after` 一等公民        |
+| 工具调用循环      | 需手写         | `tools_condition` / `create_react_agent` |
 
 当你需要让模型“先思考→调工具→看结果→再思考”这种 ReAct 循环时，LangGraph 几乎是必不可少的。
 
@@ -196,6 +196,7 @@ graph.invoke(Command(resume=True), config=config)
 ```
 
 要点：
+
 - 恢复时必须使用**相同的 `thread_id`**，否则会被当成新会话。
 - 也可在节点内部用 `from langgraph.types import interrupt` 实现更细粒度的暂停，恢复时通过 `Command(resume=value)` 把人工输入传回。
 
@@ -265,12 +266,12 @@ for chunk in agent.stream(
 
 `graph.stream()` 支持多种 `stream_mode`，方便在不同粒度上实时展示：
 
-| stream_mode | 内容 | 典型用途 |
-| --- | --- | --- |
-| `"values"` | 每次状态更新后的**完整 state** | 多轮对话逐步展示 |
-| `"updates"` | 每个节点返回的**增量更新** | 观察单节点输出 |
-| `"messages"` | 逐 token 的**消息块** | LLM 打字机效果 |
-| `"debug"` | 最详细的调试信息 | 排障 |
+| stream_mode  | 内容                           | 典型用途         |
+| ------------ | ------------------------------ | ---------------- |
+| `"values"`   | 每次状态更新后的**完整 state** | 多轮对话逐步展示 |
+| `"updates"`  | 每个节点返回的**增量更新**     | 观察单节点输出   |
+| `"messages"` | 逐 token 的**消息块**          | LLM 打字机效果   |
+| `"debug"`    | 最详细的调试信息               | 排障             |
 
 ```python
 # 1) 逐步展示每个 superstep 的完整状态（含中间工具消息）

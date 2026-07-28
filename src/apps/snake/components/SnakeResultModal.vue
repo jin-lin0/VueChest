@@ -85,12 +85,7 @@ function handleBack() {
         </div>
 
         <div class="stats-list">
-          <div
-            v-for="s in stats"
-            :key="s.playerId"
-            class="stat-row"
-            :class="{ winner: s.alive }"
-          >
+          <div v-for="s in stats" :key="s.playerId" class="stat-row" :class="{ winner: s.alive }">
             <span
               class="stat-dot"
               :style="{ background: PLAYER_COLORS[s.playerId]?.head ?? '#888' }"

@@ -17,10 +17,10 @@ Flexbox 是**一维**布局模型，沿「主轴」和「交叉轴」排列子�
 ```css
 .flex {
   display: flex;
-  flex-direction: row;        /* 主轴方向 */
-  justify-content: center;    /* 主轴对齐 */
-  align-items: center;        /* 交叉轴对齐 */
-  gap: 1rem;                  /* 子项间距（含 flex，无需 margin hack） */
+  flex-direction: row; /* 主轴方向 */
+  justify-content: center; /* 主轴对齐 */
+  align-items: center; /* 交叉轴对齐 */
+  gap: 1rem; /* 子项间距（含 flex，无需 margin hack） */
 }
 ```
 
@@ -38,7 +38,7 @@ Flexbox 是**一维**布局模型，沿「主轴」和「交叉轴」排列子�
 .center-box {
   display: flex;
   justify-content: center; /* 水平居中 */
-  align-items: center;     /* 垂直居中 */
+  align-items: center; /* 垂直居中 */
   height: 200px;
 }
 ```
@@ -49,7 +49,9 @@ Flexbox 是**一维**布局模型，沿「主轴」和「交叉轴」排列子�
 <nav class="nav">
   <div class="nav-brand">Logo</div>
   <ul class="nav-links">
-    <li>首页</li><li>文档</li><li>关于</li>
+    <li>首页</li>
+    <li>文档</li>
+    <li>关于</li>
   </ul>
 </nav>
 ```
@@ -77,12 +79,12 @@ Flexbox 是**一维**布局模型，沿「主轴」和「交叉轴」排列子�
 ```css
 .card-row {
   display: flex;
-  flex-wrap: wrap;          /* 空间不足时换行 */
+  flex-wrap: wrap; /* 空间不足时换行 */
   gap: 1rem;
-  align-items: stretch;     /* 卡片等高（默认） */
+  align-items: stretch; /* 卡片等高（默认） */
 }
 .card {
-  flex: 1 1 240px;          /* grow shrink basis */
+  flex: 1 1 240px; /* grow shrink basis */
 }
 ```
 
@@ -90,16 +92,20 @@ Flexbox 是**一维**布局模型，沿「主轴」和「交叉轴」排列子�
 
 `flex: grow shrink basis` 是 `flex-grow`、`flex-shrink`、`flex-basis` 的简写。
 
-| 写法 | 等价 | 含义 |
-|------|------|------|
-| `flex: 1` | `1 1 0%` | 等分剩余空间 |
-| `flex: auto` | `1 1 auto` | 等分，但优先内容尺寸 |
-| `flex: none` | `0 0 auto` | 不伸缩，按内容定宽 |
-| `flex: 1 1 240px` | — | 基准 240px，可伸缩 |
+| 写法              | 等价       | 含义                 |
+| ----------------- | ---------- | -------------------- |
+| `flex: 1`         | `1 1 0%`   | 等分剩余空间         |
+| `flex: auto`      | `1 1 auto` | 等分，但优先内容尺寸 |
+| `flex: none`      | `0 0 auto` | 不伸缩，按内容定宽   |
+| `flex: 1 1 240px` | —          | 基准 240px，可伸缩   |
 
 ```css
-.main { flex: 1; }          /* 占据所有剩余空间（经典左右栏） */
-.sidebar { flex: 0 0 240px; } /* 固定 240px，不伸缩 */
+.main {
+  flex: 1;
+} /* 占据所有剩余空间（经典左右栏） */
+.sidebar {
+  flex: 0 0 240px;
+} /* 固定 240px，不伸缩 */
 ```
 
 ---
@@ -132,7 +138,7 @@ grid-template-columns: repeat(3, minmax(200px, 1fr));
 
 /* 自适应卡片网格：容器变窄自动减少列数 */
 grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
+grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 ```
 
 > `auto-fill` 保留空轨道，`auto-fit` 把空轨道折叠——绝大多数「卡片墙」场景用 `auto-fit`。
@@ -154,16 +160,24 @@ grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
   grid-template-columns: 200px 1fr;
   grid-template-rows: 60px 1fr 60px;
   grid-template-areas:
-    "header header"
-    "side   main"
-    "footer footer";
+    'header header'
+    'side   main'
+    'footer footer';
   gap: 1rem;
   min-height: 100vh;
 }
-.area-header { grid-area: header; }
-.area-side   { grid-area: side; }
-.area-main   { grid-area: main; }
-.area-foot   { grid-area: footer; }
+.area-header {
+  grid-area: header;
+}
+.area-side {
+  grid-area: side;
+}
+.area-main {
+  grid-area: main;
+}
+.area-foot {
+  grid-area: footer;
+}
 ```
 
 ### 2.4 跨行跨列（span）
@@ -171,7 +185,7 @@ grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
 ```css
 .item {
   grid-column: span 2; /* 横跨 2 列 */
-  grid-row: 1 / 3;     /* 从第 1 行线到第 3 行线 */
+  grid-row: 1 / 3; /* 从第 1 行线到第 3 行线 */
 }
 ```
 
@@ -199,7 +213,9 @@ grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
   grid-template-columns: 1fr;
 }
 @media (min-width: 768px) {
-  .container { grid-template-columns: 240px 1fr; }
+  .container {
+    grid-template-columns: 240px 1fr;
+  }
 }
 ```
 
@@ -223,7 +239,7 @@ grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
 ```html
 <div class="card-wrap">
   <div class="card">
-    <img src="cover.jpg" alt="">
+    <img src="cover.jpg" alt="" />
     <div class="card-body">描述</div>
   </div>
 </div>
@@ -237,8 +253,14 @@ grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
   display: block;
 }
 @container card (min-width: 400px) {
-  .card { display: grid; grid-template-columns: 160px 1fr; gap: 1rem; }
-  .card-body { font-size: 1.1rem; }
+  .card {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 1rem;
+  }
+  .card-body {
+    font-size: 1.1rem;
+  }
 }
 ```
 
@@ -251,14 +273,28 @@ grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
 ### 4.1 两栏 / 三栏布局（Flex）
 
 ```css
-.two-col { display: flex; gap: 1rem; }
-.two-col .side { flex: 0 0 240px; }
-.two-col .main { flex: 1; }
+.two-col {
+  display: flex;
+  gap: 1rem;
+}
+.two-col .side {
+  flex: 0 0 240px;
+}
+.two-col .main {
+  flex: 1;
+}
 
-.three-col { display: flex; gap: 1rem; }
+.three-col {
+  display: flex;
+  gap: 1rem;
+}
 .three-col .side-l,
-.three-col .side-r { flex: 0 0 200px; }
-.three-col .main { flex: 1; }
+.three-col .side-r {
+  flex: 0 0 200px;
+}
+.three-col .main {
+  flex: 1;
+}
 ```
 
 ### 4.2 卡片网格自适应（首选 Grid）
@@ -279,40 +315,57 @@ grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
 .holy-grail {
   display: grid;
   grid-template:
-    "header header header" auto
-    "left   main   right" 1fr
-    "footer footer footer" auto
+    'header header header' auto
+    'left   main   right' 1fr
+    'footer footer footer' auto
     / 200px 1fr 200px;
   min-height: 100vh;
   gap: 1rem;
 }
-.holy-grail header { grid-area: header; }
-.holy-grail .left   { grid-area: left; }
-.holy-grail main    { grid-area: main; }
-.holy-grail .right  { grid-area: right; }
-.holy-grail footer  { grid-area: footer; }
+.holy-grail header {
+  grid-area: header;
+}
+.holy-grail .left {
+  grid-area: left;
+}
+.holy-grail main {
+  grid-area: main;
+}
+.holy-grail .right {
+  grid-area: right;
+}
+.holy-grail footer {
+  grid-area: footer;
+}
 ```
 
 ---
 
 ## 五、Flex vs Grid 选型指南
 
-| 维度 | Flexbox | Grid |
-|------|---------|------|
-| 维度 | 一维（行 **或** 列） | 二维（行 **和** 列） |
-| 最佳场景 | 组件内排列、导航、居中 | 页面整体框架、卡片墙 |
-| 对齐控制 | 主轴/交叉轴 | 行列双向 + 单元格 |
-| 内容驱动 | 强（按内容伸缩） | 弱（按轨道定义） |
-| span 跨区 | 不支持 | `span` 跨行跨列 |
-| 典型组合 | 导航栏 + 按钮组 | 整体布局 + 表单栅格 |
+| 维度      | Flexbox                | Grid                 |
+| --------- | ---------------------- | -------------------- |
+| 维度      | 一维（行 **或** 列）   | 二维（行 **和** 列） |
+| 最佳场景  | 组件内排列、导航、居中 | 页面整体框架、卡片墙 |
+| 对齐控制  | 主轴/交叉轴            | 行列双向 + 单元格    |
+| 内容驱动  | 强（按内容伸缩）       | 弱（按轨道定义）     |
+| span 跨区 | 不支持                 | `span` 跨行跨列      |
+| 典型组合  | 导航栏 + 按钮组        | 整体布局 + 表单栅格  |
 
 **经验法则**：先用 Grid 搭「骨架」，再用 Flex 排「组件内部」。
 
 ```css
 /* Grid 负责页面骨架 */
-.page { display: grid; grid-template-columns: 240px 1fr; }
+.page {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
 /* Flex 负责卡片内部对齐 */
-.card { display: flex; align-items: center; gap: 0.75rem; }
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 ```
 
 ---
@@ -324,7 +377,10 @@ grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr));
 `gap` 现已全面支持 flex 容器，无需 `margin` 或 `:not(:last-child)` 技巧。
 
 ```css
-.flex { display: flex; gap: 1rem; }   /* ✅ 现代浏览器均支持 */
+.flex {
+  display: flex;
+  gap: 1rem;
+} /* ✅ 现代浏览器均支持 */
 ```
 
 ### 6.2 subgrid 子网格

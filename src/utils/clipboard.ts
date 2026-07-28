@@ -8,10 +8,7 @@
  * @param onSuccess 复制成功后的回调，用于触发 UI 反馈（如「已复制」状态）。复制失败时不触发。
  * @returns 是否复制成功
  */
-export async function copyToClipboard(
-  text: string,
-  onSuccess?: () => void,
-): Promise<boolean> {
+export async function copyToClipboard(text: string, onSuccess?: () => void): Promise<boolean> {
   const ok = await writeClipboard(text)
   if (ok) onSuccess?.()
   return ok

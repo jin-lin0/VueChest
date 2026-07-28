@@ -6,7 +6,7 @@ import interview from '@/apps/interview'
 import stock from '@/apps/stock'
 import bilibiliSubtitle from '@/apps/bilibili-subtitle'
 import snake from '@/apps/snake'
-import jsonTransform from '@/apps/json-transform'
+import devToolbox from '@/apps/dev-toolbox'
 
 export interface AppModule {
   id: number
@@ -21,13 +21,19 @@ function appDef(
   id: number,
   app: { route: string; meta: { name: string; icon: string; description: string } },
 ): AppModule {
-  return { id, name: app.meta.name, icon: app.meta.icon, route: app.route, description: app.meta.description }
+  return {
+    id,
+    name: app.meta.name,
+    icon: app.meta.icon,
+    route: app.route,
+    description: app.meta.description,
+  }
 }
 
 export const APP_MODULES: AppModule[] = [
   appDef(14, bilibiliSubtitle),
   appDef(13, snake),
-  appDef(15, jsonTransform),
+  appDef(15, devToolbox),
   appDef(12, interview),
   appDef(11, racing),
   appDef(9, stock),
@@ -35,5 +41,3 @@ export const APP_MODULES: AppModule[] = [
   appDef(8, aiChat),
   appDef(1, apiManager),
 ]
-
-

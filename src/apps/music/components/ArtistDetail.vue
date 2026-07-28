@@ -48,21 +48,36 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
         </div>
         <div class="artist-meta">
           <h1 class="artist-name">{{ music.currentArtist.name }}</h1>
-          <div v-if="music.currentArtist.musicSize != null || music.currentArtist.albumSize != null" class="artist-stats">
-            <span v-if="music.currentArtist.musicSize != null">{{ music.currentArtist.musicSize }} 首歌</span>
-            <span v-if="music.currentArtist.musicSize != null && music.currentArtist.albumSize != null"> · </span>
-            <span v-if="music.currentArtist.albumSize != null">{{ music.currentArtist.albumSize }} 张专辑</span>
+          <div
+            v-if="music.currentArtist.musicSize != null || music.currentArtist.albumSize != null"
+            class="artist-stats"
+          >
+            <span v-if="music.currentArtist.musicSize != null"
+              >{{ music.currentArtist.musicSize }} 首歌</span
+            >
+            <span
+              v-if="music.currentArtist.musicSize != null && music.currentArtist.albumSize != null"
+            >
+              ·
+            </span>
+            <span v-if="music.currentArtist.albumSize != null"
+              >{{ music.currentArtist.albumSize }} 张专辑</span
+            >
           </div>
           <p
             v-if="music.currentArtist.briefDesc"
             class="artist-desc"
             :class="{ clamp: !descExpanded }"
-          >{{ music.currentArtist.briefDesc }}</p>
+          >
+            {{ music.currentArtist.briefDesc }}
+          </p>
           <button
             v-if="music.currentArtist.briefDesc"
             class="desc-toggle"
             @click="descExpanded = !descExpanded"
-          >{{ descExpanded ? '收起' : '展开' }}</button>
+          >
+            {{ descExpanded ? '收起' : '展开' }}
+          </button>
         </div>
       </div>
 
@@ -70,11 +85,9 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
       <div class="ms-section">
         <div class="ms-section-head">
           <div class="ms-section-title"><span class="ms-accent-bar"></span>热门歌曲</div>
-          <button
-            v-if="music.artistHotSongs.length > 0"
-            class="ms-section-more"
-            @click="playAll()"
-          >播放全部</button>
+          <button v-if="music.artistHotSongs.length > 0" class="ms-section-more" @click="playAll()">
+            播放全部
+          </button>
         </div>
 
         <div v-if="music.artistHotSongs.length > 0" class="ms-song-list">
@@ -125,11 +138,7 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
             @click="music.openAlbum(album.id)"
           >
             <div class="ms-card-cover">
-              <img
-                v-if="album.picUrl"
-                :src="album.picUrl + '?param=300y300'"
-                :alt="album.name"
-              />
+              <img v-if="album.picUrl" :src="album.picUrl + '?param=300y300'" :alt="album.name" />
               <div v-else class="ms-cover-ph">💿</div>
             </div>
             <div class="ms-card-name">{{ album.name }}</div>

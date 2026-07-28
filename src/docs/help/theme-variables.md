@@ -26,104 +26,104 @@ VueChest 使用一套**全局设计 Token（CSS 变量）**统一管理颜色、
 
 ### 2.1 品牌 / 主色
 
-| 变量 | 浅色 | 深色 | 用途 |
-| --- | --- | --- | --- |
-| `--brand-1` | `#667eea` | 同 | 品牌主色起点 |
-| `--brand-2` | `#764ba2` | 同 | 品牌主色终点 |
-| `--gradient-primary` | `linear-gradient(135deg,#667eea 0%,#764ba2 100%)` | 同 | 主渐变（按钮 / 强调） |
-| `--gradient-primary-soft` | 浅紫渐变 | 深蓝渐变 | 柔和背景渐变 |
-| `--accent` | `#667eea` | 同 | 全站主强调色 |
-| `--accent-strong` | `#764ba2` | 同 | hover 加深 / 渐变末端 |
-| `--accent-contrast` | `#ffffff` | 同 | 主色之上的文字 |
-| `--accent-bg` | `#eef2ff` | `#1e293b` | 强调底（选中行 / tab） |
-| `--accent-light` | `#c7d2fe` | `#334155` | 浅描边 / 发光 |
-| `--accent-rgb` | `102, 126, 234` | 同 | 供 `rgba(var(--accent-rgb), a)` 使用 |
+| 变量                      | 浅色                                              | 深色      | 用途                                 |
+| ------------------------- | ------------------------------------------------- | --------- | ------------------------------------ |
+| `--brand-1`               | `#667eea`                                         | 同        | 品牌主色起点                         |
+| `--brand-2`               | `#764ba2`                                         | 同        | 品牌主色终点                         |
+| `--gradient-primary`      | `linear-gradient(135deg,#667eea 0%,#764ba2 100%)` | 同        | 主渐变（按钮 / 强调）                |
+| `--gradient-primary-soft` | 浅紫渐变                                          | 深蓝渐变  | 柔和背景渐变                         |
+| `--accent`                | `#667eea`                                         | 同        | 全站主强调色                         |
+| `--accent-strong`         | `#764ba2`                                         | 同        | hover 加深 / 渐变末端                |
+| `--accent-contrast`       | `#ffffff`                                         | 同        | 主色之上的文字                       |
+| `--accent-bg`             | `#eef2ff`                                         | `#1e293b` | 强调底（选中行 / tab）               |
+| `--accent-light`          | `#c7d2fe`                                         | `#334155` | 浅描边 / 发光                        |
+| `--accent-rgb`            | `102, 126, 234`                                   | 同        | 供 `rgba(var(--accent-rgb), a)` 使用 |
 
 ### 2.2 语义色
 
-| 变量 | 浅色 | 深色 | 用途 |
-| --- | --- | --- | --- |
-| `--success` | `#059669` | 同 | 成功 |
-| `--success-bg` | `#d1fae5` | `#064e3b` | 成功底色 |
-| `--warning` | `#d97706` | 同 | 警告 |
-| `--warning-bg` | `#fef3c7` | `#78350f` | 警告底色 |
-| `--danger` | `#dc2626` | 同 | 危险 / 错误 |
-| `--danger-bg` | `#fee2e2` | `#450a0a` | 危险底色 |
-| `--info` | `#3498db` | 同 | 信息 |
+| 变量           | 浅色      | 深色      | 用途        |
+| -------------- | --------- | --------- | ----------- |
+| `--success`    | `#059669` | 同        | 成功        |
+| `--success-bg` | `#d1fae5` | `#064e3b` | 成功底色    |
+| `--warning`    | `#d97706` | 同        | 警告        |
+| `--warning-bg` | `#fef3c7` | `#78350f` | 警告底色    |
+| `--danger`     | `#dc2626` | 同        | 危险 / 错误 |
+| `--danger-bg`  | `#fee2e2` | `#450a0a` | 危险底色    |
+| `--info`       | `#3498db` | 同        | 信息        |
 
 ### 2.3 表面 / 背景
 
-| 变量 | 浅色 | 深色 | 用途 |
-| --- | --- | --- | --- |
-| `--bg-page` | `#f5f7fa` | `#0f172a` | 页面底 |
-| `--bg-card` | `#ffffff` | `#1e293b` | 卡片底 |
-| `--bg-elevated` | `#ffffff` | `#1e293b` | 浮层底 |
-| `--bg-hover` | `#f3f4f6` | `#334155` | hover 底 |
-| `--bg-subtle` | `#f3f4f6` | `#334155` | 图标底 / tag 底 |
-| `--bg-input` | `#ffffff` | `#0f172a` | 输入框底 |
-| `--tag-bg` | `#f3f4f6` | `#334155` | 标签底 |
-| `--bg-glass` | `rgba(255,255,255,.92)` | `rgba(30,41,59,.92)` | 玻璃拟态（卡片 / 搜索框） |
-| `--bg-glass-soft` | `rgba(255,255,255,.8)` | `rgba(30,41,59,.6)` | 玻璃拟态（按钮 / tab） |
+| 变量              | 浅色                    | 深色                 | 用途                      |
+| ----------------- | ----------------------- | -------------------- | ------------------------- |
+| `--bg-page`       | `#f5f7fa`               | `#0f172a`            | 页面底                    |
+| `--bg-card`       | `#ffffff`               | `#1e293b`            | 卡片底                    |
+| `--bg-elevated`   | `#ffffff`               | `#1e293b`            | 浮层底                    |
+| `--bg-hover`      | `#f3f4f6`               | `#334155`            | hover 底                  |
+| `--bg-subtle`     | `#f3f4f6`               | `#334155`            | 图标底 / tag 底           |
+| `--bg-input`      | `#ffffff`               | `#0f172a`            | 输入框底                  |
+| `--tag-bg`        | `#f3f4f6`               | `#334155`            | 标签底                    |
+| `--bg-glass`      | `rgba(255,255,255,.92)` | `rgba(30,41,59,.92)` | 玻璃拟态（卡片 / 搜索框） |
+| `--bg-glass-soft` | `rgba(255,255,255,.8)`  | `rgba(30,41,59,.6)`  | 玻璃拟态（按钮 / tab）    |
 
 ### 2.4 文本
 
-| 变量 | 浅色 | 深色 | 用途 |
-| --- | --- | --- | --- |
-| `--text-primary` | `#2c3e50` | `#f1f5f9` | 标题 / 强文本 |
-| `--text-body` | `#333333` | `#e2e8f0` | 正文 |
-| `--text-secondary` | `#6b7280` | `#94a3b8` | 次要文本 |
-| `--text-muted` | `#9ca3af` | `#64748b` | 弱化文本 / 占位 |
-| `--text-dim` | `#7f8c8d` | `#94a3b8` | 更弱文本 |
-| `--text-inverse` | `#ffffff` | 同 | 反色文本 |
+| 变量               | 浅色      | 深色      | 用途            |
+| ------------------ | --------- | --------- | --------------- |
+| `--text-primary`   | `#2c3e50` | `#f1f5f9` | 标题 / 强文本   |
+| `--text-body`      | `#333333` | `#e2e8f0` | 正文            |
+| `--text-secondary` | `#6b7280` | `#94a3b8` | 次要文本        |
+| `--text-muted`     | `#9ca3af` | `#64748b` | 弱化文本 / 占位 |
+| `--text-dim`       | `#7f8c8d` | `#94a3b8` | 更弱文本        |
+| `--text-inverse`   | `#ffffff` | 同        | 反色文本        |
 
 ### 2.5 边框
 
-| 变量 | 浅色 | 深色 | 用途 |
-| --- | --- | --- | --- |
-| `--border` | `#d1d5db` | `#334155` | 默认边框 |
+| 变量             | 浅色      | 深色      | 用途            |
+| ---------------- | --------- | --------- | --------------- |
+| `--border`       | `#d1d5db` | `#334155` | 默认边框        |
 | `--border-light` | `#e5e7eb` | `#334155` | 浅边框 / 分割线 |
-| `--border-color` | `#d1d5db` | `#334155` | 边框（别名） |
+| `--border-color` | `#d1d5db` | `#334155` | 边框（别名）    |
 
 ### 2.6 圆角
 
-| 变量 | 值 |
-| --- | --- |
-| `--radius-xs` | `4px` |
-| `--radius-sm` | `8px` |
-| `--radius-md` | `12px` |
-| `--radius-lg` | `16px` |
-| `--radius-xl` | `20px` |
+| 变量            | 值     |
+| --------------- | ------ |
+| `--radius-xs`   | `4px`  |
+| `--radius-sm`   | `8px`  |
+| `--radius-md`   | `12px` |
+| `--radius-lg`   | `16px` |
+| `--radius-xl`   | `20px` |
 | `--radius-pill` | `50px` |
-| `--radius-full` | `50%` |
+| `--radius-full` | `50%`  |
 
 ### 2.7 阴影
 
-| 变量 | 用途 |
-| --- | --- |
-| `--shadow-xs` / `--shadow-sm` | 极浅阴影 |
-| `--shadow-md` | 卡片常规阴影 |
-| `--shadow-lg` | 浮层 / 弹窗 |
-| `--shadow-xl` | 大浮层 |
+| 变量                                | 用途                                          |
+| ----------------------------------- | --------------------------------------------- |
+| `--shadow-xs` / `--shadow-sm`       | 极浅阴影                                      |
+| `--shadow-md`                       | 卡片常规阴影                                  |
+| `--shadow-lg`                       | 浮层 / 弹窗                                   |
+| `--shadow-xl`                       | 大浮层                                        |
 | `--shadow-brand-sm` / `-md` / `-lg` | 品牌着色阴影（聚焦 / 发光，深色下透明度更高） |
 
 > 阴影的透明度在深色模式下更强，以在深底上保持层次感。
 
 ### 2.8 间距（4px 基准）
 
-| 变量 | 值 | 变量 | 值 |
-| --- | --- | --- | --- |
-| `--space-1` | `4px` | `--space-5` | `20px` |
-| `--space-2` | `8px` | `--space-6` | `24px` |
+| 变量        | 值     | 变量        | 值     |
+| ----------- | ------ | ----------- | ------ |
+| `--space-1` | `4px`  | `--space-5` | `20px` |
+| `--space-2` | `8px`  | `--space-6` | `24px` |
 | `--space-3` | `12px` | `--space-7` | `28px` |
 | `--space-4` | `16px` | `--space-8` | `32px` |
 
 ### 2.9 字体 / 过渡
 
-| 变量 | 值 |
-| --- | --- |
-| `--font-sans` | `'Helvetica Neue', Helvetica, Arial, sans-serif` |
-| `--transition-fast` | `0.15s ease` |
-| `--transition` | `0.2s ease` |
+| 变量                | 值                                               |
+| ------------------- | ------------------------------------------------ |
+| `--font-sans`       | `'Helvetica Neue', Helvetica, Arial, sans-serif` |
+| `--transition-fast` | `0.15s ease`                                     |
+| `--transition`      | `0.2s ease`                                      |
 
 ## 3. 让 JS 决定的颜色也跟随主题
 
@@ -162,7 +162,9 @@ const off = theme.onChange(() => draw())
 import { inject, onUnmounted } from 'vue'
 
 const appTheme = inject('appTheme') // 与 window.__APP_THEME__ 同一实例
-const off = appTheme.onChange((isDark) => { /* 重绘 */ })
+const off = appTheme.onChange((isDark) => {
+  /* 重绘 */
+})
 onUnmounted(() => off())
 ```
 

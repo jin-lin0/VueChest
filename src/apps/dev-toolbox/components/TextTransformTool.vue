@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import type { Plugin } from 'prettier'
-import { useRouter } from 'vue-router'
 import { copyToClipboard, downloadFile, debounce } from '@/utils'
 import { Toast } from '@/components'
-import CodeEditor from './components/CodeEditor.vue'
-import RuleSelect from './components/RuleSelect.vue'
+import CodeEditor from './CodeEditor.vue'
+import RuleSelect from './RuleSelect.vue'
 
-defineOptions({ name: 'JsonTransformView' })
-
-const router = useRouter()
+defineOptions({ name: 'TextTransformTool' })
 
 const inputText = ref('')
 const codeText = ref('')
@@ -25,10 +22,10 @@ const editRuleName = ref('')
 const editRuleCode = ref('')
 
 const STORAGE = {
-  rules: 'json-transform:rules',
-  input: 'json-transform:input',
-  code: 'json-transform:code',
-  current: 'json-transform:current',
+  rules: 'dev-toolbox:tt:rules',
+  input: 'dev-toolbox:tt:input',
+  code: 'dev-toolbox:tt:code',
+  current: 'dev-toolbox:tt:current',
 }
 
 interface Rule {
@@ -411,13 +408,6 @@ function downloadOutput() {
 
 <template>
   <div class="jt-app">
-    <header class="jt-head">
-      <button class="back-btn" @click="router.push('/')">← 返回</button>
-      <div class="jt-title">
-        <h1>文本转换</h1>
-      </div>
-    </header>
-
     <div class="toolbar">
       <button class="btn primary" :disabled="busy" @click="convert">
         {{ busy ? '转换中…' : '⚡ 转换' }}
@@ -535,7 +525,7 @@ function downloadOutput() {
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
@@ -637,36 +627,14 @@ function downloadOutput() {
 .jt-app {
   max-width: 1320px;
   margin: 0 auto;
-  height: 100vh;
-  height: 100dvh;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 1.5rem 1rem 1.5rem;
   color: var(--text-body);
-}
-.jt-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-.jt-title h1 {
-  margin: 0.2rem 0;
-  font-size: 1.4rem;
-  color: var(--text-primary);
-}
-.back-btn {
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-light);
-  padding: 0.4rem 0.85rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.back-btn:hover {
-  color: var(--text-primary);
 }
 
 .toolbar {

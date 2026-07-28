@@ -8,10 +8,10 @@
 
 宿主在应用启动时向 `window` 挂载了两个全局对象，市场应用可直接读取：
 
-| 全局对象 | 用途 |
-| --- | --- |
-| `window.__VueChest__` | 运行时桥主对象：Vue / 路由 / Pinia / 存储 / 主题 / 常用 Vue API |
-| `window.__APP_THEME__` | 主题订阅通道（`AppTheme`），供 app 跟随深色 / 浅色模式 |
+| 全局对象               | 用途                                                            |
+| ---------------------- | --------------------------------------------------------------- |
+| `window.__VueChest__`  | 运行时桥主对象：Vue / 路由 / Pinia / 存储 / 主题 / 常用 Vue API |
+| `window.__APP_THEME__` | 主题订阅通道（`AppTheme`），供 app 跟随深色 / 浅色模式          |
 
 > 注意：`window.MarketApp` 是**你的应用包自己**通过 IIFE 暴露的入口（宿主读取它来解析你的 `default.{component, route, meta}`），它不属于运行时桥。
 
@@ -19,22 +19,22 @@
 
 以下字段在应用挂载时即可用：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `Vue` | 模块 | 宿主的 Vue（`import * as Vue`），**必须复用它**，不要自带 Vue |
-| `VueRouter` | 模块 | 宿主的 vue-router 模块 |
-| `Pinia` | 模块 | 宿主的 Pinia 模块（含 `defineStore`），用于跨应用共享状态 |
-| `storage` | object | 本地存储能力：`{ getStorage, setStorage }`（见下文） |
-| `theme` | AppTheme | 主题对象，与 `window.__APP_THEME__` 指向**同一个实例** |
-| `defineComponent` | fn | Vue API 快捷再导出 |
-| `defineAsyncComponent` | fn | Vue API 快捷再导出 |
-| `h` | fn | Vue 渲染函数 |
-| `ref` | fn | Vue 响应式 API |
-| `computed` | fn | Vue 响应式 API |
-| `reactive` | fn | Vue 响应式 API |
-| `watch` | fn | Vue 响应式 API |
-| `onMounted` | fn | Vue 生命周期 |
-| `onUnmounted` | fn | Vue 生命周期 |
+| 字段                   | 类型     | 说明                                                          |
+| ---------------------- | -------- | ------------------------------------------------------------- |
+| `Vue`                  | 模块     | 宿主的 Vue（`import * as Vue`），**必须复用它**，不要自带 Vue |
+| `VueRouter`            | 模块     | 宿主的 vue-router 模块                                        |
+| `Pinia`                | 模块     | 宿主的 Pinia 模块（含 `defineStore`），用于跨应用共享状态     |
+| `storage`              | object   | 本地存储能力：`{ getStorage, setStorage }`（见下文）          |
+| `theme`                | AppTheme | 主题对象，与 `window.__APP_THEME__` 指向**同一个实例**        |
+| `defineComponent`      | fn       | Vue API 快捷再导出                                            |
+| `defineAsyncComponent` | fn       | Vue API 快捷再导出                                            |
+| `h`                    | fn       | Vue 渲染函数                                                  |
+| `ref`                  | fn       | Vue 响应式 API                                                |
+| `computed`             | fn       | Vue 响应式 API                                                |
+| `reactive`             | fn       | Vue 响应式 API                                                |
+| `watch`                | fn       | Vue 响应式 API                                                |
+| `onMounted`            | fn       | Vue 生命周期                                                  |
+| `onUnmounted`          | fn       | Vue 生命周期                                                  |
 
 > 提示：这些 Vue API 既可以从 `window.__VueChest__` 上直接取用，也可以在你的源码里 `import { ref } from 'vue'` 并在构建时把 `vue` 外部化为 `window.__VueChest__.Vue`（推荐，写法更自然）。二者最终指向同一份宿主 Vue。
 
@@ -74,7 +74,9 @@ const { defineStore } = window.__VueChest__.Pinia
 const useSharedStore = defineStore('shared-counter', {
   state: () => ({ count: 0 }),
   actions: {
-    inc() { this.count++ },
+    inc() {
+      this.count++
+    },
   },
 })
 

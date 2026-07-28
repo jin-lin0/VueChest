@@ -120,7 +120,12 @@ async function saveName() {
             <label class="profile-avatar" title="点击更换头像">
               <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="用户头像" />
               <span v-else>{{ authStore.user?.username?.charAt(0).toUpperCase() }}</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" hidden @change="uploadAvatar" />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                @change="uploadAvatar"
+              />
             </label>
 
             <template v-if="!editingName">
@@ -128,7 +133,16 @@ async function saveName() {
                 <span class="profile-name-line">
                   <strong>{{ authStore.user?.username }}</strong>
                   <button class="name-edit-icon" title="修改昵称" @click.stop="startEditName">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="13"
+                      height="13"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z" />
                     </svg>
@@ -166,14 +180,10 @@ async function saveName() {
           ⚙️ 管理后台
         </button>
         <div class="dropdown-divider"></div>
-        <button class="dropdown-item logout" @click.stop="handleLogout">
-          退出登录
-        </button>
+        <button class="dropdown-item logout" @click.stop="handleLogout">退出登录</button>
       </template>
       <template v-else>
-        <button class="dropdown-item" @click.stop="goToLogin">
-          登录
-        </button>
+        <button class="dropdown-item" @click.stop="goToLogin">登录</button>
       </template>
     </div>
 
@@ -241,7 +251,9 @@ async function saveName() {
   font-weight: 700;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .profile-avatar:hover {
@@ -289,7 +301,9 @@ async function saveName() {
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 4px;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .name-edit-icon:hover {

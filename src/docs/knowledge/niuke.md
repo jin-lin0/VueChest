@@ -3,6 +3,7 @@
 ## 一、JavaScript / TypeScript 基础
 
 ### 数据类型与基础概念
+
 - JS 有哪些基本数据类型？基本类型与引用类型的区别、存储方式？开发中引用类型和基本类型各有什么需要注意的？
 - null 与 undefined 的区别？
 - 如何准确判断一个变量的数据类型？typeof / instanceof / Object.prototype.toString.call 的原理与区别？如何判断一个值是不是数组、是不是空对象？
@@ -18,15 +19,17 @@
 - 手写单例模式（含双检查锁）？手写函数柯里化 / 实现 add(1)(2) 累加？
 
 ### 闭包 / 原型 / this
+
 - 什么是闭包？闭包的作用和缺点是什么？应用场景？闭包导致的内存泄漏怎么定位？
 - 闭包里被引用的外部变量，内存存放在栈上还是堆上？如果语言没有闭包机制，如何手动模拟闭包（让返回的函数仍能访问原局部变量）？
-- 讲讲原型链？prototype 与 __proto__ 的区别？从对象取属性的过程、原型链顶端是什么、如何判定属性在自身还是原型链上？
+- 讲讲原型链？prototype 与 **proto** 的区别？从对象取属性的过程、原型链顶端是什么、如何判定属性在自身还是原型链上？
 - 如何实现继承（class extends / Object.create / 组合寄生式）？构造函数和普通函数的区别？new 调用时发生了什么、函数如何知道自己被 new 调用？class 如何实现多继承（手撕）？
 - 如何确定函数中 this 的指向？call / apply / bind 的区别与手写实现？箭头函数的 this 有什么特殊之处、为什么没有 arguments？严格模式下 this 的输出有什么变化？
 - this 指向问题（给出代码判断输出）？读代码题：var / this / 事件循环 / for 循环的 i 值？
 - 如何自己设计一个"类似 Babel 的语法机制"（语法解析、执行机制、底层实现）？
 
 ### 异步与事件循环
+
 - 讲讲 JavaScript 的事件循环机制？宏任务和微任务的区别？各自有哪些（async/await 是否全部是微任务、messageChannel 是宏还是微）？给出一段代码问输出顺序？
 - 事件循环在没有任务时是否会持续占用 CPU（浏览器空闲调度机制）？浏览器事件从物理硬件 → 操作系统 → 浏览器进程 → JS 事件回调执行的完整链路？
 - 浏览器事件循环中的"帧"概念、生命周期与阶段？requestAnimationFrame 的执行时机？requestIdleCallback 有听过吗？
@@ -40,6 +43,7 @@
 - 给出代码判断 apply / bind 的输出（代码题）？Promise 输出顺序题 / 同步异步输出题（长代码）？
 
 ### 内存 / 作用域 / 模块
+
 - 作用域链？词法作用域与动态作用域的区别？
 - JS 垃圾回收机制（标记清除 / 引用计数）？引用计数的缺点与循环依赖问题？哪些情况会造成内存泄漏（全局变量、定时器、闭包、DOM 引用）？
 - JS 的内存管理（新生代 / 老年代）？V8 的 GC 回收？Node.js 的 V8 GC（新生代 / 老生代）？
@@ -48,6 +52,7 @@
 - 如何用浏览器原生方法实现订阅发布机制？如何拿到用户在某个页面的停留时间？如何监听哈希模式路由 # 之后部分的变化？
 
 ### 计算机基础（JS 视角延伸）
+
 - 数组和链表的区别？JS 数组底层是数组还是链表？
 - 进程和线程的定义及区别？是否了解协程？多线程竞争状态的产生原因与解决（互斥锁）？
 - CPU 和 GPU 的区别，各自擅长什么任务？
@@ -56,6 +61,7 @@
 - 事件委托（事件代理）的理解、实现原理、优缺点？
 
 ### 函数式与 TS
+
 - 防抖（debounce）和节流（throttle）的区别与手写实现（含在防抖里如何终止未执行的函数）？
 - TS 常用工具类型 Record / Pick / Omit / Partial / Required / Readonly 分别有什么作用？
 - TS 泛型介绍？keyof 等类型工具？TS 到最终 JS 的流程、Babel 原理？
@@ -70,6 +76,7 @@
 ## 二、框架原理（React / Vue）
 
 ### React
+
 - React 和 Vue 的区别？各自适合什么场景？React 和 Vue 在 Diff 算法上的核心区别？React 与 Vue 虚拟 DOM 的区别？React 与 Vue 双向绑定的区别？Vue / React 各自的优缺点？
 - React 常用版本？React 18 / 19 有哪些新特性（Actions / use hook / Server Components / cache() / useTransition 等）？React17 与 React18 升级点？
 - React 主要流程介绍（从 setState 到渲染）？React 为什么只更新部分 DOM？state 执行后发生了什么？反复调用 setState 是一次渲染还是多次渲染？
@@ -89,6 +96,7 @@
 - 在 React 里怎么接入 Vue 组件（Web Component 包装）？前端里怎么接入 AI（流式渲染、上下文传给大模型）？
 
 ### Vue
+
 - Vue2 和 Vue3 的区别？Vue3 的响应式原理（Proxy）？Vue2 如何监听数组的 push / pop？Vue2 直接通过数组下标赋值无法更新视图的原因与解决方案？Vue2 响应式的弊端、哪些数组方法改动不会被监听？
 - Proxy 与 defineProperty 的区别？Vue3 中如何避免一开始递归加响应式带来的性能问题？为什么用 Proxy，与 Vue2 defineProperty 相比解决什么问题？
 - 组合式 API 与选项式 API 的区别、优势？组合式函数（composables）是什么、怎么写？组合式 API 的优缺点？hooks 与 mixin 的区别？
@@ -107,6 +115,7 @@
 - 微前端 / 大屏适配方案（优缺点）？
 
 ### 通用
+
 - 组件库如何适配暗黑模式？CSS Module 用过吗、原理？class 冲突怎么解决？修改 antd 组件样式如何避免被覆盖？styled-components 使用与实现原理？Shadow DOM 样式隔离？Tailwind 相比普通 css 的优势、类名太多如何维护？
 - less / sass 原理？webpack 中如何配置编译 less？
 - 单页面路由的理解；SPA 和 MPA 的区别及优缺点？为什么只有一个 index.html 却能显示不同页面（SPA）？
@@ -129,7 +138,7 @@
 - HTML 的 head / body？meta / link / style？link 与 @import 的区别？link 可引入哪些资源、type 做什么、能否跨域？script 跨域吗、async / defer 区别？JS 放在 HTML 前面且无异步属性会造成什么后果？JS 报错会对页面渲染产生什么影响？
 - CSS 选择器有哪些、优先级？!important 优先级？BEM 命名规范的应用场景与优缺点？
 - CSS 长度单位（px / em / rem / vw / vh / rpx / vmax / vmin / 百分比）？10vh 含义？rpx 用过吗？
-- 移动端适配方式（媒体查询、rem、vw/vh、px/em/rem 区别、iOS 安卓差异）？移动端安全区域（刘海 / 底部小黑条）适配（env(safe-area-inset-*) / SafeAreaView）？
+- 移动端适配方式（媒体查询、rem、vw/vh、px/em/rem 区别、iOS 安卓差异）？移动端安全区域（刘海 / 底部小黑条）适配（env(safe-area-inset-\*) / SafeAreaView）？
 - 移动端 / 前端画圆的方式？前端拖动轴 / 滑块动态显隐怎么设置？CSS 里能写脚本吗？
 - 实现一个 button 渐变效果（深红到浅红）的多种方式？鼠标的拖尾效果怎么实现？
 - 单行 / 多行文本溢出隐藏？
@@ -148,6 +157,7 @@
 ## 四、网络 / 浏览器
 
 ### HTTP 与缓存
+
 - HTTP 有哪些版本（1.0 / 1.1 / 2.0 / 3.0）？核心区别？HTTP/2 有什么特点（多路复用 / 二进制分帧 / 头部压缩 / Server Push）？HTTP/3 为什么更快（QUIC / UDP）？
 - 介绍 HTTP 强缓存与协商缓存？强缓存有什么缺点为什么还需要协商缓存？cache-control 有哪些值、与 expires 优先级谁高？协商缓存字段（ETag / If-Modified-Since / Last-Modified / If-None-Match）？启发式缓存？
 - HTTP 状态码有哪些（301/302/304/401/500/502/504 等）？301 与 302 使用场景与浏览器执行区别？302 和 304 的区别？
@@ -159,6 +169,7 @@
 - 计算机网络的几层协议（OSI 七层 / 五层）？各层作用、与开发相关的层？为什么要分这么多层？文件传输协议（FTP 等）有哪些？
 
 ### 跨域与安全
+
 - 什么是跨域？同源策略？浏览器怎么识别是否同源？常见跨域解决方案（CORS / Nginx 反向代理 / JSONP / dev proxy）？详述 CORS 具体配置？预检请求用到什么方法（OPTIONS）？跨域是否携带 cookie？src 与 href 的区别？
 - XSS 是什么、什么情况会发生、怎么防御？CSRF 是什么、怎么发生、防御办法？XSS / CSRF 怎么获取 cookie？React 原生支持转义吗？恶意注入 script 标签怎么办（CSP）？三种 XSS 如何防护？浏览器安全攻击手段与原理、如何检测脚本注入？
 - 攻击者如何伪装成用户？JWT 是什么？JWT 配置了哪些字段、业内安全隐患（易被逆向解码）如何加固？为什么不用 sessionID、cookie 的安全隐患及解决？AES / RSA 区别、公私钥？单点登录（SSO）/ 小程序授权流程？
@@ -168,6 +179,7 @@
 - 前端安全实践（接口加密、token 鉴权、CSP）？Prompt Injection 与越狱的区别；前端如何防止提示词注入？
 
 ### 实时通信与流式
+
 - WebSocket 的完整流程和底层原理？和 SSE 的区别？心跳保活和断线重连（指数退避）怎么实现？还有哪些全双工协议？用 WebSocket 还是 SSE（为什么 AI 对话优先用 SSE 而非轮询 / WebSocket、文本流式输出选 SSE、语音转写选 WebSocket）？SSE 与 HTTP streamable 的区别？SSE 不支持 fetch 为什么不用 fetch-eventsource？
 - SSE 原理？SSE 连接过程、前端如何流式响应？断连重连、指数退避、断点续传补丢失文本怎么实现？后端什么时候推送、前端断连怎么处理？大模型返回中断如何处理（断点续传 / 重连）？
 - 打字机逐字输出怎么实现？后端一直吐数据如何保证前端不卡（Web Worker 释放计算线程）？流式场景下 Markdown 表格如何判断"完整解析"再一次性渲染、HTML 标签流式缓冲区处理？前端接收流式数据的方式（服务端 yield、前端增量渲染、处理中断 / 重连 / 超时）？
@@ -175,6 +187,7 @@
 - 用户点击"停止生成"，后端如何立即终止 LLM 推理？多轮对话 + 流式输出如何保证消息不乱序、上下文不丢失？跨服务流式透传（gRPC streaming / HTTP2 SSE）？
 
 ### 其他
+
 - TCP 和 UDP 的区别？TCP 如何实现可靠性传输（拥塞控制、慢启动）？TCP 三次握手、四次挥手，为什么需要三次握手？最后一次 ack 丢失怎么办？TCP 粘包？游戏模块一般用什么协议？
 - XMLHttpRequest（XHR）的 readyState 有哪些状态码？fetch vs XHR / Ajax 应用场景？ajax 底层原理？
 - CDN 怎么做？静态资源（JS/CSS/图片）如何处理？hash 强缓存策略？CDN 与 COS 等对象存储的优势对比？
@@ -191,6 +204,7 @@
 ## 五、工程化 / 性能 / 部署
 
 ### 性能优化
+
 - 前端性能优化有哪些手段（编译 / 网络 / 渲染性能）？首屏加载速度怎么优化？页面打开很慢可能是哪些问题？路由懒加载为什么能优化首屏、改善 LCP？为什么做预加载和骨架屏、弱网降级？
 - 性能优化量化：每个优化方法分别提升了多少、为什么能提升这么多？性能优化案例（首屏加载、资源压缩、CDN 策略）？
 - 出现白屏问题如何排查？前端性能指标（FCP / LCP / CLS / FPS）怎么采集？LCP 是什么、如何查看？FCP 指什么、如何测量？FP / FCP 区别？
@@ -201,6 +215,7 @@
 - 用户反馈页面加载慢 / 白屏怎么定位？项目发布到线上后如何监控整体服务质量（埋点 SDK、性能指标 SDK 内部实现、告警推送）？服务端优化方案（CDN vs COS 存储优势）？
 
 ### 构建与部署
+
 - Vite 为什么启动很快？Vite 热更新原理？为什么选 Vite？Vite 如何兼容老浏览器？Webpack 与 Vite 的区别（含 Rollup / RSpack 迁移兼容性）？
 - Webpack 打包流程？loader 和 plugin 的作用？Webpack 对动态 import() 怎么拆 chunk、运行时怎么加载？哪些情况没把模块拆成独立 chunk？splitChunk 怎么配置？webpack 热更新原理？Tree-Shaking 原理、打包工具如何实现？
 - 分包 / 代码分割 / 路由懒加载（React.lazy + Suspense）？代码分割是否越细越好、判断标准？小程序分包思想怎么落地？分包策略（按路由分块 + 公共依赖提取，preload 优化 LCP）？模块联邦？
@@ -210,6 +225,7 @@
 - 如何提取 URL 中 ? 后和 # 后的参数？如何设计一个开源 Code Editor SDK 会暴露哪些 API？
 
 ### 包管理 / 工程化 / 架构
+
 - 包管理器 npm / pnpm / yarn 区别？lock 文件作用？pnpm 如何避免幽灵依赖、npm 是否真的扁平化？
 - Babel 的作用与原理？如何保证跨浏览器兼容、polyfill 避免全局污染？ES6 转 ES5 如何实现？编译时与运行时的区别（Webpack vs Vite）？
 - Monorepo 是什么？多包管理（pnpm workspace / lerna）？为什么用多层架构、与 MVC / MVVM 区别？module / Controller / service 划分模式叫什么？依赖注入原理？
@@ -220,20 +236,24 @@
 - 大屏适配方案有哪些、优缺点？
 
 ### 安全与登录
+
 - 双 Token（AccessToken + RefreshToken）无感登录怎么实现？RefreshToken 也过期了怎么处理？基于双 token 实现单点登录？并发请求、登录态管理、持久化、鉴权？
 - 鉴权放在哪一层（网关 / 登录中台 / 业务服务）？按钮级别前端权限如何实现、页面刷新时如何恢复路由与权限信息、只靠前端是否足够（后端如何兜底）？RBAC 权限系统设计？
 - XSS / CSRF 前端防御（见网络章节）。
 
 ### Git 与质量
+
 - Git 协作：Merge 和 Rebase 的区别与使用场景？冲突解决？本地 commit 5 次未 push，回滚到第 3 次后如何找回第 4、5 次（stash / cherry-pick / amend / force push）？常用 git 命令？
 - 如何保证代码质量 / 不引发线上问题（除 eslint 外、除 AI 工具外）？渐进式迁移？项目开发前有没有提前思考性能问题？
 - AI 辅助与工程质量：平时如何借助 AI 工具提高效率、解决问题？如何判断和验收 AI 生成的代码是否可用、可维护、符合项目规范？用 AI 改代码时是否用单元测试 / 集成测试避免新 bug？AI 生成代码占比、如何把控质量？vibe coding / Spec Coding 流程、中途错了怎么改正？用 AI 工具辅助工程化（如 Harness / Spectacle）？
 
 ### 文件与上传
+
 - 大文件分片上传的哈希计算怎么做（md5）？断点续传怎么知道哪些分片已经传过？大文件上传弱网怎么办？
 - 文件下载断点续传（基于 HTTP Range）怎么实现？文件上传如何显示上传进度？
 
 ### 后端 / 数据 / 高并发（前端视角）
+
 - 为什么后端用 mongoDB 而不用 mysql（对比）？对 redis 的理解？本地数据库用的什么？IndexDB 与 Dexie 对比？
 - 高并发场景：1s 内对数据库 10w 次写入如何优化？后端高并发 1w 个接口都 down 了怎么处理？
 - 消息队列相关：RabbitMQ / Celery 解耦异步任务（投递链路、交换机、持久化、死信 / 延迟队列、优先级、重试）；高并发下为何弃 Redis List/Stream 选 RabbitMQ；消息丢失 / 重复消费 / 死信堆积前后端如何兜底？多消息投递结果如何与发送请求对应？
@@ -245,6 +265,7 @@
 ## 六、AI / Agent（前端 Agent / AI 研发）
 
 ### Agent 基础
+
 - 介绍一下 Agent 的核心组成模块（规划 / 记忆 / 工具 / 行动）？给新同事解释 Agent 四大核心模块你会怎么讲？Agent 与传统 Workflow 的核心区别？
 - Agent 和普通 Chatbot 的区别？已有成熟大模型，为什么还需要智能体？Agent 能帮大模型解决哪些原生处理不了的问题？
 - ReAct 的执行流程是什么？ReAct / Plan-and-Execute / Reflection 的区别？ReAct 比单纯 LLM 强在哪？实际开发中如何避免"思考与行动脱节"？Planning 是由框架还是大模型做的、有哪些方法？
@@ -257,6 +278,7 @@
 - 如何控制 Agent 的「自主性」边界（严格规则引擎 vs 允许自主推理）？如何设计安全护栏（Safety Guardrail）？
 
 ### 记忆与上下文
+
 - Agent 的记忆机制有哪些（短期 / 工作 / 长期）？短期记忆具体实现方式（窗口上限、达到上限让 Agent 总结、保留最近几轮）？长期记忆怎么设计（静态 / 动态）？什么时候触发存储？如何防止记忆膨胀（去重 / 淘汰）？
 - 每一轮对话如何逐步叠加到上下文？如何判断"快到上限了"、什么时候触发总结？长短期记忆的区别、短期记忆里会存储 function call 内容吗？
 - 大模型怎么决定长期记忆是否需要召回？更新策略、是否遇到过记忆污染？企业级记忆中用户纠错（不一定对）怎么处理？多个窗口对话记忆性、所有对话用户画像怎么做？
@@ -265,6 +287,7 @@
 - 多 Agent / 多异步任务场景下怎么防止上下文污染？多轮对话 / 长文本怎么处理？
 
 ### Skill 与工具调用（MCP / Skill / Function Calling）
+
 - 你对 Skill 的理解是什么？Skill 与传统提示词工程、MCP 三者之间差异？Skill 分层体系（内置 / 用户 / 项目）？用户输入怎么和 Skill 匹配 / 路由？有没有 Skill 沉淀机制？Rules 和 Skills 的区别、为什么不把 Skills 指导写进 Rules？
 - Function Calling / Tool Calling 完整流程？MCP 与 Function Calling 的区别、两者关系？MCP 与本地 tool 有什么不同？MCP 的核心工作流程？MCP 最新技术（SSE 与 HTTP streamable 区别）？MCP Server 怎么知道哪个用户调用了哪个工具？MCP 与 Skills 的区别、能否只用 skill + 脚本替代 MCP？CLI 与 MCP 区别？A2A 协议、SubAgent 是什么（MCP 是 AI 与工具连接标准，A2A 是 AI 与 AI 连接标准）？
 - MCP 的传输方式（SSE / 流式）？开发一个 MCP 服务器的大概思路？MCP 返回结果支不支持流式？MCP 负载很高不堪重负怎么解决？MCP 有什么安全问题、如何解决？把某个接口封装成 MCP 工具时标准化接口怎么设计、兼容性问题？
@@ -274,6 +297,7 @@
 - 动态加载 Tool 与 Tool 注册怎么做的？未来 Tool 变多怎么优化？工具的统一调度和审计？大模型产生流式结果、结果只拿到一半怎么办（前端侧）？能否让大模型自己排除 api 超时和报错（SKILL）？
 
 ### RAG
+
 - 介绍一下 RAG 的整体流程？RAG 解决了大模型的什么核心问题（幻觉 / 知识过时 / 私有数据）？为什么不能只做一次向量检索、线上系统怎么做？早期用 RAG 后来又不用了的原因？
 - RAG 中如何选择 Chunk Size / Chunk Overlap？chunk 怎么切（语义段落、带多级标题索引）、大小一般多少、决定依据？PDF 中文分块如何实现？
 - embedding 模型选型？如何判断向量相似度（余弦相似度 / 欧几里得距离，工程应用区别）？除了余弦还了解哪些相似度算法？
@@ -287,12 +311,14 @@
 - 项目中用了几个模型（embedding / 路由 / LLM / Rerank）？LLM Wiki 了解过吗？
 
 ### 框架与选型
+
 - LangChain 和 LangGraph 的区别？为什么用 LangGraph 而不是简单 LangChain？为什么选 LangChain、不直接调 OpenAI 接口？不用现成框架而自研的利弊？
 - Agent 框架你用过哪些（LangChain / LangGraph / CrewAI / Coze / Dify / LlamaIndex / Eino / Agentscope 等）？各自优缺点？Coze / 扣子是 Agent 平台还是工作流平台？
 - SpringAI 的核心作用和适用场景、怎么实现记忆管理、与直接用 AI SDK 的区别？AI 应用框架应该学哪一门（围绕模型、工具、记忆、编排、范式）？
 - 前端 Agent 项目技术选型（为什么选 Go / TypeScript）？整个对话平台链路、Agent 分层架构（UI 层 / 模型层 / 中间层）？
 
 ### 大模型基础
+
 - 什么是大语言模型，与传统 NLP 模型本质差异？Token 是什么？同一段文本在不同模型 Token 数可能不同、怎么计费？上下文窗口的本质、与会话记忆的关系？
 - Self-Attention 的本质、计算步骤？QKV 为什么要这么分？同一个 token 向量每次一样吗？Encoder 与 Decoder 各负责什么、为什么现在大模型大部分 Decoder-only？RoPE 是什么、相比绝对位置编码优势？GQA / MHA / MQA 区别？LayerNorm 与 RMSNorm 区别、为什么要 LN？
 - 采样参数 Temperature / Top-k / Top-p 怎么用？涌现能力是什么？弱 AI 与强 AI 区别？
@@ -304,6 +330,7 @@
 - Prompt 是什么、可维护的 Prompt 通常包含哪些部分？Prompt 工程见解、常见结构、多阶段 Prompt 策略？Prompt Injection 与越狱区别、RAG 如何防御间接提示词注入、前端如何防止提示词注入？
 
 ### 工程落地与业务
+
 - AI 辅助开发的完整工作流？真实使用场景？如何在项目中使用 AI 工具来提升效率？平时用什么 AI 工具（Cursor / Trae / Codex / 文心 / DeepSeek 等）、不同模型区别与适用场景、为什么用 Cursor？
 - 能力如何封装为 Skill？触发条件？意图识别是否人工干预？多 Skill 串行 / 嵌套，依赖冲突、参数不兼容的容错设计？有无编排优先级调度？Skill 版本迭代如何平滑灰度、兼容兜底、旧版下线、故障回滚？
 - 流式输出怎么实现（SSE/WebSocket、服务端 yield、前端增量渲染；处理中断 / 重连 / 超时）？用户点击停止生成后端如何立即终止？多轮对话 + 流式输出如何保证消息不乱序？跨服务流式透传？流式场景内容安全实时截断（敏感词立即停流）？
@@ -324,6 +351,7 @@
 ## 七、场景 / 手写编程题
 
 ### 异步 / 并发 / 调度
+
 - 实现一个并发控制函数 / 异步调度器 Scheduler（控制最大并发数，结果顺序不变，任务失败不中断，收集所有结果）
 - 带最大并发数限制的 Promise.all / async pool / 竞态请求只消费最后一次（p-limit）
 - 实现 Promise.resolve 及手写 Promise 核心逻辑 / 手写 Promise.all
@@ -337,6 +365,7 @@
 - 单例模式 / 实现一个单例 object（双检查锁）
 
 ### 手写基础算法 / 数据操作
+
 - 手写深拷贝 / 浅拷贝（循环引用用 WeakMap；ES6 展开运算符是深拷贝还是浅拷贝）
 - 手写数组原地去重 / 数组转树 / 树转扁平化（tree <-> flat）/ 嵌套对象（树）转数组
 - 实现 pick / 实现 classnames 函数 / 实现 once 函数（记忆化第一次执行结果）
@@ -353,6 +382,7 @@
 - 手写：实现一个简单的 Set 类（add / remove）/ 实现深层比较 isEqual 函数
 
 ### 场景 / 业务题
+
 - 事件循环执行顺序输出（多道代码题）/ 给出代码判断 Promise / apply / bind 的输出
 - 提取 URL 中 ? 后和 # 后的参数 / 解析 URL（手撕）
 - 手写 SSE 解析器、按 token 流式渲染 Markdown；流式场景下 Markdown 表格如何判断"完整解析"再一次性渲染？HTML 标签流式缓冲区处理？

@@ -27,7 +27,9 @@ export async function getClientGeo() {
   return null
 }
 
-export function getGeoHeader(geo: { country: string; city: string } | null): Record<string, string> {
+export function getGeoHeader(
+  geo: { country: string; city: string } | null,
+): Record<string, string> {
   if (!geo) return {}
   return { 'X-Client-Geo': `${geo.country},${geo.city}` }
 }

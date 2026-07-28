@@ -6,11 +6,11 @@
 
 Google 用三个真实用户指标衡量体验，阈值在**第 75 百分位**评估（移动端与桌面端分别统计）。INP 已于 2024 年 3 月取代 FID。
 
-| 指标 | 含义 | 良好 | 需改进 | 差 |
-| --- | --- | --- | --- | --- |
-| LCP（Largest Contentful Paint） | 最大内容绘制，主内容加载速度 | ≤ 2.5s | 2.5–4.0s | > 4.0s |
+| 指标                             | 含义                         | 良好    | 需改进    | 差      |
+| -------------------------------- | ---------------------------- | ------- | --------- | ------- |
+| LCP（Largest Contentful Paint）  | 最大内容绘制，主内容加载速度 | ≤ 2.5s  | 2.5–4.0s  | > 4.0s  |
 | INP（Interaction to Next Paint） | 交互到下次绘制，整体响应速度 | ≤ 200ms | 200–500ms | > 500ms |
-| CLS（Cumulative Layout Shift） | 累计布局偏移，视觉稳定性 | ≤ 0.1 | 0.1–0.25 | > 0.25 |
+| CLS（Cumulative Layout Shift）   | 累计布局偏移，视觉稳定性     | ≤ 0.1   | 0.1–0.25  | > 0.25  |
 
 **做什么 / 为什么 / 怎么做**
 
@@ -87,9 +87,16 @@ import { ElButton } from 'element-plus'
 <img src="hero.avif" width="1200" height="630" alt="封面" fetchpriority="high" />
 
 <!-- 非首屏：原生懒加载 + 显式宽高防止 CLS -->
-<img src="banner.webp" srcset="banner-480.webp 480w, banner-1200.webp 1200w"
-     sizes="(max-width: 600px) 480px, 1200px"
-     loading="lazy" decoding="async" width="1200" height="300" alt="横幅" />
+<img
+  src="banner.webp"
+  srcset="banner-480.webp 480w, banner-1200.webp 1200w"
+  sizes="(max-width: 600px) 480px, 1200px"
+  loading="lazy"
+  decoding="async"
+  width="1200"
+  height="300"
+  alt="横幅"
+/>
 ```
 
 要点：优先 WebP/AVIF（比 JPEG 小 30%–60%）；给所有图片设 `width`/`height` 预留空间；首屏图禁用懒加载。
@@ -140,11 +147,22 @@ import { ElButton } from 'element-plus'
 
 ```css
 /* 推荐：只动 transform/opacity */
-.box { transition: transform 0.2s ease, opacity 0.2s ease; }
-.box:hover { transform: translateX(8px); opacity: 0.8; }
+.box {
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+.box:hover {
+  transform: translateX(8px);
+  opacity: 0.8;
+}
 
 /* 避免：会触发布局重算 */
-.bad { transition: left 0.2s, width 0.2s; }
+.bad {
+  transition:
+    left 0.2s,
+    width 0.2s;
+}
 ```
 
 ### 3. will-change 谨慎使用
@@ -168,13 +186,19 @@ import { ElButton } from 'element-plus'
 ```js
 function debounce(fn, wait = 300) {
   let t
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait) }
+  return (...args) => {
+    clearTimeout(t)
+    t = setTimeout(() => fn(...args), wait)
+  }
 }
 function throttle(fn, wait = 200) {
   let last = 0
   return (...args) => {
     const now = Date.now()
-    if (now - last >= wait) { last = now; fn(...args) }
+    if (now - last >= wait) {
+      last = now
+      fn(...args)
+    }
   }
 }
 searchInput.addEventListener('input', debounce(query, 300))
@@ -216,7 +240,9 @@ export default defineConfig({
 // vite.config.ts
 import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
-  plugins: [VitePWA({ registerType: 'autoUpdate', workbox: { globPatterns: ['**/*.{js,css,html,svg}'] } })],
+  plugins: [
+    VitePWA({ registerType: 'autoUpdate', workbox: { globPatterns: ['**/*.{js,css,html,svg}'] } }),
+  ],
 })
 ```
 
@@ -299,7 +325,10 @@ const ChartWithFallback = defineAsyncComponent({
 <script setup>
 import { shallowRef, shallowReactive, triggerRef } from 'vue'
 const bigList = shallowRef([]) // 替换整个数组才触发更新
-function update() { bigList.value = fetchNew(); triggerRef(bigList) }
+function update() {
+  bigList.value = fetchNew()
+  triggerRef(bigList)
+}
 
 const state = shallowReactive({ items: [] }) // 只追踪 state 自身赋值
 </script>
@@ -307,11 +336,11 @@ const state = shallowReactive({ items: [] }) // 只追踪 state 自身赋值
 
 ## 六、测量工具
 
-| 工具 | 用途 | 何时用 |
-| --- | --- | --- |
-| Lighthouse | 综合跑分（CWV、最佳实践） | 本地/CI 快速体检 |
-| Chrome DevTools Performance | 录制火焰图、定位长任务、FPS | 定位具体卡顿根因 |
-| Performance API | 代码内采集真实指标上报 | 监控线上真实用户数据 |
+| 工具                        | 用途                        | 何时用               |
+| --------------------------- | --------------------------- | -------------------- |
+| Lighthouse                  | 综合跑分（CWV、最佳实践）   | 本地/CI 快速体检     |
+| Chrome DevTools Performance | 录制火焰图、定位长任务、FPS | 定位具体卡顿根因     |
+| Performance API             | 代码内采集真实指标上报      | 监控线上真实用户数据 |
 
 **Lighthouse**：DevTools → Lighthouse → 选 Mobile → 生成报告，关注 LCP/INP/CLS 与建议项。
 

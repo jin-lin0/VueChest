@@ -83,9 +83,7 @@ const formatPublishDate = (ms?: number): string => {
             <span v-if="music.currentAlbum.publishTime"
               >发行：{{ formatPublishDate(music.currentAlbum.publishTime) }}</span
             >
-            <span v-if="music.currentAlbum.size != null">
-              · {{ music.currentAlbum.size }} 首</span
-            >
+            <span v-if="music.currentAlbum.size != null"> · {{ music.currentAlbum.size }} 首</span>
             <span v-if="music.currentAlbum.company"> · {{ music.currentAlbum.company }}</span>
           </div>
 

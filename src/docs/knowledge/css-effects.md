@@ -11,9 +11,15 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 ### 线性 / 径向 / conic 渐变
 
 ```css
-.linear { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); }
-.radial { background: radial-gradient(circle at 30% 30%, #ff9a9e, #fad0c4 60%); }
-.conic  { background: conic-gradient(from 0deg, #ff0080, #ff8c00, #ff0080); }
+.linear {
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+}
+.radial {
+  background: radial-gradient(circle at 30% 30%, #ff9a9e, #fad0c4 60%);
+}
+.conic {
+  background: conic-gradient(from 0deg, #ff0080, #ff8c00, #ff0080);
+}
 ```
 
 ### 网格背景（重复渐变叠加）
@@ -22,8 +28,8 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 .grid-bg {
   background-color: #0f172a;
   background-image:
-    repeating-linear-gradient(0deg, transparent 0 19px, rgba(148,163,184,.25) 19px 20px),
-    repeating-linear-gradient(90deg, transparent 0 19px, rgba(148,163,184,.25) 19px 20px);
+    repeating-linear-gradient(0deg, transparent 0 19px, rgba(148, 163, 184, 0.25) 19px 20px),
+    repeating-linear-gradient(90deg, transparent 0 19px, rgba(148, 163, 184, 0.25) 19px 20px);
 }
 ```
 
@@ -34,8 +40,11 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 ```css
 .gradient-text {
   background: linear-gradient(90deg, #ff6ec4, #7873f5);
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent; font-weight: 700; font-size: 2.5rem;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
+  font-size: 2.5rem;
 }
 ```
 
@@ -51,10 +60,13 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 @supports not (backdrop-filter: blur(1px)) {
-  .glass { background: rgba(255, 255, 255, 0.85); }
+  .glass {
+    background: rgba(255, 255, 255, 0.85);
+  }
 }
 ```
 
@@ -69,16 +81,31 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 ```css
 .neon-text {
   color: #fff;
-  text-shadow: 0 0 5px #fff, 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #0ff,
+    0 0 20px #0ff,
+    0 0 40px #0ff;
 }
 .neon-btn {
-  padding: 12px 28px; color: #0ff; background: transparent;
-  border: 2px solid #0ff; border-radius: 8px;
-  box-shadow: 0 0 8px #0ff, inset 0 0 8px #0ff;
-  transition: box-shadow .25s ease, color .25s ease;
+  padding: 12px 28px;
+  color: #0ff;
+  background: transparent;
+  border: 2px solid #0ff;
+  border-radius: 8px;
+  box-shadow:
+    0 0 8px #0ff,
+    inset 0 0 8px #0ff;
+  transition:
+    box-shadow 0.25s ease,
+    color 0.25s ease;
 }
 .neon-btn:hover {
-  color: #fff; box-shadow: 0 0 16px #0ff, 0 0 32px #0ff, inset 0 0 16px #0ff;
+  color: #fff;
+  box-shadow:
+    0 0 16px #0ff,
+    0 0 32px #0ff,
+    inset 0 0 16px #0ff;
 }
 ```
 
@@ -89,34 +116,71 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 ### 按钮 hover 光晕（伪元素 + 扩散）
 
 ```css
-.glow-btn { position: relative; overflow: hidden; padding: 12px 28px; border: none; border-radius: 999px; background: #6366f1; color: #fff; }
-.glow-btn::before {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle at center, rgba(255,255,255,.6), transparent 60%);
-  opacity: 0; transform: scale(0.5); transition: opacity .3s ease, transform .3s ease;
+.glow-btn {
+  position: relative;
+  overflow: hidden;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 999px;
+  background: #6366f1;
+  color: #fff;
 }
-.glow-btn:hover::before { opacity: 1; transform: scale(1.4); }
+.glow-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.6), transparent 60%);
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+.glow-btn:hover::before {
+  opacity: 1;
+  transform: scale(1.4);
+}
 ```
 
 ### 下划线动画（宽度由 0 展开）
 
 ```css
-.link-underline { position: relative; color: #1f2937; text-decoration: none; }
-.link-underline::after {
-  content: ""; position: absolute; left: 0; bottom: -2px;
-  width: 0; height: 2px; background: #6366f1; transition: width .3s ease;
+.link-underline {
+  position: relative;
+  color: #1f2937;
+  text-decoration: none;
 }
-.link-underline:hover::after { width: 100%; }
+.link-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0;
+  height: 2px;
+  background: #6366f1;
+  transition: width 0.3s ease;
+}
+.link-underline:hover::after {
+  width: 100%;
+}
 ```
 
 ### 卡片悬浮抬升 + 阴影
 
 ```css
 .card {
-  background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  transition: transform .25s ease, box-shadow .25s ease;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
-.card:hover { transform: translateY(-6px); box-shadow: 0 12px 28px rgba(0,0,0,.18); }
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
 ```
 
 ---
@@ -127,37 +191,84 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 
 ```css
 .spinner {
-  width: 36px; height: 36px; border: 4px solid #e5e7eb;
-  border-top-color: #6366f1; border-radius: 50%; animation: spin .8s linear infinite;
+  width: 36px;
+  height: 36px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .pulse {
-  width: 40px; height: 40px; border-radius: 50%; background: #6366f1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #6366f1;
   animation: pulse 1.4s ease-in-out infinite;
 }
-@keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.3); opacity: .5; } }
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.5;
+  }
+}
 ```
 
 ### 骨架屏 shimmer（流光）
 
 ```css
 .skeleton {
-  width: 100%; height: 16px; border-radius: 8px;
+  width: 100%;
+  height: 16px;
+  border-radius: 8px;
   background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%);
-  background-size: 400% 100%; animation: shimmer 1.4s ease infinite;
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
 }
-@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
 ```
 
 ### 打字机效果（steps 控制步数）
 
 ```css
 .typewriter {
-  width: 18ch; white-space: nowrap; overflow: hidden; border-right: 2px solid #6366f1;
-  animation: typing 3s steps(18) forwards, blink .7s step-end infinite;
+  width: 18ch;
+  white-space: nowrap;
+  overflow: hidden;
+  border-right: 2px solid #6366f1;
+  animation:
+    typing 3s steps(18) forwards,
+    blink 0.7s step-end infinite;
 }
-@keyframes typing { from { width: 0; } to { width: 18ch; } }
-@keyframes blink  { 50% { border-color: transparent; } }
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 18ch;
+  }
+}
+@keyframes blink {
+  50% {
+    border-color: transparent;
+  }
+}
 ```
 
 > 纯 CSS 打字机需固定宽度与字符数；动态文本建议配合 JS 设置变量。
@@ -168,27 +279,36 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 
 `transition` 用于状态切换补间。原则是**只过渡触发合成（compositing）的属性**，避开触发布局（layout）的属性。
 
-| 属性 | 推荐度 | 原因 |
-| --- | --- | --- |
-| `transform` / `opacity` | 强烈推荐 | 仅合成层，GPU 加速 |
-| `filter` / `backdrop-filter` | 可用 | 合成但开销较大 |
-| `background-color` | 可用 | 仅重绘（paint） |
-| `width` / `height` / `top` / `left` | 避免 | 触发 layout 重排，卡顿 |
-| `box-shadow`（大范围） | 谨慎 | 重绘成本高 |
+| 属性                                | 推荐度   | 原因                   |
+| ----------------------------------- | -------- | ---------------------- |
+| `transform` / `opacity`             | 强烈推荐 | 仅合成层，GPU 加速     |
+| `filter` / `backdrop-filter`        | 可用     | 合成但开销较大         |
+| `background-color`                  | 可用     | 仅重绘（paint）        |
+| `width` / `height` / `top` / `left` | 避免     | 触发 layout 重排，卡顿 |
+| `box-shadow`（大范围）              | 谨慎     | 重绘成本高             |
 
 ```css
-.smooth { transition: transform .3s ease, opacity .3s ease; }
-.smooth:hover { transform: translateY(-4px) scale(1.02); opacity: .9; }
+.smooth {
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
+}
+.smooth:hover {
+  transform: translateY(-4px) scale(1.02);
+  opacity: 0.9;
+}
 ```
 
 补充：`will-change: transform` 可提前提升合成层（动画结束后移除，避免内存占用）；用 `@media (prefers-reduced-motion: reduce)` 关闭非必要动画以照顾无障碍。
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .001ms !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .001ms !important;
+    transition-duration: 0.001ms !important;
   }
 }
 ```
@@ -202,10 +322,19 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 `:has()` 是“父选择器”，按子元素状态选中祖先；`:is()` 简化选择器列表（继承最高特异度）。二者现代浏览器均支持（`:has()` 需 Chrome 105+ / Safari 15.4+ / Firefox 121+）。
 
 ```css
-.form-group:has(.error) { border-color: #ef4444; }      /* 含错误高亮分组 */
-.card:has(img) { align-items: flex-start; }             /* 含图调整布局 */
-:is(h1, h2, h3) { font-weight: 700; line-height: 1.2; } /* 合并标题样式 */
-.card:has(a:hover) :is(h2, h3) { color: #6366f1; }      /* 组合用法 */
+.form-group:has(.error) {
+  border-color: #ef4444;
+} /* 含错误高亮分组 */
+.card:has(img) {
+  align-items: flex-start;
+} /* 含图调整布局 */
+:is(h1, h2, h3) {
+  font-weight: 700;
+  line-height: 1.2;
+} /* 合并标题样式 */
+.card:has(a:hover) :is(h2, h3) {
+  color: #6366f1;
+} /* 组合用法 */
 ```
 
 ### clamp() 做响应式特效
@@ -214,7 +343,7 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 
 ```css
 .responsive-title {
-  font-size: clamp(1.5rem, 4vw, 3rem);     /* 最小1.5 理想4vw 最大3rem */
+  font-size: clamp(1.5rem, 4vw, 3rem); /* 最小1.5 理想4vw 最大3rem */
   border-radius: clamp(8px, 1.5vw, 16px);
 }
 ```
@@ -224,18 +353,38 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 普通 `--var` 被视为字符串无法平滑过渡；`@property` 注册带类型的变量后可像普通属性一样 `transition` / `animation`，最适合做渐变角度、色相流动。
 
 ```css
-@property --angle { syntax: "<angle>";  inherits: false; initial-value: 0deg; }
-@property --hue   { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --hue {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
 
 .rotating-border {
-  --angle: 0deg; border: 4px solid transparent;
+  --angle: 0deg;
+  border: 4px solid transparent;
   border-image: linear-gradient(var(--angle), #ff0080, #ff8c00) 1;
   animation: rotate-border 4s linear infinite;
 }
-@keyframes rotate-border { to { --angle: 360deg; } }
+@keyframes rotate-border {
+  to {
+    --angle: 360deg;
+  }
+}
 
-.hue-flow { background: hsl(var(--hue), 80%, 55%); animation: hue-shift 6s linear infinite; }
-@keyframes hue-shift { to { --hue: 360; } }
+.hue-flow {
+  background: hsl(var(--hue), 80%, 55%);
+  animation: hue-shift 6s linear infinite;
+}
+@keyframes hue-shift {
+  to {
+    --hue: 360;
+  }
+}
 ```
 
 > 兼容：`@property` 已在 Chrome / Edge / Safari 稳定支持，Firefox 较新版本已跟进，不支持时回退静态值，可安全渐进增强。

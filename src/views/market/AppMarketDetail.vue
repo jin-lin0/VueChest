@@ -86,12 +86,7 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
             >
               {{ installing ? '安装中...' : '安装' }}
             </button>
-            <button
-              v-else
-              class="uninstall-btn"
-              :disabled="uninstalling"
-              @click="handleUninstall"
-            >
+            <button v-else class="uninstall-btn" :disabled="uninstalling" @click="handleUninstall">
               {{ uninstalling ? '卸载中...' : '卸载' }}
             </button>
           </div>

@@ -19,13 +19,7 @@
           class="search-input"
           @input="triggerSearch"
         />
-        <button
-          v-if="searchKeyword"
-          class="search-clear"
-          @click="clearSearch"
-        >
-          &times;
-        </button>
+        <button v-if="searchKeyword" class="search-clear" @click="clearSearch">&times;</button>
       </div>
       <CustomSelect
         v-model="selectedCategory"

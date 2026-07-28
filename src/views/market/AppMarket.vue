@@ -125,12 +125,7 @@ onMounted(() => {
     </div>
 
     <main v-else class="app-grid">
-      <div
-        v-for="app in filteredApps"
-        :key="app.id"
-        class="app-card"
-        @click="goDetail(app.id)"
-      >
+      <div v-for="app in filteredApps" :key="app.id" class="app-card" @click="goDetail(app.id)">
         <div class="card-glow"></div>
         <div class="card-content">
           <div class="app-icon">{{ app.icon }}</div>
@@ -150,7 +145,9 @@ onMounted(() => {
             @click.stop="handleInstall(app.id)"
           >
             <span v-if="installingId === app.id" class="btn-spinner" />
-            {{ installingId === app.id ? '安装中' : market.isInstalled(app.id) ? '已安装' : '安装' }}
+            {{
+              installingId === app.id ? '安装中' : market.isInstalled(app.id) ? '已安装' : '安装'
+            }}
           </button>
         </div>
       </div>
@@ -229,7 +226,9 @@ onMounted(() => {
   border: 1px solid var(--bg-glass-soft);
   border-radius: var(--radius-md);
   padding: 0.5rem 0.9rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
   box-shadow: var(--shadow-sm);
 }
 
@@ -353,7 +352,9 @@ onMounted(() => {
   padding: 2rem 1.5rem;
   cursor: pointer;
   overflow: hidden;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease;
 }
 
 .app-card:hover {
@@ -474,7 +475,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {

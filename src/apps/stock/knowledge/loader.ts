@@ -5,7 +5,8 @@
 import type { IndexData, GraphNode, GraphEdge, KnowledgeAtom, KnowledgeBundle } from './types'
 
 // R2 公开基地址：可用 .env 的 VITE_KB_R2_BASE 覆盖（默认项目既有 CDN）。
-const R2_BASE = (import.meta.env.VITE_KB_R2_BASE as string | undefined) || 'https://files.020201.xyz'
+const R2_BASE =
+  (import.meta.env.VITE_KB_R2_BASE as string | undefined) || 'https://files.020201.xyz'
 const PREFIX = 'stock/knowledge/generated'
 
 async function getJson<T>(url: string): Promise<T> {
