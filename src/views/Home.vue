@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils'
 import { exportAllData, importAllData, getStorage, setStorage } from '@/lib/storage'
 import { APP_MODULES, STORAGE_KEYS } from '@/config'
 import type { AppModule } from '@/config'
 import { useMarketStore } from '@/stores/market'
 import { LoginDropdown } from '@/components'
 import { useTheme } from '@/composables/useTheme'
+import { useSpecialDays } from '@/composables/useSpecialDays'
 
 defineOptions({ name: 'HomeView' })
 
@@ -47,114 +47,26 @@ const importText = ref('')
 const importStatus = ref('')
 const lastClickTime = ref(0)
 
-interface SpecialDay {
-  id: number
-  name: string
-  repeatType: 'yearly' | 'once'
-  calendarType: 'solar' | 'lunar'
-  solarYear: number | null
-  solarMonth: number
-  solarDay: number
-  lunarMonth: number
-  lunarDay: number
-  emoji: string
-  createdAt: string
-}
+const { nearestSpecialDay } = useSpecialDays()
 
-const SPECIAL_DAYS_KEY = 'special_days'
+const normalizedQuery = computed(() => searchQuery.value.trim().toLowerCase())
 
-const loadSpecialDays = (): SpecialDay[] => {
-  return getStorage<SpecialDay[]>(SPECIAL_DAYS_KEY, []) || []
-}
-
-const getDaysUntil = (day: SpecialDay): number => {
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-
-  if (day.calendarType === 'lunar') {
-    const lunar = solarToLunar(now.getFullYear(), now.getMonth() + 1, now.getDate())
-    for (let y = lunar.year; y <= lunar.year + 2; y++) {
-      try {
-        const solar = lunarToSolar(y, day.lunarMonth, day.lunarDay)
-        const candidate = new Date(solar.year, solar.month - 1, solar.day)
-        candidate.setHours(0, 0, 0, 0)
-        if (candidate >= now) {
-          return Math.ceil((candidate.getTime() - now.getTime()) / 86400000)
-        }
-      } catch {
-        continue
-      }
-    }
-    return -1
-  } else {
-    const targetYear = now.getFullYear()
-    let target = new Date(targetYear, day.solarMonth - 1, day.solarDay)
-    target.setHours(0, 0, 0, 0)
-    if (target < now) {
-      target = new Date(targetYear + 1, day.solarMonth - 1, day.solarDay)
-      target.setHours(0, 0, 0, 0)
-    }
-    return Math.ceil((target.getTime() - now.getTime()) / 86400000)
-  }
-}
-
-const getNextOccurrenceDate = (day: SpecialDay): string => {
-  const daysUntil = getDaysUntil(day)
-  if (daysUntil < 0) return ''
-  const now = new Date()
-  const target = new Date(now.getTime() + daysUntil * 86400000)
-  return `${target.getMonth() + 1}月${target.getDate()}日`
-}
-
-const getDisplayDate = (day: SpecialDay): string => {
-  if (day.calendarType === 'lunar') {
-    return `农历${getLunarMonthName(day.lunarMonth, false)}${getLunarDayName(day.lunarDay)}`
-  }
-  return `阳历${day.solarMonth}月${day.solarDay}日`
-}
-
-const nearestSpecialDay = computed(() => {
-  const days = loadSpecialDays()
-  if (days.length === 0) return null
-
-  let nearest: SpecialDay | null = null
-  let minDays = Infinity
-
-  for (const day of days) {
-    const d = getDaysUntil(day)
-    if (d >= 0 && d < minDays) {
-      minDays = d
-      nearest = day
-    }
-  }
-
-  if (nearest) {
-    return {
-      ...nearest,
-      daysUntil: minDays,
-      dateLabel: getDisplayDate(nearest),
-      nextDate: getNextOccurrenceDate(nearest),
-    }
-  }
-  return null
-})
+/** 应用是否命中搜索词（匹配名称或描述） */
+const matchesQuery = (app: { name: string; description: string }, q: string) =>
+  app.name.toLowerCase().includes(q) || app.description.toLowerCase().includes(q)
 
 const appList = computed(() => {
   const visible = allApps.value.filter((app) => !hiddenIds.value.has(app.id))
-  const q = searchQuery.value.trim().toLowerCase()
+  const q = normalizedQuery.value
   if (!q) return visible
-  return visible.filter(
-    (app) => app.name.toLowerCase().includes(q) || app.description.toLowerCase().includes(q),
-  )
+  return visible.filter((app) => matchesQuery(app, q))
 })
 const hiddenApps = computed(() => defaultAppList.filter((app) => hiddenIds.value.has(app.id)))
 
 const marketApps = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return marketStore.installedApps.filter((app) => {
-    if (!q) return true
-    return app.name.toLowerCase().includes(q) || app.description.toLowerCase().includes(q)
-  })
+  const q = normalizedQuery.value
+  if (!q) return marketStore.installedApps
+  return marketStore.installedApps.filter((app) => matchesQuery(app, q))
 })
 
 const loadHidden = () => {

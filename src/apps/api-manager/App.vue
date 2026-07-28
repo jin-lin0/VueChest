@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStorage, setStorage } from '@/lib/storage'
 import { CustomSelect, type SelectOption } from '@/components'
-import { defaultApis, type ApiItem } from './defaults'
+import type { ApiItem } from './defaults'
 
 interface ApiResponse {
   status: number
@@ -24,6 +24,7 @@ const goBack = () => {
 
 const userApis = ref<ApiItem[]>([])
 const pinnedSystemIds = ref<number[]>([])
+const defaultApis = ref<ApiItem[]>([])
 const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
 const selectedApi = ref<ApiItem | null>(null)
@@ -54,9 +55,11 @@ const typeOptions: SelectOption[] = [
   { value: 'boolean', label: '布尔值' },
 ]
 
-onMounted(() => {
+onMounted(async () => {
   userApis.value = getStorage<ApiItem[]>('userApis', []) ?? []
   pinnedSystemIds.value = getStorage<number[]>('pinnedSystemIds', []) ?? []
+  // 系统 API 种子数据体积较大（数千行静态定义），懒加载避免进入首屏 bundle
+  defaultApis.value = (await import('./defaults')).defaultApis
 })
 
 watch(userApis, () => setStorage('userApis', userApis.value), { deep: true })
@@ -64,7 +67,7 @@ watch(pinnedSystemIds, () => setStorage('pinnedSystemIds', pinnedSystemIds.value
 
 // 系统 API 始终来源于源码 defaults.ts，并叠加用户的置顶偏好
 const systemApis = computed(() =>
-  defaultApis.map((a) => ({
+  defaultApis.value.map((a) => ({
     ...a,
     createdAt: a.createdAt ?? '2000-01-01T00:00:00.000Z',
     pinned: pinnedSystemIds.value.includes(a.id),
