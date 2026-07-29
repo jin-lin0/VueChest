@@ -63,11 +63,14 @@ const LUNAR_DAY_NAMES = [
 export function solarToLunar(year: number, month: number, day: number): LunarDate {
   const solar = Solar.fromYmd(year, month, day)
   const lunar = solar.getLunar()
+  const lm = lunar.getMonth()
   return {
     year: lunar.getYear(),
-    month: lunar.getMonth(),
+    // 闰月在 lunar-javascript 里以负数月份表示（如闰二月 = -2），
+    // 统一规整为正数月 + isLeapMonth 标志，与 getLunarMonthName / lunarToSolar 的契约保持一致。
+    month: Math.abs(lm),
     day: lunar.getDay(),
-    isLeapMonth: lunar.getMonth() !== Math.abs(lunar.getMonth()),
+    isLeapMonth: lm !== Math.abs(lm),
   }
 }
 

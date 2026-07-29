@@ -9,7 +9,8 @@ interface LunarDate {
 export function solarToLunar(y: number, m: number, d: number): LunarDate {
   const solar = Solar.fromYmd(y, m, d)
   const lunar = solar.getLunar()
-  return { year: lunar.getYear(), month: lunar.getMonth(), day: lunar.getDay() }
+  // lunar-javascript 用负数月份表示闰月，规整为正数月，避免下游取月名越界。
+  return { year: lunar.getYear(), month: Math.abs(lunar.getMonth()), day: lunar.getDay() }
 }
 
 export function lunarToSolar(y: number, m: number, d: number): LunarDate {
