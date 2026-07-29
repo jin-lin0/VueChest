@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import type { Plugin } from 'prettier'
-import { copyToClipboard, downloadFile, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { downloadFile, debounce } from '@/utils'
+import { Modal, Toast, CopyButton } from '@/components'
 import CodeEditor from './CodeEditor.vue'
 import RuleSelect from './RuleSelect.vue'
 
@@ -283,10 +283,6 @@ function openEditModal() {
 function closeEditModal() {
   showEditModal.value = false
 }
-async function copyEditCode() {
-  await copyToClipboard(editRuleCode.value)
-  showToast('success', '已复制函数代码')
-}
 function saveEditRule() {
   const name = editRuleName.value.trim()
   if (!name) {
@@ -392,12 +388,6 @@ async function formatNewRule() {
 }
 
 /* ---------- 结果操作 ---------- */
-async function copyOutput() {
-  if (!outputText.value) return
-  await copyToClipboard(outputText.value)
-  showToast('success', '已复制结果')
-}
-
 function downloadOutput() {
   if (!outputText.value) return
   if (outputLang.value === 'json')
@@ -491,25 +481,14 @@ function downloadOutput() {
                   <line x1="4" y1="18" x2="18" y2="18" />
                 </svg>
               </button>
-              <button
-                class="icon-btn"
-                :disabled="!outputText"
-                @click="copyOutput"
-                title="复制结果"
-                aria-label="复制结果"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              </button>
+              <CopyButton
+                :text="outputText"
+                variant="btn"
+                :icon="false"
+                label="复制"
+                success-text="已复制结果"
+                :toast="showToast"
+              />
               <button
                 class="icon-btn"
                 :disabled="!outputText"
@@ -525,7 +504,7 @@ function downloadOutput() {
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 0 0 1-2-2v-4" />
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
@@ -545,79 +524,92 @@ function downloadOutput() {
     </div>
 
     <!-- 新增规则弹窗 -->
-    <Teleport to="body">
-      <div v-if="showNewRuleModal" class="modal-overlay" @click.self="closeNewRuleModal">
-        <div
-          class="modal"
-          role="dialog"
-          aria-modal="true"
-          @keydown.ctrl.s.prevent="formatNewRule"
-          @keydown.meta.s.prevent="formatNewRule"
-        >
-          <div class="modal-head">
-            <h2>新增规则</h2>
-            <button class="modal-close" @click="closeNewRuleModal" aria-label="关闭">×</button>
-          </div>
-          <p class="modal-desc">
-            函数体接收 <code>input</code>（输入框的原始字符串），用 <code>return</code> 返回结果。
-            如需按 JSON 处理可在函数内 <code>JSON.parse(input)</code>。返回字符串则原样输出，
-            返回对象/数组则自动格式化高亮。可用 <code>import</code> 引入第三方包。 按
-            <kbd>⌘S</kbd> / <kbd>Ctrl+S</kbd> 格式化代码。
-          </p>
+    <Modal
+      :open="showNewRuleModal"
+      :width="920"
+      title="新增规则"
+      :style="{
+        '--vc-modal-overlay': 'rgba(15, 23, 42, 0.5)',
+        '--vc-modal-overlay-blur': 'none',
+        '--vc-modal-radius': 'var(--radius-lg)',
+        '--vc-modal-border': '1px solid var(--border-light)',
+        '--vc-modal-shadow': 'var(--shadow-lg)',
+        '--vc-modal-max-h': '88vh',
+        '--vc-modal-body-pad': '1.25rem 1.4rem 1.5rem',
+        '--vc-modal-header-pad': '1rem 1.4rem',
+        '--vc-modal-title-size': '1.15rem',
+      }"
+      @close="closeNewRuleModal"
+    >
+      <div
+        class="tt-rule-wrap"
+        @keydown.ctrl.s.prevent="formatNewRule"
+        @keydown.meta.s.prevent="formatNewRule"
+      >
+        <p class="tt-desc">
+          函数体接收 <code>input</code>（输入框的原始字符串），用 <code>return</code> 返回结果。
+          如需按 JSON 处理可在函数内 <code>JSON.parse(input)</code>。返回字符串则原样输出，
+          返回对象/数组则自动格式化高亮。可用 <code>import</code> 引入第三方包。 按
+          <kbd>⌘S</kbd> / <kbd>Ctrl+S</kbd> 格式化代码。
+        </p>
 
-          <div class="modal-row">
-            <input class="rule-name" v-model="newRuleName" placeholder="规则名称" />
-          </div>
+        <div class="tt-row">
+          <input class="rule-name" v-model="newRuleName" placeholder="规则名称" />
+        </div>
 
-          <div class="editor-box modal-editor">
-            <CodeEditor v-model="newRuleCode" language="javascript" placeholder="return input" />
-          </div>
-
-          <div class="modal-row">
-            <span class="spacer"></span>
-            <button class="btn" @click="closeNewRuleModal">取消</button>
-            <button class="btn primary" :disabled="!newRuleName.trim()" @click="createRule">
-              保存规则
-            </button>
-          </div>
+        <div class="editor-box tt-editor">
+          <CodeEditor v-model="newRuleCode" language="javascript" placeholder="return input" />
         </div>
       </div>
-    </Teleport>
+      <template #footer>
+        <button class="btn" @click="closeNewRuleModal">取消</button>
+        <button class="btn primary" :disabled="!newRuleName.trim()" @click="createRule">
+          保存规则
+        </button>
+      </template>
+    </Modal>
 
-    <Teleport to="body">
-      <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
-        <div
-          class="modal"
-          role="dialog"
-          aria-modal="true"
-          @keydown.ctrl.s.prevent="formatEditRule"
-          @keydown.meta.s.prevent="formatEditRule"
-        >
-          <div class="modal-head">
-            <h2>修改规则 · {{ currentRule }}</h2>
-            <button class="modal-close" @click="closeEditModal" aria-label="关闭">×</button>
-          </div>
-          <p class="modal-desc">
-            直接修改该规则的名称与转换函数，保存后即时生效（当前应用即更新）。 按 <kbd>⌘S</kbd> /
-            <kbd>Ctrl+S</kbd> 格式化代码。
-          </p>
-          <div class="modal-row">
-            <input class="rule-name" v-model="editRuleName" placeholder="规则名称" />
-          </div>
-          <div class="editor-box modal-editor">
-            <CodeEditor v-model="editRuleCode" language="javascript" placeholder="return input" />
-          </div>
-          <div class="modal-row">
-            <span class="spacer"></span>
-            <button class="btn" @click="copyEditCode">复制代码</button>
-            <button class="btn" @click="closeEditModal">取消</button>
-            <button class="btn primary" :disabled="!editRuleName.trim()" @click="saveEditRule">
-              保存修改
-            </button>
-          </div>
+    <Modal
+      :open="showEditModal"
+      :width="920"
+      :title="'修改规则 · ' + currentRule"
+      :style="{
+        '--vc-modal-overlay': 'rgba(15, 23, 42, 0.5)',
+        '--vc-modal-overlay-blur': 'none',
+        '--vc-modal-radius': 'var(--radius-lg)',
+        '--vc-modal-border': '1px solid var(--border-light)',
+        '--vc-modal-shadow': 'var(--shadow-lg)',
+        '--vc-modal-max-h': '88vh',
+        '--vc-modal-body-pad': '1.25rem 1.4rem 1.5rem',
+        '--vc-modal-header-pad': '1rem 1.4rem',
+        '--vc-modal-title-size': '1.15rem',
+      }"
+      @close="closeEditModal"
+    >
+      <div
+        class="tt-rule-wrap"
+        @keydown.ctrl.s.prevent="formatEditRule"
+        @keydown.meta.s.prevent="formatEditRule"
+      >
+        <p class="tt-desc">
+          直接修改该规则的名称与转换函数，保存后即时生效（当前应用即更新）。 按 <kbd>⌘S</kbd> /
+          <kbd>Ctrl+S</kbd> 格式化代码。
+        </p>
+        <div class="tt-row">
+          <input class="rule-name" v-model="editRuleName" placeholder="规则名称" />
+        </div>
+        <div class="editor-box tt-editor">
+          <CodeEditor v-model="editRuleCode" language="javascript" placeholder="return input" />
         </div>
       </div>
-    </Teleport>
+      <template #footer>
+        <CopyButton :text="editRuleCode" variant="btn" label="复制代码" success-text="已复制函数代码" :toast="showToast" />
+        <button class="btn" @click="closeEditModal">取消</button>
+        <button class="btn primary" :disabled="!editRuleName.trim()" @click="saveEditRule">
+          保存修改
+        </button>
+      </template>
+    </Modal>
 
     <Toast ref="toastRef" />
   </div>
@@ -818,64 +810,25 @@ function downloadOutput() {
   }
 }
 
-/* ---------- 弹窗 ---------- */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: rgba(15, 23, 42, 0.5);
+/* ---------- 弹窗内容样式（外壳交由 Modal 组件） ---------- */
+.tt-rule-wrap {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
+  flex-direction: column;
 }
-.modal {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  width: 100%;
-  max-width: 920px;
-  max-height: 88vh;
-  overflow: auto;
-  padding: 1.25rem 1.4rem 1.5rem;
-}
-.modal-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-.modal-head h2 {
-  margin: 0;
-  font-size: 1.15rem;
-  color: var(--text-primary);
-}
-.modal-close {
-  background: transparent;
-  border: none;
-  font-size: 1.6rem;
-  line-height: 1;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.modal-close:hover {
-  color: var(--text-primary);
-}
-.modal-desc {
+.tt-desc {
   margin: 0 0 1rem;
   color: var(--text-secondary);
   font-size: 0.82rem;
   line-height: 1.6;
 }
-.modal-desc code {
+.tt-desc code {
   background: var(--bg-subtle);
   padding: 0.05rem 0.35rem;
   border-radius: var(--radius-xs);
   font-family: var(--font-mono, monospace);
   font-size: 0.8rem;
 }
-.modal-desc kbd,
+.tt-desc kbd,
 .btn kbd {
   font-family: var(--font-mono, monospace);
   font-size: 0.72rem;
@@ -887,17 +840,14 @@ function downloadOutput() {
   color: var(--text-secondary);
   white-space: nowrap;
 }
-.modal-row {
+.tt-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
   margin: 0.75rem 0;
 }
-.modal-row .spacer {
-  flex: 1;
-}
-.modal-editor {
+.tt-editor {
   height: 340px;
   margin: 0.5rem 0;
 }

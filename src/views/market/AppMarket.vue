@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
-import { Skeleton } from '@/components'
+import { Skeleton, EmptyState } from '@/components'
 
 const router = useRouter()
 const market = useMarketStore()
@@ -119,10 +119,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else-if="filteredApps.length === 0" class="empty-state">
-      <span class="empty-icon">📦</span>
-      <p class="empty-text">暂无应用</p>
-    </div>
+    <EmptyState v-else-if="filteredApps.length === 0" icon="📦" title="暂无应用" />
 
     <main v-else class="app-grid">
       <div v-for="app in filteredApps" :key="app.id" class="app-card" @click="goDetail(app.id)">
@@ -304,8 +301,7 @@ onMounted(() => {
   border-color: transparent;
 }
 
-.loading-state,
-.empty-state {
+.loading-state {
   text-align: center;
   padding: 4rem 2rem;
   color: var(--text-muted);
@@ -328,13 +324,6 @@ onMounted(() => {
   border: 1px solid var(--bg-glass-soft);
   border-radius: var(--radius-lg);
   padding: 2rem 1.5rem;
-}
-
-.empty-icon {
-  font-size: 3rem;
-  opacity: 0.4;
-  margin-bottom: 1rem;
-  display: block;
 }
 
 .app-grid {

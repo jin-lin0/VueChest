@@ -2,6 +2,7 @@
 import { ref, computed, reactive, watch, onMounted, onBeforeUnmount, provide } from 'vue'
 import type { Component } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Drawer } from '@/components'
 
 import TextTransformTool from './components/TextTransformTool.vue'
 import Base64Tool from './components/Base64Tool.vue'
@@ -43,6 +44,7 @@ import HexDumpTool from './components/HexDumpTool.vue'
 import GzipTool from './components/GzipTool.vue'
 import ImageBase64Tool from './components/ImageBase64Tool.vue'
 import PaletteTool from './components/PaletteTool.vue'
+import ToolList from './components/ToolList.vue'
 import { REALTIME_KEY, REGISTER_KEY } from './composables/useRealtime'
 
 defineOptions({ name: 'DevToolboxView' })
@@ -624,64 +626,37 @@ function resetPins() {
     </header>
 
     <div class="tb-body">
-      <!-- 移动端抽屉遮罩 -->
-      <div v-show="drawerOpen" class="tb-overlay" @click="closeDrawer"></div>
-
-      <nav
-        class="tb-sidebar vc-scrollbar vc-scrollbar--thin"
-        :class="{ open: drawerOpen }"
-        @scroll="closeMenu"
-      >
-        <div class="tb-search">
-          <span class="tb-search-icon">🔍</span>
-          <input
-            v-model="search"
-            class="tb-search-input"
-            type="text"
-            placeholder="搜索工具…"
-            aria-label="搜索工具"
-          />
-          <button v-if="search" class="tb-search-clear" aria-label="清除" @click="search = ''">
-            ✕
-          </button>
-        </div>
-
-        <template v-for="sec in sidebarSections" :key="sec.key">
-          <button
-            v-if="sec.collapsible"
-            class="tb-group-title tb-group-toggle"
-            :class="{ collapsed: sec.collapsed }"
-            @click="toggleCollapse(sec.key)"
-          >
-            <span class="tb-caret">{{ sec.collapsed ? '▸' : '▾' }}</span>
-            <span>{{ sec.title }}</span>
-          </button>
-          <div v-else class="tb-group-title">{{ sec.title }}</div>
-
-          <template v-if="sec.items.length">
-            <button
-              v-for="t in sec.items"
-              :key="t.id"
-              class="tb-tool-btn"
-              :class="{ active: t.id === activeId }"
-              :title="t.desc"
-              @click="onToolClick(t.id)"
-              @contextmenu="openMenu($event, t.id)"
-            >
-              <span class="tb-tool-icon">{{ t.icon }}</span>
-              <span class="tb-tool-name">{{ t.name }}</span>
-              <span v-if="isPinned(t.id)" class="tb-pin-dot">📌</span>
-            </button>
-          </template>
-        </template>
-
-        <p v-if="q && !filteredTools.length" class="tb-empty">未找到匹配「{{ search }}」的工具</p>
+      <nav class="tb-sidebar vc-scrollbar vc-scrollbar--thin" @scroll="closeMenu">
+        <ToolList
+          v-model:search="search"
+          :sections="sidebarSections"
+          :active-id="activeId"
+          :pinned-ids="pinnedIds"
+          :empty="!!(q && !filteredTools.length)"
+          @select="onToolClick"
+          @ctxmenu="openMenu"
+          @toggle="toggleCollapse"
+        />
       </nav>
 
       <main class="tb-content">
         <component :is="activeTool.component" />
       </main>
     </div>
+
+    <!-- 移动端抽屉：与桌面侧栏共用 ToolList -->
+    <Drawer :open="drawerOpen" @close="closeDrawer">
+      <ToolList
+        v-model:search="search"
+        :sections="sidebarSections"
+        :active-id="activeId"
+        :pinned-ids="pinnedIds"
+        :empty="!!(q && !filteredTools.length)"
+        @select="onToolClick"
+        @ctxmenu="openMenu"
+        @toggle="toggleCollapse"
+      />
+    </Drawer>
 
     <!-- 右键菜单 -->
     <div
@@ -860,119 +835,6 @@ function resetPins() {
   flex-direction: column;
   gap: 0.2rem;
 }
-.tb-search {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.6rem;
-  margin-bottom: 0.4rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-}
-.tb-search-icon {
-  opacity: 0.55;
-  font-size: 0.85rem;
-}
-.tb-search-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--text-body);
-  font-size: 0.85rem;
-}
-.tb-search-input::placeholder {
-  color: var(--text-muted);
-}
-.tb-search-clear {
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 0 0.2rem;
-}
-.tb-search-clear:hover {
-  color: var(--text-primary);
-}
-
-.tb-group-title {
-  margin: 0.7rem 0.3rem 0.3rem;
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.tb-group-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-transform: uppercase;
-}
-.tb-group-toggle:hover {
-  color: var(--text-secondary);
-}
-.tb-caret {
-  font-size: 0.6rem;
-  transition: transform 0.15s ease;
-}
-.tb-empty {
-  margin: 0.5rem 0.4rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.tb-tool-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: var(--text-secondary);
-  border: 1px solid transparent;
-  background: transparent;
-  font-size: 0.9rem;
-  text-align: left;
-  transition: var(--transition-fast);
-}
-.tb-tool-btn:hover {
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-}
-.tb-tool-btn.active {
-  background: var(--gradient-primary);
-  color: var(--accent-contrast);
-  border-color: transparent;
-  font-weight: 600;
-}
-.tb-tool-btn.active .tb-pin-dot {
-  filter: grayscale(1) brightness(2);
-}
-.tb-tool-icon {
-  font-size: 1.1rem;
-}
-.tb-tool-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tb-pin-dot {
-  font-size: 0.7rem;
-  opacity: 0.85;
-}
 .tb-content {
   flex: 1;
   min-width: 0;
@@ -1024,15 +886,6 @@ function resetPins() {
   background: var(--border-light);
 }
 
-/* 移动端抽屉遮罩（默认隐藏，仅小屏 + drawerOpen 时显示） */
-.tb-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 800;
-  background: rgba(0, 0, 0, 0.45);
-}
-
 @media (max-width: 720px) {
   /* 顶栏：换行紧凑、隐藏副标题与「返回」文字、显示汉堡按钮 */
   .tb-header {
@@ -1064,32 +917,9 @@ function resetPins() {
     gap: 0.4rem;
   }
 
-  /* 侧边栏改为滑出抽屉：搜索框 / 分组标题 / 工具名全部可见可点 */
-  .tb-overlay {
-    display: block;
-  }
+  /* 侧边栏改为抽屉：隐藏桌面 nav，改用 Drawer */
   .tb-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: min(82vw, 320px);
-    z-index: 900;
-    background: var(--bg-card);
-    border-right: 1px solid var(--border-light);
-    box-shadow: var(--shadow-md, var(--shadow-sm));
-    transform: translateX(-100%);
-    transition: transform 0.22s ease;
-    padding: 0.75rem 0.6rem 1.5rem;
-  }
-  .tb-sidebar.open {
-    transform: translateX(0);
-  }
-  .tb-search {
-    padding: 0.5rem 0.6rem;
-  }
-  .tb-tool-btn {
-    justify-content: flex-start;
+    display: none;
   }
 }
 

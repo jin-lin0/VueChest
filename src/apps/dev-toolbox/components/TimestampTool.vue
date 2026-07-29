@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { CustomSelect, type SelectOption, Toast } from '@/components'
+import { CustomSelect, type SelectOption, Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'TimestampTool' })
 
@@ -94,11 +93,6 @@ function fmt(ms: number, kind: 'local' | 'utc'): string {
   return `${Y}-${p(M)}-${p(D)} ${p(h)}:${p(m)}:${p(s)}`
 }
 
-async function copy(v: string) {
-  if (!v) return
-  await copyToClipboard(v)
-  showToast('success', '已复制')
-}
 function useNowTs() {
   tsInput.value = String(Math.floor(Date.now() / 1000))
   tsUnit.value = 's'
@@ -119,27 +113,27 @@ function useNowDate() {
         <div class="now-item">
           <span class="k">秒级时间戳</span>
           <span class="v mono">{{ nowSec }}</span>
-          <button class="mini" @click="copy(String(nowSec))">复制</button>
+          <CopyButton :text="String(nowSec)" variant="mini" :toast="showToast" />
         </div>
         <div class="now-item">
           <span class="k">毫秒时间戳</span>
           <span class="v mono">{{ nowMs }}</span>
-          <button class="mini" @click="copy(String(nowMs))">复制</button>
+          <CopyButton :text="String(nowMs)" variant="mini" :toast="showToast" />
         </div>
         <div class="now-item">
           <span class="k">本地时间</span>
           <span class="v mono">{{ nowLocal }}</span>
-          <button class="mini" @click="copy(nowLocal)">复制</button>
+          <CopyButton :text="nowLocal" variant="mini" :toast="showToast" />
         </div>
         <div class="now-item">
           <span class="k">UTC 时间</span>
           <span class="v mono">{{ nowUtc }}</span>
-          <button class="mini" @click="copy(nowUtc)">复制</button>
+          <CopyButton :text="nowUtc" variant="mini" :toast="showToast" />
         </div>
         <div class="now-item now-item-wide">
           <span class="k">ISO 8601</span>
           <span class="v mono">{{ nowIso }}</span>
-          <button class="mini" @click="copy(nowIso)">复制</button>
+          <CopyButton :text="nowIso" variant="mini" :toast="showToast" />
         </div>
       </div>
     </section>
@@ -159,15 +153,15 @@ function useNowDate() {
         <div v-if="tsResult" class="out">
           <div class="out-row">
             <span class="k">本地时间</span><span class="v mono">{{ tsResult.local }}</span>
-            <button class="mini" @click="copy(tsResult.local)">复制</button>
+            <CopyButton :text="tsResult.local" variant="mini" :toast="showToast" />
           </div>
           <div class="out-row">
             <span class="k">UTC 时间</span><span class="v mono">{{ tsResult.utc }}</span>
-            <button class="mini" @click="copy(tsResult.utc)">复制</button>
+            <CopyButton :text="tsResult.utc" variant="mini" :toast="showToast" />
           </div>
           <div class="out-row">
             <span class="k">ISO 8601</span><span class="v mono">{{ tsResult.iso }}</span>
-            <button class="mini" @click="copy(tsResult.iso)">复制</button>
+            <CopyButton :text="tsResult.iso" variant="mini" :toast="showToast" />
           </div>
           <div class="out-row">
             <span class="k">秒 / 毫秒</span>
@@ -190,11 +184,11 @@ function useNowDate() {
         <div v-if="dateResult" class="out">
           <div class="out-row">
             <span class="k">秒级</span><span class="v mono">{{ dateResult.sec }}</span>
-            <button class="mini" @click="copy(String(dateResult.sec))">复制</button>
+            <CopyButton :text="String(dateResult.sec)" variant="mini" :toast="showToast" />
           </div>
           <div class="out-row">
             <span class="k">毫秒级</span><span class="v mono">{{ dateResult.ms }}</span>
-            <button class="mini" @click="copy(String(dateResult.ms))">复制</button>
+            <CopyButton :text="String(dateResult.ms)" variant="mini" :toast="showToast" />
           </div>
         </div>
         <p v-else-if="!dateError" class="hint">选择日期时间后自动转换。</p>

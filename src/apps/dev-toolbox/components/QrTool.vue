@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import QRCode from 'qrcode'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 import { useRealtime } from '../composables/useRealtime'
 
 defineOptions({ name: 'QrTool' })
@@ -37,12 +37,6 @@ function generate() {
 const run = debounce(() => generate(), 200)
 useRealtime(run, { watch: input })
 
-async function copyDataUrl() {
-  if (!dataUrl.value) return
-  await copyToClipboard(dataUrl.value)
-  showToast('success', '已复制图片 data URL')
-}
-
 generate()
 </script>
 
@@ -68,9 +62,14 @@ generate()
         <p v-else class="hint">输入内容后自动生成</p>
       </div>
       <div class="row actions">
-        <button class="btn primary" :disabled="!dataUrl" @click="copyDataUrl">
-          复制图片 (data URL)
-        </button>
+        <CopyButton
+          :text="dataUrl"
+          variant="primary"
+          label="复制图片 (data URL)"
+          :icon="false"
+          success-text="已复制图片 data URL"
+          :toast="showToast"
+        />
         <a v-if="dataUrl" class="btn" :href="dataUrl" download="qrcode.png">下载 PNG</a>
       </div>
     </section>

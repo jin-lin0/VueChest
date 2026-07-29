@@ -49,46 +49,41 @@
     </div>
 
     <!-- 创建/编辑分类弹窗 -->
-    <transition name="modal">
-      <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>{{ editingCategory ? '✏️ 编辑分类' : '📂 创建分类' }}</h2>
-            <button class="close-btn" @click="showModal = false">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>分类名称 <span class="required">*</span></label>
-              <input
-                v-model="formData.name"
-                class="form-input"
-                :class="{ 'input-error': errors.name }"
-                placeholder="输入分类名称"
-              />
-              <span v-if="errors.name" class="error-text">{{ errors.name }}</span>
-            </div>
-
-            <div class="form-group">
-              <label>分类描述</label>
-              <textarea
-                v-model="formData.description"
-                class="form-textarea"
-                rows="3"
-                placeholder="输入分类描述（可选）"
-              ></textarea>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn-secondary" @click="showModal = false">取消</button>
-            <button class="btn-primary" :disabled="saving" @click="saveCategory">
-              <span v-if="saving" class="loading-spinner-sm"></span>
-              {{ editingCategory ? '保存' : '创建' }}
-            </button>
-          </div>
-        </div>
+    <Modal
+      :open="showModal"
+      :width="500"
+      :title="editingCategory ? '✏️ 编辑分类' : '📂 创建分类'"
+      @close="showModal = false"
+    >
+      <div class="form-group">
+        <label>分类名称 <span class="required">*</span></label>
+        <input
+          v-model="formData.name"
+          class="form-input"
+          :class="{ 'input-error': errors.name }"
+          placeholder="输入分类名称"
+        />
+        <span v-if="errors.name" class="error-text">{{ errors.name }}</span>
       </div>
-    </transition>
+
+      <div class="form-group">
+        <label>分类描述</label>
+        <textarea
+          v-model="formData.description"
+          class="form-textarea"
+          rows="3"
+          placeholder="输入分类描述（可选）"
+        ></textarea>
+      </div>
+
+      <template #footer>
+        <button class="btn-secondary" @click="showModal = false">取消</button>
+        <button class="btn-primary" :disabled="saving" @click="saveCategory">
+          <span v-if="saving" class="loading-spinner-sm"></span>
+          {{ editingCategory ? '保存' : '创建' }}
+        </button>
+      </template>
+    </Modal>
 
     <Toast ref="toastRef" />
   </div>
@@ -96,7 +91,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Toast } from '@/components'
+import { Modal, Toast } from '@/components'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
 
@@ -423,72 +418,6 @@ async function deleteCategory(id: number) {
   border-top: 1px solid var(--border-light);
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 24px;
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: var(--bg-card);
-  border-radius: 18px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 28px;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--text-primary);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
-  cursor: pointer;
-  color: var(--text-muted);
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.modal-body {
-  padding: 24px 28px;
-}
-
-.modal-footer {
-  padding: 16px 28px;
-  border-top: 1px solid var(--border-light);
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
-
 .form-group {
   margin-bottom: 20px;
 }
@@ -565,24 +494,5 @@ async function deleteCategory(id: number) {
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-
-.modal-enter-active {
-  transition: all 0.25s ease;
-}
-.modal-leave-active {
-  transition: all 0.2s ease;
-}
-.modal-enter-from {
-  opacity: 0;
-}
-.modal-enter-from .modal {
-  transform: scale(0.95) translateY(10px);
-}
-.modal-leave-to {
-  opacity: 0;
-}
-.modal-leave-to .modal {
-  transform: scale(0.95);
 }
 </style>

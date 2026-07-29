@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { Toast } from '@/components'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'NamingTool' })
 
@@ -42,11 +41,6 @@ const results = computed(() => {
   ]
 })
 
-async function copy(v: string) {
-  if (!v) return
-  await copyToClipboard(v)
-  showToast('success', '已复制 ' + v)
-}
 function clearAll() {
   input.value = ''
 }
@@ -73,9 +67,7 @@ function clearAll() {
         <div v-for="r in results" :key="r.key" class="result-row">
           <span class="k result-name">{{ r.key }}</span>
           <code class="v result-val mono">{{ r.value }}</code>
-          <button class="mini push-right" :disabled="!r.value" @click="copy(r.value)">
-            📋 复制
-          </button>
+          <CopyButton :text="r.value" variant="mini" :disabled="!r.value" :toast="showToast" :success-text="`已复制 ${r.value}`" />
         </div>
         <p v-if="results.length === 0" class="hint">输入标识符后即时显示四种命名风格。</p>
       </div>

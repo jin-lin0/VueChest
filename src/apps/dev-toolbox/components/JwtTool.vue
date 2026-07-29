@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 import CodeEditor from './CodeEditor.vue'
 
 defineOptions({ name: 'JwtTool' })
@@ -85,16 +85,6 @@ const run = debounce(() => {
 
 useRealtime(run, { watch: input })
 
-async function copyHeader() {
-  if (!headerJson.value) return
-  await copyToClipboard(headerJson.value)
-  showToast('success', '已复制 header')
-}
-async function copyPayload() {
-  if (!payloadJson.value) return
-  await copyToClipboard(payloadJson.value)
-  showToast('success', '已复制 payload')
-}
 function clearAll() {
   input.value = ''
   error.value = ''
@@ -134,7 +124,7 @@ function clearAll() {
       <section class="card">
         <div class="card-head">
           <span class="card-title">Header</span>
-          <button class="mini" :disabled="!headerJson" @click="copyHeader">复制</button>
+          <CopyButton :text="headerJson" variant="mini" success-text="已复制 header" :toast="showToast" />
         </div>
         <CodeEditor v-model="headerJson" language="json" readonly placeholder="header 将显示在此" />
       </section>
@@ -142,7 +132,7 @@ function clearAll() {
       <section class="card">
         <div class="card-head">
           <span class="card-title">Payload</span>
-          <button class="mini" :disabled="!payloadJson" @click="copyPayload">复制</button>
+          <CopyButton :text="payloadJson" variant="mini" success-text="已复制 payload" :toast="showToast" />
         </div>
         <CodeEditor
           v-model="payloadJson"

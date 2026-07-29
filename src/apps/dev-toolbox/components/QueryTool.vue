@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'QueryTool' })
 
@@ -65,12 +65,6 @@ function parse() {
 const run = debounce(() => parse(), 120)
 useRealtime(run, { watch: input })
 
-async function copy(text: string, label: string) {
-  if (!text) return
-  await copyToClipboard(text)
-  showToast('success', `已复制${label}`)
-}
-
 parse()
 </script>
 
@@ -93,16 +87,14 @@ parse()
       <div class="row" v-for="seg in segments" :key="seg.key">
         <span class="k seg-key">{{ seg.key }}</span>
         <code class="mono v seg-val">{{ seg.value }}</code>
-        <button class="mini" @click="copy(seg.value, seg.key)">复制</button>
+        <CopyButton :text="seg.value" variant="mini" :toast="showToast" :success-text="`已复制${seg.key}`" />
       </div>
     </div>
 
     <section class="card">
       <div class="card-title">
         Query 参数（{{ params.length }} 项）
-        <button class="mini push" :disabled="!rebuilt" @click="copy(rebuilt, '查询串')">
-          复制重组串
-        </button>
+        <CopyButton :text="rebuilt" variant="mini" label="复制重组串" :disabled="!rebuilt" :toast="showToast" success-text="已复制查询串" />
       </div>
       <table v-if="params.length" class="tbl">
         <thead>
@@ -116,7 +108,7 @@ parse()
           <tr v-for="(p, i) in params" :key="i">
             <td class="mono">{{ p.key }}</td>
             <td class="mono">{{ p.value }}</td>
-            <td><button class="mini" @click="copy(p.value, '参数值')">复制</button></td>
+            <td><CopyButton :text="p.value" variant="mini" :toast="showToast" success-text="已复制参数值" /></td>
           </tr>
         </tbody>
       </table>

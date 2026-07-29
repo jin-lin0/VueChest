@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard, debounce, downloadFile } from '@/utils'
-import { Toast } from '@/components'
+import { debounce, downloadFile } from '@/utils'
+import { CopyButton, Toast } from '@/components'
 import { parse as parseIni, stringify as stringifyIni } from 'ini'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
@@ -46,11 +46,6 @@ const run = debounce(() => {
 
 useRealtime(run, { watch: [input, dir] })
 
-async function copy() {
-  if (!output.value) return
-  await copyToClipboard(output.value)
-  showToast('success', '已复制结果')
-}
 function download() {
   if (!output.value) return
   const ext = dir.value === 'ini2json' ? 'json' : 'ini'
@@ -80,7 +75,7 @@ function onEditorSave() {
         </button>
       </div>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!output" @click="copy">📋 复制</button>
+        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
         <button class="btn" :disabled="!output" @click="download">⬇ 下载</button>
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>

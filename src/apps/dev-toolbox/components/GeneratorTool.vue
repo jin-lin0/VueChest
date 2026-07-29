@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { Toast } from '@/components'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'GeneratorTool' })
 
@@ -43,12 +42,6 @@ function genUuid() {
   const arr: string[] = []
   for (let i = 0; i < n; i++) arr.push(crypto.randomUUID())
   uuids.value = arr
-}
-
-async function copyAll(list: string[]) {
-  if (!list.length) return
-  const ok = await copyToClipboard(list.join('\n'))
-  showToast(ok ? 'success' : 'error', ok ? '已复制全部' : '复制失败')
 }
 
 /* ---------------- 随机密码 ---------------- */
@@ -148,11 +141,6 @@ function draw() {
   winner.value = list[randBelow(list.length)]
 }
 
-async function copyText(v: string) {
-  if (!v) return
-  const ok = await copyToClipboard(v)
-  showToast(ok ? 'success' : 'error', ok ? '已复制' : '复制失败')
-}
 </script>
 
 <template>
@@ -164,12 +152,12 @@ async function copyText(v: string) {
         <label class="k">数量</label>
         <input class="inp num" type="number" min="1" max="100" v-model.number="uuidCount" />
         <button class="btn primary" @click="genUuid">生成</button>
-        <button class="btn" :disabled="!uuids.length" @click="copyAll(uuids)">复制全部</button>
+        <CopyButton :text="uuids.join('\n')" variant="btn" success-text="已复制全部" :toast="showToast" />
       </div>
       <ul v-if="uuids.length" class="list">
         <li v-for="(u, i) in uuids" :key="i" class="list-item">
           <code class="mono">{{ u }}</code>
-          <button class="mini" @click="copyText(u)">复制</button>
+          <CopyButton :text="u" variant="mini" :toast="showToast" />
         </li>
       </ul>
       <p v-else class="hint">点击「生成」创建随机 UUID（crypto.randomUUID）。</p>
@@ -190,7 +178,7 @@ async function copyText(v: string) {
         <label class="chk"><input type="checkbox" v-model="useDigit" /><span>数字</span></label>
         <label class="chk"><input type="checkbox" v-model="useSymbol" /><span>符号</span></label>
         <button class="btn primary" @click="genPassword">生成</button>
-        <button class="btn" :disabled="!password" @click="copyText(password)">复制</button>
+        <CopyButton :text="password" variant="btn" :toast="showToast" />
       </div>
       <div v-if="password" class="pw-row">
         <code class="mono pw-value">{{ password }}</code>
@@ -210,14 +198,12 @@ async function copyText(v: string) {
         <label class="k">个数</label>
         <input class="inp num" type="number" min="1" max="200" v-model.number="rCount" />
         <button class="btn primary" @click="genRandoms">生成</button>
-        <button class="btn" :disabled="!randoms.length" @click="copyAll(randoms.map(String))">
-          复制全部
-        </button>
+        <CopyButton :text="randoms.map(String).join('\n')" variant="btn" success-text="已复制全部" :toast="showToast" />
       </div>
       <ul v-if="randoms.length" class="list inline">
         <li v-for="(n, i) in randoms" :key="i" class="list-item">
           <code class="mono">{{ n }}</code>
-          <button class="mini" @click="copyText(String(n))">复制</button>
+          <CopyButton :text="String(n)" variant="mini" :toast="showToast" />
         </li>
       </ul>
       <p v-else class="hint">使用 crypto.getRandomValues + 拒绝采样，生成无偏随机整数。</p>
@@ -235,7 +221,7 @@ async function copyText(v: string) {
       ></textarea>
       <div class="row" style="margin-top: 0.6rem">
         <button class="btn primary" @click="draw">抽一个</button>
-        <button class="btn" :disabled="!winner" @click="copyText(winner)">复制结果</button>
+        <CopyButton :text="winner" variant="btn" label="复制结果" :toast="showToast" />
         <span class="k">共 {{ candidateList.length }} 个候选</span>
       </div>
       <div v-if="winner" class="winner">🎉 {{ winner }}</div>

@@ -9,6 +9,10 @@ export { default as RouteLoadingBar } from './common/RouteLoadingBar.vue'
 export { default as Skeleton } from './common/Skeleton.vue'
 export { default as MarkdownView } from './common/MarkdownView.vue'
 export { default as Collapse } from './common/Collapse.vue'
+export { default as Drawer } from './common/Drawer.vue'
+export { default as Modal } from './common/Modal.vue'
+export { default as CopyButton } from './common/CopyButton.vue'
+export { default as EmptyState } from './common/EmptyState.vue'
 export { default as DocNavTree, DOC_EXPANDED_KEY } from './DocNavTree.vue'
 
 // 平台业务组件

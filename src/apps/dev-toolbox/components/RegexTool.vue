@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 import { useRealtime } from '../composables/useRealtime'
 
 defineOptions({ name: 'RegexTool' })
@@ -63,13 +63,6 @@ function test() {
 const run = debounce(() => test(), 150)
 useRealtime(run, { watch: [text, pattern, flags] })
 
-async function copyAll() {
-  if (!matches.value.length) return
-  const text = matches.value.map((mm) => mm.value).join('\n')
-  await copyToClipboard(text)
-  showToast('success', '已复制全部匹配')
-}
-
 test()
 </script>
 
@@ -89,7 +82,7 @@ test()
     <section class="card">
       <div class="card-title">
         正则
-        <button class="mini push" :disabled="!matches.length" @click="copyAll">复制全部匹配</button>
+        <CopyButton :text="matches.map((mm: { value: string }) => mm.value).join('\n')" variant="mini" label="复制全部匹配" :disabled="!matches.length" :toast="showToast" success-text="已复制全部匹配" />
       </div>
       <div class="regex-row">
         <span class="slash">/</span>

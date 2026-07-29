@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'UnicodeTool' })
 
@@ -82,16 +82,6 @@ const runReverse = debounce(() => {
 
 useRealtime(runReverse, { watch: codePointInput })
 
-async function copyTable() {
-  if (!tableText.value) return
-  await copyToClipboard(tableText.value)
-  showToast('success', '已复制字符列表')
-}
-async function copyReverse() {
-  if (!reverseChar.value) return
-  await copyToClipboard(reverseChar.value)
-  showToast('success', '已复制字符')
-}
 function clearAll() {
   input.value = ''
   codePointInput.value = ''
@@ -108,7 +98,7 @@ function clearAll() {
         >逐字符查看「字符 / 码点 (U+XXXX) / UTF-8 字节」，并可反向由码点查字符。</span
       >
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!tableText" @click="copyTable">📋 复制列表</button>
+        <CopyButton :text="tableText" variant="btn" success-text="已复制字符列表" :toast="showToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -162,7 +152,7 @@ function clearAll() {
           placeholder="输入码点，如 4E2D 或 U+4E2D"
           spellcheck="false"
         />
-        <button class="btn" :disabled="!reverseChar" @click="copyReverse">📋 复制</button>
+        <CopyButton :text="reverseChar" variant="btn" success-text="已复制字符" :toast="showToast" />
       </div>
       <div class="result" v-if="reverseChar">
         <span class="big mono">{{ reverseChar }}</span>

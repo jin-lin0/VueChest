@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { diffLines, diffWords } from 'diff'
-import { copyToClipboard } from '@/utils'
-import { Toast } from '@/components'
+import { CopyButton } from '@/components'
 
 defineOptions({ name: 'DiffTool' })
-
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
 
 const original = ref('')
 const compare = ref('')
@@ -59,19 +53,6 @@ const copyText = computed(() =>
     : lineItems.value.map((l) => l.sign + l.text).join('\n'),
 )
 
-async function copyDiff() {
-  if (!original.value && !compare.value) {
-    showToast('error', '请先输入对比文本')
-    return
-  }
-  if (!lineItems.value.length && !wordItems.value.length) {
-    showToast('error', '暂无内容可复制')
-    return
-  }
-  await copyToClipboard(copyText.value)
-  showToast('success', '已复制差异结果')
-}
-
 function swap() {
   const t = original.value
   original.value = compare.value
@@ -87,7 +68,7 @@ function swap() {
         字符级对比（diffWords）
       </label>
       <button class="mini" @click="swap">⇄ 交换左右</button>
-      <button class="mini" @click="copyDiff">复制差异</button>
+      <CopyButton :text="copyText" variant="mini" success-text="已复制差异结果" />
     </div>
 
     <div class="cols">
@@ -137,7 +118,6 @@ function swap() {
       </div>
     </section>
 
-    <Toast ref="toastRef" />
   </div>
 </template>
 

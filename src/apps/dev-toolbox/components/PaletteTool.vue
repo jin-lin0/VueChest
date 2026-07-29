@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { copyToClipboard, rgbToHex } from '@/utils'
-import { Toast } from '@/components'
+import { rgbToHex } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 import { useFileDrop } from '../composables/useFileDrop'
 
 defineOptions({ name: 'PaletteTool' })
@@ -129,10 +129,6 @@ function extract(img: HTMLImageElement) {
   }
 }
 
-async function copy(hex: string) {
-  await copyToClipboard(hex)
-  showToast('success', `已复制 ${hex}`)
-}
 </script>
 
 <template>
@@ -174,11 +170,12 @@ async function copy(hex: string) {
       <section class="card">
         <div class="card-title">主色调（点击复制 hex）</div>
         <ul class="palette">
-          <li v-for="c in displayColors" :key="c.hex" class="swatch-row" @click="copy(c.hex)">
+          <li v-for="c in displayColors" :key="c.hex" class="swatch-row">
             <span class="swatch" :style="{ background: c.hex }"></span>
             <span class="mono hex">{{ c.hex }}</span>
             <span class="mono rgb">rgb({{ c.rgb[0] }}, {{ c.rgb[1] }}, {{ c.rgb[2] }})</span>
             <span class="mono cnt">×{{ c.count }}</span>
+            <CopyButton :text="c.hex" variant="mini" :toast="showToast" :success-text="`已复制 ${c.hex}`" />
           </li>
         </ul>
       </section>

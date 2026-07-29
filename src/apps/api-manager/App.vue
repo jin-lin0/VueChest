@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStorage, setStorage } from '@/lib/storage'
-import { CustomSelect, type SelectOption } from '@/components'
+import { CustomSelect, EmptyState, type SelectOption } from '@/components'
 import type { ApiItem } from './defaults'
 
 interface ApiResponse {
@@ -388,9 +388,7 @@ const selectCategory = (cat: string) => {
             </div>
           </div>
 
-          <div v-if="filteredApis.length === 0" class="empty-state">
-            {{ apis.length === 0 ? '还没有API，添加一个吧！' : '没有匹配的API' }}
-          </div>
+          <EmptyState v-if="filteredApis.length === 0" :title="apis.length === 0 ? '还没有API，添加一个吧！' : '没有匹配的API'" />
         </div>
       </div>
 
@@ -825,13 +823,6 @@ const selectCategory = (cat: string) => {
 .api-item.pinned {
   background-color: var(--warning-bg);
   border-left: 3px solid var(--warning);
-}
-
-.empty-state {
-  padding: 2rem;
-  text-align: center;
-  color: var(--text-dim);
-  font-style: italic;
 }
 
 .main-panel {

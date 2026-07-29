@@ -2,8 +2,8 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { UAParser } from 'ua-parser-js'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'UaTool' })
 
@@ -52,13 +52,6 @@ function parse() {
 const run = debounce(() => parse(), 120)
 useRealtime(run, { watch: input })
 
-async function copyAll() {
-  if (!fields.value.length) return
-  const text = fields.value.map((f) => `${f.key} = ${f.value}`).join('\n')
-  await copyToClipboard(text)
-  showToast('success', '已复制全部字段')
-}
-
 parse()
 </script>
 
@@ -67,7 +60,7 @@ parse()
     <section class="card">
       <div class="card-title">
         User-Agent 输入
-        <button class="mini push" :disabled="!fields.length" @click="copyAll">复制全部</button>
+        <CopyButton :text="fields.map((f: { key: string; value: string }) => `${f.key} = ${f.value}`).join('\n')" variant="mini" label="复制全部" :disabled="!fields.length" :toast="showToast" success-text="已复制全部字段" />
       </div>
       <textarea
         v-model="input"

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { copyToClipboard, debounce, downloadFile } from '@/utils'
-import { Toast } from '@/components'
+import { debounce, downloadFile } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'HexDumpTool' })
 
@@ -72,11 +72,6 @@ const run = debounce(() => {
 
 useRealtime(run, { watch: [input, dir] })
 
-async function copy() {
-  if (!output.value) return
-  await copyToClipboard(output.value)
-  showToast('success', '已复制结果')
-}
 function download() {
   if (!output.value) return
   const name = dir.value === 'dump' ? 'hexdump.txt' : 'restored.bin'
@@ -98,7 +93,7 @@ function clearAll() {
         <button :class="{ active: dir === 'restore' }" @click="dir = 'restore'">还原文本</button>
       </div>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!output" @click="copy">📋 复制</button>
+        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
         <button class="btn" :disabled="!output" @click="download">⬇ 下载</button>
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { Toast } from '@/components'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'CaseTool' })
 
@@ -73,14 +72,6 @@ function finish(msg: string) {
   showToast('success', msg)
 }
 
-async function copyOutput() {
-  if (!outputText.value) {
-    showToast('error', '暂无结果')
-    return
-  }
-  await copyToClipboard(outputText.value)
-  showToast('success', '已复制结果')
-}
 </script>
 
 <template>
@@ -107,7 +98,7 @@ async function copyOutput() {
     <section class="card">
       <div class="card-head">
         <span class="card-title">输出结果</span>
-        <button class="mini" :disabled="!outputText" @click="copyOutput">复制结果</button>
+        <CopyButton :text="outputText" variant="mini" success-text="已复制结果" :toast="showToast" />
       </div>
       <textarea
         v-model="outputText"

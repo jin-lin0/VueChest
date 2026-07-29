@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { CopyButton, Toast } from '@/components'
 import { marked } from 'marked'
 import TurndownService from 'turndown'
 import CodeEditor from './CodeEditor.vue'
@@ -45,11 +45,6 @@ const run = debounce(() => {
 
 useRealtime(run, { watch: [input, dir] })
 
-async function copy() {
-  if (!output.value) return
-  await copyToClipboard(output.value)
-  showToast('success', '已复制结果')
-}
 function clearAll() {
   input.value = ''
   output.value = ''
@@ -65,7 +60,7 @@ function clearAll() {
         <button :class="{ active: dir === 'html2md' }" @click="dir = 'html2md'">HTML → MD</button>
       </div>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!output" @click="copy">📋 复制</button>
+        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>

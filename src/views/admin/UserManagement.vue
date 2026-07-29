@@ -34,10 +34,7 @@
       <span>加载中...</span>
     </div>
 
-    <div v-else-if="users.length === 0" class="empty-state">
-      <span class="empty-icon">📭</span>
-      <p>暂无用户数据</p>
-    </div>
+    <EmptyState v-else-if="users.length === 0" icon="📭" title="暂无用户数据" />
 
     <div v-else class="table-wrapper">
       <table class="user-table">
@@ -103,56 +100,52 @@
       </button>
     </div>
 
-    <transition name="modal">
-      <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-        <div class="modal">
-          <div class="modal-header">
-            <h2>{{ editingUser ? '✏️ 编辑用户' : '👤 新建用户' }}</h2>
-            <button class="close-btn" @click="showModal = false">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>用户名 <span class="required">*</span></label>
-              <input v-model="form.username" class="form-input" placeholder="至少3个字符" />
-            </div>
-            <div class="form-group">
-              <label>邮箱</label>
-              <input v-model="form.email" class="form-input" placeholder="选填" />
-            </div>
-            <div class="form-group">
-              <label
-                >{{ editingUser ? '新密码（留空不修改）' : '密码' }}
-                <span v-if="!editingUser" class="required">*</span></label
-              >
-              <input
-                v-model="form.password"
-                type="password"
-                class="form-input"
-                placeholder="至少6个字符"
-              />
-            </div>
-            <div class="form-group">
-              <label>角色</label>
-              <CustomSelect v-model="form.role" :options="roleOptions" placeholder="请选择角色" />
-            </div>
-            <div class="form-group" v-if="editingUser">
-              <label>状态</label>
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.isActive" />
-                账号已激活
-              </label>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn-secondary" @click="showModal = false">取消</button>
-            <button class="btn-primary" :disabled="saving" @click="saveUser">
-              <span v-if="saving" class="loading-spinner-sm"></span>
-              {{ editingUser ? '保存' : '创建' }}
-            </button>
-          </div>
-        </div>
+    <Modal
+      :open="showModal"
+      :width="500"
+      :title="editingUser ? '✏️ 编辑用户' : '👤 新建用户'"
+      @close="showModal = false"
+    >
+      <div class="form-group">
+        <label>用户名 <span class="required">*</span></label>
+        <input v-model="form.username" class="form-input" placeholder="至少3个字符" />
       </div>
-    </transition>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input v-model="form.email" class="form-input" placeholder="选填" />
+      </div>
+      <div class="form-group">
+        <label
+          >{{ editingUser ? '新密码（留空不修改）' : '密码' }}
+          <span v-if="!editingUser" class="required">*</span></label
+        >
+        <input
+          v-model="form.password"
+          type="password"
+          class="form-input"
+          placeholder="至少6个字符"
+        />
+      </div>
+      <div class="form-group">
+        <label>角色</label>
+        <CustomSelect v-model="form.role" :options="roleOptions" placeholder="请选择角色" />
+      </div>
+      <div class="form-group" v-if="editingUser">
+        <label>状态</label>
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="form.isActive" />
+          账号已激活
+        </label>
+      </div>
+
+      <template #footer>
+        <button class="btn-secondary" @click="showModal = false">取消</button>
+        <button class="btn-primary" :disabled="saving" @click="saveUser">
+          <span v-if="saving" class="loading-spinner-sm"></span>
+          {{ editingUser ? '保存' : '创建' }}
+        </button>
+      </template>
+    </Modal>
 
     <Toast ref="toastRef" />
   </div>
@@ -161,7 +154,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { CustomSelect, Toast, type SelectOption } from '@/components'
+import { CustomSelect, Modal, Toast, EmptyState, type SelectOption } from '@/components'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
 
@@ -479,22 +472,6 @@ async function toggleStatus(u: UserItem) {
     transform: rotate(360deg);
   }
 }
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 64px 0;
-  color: var(--text-secondary);
-}
-.empty-icon {
-  font-size: 48px;
-}
-.empty-state p {
-  font-size: 16px;
-  margin: 0;
-}
-
 .table-wrapper {
   background: var(--bg-card);
   border-radius: 14px;
@@ -628,64 +605,6 @@ async function toggleStatus(u: UserItem) {
   color: var(--text-secondary);
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 24px;
-  backdrop-filter: blur(4px);
-}
-.modal {
-  background: var(--bg-card);
-  border-radius: 18px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-}
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 28px;
-  border-bottom: 1px solid var(--border-light);
-}
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--text-primary);
-}
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
-  cursor: pointer;
-  color: var(--text-muted);
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-.close-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-.modal-body {
-  padding: 24px 28px;
-}
-.modal-footer {
-  padding: 16px 28px;
-  border-top: 1px solid var(--border-light);
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
 .form-group {
   margin-bottom: 20px;
 }
@@ -735,23 +654,5 @@ async function toggleStatus(u: UserItem) {
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-.modal-enter-active {
-  transition: all 0.25s ease;
-}
-.modal-leave-active {
-  transition: all 0.2s ease;
-}
-.modal-enter-from {
-  opacity: 0;
-}
-.modal-enter-from .modal {
-  transform: scale(0.95) translateY(10px);
-}
-.modal-leave-to {
-  opacity: 0;
-}
-.modal-leave-to .modal {
-  transform: scale(0.95);
 }
 </style>

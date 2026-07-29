@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { CustomSelect, type SelectOption, Toast } from '@/components'
+import { CustomSelect, type SelectOption, Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'TimezoneTool' })
 
@@ -166,13 +165,6 @@ const utcReadout = computed(() => {
   }
 })
 
-async function copy(v: string) {
-  if (!v) return
-  const ok = await copyToClipboard(v)
-  if (ok) showToast('success', '已复制')
-  else showToast('error', '复制失败')
-}
-
 function setNow() {
   const d = new Date()
   const p = (n: number) => String(n).padStart(2, '0')
@@ -220,15 +212,15 @@ function setNowTs() {
       <div v-if="utcReadout" class="out">
         <div class="out-row">
           <span class="k">UTC</span><span class="v mono">{{ utcReadout.utc }}</span>
-          <button class="mini" @click="copy(utcReadout.utc)">复制</button>
+          <CopyButton :text="utcReadout.utc" variant="mini" :toast="showToast" />
         </div>
         <div class="out-row">
           <span class="k">本地</span><span class="v mono">{{ utcReadout.local }}</span>
-          <button class="mini" @click="copy(utcReadout.local)">复制</button>
+          <CopyButton :text="utcReadout.local" variant="mini" :toast="showToast" />
         </div>
         <div class="out-row">
           <span class="k">ISO 8601</span><span class="v mono">{{ utcReadout.iso }}</span>
-          <button class="mini" @click="copy(utcReadout.iso)">复制</button>
+          <CopyButton :text="utcReadout.iso" variant="mini" :toast="showToast" />
         </div>
       </div>
     </section>
@@ -243,7 +235,7 @@ function setNowTs() {
             <span class="tz-off">{{ r.offset }}</span>
           </div>
           <span class="tz-val mono">{{ r.value }}</span>
-          <button class="mini" @click="copy(r.value)">复制</button>
+          <CopyButton :text="r.value" variant="mini" :toast="showToast" />
         </div>
       </div>
       <p v-else class="hint">等待输入…</p>

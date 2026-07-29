@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { Modal } from '@/components'
 import { PLAYER_COLORS } from '../composables/snakeTypes'
 import type { StatItem } from '../composables/snakeTypes'
 
@@ -53,88 +54,74 @@ function handleBack() {
 </script>
 
 <template>
-  <Transition name="modal">
-    <div v-if="visible" class="modal-overlay" @click.self="handleBack">
-      <div class="modal-content">
-        <div class="modal-title">游戏结束</div>
+  <Modal
+    :open="visible"
+    :width="360"
+    :style="{
+      '--vc-modal-overlay': 'rgba(0, 0, 0, 0.6)',
+      '--vc-modal-bg': 'var(--bg-elevated)',
+      '--vc-modal-radius': '16px',
+      '--vc-modal-shadow': 'var(--shadow-xl)',
+      '--vc-modal-body-pad': '24px',
+    }"
+    @close="handleBack"
+  >
+    <div class="modal-title">游戏结束</div>
 
-        <div v-if="winnerName" class="winner">
-          <div class="trophy">🏆</div>
-          <div class="winner-name">{{ winnerName }}</div>
-          <div class="winner-sub">获胜！</div>
-        </div>
-        <div v-else class="winner">
-          <div class="trophy">💀</div>
-          <div class="winner-name">平局</div>
-          <div class="winner-sub">无人生还</div>
-        </div>
+    <div v-if="winnerName" class="winner">
+      <div class="trophy">🏆</div>
+      <div class="winner-name">{{ winnerName }}</div>
+      <div class="winner-sub">获胜！</div>
+    </div>
+    <div v-else class="winner">
+      <div class="trophy">💀</div>
+      <div class="winner-name">平局</div>
+      <div class="winner-sub">无人生还</div>
+    </div>
 
-        <!-- 本地双人对战胜场对比 -->
-        <div v-if="props.p1Wins !== undefined && props.p2Wins !== undefined" class="win-tally">
-          <div class="tally-row">
-            <span class="tally-dot" :style="{ background: PLAYER_COLORS[1]?.head ?? '#888' }" />
-            <span class="tally-name">{{ props.p1Name || '玩家1' }}</span>
-            <span class="tally-score">{{ props.p1Wins }}</span>
-          </div>
-          <div class="tally-vs">VS</div>
-          <div class="tally-row">
-            <span class="tally-dot" :style="{ background: PLAYER_COLORS[2]?.head ?? '#888' }" />
-            <span class="tally-name">{{ props.p2Name || '玩家2' }}</span>
-            <span class="tally-score">{{ props.p2Wins }}</span>
-          </div>
-        </div>
-
-        <div class="stats-list">
-          <div v-for="s in stats" :key="s.playerId" class="stat-row" :class="{ winner: s.alive }">
-            <span
-              class="stat-dot"
-              :style="{ background: PLAYER_COLORS[s.playerId]?.head ?? '#888' }"
-            />
-            <span class="stat-name">{{ s.name }}</span>
-            <span class="stat-health">❤️{{ Math.max(0, s.health) }}</span>
-            <span class="stat-length">📏{{ s.length }}</span>
-            <span class="stat-status">{{ s.alive ? '✅' : '💀' }}</span>
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn btn-restart" @click="props.onRestart?.()">再来一局</button>
-          <button
-            class="btn btn-back"
-            :class="{ disabled: backCooldown > 0 }"
-            :disabled="backCooldown > 0"
-            @click="handleBack"
-          >
-            {{ backCooldown > 0 ? `返回大厅 (${backCooldown}s)` : '返回大厅' }}
-          </button>
-        </div>
+    <!-- 本地双人对战胜场对比 -->
+    <div v-if="props.p1Wins !== undefined && props.p2Wins !== undefined" class="win-tally">
+      <div class="tally-row">
+        <span class="tally-dot" :style="{ background: PLAYER_COLORS[1]?.head ?? '#888' }" />
+        <span class="tally-name">{{ props.p1Name || '玩家1' }}</span>
+        <span class="tally-score">{{ props.p1Wins }}</span>
+      </div>
+      <div class="tally-vs">VS</div>
+      <div class="tally-row">
+        <span class="tally-dot" :style="{ background: PLAYER_COLORS[2]?.head ?? '#888' }" />
+        <span class="tally-name">{{ props.p2Name || '玩家2' }}</span>
+        <span class="tally-score">{{ props.p2Wins }}</span>
       </div>
     </div>
-  </Transition>
+
+    <div class="stats-list">
+      <div v-for="s in stats" :key="s.playerId" class="stat-row" :class="{ winner: s.alive }">
+        <span
+          class="stat-dot"
+          :style="{ background: PLAYER_COLORS[s.playerId]?.head ?? '#888' }"
+        />
+        <span class="stat-name">{{ s.name }}</span>
+        <span class="stat-health">❤️{{ Math.max(0, s.health) }}</span>
+        <span class="stat-length">📏{{ s.length }}</span>
+        <span class="stat-status">{{ s.alive ? '✅' : '💀' }}</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-restart" @click="props.onRestart?.()">再来一局</button>
+      <button
+        class="btn btn-back"
+        :class="{ disabled: backCooldown > 0 }"
+        :disabled="backCooldown > 0"
+        @click="handleBack"
+      >
+        {{ backCooldown > 0 ? `返回大厅 (${backCooldown}s)` : '返回大厅' }}
+      </button>
+    </div>
+  </Modal>
 </template>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-.modal-content {
-  background: var(--bg-elevated);
-  border-radius: 16px;
-  padding: 24px;
-  width: 90%;
-  max-width: 360px;
-  color: var(--text-primary);
-  box-shadow: var(--shadow-xl);
-}
-
 .modal-title {
   text-align: center;
   font-size: 20px;
@@ -284,15 +271,5 @@ function handleBack() {
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 600;
-}
-
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
 }
 </style>

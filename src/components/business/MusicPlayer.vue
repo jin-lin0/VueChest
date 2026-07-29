@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMusicStore } from '@/stores'
+import { Drawer } from '@/components'
 
 defineOptions({ name: 'MusicPlayer' })
 
@@ -206,80 +207,86 @@ onUnmounted(() => {
 
 <template>
   <!-- Playlist drawer: always mountable, independent of playback state -->
-  <Transition name="drawer-slide">
-    <div
-      v-if="music.showPlaylist"
-      class="playlist-drawer-overlay vc-dark"
-      @click.self="music.showPlaylist = false"
-    >
-      <div class="playlist-drawer">
-        <div class="drawer-header">
-          <div class="drawer-tabs">
-            <button :class="{ active: drawerTab === 'playlist' }" @click="drawerTab = 'playlist'">
-              播放列表 ({{ music.playlist.length }})
-            </button>
-            <button :class="{ active: drawerTab === 'simi' }" @click="drawerTab = 'simi'">
-              相似推荐
-            </button>
-          </div>
-          <button class="drawer-close" @click="music.showPlaylist = false">&times;</button>
-        </div>
-
-        <!-- 播放列表 -->
-        <div v-if="drawerTab === 'playlist'" class="drawer-body vc-scrollbar vc-scrollbar--thin">
-          <div v-if="music.playlist.length === 0" class="empty-state">播放列表为空</div>
-          <div
-            v-for="(song, index) in music.playlist"
-            :key="song.id + '-' + index"
-            class="song-item"
-            :class="{ playing: index === music.currentIndex }"
-            @click="playFromPlaylist(index)"
-          >
-            <span class="song-index">{{ index + 1 }}</span>
-            <div class="song-info">
-              <div class="song-name">{{ song.name }}</div>
-              <div class="song-artist">{{ song.artists }}</div>
-            </div>
-            <button class="remove-btn" @click.stop="music.removeSongFromPlaylist(index)">
-              &times;
-            </button>
-          </div>
-        </div>
-
-        <!-- 相似推荐 -->
-        <div v-else class="drawer-body vc-scrollbar vc-scrollbar--thin">
-          <div v-if="music.isLoadingSimi" class="drawer-loading">加载中...</div>
-          <div v-else-if="music.simiSongs.length === 0" class="empty-state">暂无相似歌曲推荐</div>
-          <div
-            v-for="song in music.simiSongs"
-            :key="song.id"
-            class="song-item"
-            :class="{ playing: music.activeSong?.id === song.id }"
-            @click="music.playSong(song, music.simiSongs)"
-          >
-            <img
-              v-if="song.coverUrl"
-              :src="song.coverUrl + '?param=80y80'"
-              class="simi-cover"
-              alt=""
-              loading="lazy"
-            />
-            <div class="song-info">
-              <div class="song-name">{{ song.name }}</div>
-              <div class="song-artist">{{ song.artists }}</div>
-            </div>
-            <button
-              class="remove-btn"
-              :class="{ favorited: music.isFavoriteSong(song.id) }"
-              @click.stop="music.toggleFavoriteSong(song)"
-            >
-              {{ music.isFavoriteSong(song.id) ? '❤️' : '🤍' }}
-            </button>
-          </div>
-        </div>
+  <Drawer
+    :open="music.showPlaylist"
+    side="right"
+    :dark="true"
+    :show-close="false"
+    :width="'min(360px, 88vw)'"
+    :style="{
+      '--vc-drawer-overlay': 'rgba(0, 0, 0, 0.55)',
+      '--vc-drawer-bg': 'rgba(18, 18, 32, 0.97)',
+      '--vc-drawer-radius': 'var(--radius-lg) 0 0 var(--radius-lg)',
+      '--vc-drawer-body-pad': '8px',
+      '--vc-drawer-header-pad': '14px 16px',
+    }"
+    @close="music.showPlaylist = false"
+  >
+    <template #header>
+      <div class="drawer-tabs">
+        <button :class="{ active: drawerTab === 'playlist' }" @click="drawerTab = 'playlist'">
+          播放列表 ({{ music.playlist.length }})
+        </button>
+        <button :class="{ active: drawerTab === 'simi' }" @click="drawerTab = 'simi'">
+          相似推荐
+        </button>
       </div>
-    </div>
-  </Transition>
+      <button class="drawer-close" @click="music.showPlaylist = false">&times;</button>
+    </template>
+
+    <!-- 播放列表 -->
+    <template v-if="drawerTab === 'playlist'">
+      <div v-if="music.playlist.length === 0" class="empty-state">播放列表为空</div>
+      <div
+        v-for="(song, index) in music.playlist"
+        :key="song.id + '-' + index"
+        class="song-item"
+        :class="{ playing: index === music.currentIndex }"
+        @click="playFromPlaylist(index)"
+      >
+        <span class="song-index">{{ index + 1 }}</span>
+        <div class="song-info">
+          <div class="song-name">{{ song.name }}</div>
+          <div class="song-artist">{{ song.artists }}</div>
+        </div>
+        <button class="remove-btn" @click.stop="music.removeSongFromPlaylist(index)">
+          &times;
+        </button>
+      </div>
+    </template>
+
+    <!-- 相似推荐 -->
+    <template v-else>
+      <div v-if="music.isLoadingSimi" class="drawer-loading">加载中...</div>
+      <div v-else-if="music.simiSongs.length === 0" class="empty-state">暂无相似歌曲推荐</div>
+      <div
+        v-for="song in music.simiSongs"
+        :key="song.id"
+        class="song-item"
+        :class="{ playing: music.activeSong?.id === song.id }"
+        @click="music.playSong(song, music.simiSongs)"
+      >
+        <img
+          v-if="song.coverUrl"
+          :src="song.coverUrl + '?param=80y80'"
+          class="simi-cover"
+          alt=""
+          loading="lazy"
+        />
+        <div class="song-info">
+          <div class="song-name">{{ song.name }}</div>
+          <div class="song-artist">{{ song.artists }}</div>
+        </div>
+        <button
+          class="remove-btn"
+          :class="{ favorited: music.isFavoriteSong(song.id) }"
+          @click.stop="music.toggleFavoriteSong(song)"
+        >
+          {{ music.isFavoriteSong(song.id) ? '❤️' : '🤍' }}
+        </button>
+      </div>
+    </template>
+  </Drawer>
 
   <template v-if="music.playerBarVisible && music.activeSong">
     <!-- Player bar（游戏页用 v-show 隐藏，但 audio 仍挂载、音乐继续播放）-->
@@ -523,7 +530,6 @@ onUnmounted(() => {
 <style scoped>
 /* ===== Theme Variables ===== */
 .player-bar,
-.playlist-drawer-overlay,
 .lyrics-overlay {
   --accent: #6c5ce7;
   --accent-light: #a29bfe;
@@ -928,64 +934,22 @@ onUnmounted(() => {
   padding: 48px 0;
 }
 
-/* ===== Playlist Drawer ===== */
-.playlist-drawer-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.55);
-  z-index: 250;
-  display: flex;
-  justify-content: flex-end;
-  will-change: opacity;
-}
-
-.playlist-drawer {
-  width: 360px;
-  max-width: 88vw;
-  background: rgba(18, 18, 32, 0.97);
-  display: flex;
-  flex-direction: column;
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  overflow: hidden;
-  border-left: 1px solid var(--border);
-  will-change: transform;
-}
-
-.drawer-slide-enter-active {
-  transition: opacity 0.25s ease;
-}
-.drawer-slide-enter-active .playlist-drawer {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.drawer-slide-leave-active {
-  transition: opacity 0.2s ease;
-}
-.drawer-slide-leave-active .playlist-drawer {
-  transition: transform 0.2s ease-in;
-}
-.drawer-slide-enter-from {
-  opacity: 0;
-}
-.drawer-slide-enter-from .playlist-drawer {
-  transform: translateX(100%);
-}
-.drawer-slide-leave-to {
-  opacity: 0;
-}
-.drawer-slide-leave-to .playlist-drawer {
-  transform: translateX(100%);
-}
-
-.drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  gap: 8px;
+/* ===== Playlist Drawer（外壳由公共 <Drawer> 提供，以下仅内容样式） ===== */
+/* 音乐暗色调色板：播放列表内容挂在其根节点上，配合 Drawer 的 :dark（.vc-dark 作用域）
+   以保持原有暗色外观 */
+.drawer-tabs,
+.drawer-close,
+.drawer-loading,
+.empty-state,
+.song-item {
+  --accent: #6c5ce7;
+  --accent-light: #a29bfe;
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-card-hover: rgba(255, 255, 255, 0.1);
+  --text: #f0f0f5;
+  --text-secondary: #8888a0;
+  --text-dim: #55556a;
+  --border: rgba(255, 255, 255, 0.08);
 }
 
 .drawer-tabs {
@@ -1061,12 +1025,6 @@ onUnmounted(() => {
 .remove-btn.favorited {
   color: #fd79a8;
   opacity: 1;
-}
-
-.drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
 }
 
 /* Song item shared styles */
@@ -1212,10 +1170,6 @@ onUnmounted(() => {
   .player-song-info {
     flex: 1;
     min-width: 0;
-  }
-
-  .playlist-drawer {
-    width: 300px;
   }
 
   .lyrics-panel {

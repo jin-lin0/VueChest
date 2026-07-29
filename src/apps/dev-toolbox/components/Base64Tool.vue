@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { CopyButton, Toast } from '@/components'
 
 defineOptions({ name: 'Base64Tool' })
 
@@ -67,11 +67,6 @@ const run = debounce(() => {
 
 useRealtime(run, { watch: [input, mode, urlSafe] })
 
-async function copy() {
-  if (!output.value) return
-  await copyToClipboard(output.value)
-  showToast('success', '已复制结果')
-}
 function clearAll() {
   input.value = ''
   output.value = ''
@@ -91,7 +86,7 @@ function clearAll() {
         <span>URL-safe（用 -_ 替换 +/ 并去掉填充）</span>
       </label>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!output" @click="copy">📋 复制</button>
+        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { Toast } from '@/components'
+import { Toast, CopyButton } from '@/components'
 import { useFileDrop } from '../composables/useFileDrop'
 
 defineOptions({ name: 'ImageBase64Tool' })
@@ -59,19 +58,6 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
   onError: (m) => showToast('error', m),
 })
 
-async function copyDataUrl() {
-  if (!dataUrl.value) return
-  await copyToClipboard(dataUrl.value)
-  showToast('success', '已复制 DataURL')
-}
-
-async function copyBase64() {
-  if (!dataUrl.value) return
-  const idx = dataUrl.value.indexOf(',')
-  const b64 = idx >= 0 ? dataUrl.value.slice(idx + 1) : dataUrl.value
-  await copyToClipboard(b64)
-  showToast('success', '已复制 Base64')
-}
 </script>
 
 <template>
@@ -116,8 +102,13 @@ async function copyBase64() {
         <div class="card-title">DataURL</div>
         <textarea class="mono out" readonly :value="dataUrl" spellcheck="false"></textarea>
         <div class="actions">
-          <button class="mini" @click="copyDataUrl">复制 DataURL</button>
-          <button class="mini" @click="copyBase64">复制 Base64</button>
+          <CopyButton :text="dataUrl" variant="mini" success-text="已复制 DataURL" :toast="showToast" />
+          <CopyButton
+            :text="dataUrl.indexOf(',') >= 0 ? dataUrl.slice(dataUrl.indexOf(',') + 1) : dataUrl"
+            variant="mini"
+            success-text="已复制 Base64"
+            :toast="showToast"
+          />
         </div>
       </section>
     </div>

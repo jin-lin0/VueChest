@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { CronExpressionParser, type CronExpression } from 'cron-parser'
-import { copyToClipboard } from '@/utils'
-import { Toast } from '@/components'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'CronTool' })
 
@@ -62,12 +61,6 @@ function fmt(d: Date): string {
   return `${base}（本地 UTC${sign}${hh}:${mm}）`
 }
 
-async function copy(v: string) {
-  if (!v) return
-  const ok = await copyToClipboard(v)
-  if (ok) showToast('success', '已复制')
-  else showToast('error', '复制失败')
-}
 </script>
 
 <template>
@@ -87,7 +80,7 @@ async function copy(v: string) {
       <div v-if="nextOne" class="next-box">
         <span class="k">下一个执行</span>
         <span class="next-val mono">{{ nextOne }}</span>
-        <button class="mini" @click="copy(nextOne)">复制</button>
+        <CopyButton :text="nextOne" variant="mini" :toast="showToast" />
       </div>
     </section>
 
@@ -98,7 +91,7 @@ async function copy(v: string) {
         <div v-for="(d, i) in parsed" :key="i" class="row-item">
           <span class="idx">{{ i + 1 }}</span>
           <span class="val mono">{{ fmt(d) }}</span>
-          <button class="mini" @click="copy(fmt(d))">复制</button>
+          <CopyButton :text="fmt(d)" variant="mini" :toast="showToast" />
         </div>
       </div>
       <p v-else-if="!error" class="hint">等待输入…</p>

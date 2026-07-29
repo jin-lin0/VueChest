@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { Toast } from '@/components'
+import { Toast, CopyButton } from '@/components'
 
 defineOptions({ name: 'DurationTool' })
 
@@ -74,13 +73,6 @@ const countdown = computed(() => {
 
 function segText(d: { days: number; hours: number; minutes: number; seconds: number }): string {
   return `${d.days}天 ${d.hours}时 ${d.minutes}分 ${d.seconds}秒`
-}
-
-async function copy(v: string) {
-  if (!v) return
-  const ok = await copyToClipboard(v)
-  if (ok) showToast('success', '已复制')
-  else showToast('error', '复制失败')
 }
 
 function setNowEnd() {
@@ -165,11 +157,11 @@ function setTargetNow() {
         <div class="out-row">
           <span class="k">{{ diff.isNeg ? '结束早于开始' : '可读' }}</span>
           <span class="v mono">{{ segText(diff) }}</span>
-          <button class="mini" @click="copy(segText(diff))">复制</button>
+          <CopyButton :text="segText(diff)" variant="mini" :toast="showToast" />
         </div>
         <div class="out-row">
           <span class="k">总秒数</span><span class="v mono">{{ diff.totalSec }}</span>
-          <button class="mini" @click="copy(String(diff.totalSec))">复制</button>
+          <CopyButton :text="String(diff.totalSec)" variant="mini" :toast="showToast" />
         </div>
       </div>
       <p v-else class="hint">选择开始与结束时间后自动计算。</p>
@@ -199,7 +191,7 @@ function setTargetNow() {
           <span class="v mono">{{
             countdown.expired ? segText(countdown) + '（前）' : segText(countdown)
           }}</span>
-          <button class="mini" @click="copy(segText(countdown))">复制</button>
+          <CopyButton :text="segText(countdown)" variant="mini" :toast="showToast" />
         </div>
       </div>
       <p v-else class="hint">选择目标时间后，每秒刷新剩余时长。</p>

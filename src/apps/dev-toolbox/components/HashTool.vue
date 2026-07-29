@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 // @ts-ignore spark-md5 未提供类型声明，运行期由依赖提供
 import SparkMD5 from 'spark-md5'
 
@@ -126,12 +126,6 @@ const resultRows = computed(() => {
   return rows
 })
 
-async function copyText(v: string) {
-  if (!v || v === '—') return
-  const ok = await copyToClipboard(v)
-  showToast(ok ? 'success' : 'error', ok ? '已复制结果' : '复制失败')
-}
-
 function clearAll() {
   text.value = ''
   results.value = {}
@@ -190,7 +184,7 @@ function clearAll() {
       <div v-for="r in resultRows" :key="r.key" class="result-row">
         <span class="res-label">{{ r.label }}</span>
         <code class="mono res-value">{{ r.value }}</code>
-        <button class="mini" :disabled="r.value === '—'" @click="copyText(r.value)">复制</button>
+        <CopyButton :text="r.value" variant="mini" success-text="已复制结果" :disabled="r.value === '—'" :toast="showToast" />
       </div>
     </section>
 

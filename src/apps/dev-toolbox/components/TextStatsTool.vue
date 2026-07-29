@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { Toast } from '@/components'
+import { CopyButton } from '@/components'
 
 defineOptions({ name: 'TextStatsTool' })
-
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
 
 const inputText = ref('')
 
@@ -41,14 +35,6 @@ const statList = computed<StatItem[]>(() => [
 
 const summary = computed(() => statList.value.map((s) => `${s.label}：${s.value}`).join('\n'))
 
-async function copySummary() {
-  if (!inputText.value) {
-    showToast('error', '请输入文本')
-    return
-  }
-  await copyToClipboard(summary.value)
-  showToast('success', '已复制统计摘要')
-}
 </script>
 
 <template>
@@ -67,7 +53,7 @@ async function copySummary() {
     <section class="card">
       <div class="card-head">
         <span class="card-title">统计结果</span>
-        <button class="mini" :disabled="!inputText" @click="copySummary">复制摘要</button>
+        <CopyButton :text="summary" variant="mini" success-text="已复制统计摘要" />
       </div>
       <div class="grid">
         <div v-for="(s, i) in statList" :key="i" class="stat">
@@ -79,7 +65,6 @@ async function copySummary() {
       </div>
     </section>
 
-    <Toast ref="toastRef" />
   </div>
 </template>
 

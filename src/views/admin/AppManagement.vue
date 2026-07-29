@@ -67,10 +67,7 @@
       <span>加载中...</span>
     </div>
 
-    <div v-else-if="apps.length === 0" class="empty-state">
-      <span class="empty-icon">📭</span>
-      <p>暂无应用数据</p>
-    </div>
+    <EmptyState v-else-if="apps.length === 0" icon="📭" title="暂无应用数据" />
 
     <div v-else class="table-wrapper">
       <table class="app-table">
@@ -149,66 +146,62 @@
       </button>
     </div>
 
-    <transition name="modal">
-      <div v-if="showEditModal_" class="modal-overlay" @click.self="showEditModal_ = false">
-        <div class="modal modal-lg">
-          <div class="modal-header">
-            <h2>✏️ 编辑应用</h2>
-            <button class="close-btn" @click="showEditModal_ = false">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-row">
-              <div class="form-group">
-                <label>应用名称 <span class="required">*</span></label>
-                <input v-model="editForm.name" class="form-input" placeholder="应用名称" />
-              </div>
-              <div class="form-group">
-                <label>图标 <span class="required">*</span></label>
-                <input v-model="editForm.icon" class="form-input" placeholder="Emoji 或图标 URL" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>版本</label>
-                <input v-model="editForm.version" class="form-input" placeholder="1.0.0" />
-              </div>
-              <div class="form-group">
-                <label>分类</label>
-                <input v-model="editForm.category" class="form-input" placeholder="工具/娱乐/..." />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>描述</label>
-              <textarea
-                v-model="editForm.description"
-                class="form-textarea"
-                rows="2"
-                placeholder="应用描述"
-              ></textarea>
-            </div>
-            <div class="form-group">
-              <label>README</label>
-              <textarea
-                v-model="editForm.readme"
-                class="form-textarea"
-                rows="4"
-                placeholder="应用说明文档 (Markdown)"
-              ></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn-secondary" @click="showEditModal_ = false">取消</button>
-            <button class="btn-ghost" :disabled="!editingApp" @click="downloadJs(editingApp)">
-              📥 下载 JS
-            </button>
-            <button class="btn-primary" :disabled="saving" @click="saveEdit">
-              <span v-if="saving" class="loading-spinner-sm"></span>
-              保存
-            </button>
-          </div>
+    <Modal
+      :open="showEditModal_"
+      :width="640"
+      title="✏️ 编辑应用"
+      @close="showEditModal_ = false"
+    >
+      <div class="form-row">
+        <div class="form-group">
+          <label>应用名称 <span class="required">*</span></label>
+          <input v-model="editForm.name" class="form-input" placeholder="应用名称" />
+        </div>
+        <div class="form-group">
+          <label>图标 <span class="required">*</span></label>
+          <input v-model="editForm.icon" class="form-input" placeholder="Emoji 或图标 URL" />
         </div>
       </div>
-    </transition>
+      <div class="form-row">
+        <div class="form-group">
+          <label>版本</label>
+          <input v-model="editForm.version" class="form-input" placeholder="1.0.0" />
+        </div>
+        <div class="form-group">
+          <label>分类</label>
+          <input v-model="editForm.category" class="form-input" placeholder="工具/娱乐/..." />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>描述</label>
+        <textarea
+          v-model="editForm.description"
+          class="form-textarea"
+          rows="2"
+          placeholder="应用描述"
+        ></textarea>
+      </div>
+      <div class="form-group">
+        <label>README</label>
+        <textarea
+          v-model="editForm.readme"
+          class="form-textarea"
+          rows="4"
+          placeholder="应用说明文档 (Markdown)"
+        ></textarea>
+      </div>
+
+      <template #footer>
+        <button class="btn-secondary" @click="showEditModal_ = false">取消</button>
+        <button class="btn-ghost" :disabled="!editingApp" @click="downloadJs(editingApp)">
+          📥 下载 JS
+        </button>
+        <button class="btn-primary" :disabled="saving" @click="saveEdit">
+          <span v-if="saving" class="loading-spinner-sm"></span>
+          保存
+        </button>
+      </template>
+    </Modal>
 
     <Toast ref="toastRef" />
   </div>
@@ -216,7 +209,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { CustomSelect, Toast, type SelectOption } from '@/components'
+import { CustomSelect, Modal, Toast, EmptyState, type SelectOption } from '@/components'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
 
@@ -756,22 +749,6 @@ async function deleteApp(app: MarketAppItem) {
     transform: rotate(360deg);
   }
 }
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 64px 0;
-  color: var(--text-secondary);
-}
-.empty-icon {
-  font-size: 48px;
-}
-.empty-state p {
-  font-size: 16px;
-  margin: 0;
-}
-
 .table-wrapper {
   background: var(--bg-card);
   border-radius: 14px;
@@ -882,67 +859,6 @@ async function deleteApp(app: MarketAppItem) {
   color: var(--text-secondary);
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 24px;
-  backdrop-filter: blur(4px);
-}
-.modal {
-  background: var(--bg-card);
-  border-radius: 18px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-}
-.modal-lg {
-  max-width: 640px;
-}
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 28px;
-  border-bottom: 1px solid var(--border-light);
-}
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--text-primary);
-}
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
-  cursor: pointer;
-  color: var(--text-muted);
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-.close-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-.modal-body {
-  padding: 24px 28px;
-}
-.modal-footer {
-  padding: 16px 28px;
-  border-top: 1px solid var(--border-light);
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1009,24 +925,5 @@ async function deleteApp(app: MarketAppItem) {
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-
-.modal-enter-active {
-  transition: all 0.25s ease;
-}
-.modal-leave-active {
-  transition: all 0.2s ease;
-}
-.modal-enter-from {
-  opacity: 0;
-}
-.modal-enter-from .modal {
-  transform: scale(0.95) translateY(10px);
-}
-.modal-leave-to {
-  opacity: 0;
-}
-.modal-leave-to .modal {
-  transform: scale(0.95);
 }
 </style>

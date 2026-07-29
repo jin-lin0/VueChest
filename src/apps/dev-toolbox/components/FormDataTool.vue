@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard, debounce, downloadFile, autoType } from '@/utils'
-import { Toast } from '@/components'
+import { debounce, downloadFile, autoType } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
 
@@ -147,11 +147,6 @@ const run = debounce(() => {
 
 useRealtime(run, { watch: [input, dir, autoInfer] })
 
-async function copy() {
-  if (!output.value) return
-  await copyToClipboard(output.value)
-  showToast('success', '已复制结果')
-}
 function download() {
   if (!output.value) return
   const ext = dir.value === 'json2form' ? 'txt' : 'json'
@@ -185,7 +180,7 @@ function onEditorSave() {
         <span>值类型推断</span>
       </label>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!output" @click="copy">📋 复制</button>
+        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
         <button class="btn" :disabled="!output" @click="download">⬇ 下载</button>
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>

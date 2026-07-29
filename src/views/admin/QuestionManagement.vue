@@ -47,11 +47,9 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="questions.length === 0" class="empty-state">
-      <span class="empty-icon">📭</span>
-      <p>暂无题目</p>
+    <EmptyState v-else-if="questions.length === 0" icon="📭" title="暂无题目">
       <button class="btn-primary" @click="goCreate">创建第一道题目</button>
-    </div>
+    </EmptyState>
 
     <!-- 题目列表（紧凑） -->
     <div v-else class="question-list">
@@ -135,7 +133,7 @@ import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { renderMarkdown } from '@/lib/markdown'
 import { Toast } from '@/components'
-import { CustomSelect, type SelectOption } from '@/components'
+import { CustomSelect, EmptyState, type SelectOption } from '@/components'
 import type { Question, Category } from '@/types/interview'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
@@ -449,8 +447,7 @@ async function batchDelete() {
   font-size: 12px;
 }
 
-.loading-state,
-.empty-state {
+.loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -472,14 +469,6 @@ async function batchDelete() {
   to {
     transform: rotate(360deg);
   }
-}
-
-.empty-icon {
-  font-size: 40px;
-}
-.empty-state p {
-  font-size: 14px;
-  margin: 0;
 }
 
 .question-list {

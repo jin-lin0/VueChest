@@ -5,7 +5,7 @@ import { exportAllData, importAllData, getStorage, setStorage } from '@/lib/stor
 import { APP_MODULES, STORAGE_KEYS } from '@/config'
 import type { AppModule } from '@/config'
 import { useMarketStore } from '@/stores/market'
-import { LoginDropdown } from '@/components'
+import { LoginDropdown, Modal, EmptyState } from '@/components'
 import { useTheme } from '@/composables/useTheme'
 import { useSpecialDays } from '@/composables/useSpecialDays'
 
@@ -360,11 +360,9 @@ const navigateToApp = (route: string) => {
       </div>
     </main>
 
-    <div v-else class="empty-state">
-      <span class="empty-icon">🔎</span>
-      <p class="empty-text">没有找到匹配的应用</p>
+    <EmptyState v-else icon="🔎" title="没有找到匹配的应用">
       <button class="empty-clear" @click="searchQuery = ''">清除搜索</button>
-    </div>
+    </EmptyState>
 
     <div
       v-if="contextMenu.visible"
@@ -430,65 +428,68 @@ const navigateToApp = (route: string) => {
       </div>
     </div>
 
-    <div v-if="showBackdoorModal" class="backdoor-overlay" @click.self="showBackdoorModal = false">
-      <div class="backdoor-modal">
-        <div class="backdoor-header">
-          <h3>数据管理</h3>
-          <button class="backdoor-close" @click="showBackdoorModal = false">✕</button>
-        </div>
-        <div class="backdoor-body">
-          <div class="backdoor-section">
-            <h4>管理后台</h4>
-            <p class="backdoor-desc">进入面试题库管理后台</p>
-            <button class="backdoor-btn admin-btn" @click="router.push('/admin')">
-              进入管理后台 →
-            </button>
-          </div>
-          <div class="backdoor-divider"></div>
-          <div class="backdoor-section">
-            <h4>导出数据</h4>
-            <p class="backdoor-desc">将所有应用数据导出为 JSON 文件</p>
-            <button class="backdoor-btn export-btn" @click="handleExport">导出全部数据</button>
-          </div>
-          <div class="backdoor-divider"></div>
-          <div class="backdoor-section">
-            <h4>导入数据</h4>
-            <p class="backdoor-desc">从 JSON 文件或粘贴 JSON 文本导入数据</p>
-            <div class="backdoor-import-actions">
-              <label class="backdoor-btn import-file-btn">
-                选择文件导入
-                <input
-                  type="file"
-                  accept=".json"
-                  @change="handleFileImport"
-                  style="display: none"
-                />
-              </label>
-            </div>
-            <textarea
-              v-model="importText"
-              class="backdoor-textarea"
-              placeholder="或粘贴 JSON 数据到这里..."
-              rows="6"
-            ></textarea>
-            <button
-              class="backdoor-btn import-btn"
-              :disabled="!importText.trim()"
-              @click="handleImport"
-            >
-              导入数据
-            </button>
-            <p
-              v-if="importStatus"
-              class="backdoor-status"
-              :class="{ success: importStatus.includes('成功') }"
-            >
-              {{ importStatus }}
-            </p>
-          </div>
-        </div>
+    <Modal
+      :open="showBackdoorModal"
+      :width="520"
+      title="数据管理"
+      :style="{
+        '--vc-modal-z': '2000',
+        '--vc-modal-overlay': 'rgba(0, 0, 0, 0.5)',
+        '--vc-modal-overlay-blur': 'none',
+        '--vc-modal-radius': '16px',
+        '--vc-modal-shadow': '0 20px 60px rgba(0, 0, 0, 0.3)',
+        '--vc-modal-max-h': '80vh',
+        '--vc-modal-body-pad': '1.5rem',
+        '--vc-modal-header-pad': '1.2rem 1.5rem',
+        '--vc-modal-title-size': '1.15rem',
+      }"
+      @close="showBackdoorModal = false"
+    >
+      <div class="backdoor-section">
+        <h4>管理后台</h4>
+        <p class="backdoor-desc">进入面试题库管理后台</p>
+        <button class="backdoor-btn admin-btn" @click="router.push('/admin')">
+          进入管理后台 →
+        </button>
       </div>
-    </div>
+      <div class="backdoor-divider"></div>
+      <div class="backdoor-section">
+        <h4>导出数据</h4>
+        <p class="backdoor-desc">将所有应用数据导出为 JSON 文件</p>
+        <button class="backdoor-btn export-btn" @click="handleExport">导出全部数据</button>
+      </div>
+      <div class="backdoor-divider"></div>
+      <div class="backdoor-section">
+        <h4>导入数据</h4>
+        <p class="backdoor-desc">从 JSON 文件或粘贴 JSON 文本导入数据</p>
+        <div class="backdoor-import-actions">
+          <label class="backdoor-btn import-file-btn">
+            选择文件导入
+            <input type="file" accept=".json" @change="handleFileImport" style="display: none" />
+          </label>
+        </div>
+        <textarea
+          v-model="importText"
+          class="backdoor-textarea"
+          placeholder="或粘贴 JSON 数据到这里..."
+          rows="6"
+        ></textarea>
+        <button
+          class="backdoor-btn import-btn"
+          :disabled="!importText.trim()"
+          @click="handleImport"
+        >
+          导入数据
+        </button>
+        <p
+          v-if="importStatus"
+          class="backdoor-status"
+          :class="{ success: importStatus.includes('成功') }"
+        >
+          {{ importStatus }}
+        </p>
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -790,27 +791,6 @@ const navigateToApp = (route: string) => {
 .search-clear:hover {
   background: rgba(0, 0, 0, 0.05);
   color: #667eea;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.4;
-}
-
-.empty-text {
-  color: var(--text-secondary);
-  font-size: 1.05rem;
-  margin-bottom: 1rem;
 }
 
 .empty-clear {
@@ -1391,85 +1371,6 @@ const navigateToApp = (route: string) => {
     width: 200px;
     height: 200px;
   }
-}
-
-.backdoor-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  animation: fadeIn 0.2s ease;
-}
-
-.backdoor-modal {
-  background: var(--bg-card);
-  border-radius: 16px;
-  width: 90%;
-  max-width: 520px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.backdoor-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.2rem 1.5rem;
-  border-bottom: 1px solid #eee;
-}
-
-.backdoor-header h3 {
-  margin: 0;
-  font-size: 1.15rem;
-  color: var(--text-primary);
-}
-
-.backdoor-close {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0.2rem 0.4rem;
-  border-radius: 6px;
-  transition: all 0.15s ease;
-}
-
-.backdoor-close:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--text-primary);
-}
-
-.backdoor-body {
-  padding: 1.5rem;
 }
 
 .backdoor-section h4 {

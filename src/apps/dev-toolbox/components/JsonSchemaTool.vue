@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { Toast, CopyButton } from '@/components'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
 import Ajv from 'ajv'
@@ -86,18 +86,6 @@ const run = debounce(() => {
 
 useRealtime(run, { watch: [schemaInput, dataInput], immediate: true })
 
-async function copyResult() {
-  const text =
-    valid.value === null ? '' : valid.value ? '校验通过 ✓' : `校验失败：\n${errorsText.value}`
-  if (!text) return
-  try {
-    await copyToClipboard(text)
-    showToast('success', '已复制校验结果')
-  } catch {
-    showToast('error', '复制失败')
-  }
-}
-
 function loadExampleFail() {
   schemaInput.value = `{
   "type": "object",
@@ -138,7 +126,12 @@ function clearAll() {
         <button class="btn" @click="loadExampleOk">示例(通过)</button>
       </div>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="valid === null" @click="copyResult">📋 复制</button>
+        <CopyButton
+          :text="valid === null ? '' : valid ? '校验通过 ✓' : '校验失败：\n' + errorsText"
+          variant="btn"
+          success-text="已复制校验结果"
+          :toast="showToast"
+        />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { copyToClipboard, debounce } from '@/utils'
-import { Toast } from '@/components'
+import { debounce } from '@/utils'
+import { CopyButton, Toast } from '@/components'
 import * as punycode from 'punycode'
 
 defineOptions({ name: 'PunycodeTool' })
@@ -50,11 +50,6 @@ const run = debounce(() => {
 
 useRealtime(run, { watch: [input, mode, dir] })
 
-async function copy() {
-  if (!output.value) return
-  await copyToClipboard(output.value)
-  showToast('success', '已复制结果')
-}
 function clearAll() {
   input.value = ''
   output.value = ''
@@ -101,7 +96,7 @@ const outputTitle = () =>
         <button :class="{ active: dir === 'decode' }" @click="dir = 'decode'">解码</button>
       </div>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!output" @click="copy">📋 复制</button>
+        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>

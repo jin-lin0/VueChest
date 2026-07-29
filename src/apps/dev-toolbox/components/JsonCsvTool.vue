@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard, debounce, downloadFile } from '@/utils'
-import { Toast } from '@/components'
+import { debounce, downloadFile } from '@/utils'
+import { CopyButton, Toast } from '@/components'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
 
@@ -160,11 +160,6 @@ function switchDir(d: Dir) {
   run()
 }
 
-async function copy() {
-  if (!output.value) return
-  await copyToClipboard(output.value)
-  showToast('success', '已复制结果')
-}
 function download() {
   if (!output.value) return
   const name = dir.value === 'toCsv' ? 'data.csv' : 'data.json'
@@ -197,7 +192,7 @@ function clearAll() {
         <span>强制文本</span>
       </label>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!output" @click="copy">📋 复制</button>
+        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
         <button class="btn" :disabled="!output" @click="download">⬇ 下载</button>
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>

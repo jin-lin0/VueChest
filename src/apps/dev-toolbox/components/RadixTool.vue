@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { copyToClipboard } from '@/utils'
-import { CustomSelect, type SelectOption, Toast } from '@/components'
+import { CustomSelect, type SelectOption, Toast, CopyButton } from '@/components'
 import { useRealtime } from '../composables/useRealtime'
 
 defineOptions({ name: 'RadixTool' })
@@ -104,11 +103,6 @@ useRealtime(
   { watch: [sourceValue, fromBase, toBase, targetValue] },
 )
 
-async function copy() {
-  if (!targetValue.value) return
-  await copyToClipboard(targetValue.value)
-  showToast('success', '已复制结果')
-}
 function clearAll() {
   sourceValue.value = ''
   targetValue.value = ''
@@ -128,7 +122,7 @@ function swap() {
     <div class="toolbar">
       <button class="btn" @click="swap">⇄ 交换进制</button>
       <div class="tb-group push-right">
-        <button class="btn" :disabled="!targetValue" @click="copy">📋 复制</button>
+        <CopyButton :text="targetValue" success-text="已复制结果" :toast="showToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>

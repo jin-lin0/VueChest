@@ -54,9 +54,7 @@
         <Skeleton :width="180" :height="16" text />
         <Skeleton :width="200" :height="16" text />
       </div>
-      <div v-else-if="questions.length === 0" class="empty-state">
-        <p>暂无题目</p>
-      </div>
+      <EmptyState v-else-if="questions.length === 0" title="暂无题目" />
       <div v-else class="question-cards">
         <div
           v-for="question in questions"
@@ -158,7 +156,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { CustomSelect, MarkdownView, Skeleton, type SelectOption } from '@/components'
+import { CustomSelect, MarkdownView, Skeleton, EmptyState, type SelectOption } from '@/components'
 import type { Question, Category } from '@/types/interview'
 import { api } from '@/lib/request'
 import { getStorage, setStorage } from '@/lib/storage'
@@ -883,8 +881,7 @@ onMounted(() => {
 }
 
 /* 加载和空状态 */
-.loading,
-.empty-state {
+.loading {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-secondary);
