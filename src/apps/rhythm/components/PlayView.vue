@@ -52,6 +52,16 @@ let resizeObserver: ResizeObserver | null = null
 
 const KEYS = ['d', 'f', 'j', 'k']
 
+/**
+ * 是否触屏设备（主指针是粗指针 = 手机/平板）。
+ *
+ * 用 pointer: coarse 而非 ontouchstart：带触屏的笔记本主指针仍是鼠标，
+ * 用 ontouchstart 判断会把它们误判成手机、藏掉键盘玩家需要的键位提示。
+ * 只在初始化时判一次——设备的主指针类型在一局游戏里不会变。
+ */
+const isTouch =
+  typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
+
 const density = computed(() => beatmapDensity(props.beatmap))
 const difficulty = computed(() => difficultyLabel(density.value))
 
@@ -149,7 +159,15 @@ function buildGame() {
         paused.value = false
       },
     },
-    { keys: KEYS, userOffset: props.userOffset, approachTime: props.approachTime },
+    {
+      keys: KEYS,
+      userOffset: props.userOffset,
+      approachTime: props.approachTime,
+      // 触屏设备把判定线压得更低：底部没有键位排挡着，判定线越低
+      // 音符的可视下落行程越长（横屏矮视口下尤其明显）。
+      // 28px 只留打击特效扩散环的铺开空间
+      judgeLineOffset: isTouch ? 28 : undefined,
+    },
   )
   syncStageBox()
 }
@@ -365,15 +383,22 @@ onUnmounted(() => {
           </div>
         </div>
         <p class="keys-hint">
-          <kbd v-for="k in KEYS" :key="k">{{ k.toUpperCase() }}</kbd>
-          <span v-if="beatmap.meta.holdNotes > 0">长条按住不放，直到条身走完</span>
-          <span v-else>也可以直接点击轨道</span>
+          <template v-if="!isTouch">
+            <kbd v-for="k in KEYS" :key="k">{{ k.toUpperCase() }}</kbd>
+          </template>
+          <span v-if="beatmap.meta.holdNotes > 0">
+            {{ isTouch ? '点按轨道击打，' : '' }}长条按住不放，直到条身走完
+          </span>
+          <span v-else>{{ isTouch ? '点按对应轨道击打' : '也可以直接点击轨道' }}</span>
         </p>
         <button class="cta" @click="startGame">
           <span>开始演奏</span>
           <small>START</small>
         </button>
-        <p class="tiny">点击后有 {{ (approachTime + PREP_TIME).toFixed(1) }}s 倒计时准备 · Esc 暂停</p>
+        <p class="tiny">
+          点击后有 {{ (approachTime + PREP_TIME).toFixed(1) }}s
+          倒计时准备{{ isTouch ? '' : ' · Esc 暂停' }}
+        </p>
       </div>
 
       <div v-if="stage === 'playing' && paused" class="overlay">
@@ -424,8 +449,12 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 底部键位胶囊：横向位置与 Canvas 轨道严格对齐 -->
-    <footer class="keypad-row">
+    <!--
+      底部键位胶囊：横向位置与 Canvas 轨道严格对齐。
+      触屏设备不渲染——手机玩家按的是轨道本身，DFJK 键位提示毫无意义，
+      还白占一排本可以给跑道的高度。
+    -->
+    <footer v-if="!isTouch" class="keypad-row">
       <div class="keypad-inner">
         <div
           v-for="i in beatmap.lanes"

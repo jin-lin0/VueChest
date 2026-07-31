@@ -31,6 +31,11 @@ export interface GameOptions {
   /** 音符下落时间（秒） */
   approachTime?: number
   /**
+   * 判定线距跑道底边的距离(像素)，透传给 Renderer。
+   * 触屏设备会给更小的值——见 PlayView 的注释。
+   */
+  judgeLineOffset?: number
+  /**
    * 击打音效音量，0 = 关闭（默认关闭）。
    *
    * 为什么默认关：这是个 1800Hz 方波，音色和音乐完全无关，密谱下
@@ -134,7 +139,10 @@ export class Game {
 
     this.clock = new AudioClock(audioCtx, audioBuffer, { userOffset: options.userOffset ?? 0 })
     this.engine = new JudgeEngine(map)
-    this.renderer = new Renderer(canvas, map, { approachTime: options.approachTime })
+    this.renderer = new Renderer(canvas, map, {
+      approachTime: options.approachTime,
+      judgeLineOffset: options.judgeLineOffset,
+    })
 
     // 准备时间要包含完整的下落行程，否则第一个音符会在半空中冒出来。
     // 这里的默认值必须和 Renderer 用的同一个常量，否则倒计时长度

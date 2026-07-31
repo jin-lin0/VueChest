@@ -636,6 +636,42 @@ describe('时间跳变防护（切后台不该凭空扣 combo）', () => {
   })
 })
 
+describe('判定线偏移透传（触屏设备判定线更低）', () => {
+  beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', () => 0)
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+    vi.stubGlobal('window', {
+      devicePixelRatio: 1,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+  })
+
+  function buildWith(options: GameOptions) {
+    const audioCtx = new FakeAudioContext()
+    const canvas = fakeCanvas()
+    return new Game(
+      audioCtx as unknown as AudioContext,
+      { duration: 15 } as unknown as AudioBuffer,
+      makeBeatmap(),
+      canvas as unknown as HTMLCanvasElement,
+      {},
+      { hitSoundVolume: 0, leadIn: 0, ...options },
+    )
+  }
+
+  it('judgeLineOffset 传到 Renderer（判定线 y = 画布高 - 偏移）', () => {
+    // fakeCanvas 高 640：默认偏移 44 → 596；触屏偏移 28 → 612
+    const def = buildWith({})
+    expect(def.stageMetrics.judgeLineY).toBe(640 - 44)
+    def.dispose()
+
+    const touch = buildWith({ judgeLineOffset: 28 })
+    expect(touch.stageMetrics.judgeLineY).toBe(640 - 28)
+    touch.dispose()
+  })
+})
+
 describe('手动暂停（与切后台自动暂停共用一条路径）', () => {
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', () => 0)
