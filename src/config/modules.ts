@@ -34,8 +34,7 @@ function appDef(
 }
 
 export const APP_MODULES: AppModule[] = [
-  // 音游仍在可行性验证阶段，仅本地可见
-  appDef(16, rhythm, true),
+  appDef(16, rhythm),
   appDef(14, bilibiliSubtitle),
   appDef(13, snake),
   appDef(15, devToolbox),
