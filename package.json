@@ -50,14 +50,15 @@
     "ua-parser-js": "^2.0.10",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "web-audio-beat-detector": "^8.2.37"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.2",
     "@types/ini": "^4.1.1",
     "@types/node": "^22.16.5",
-    "@types/three": "^0.184.1",
     "@types/qrcode": "^1.5.6",
+    "@types/three": "^0.184.1",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitejs/plugin-vue-jsx": "^5.0.1",

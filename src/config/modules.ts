@@ -7,6 +7,7 @@ import stock from '@/apps/stock'
 import bilibiliSubtitle from '@/apps/bilibili-subtitle'
 import snake from '@/apps/snake'
 import devToolbox from '@/apps/dev-toolbox'
+import rhythm from '@/apps/rhythm'
 
 export interface AppModule {
   id: number
@@ -20,6 +21,7 @@ export interface AppModule {
 function appDef(
   id: number,
   app: { route: string; meta: { name: string; icon: string; description: string } },
+  devOnly = false,
 ): AppModule {
   return {
     id,
@@ -27,10 +29,13 @@ function appDef(
     icon: app.meta.icon,
     route: app.route,
     description: app.meta.description,
+    devOnly,
   }
 }
 
 export const APP_MODULES: AppModule[] = [
+  // 音游仍在可行性验证阶段，仅本地可见
+  appDef(16, rhythm, true),
   appDef(14, bilibiliSubtitle),
   appDef(13, snake),
   appDef(15, devToolbox),

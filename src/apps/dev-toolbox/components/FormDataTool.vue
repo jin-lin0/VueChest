@@ -47,7 +47,7 @@ function parseMultipart(text: string): { name: string; filename?: string; conten
     const sepIdx = trimmed.search(/\r?\n\r?\n/)
     if (sepIdx < 0) continue
     const headerBlock = trimmed.slice(0, sepIdx)
-    let content = trimmed
+    const content = trimmed
       .slice(sepIdx)
       .replace(/^\r?\n\r?\n/, '')
       .replace(/\r?\n$/, '')

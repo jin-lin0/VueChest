@@ -95,6 +95,12 @@ const router = createRouter({
       meta: { title: '开发工具箱' },
     },
     {
+      path: '/rhythm',
+      name: 'rhythm',
+      component: () => import('../apps/rhythm/App.vue'),
+      meta: { title: '音游实验室' },
+    },
+    {
       path: '/snake/local',
       name: 'snake-local',
       component: () => import('../apps/snake/views/LocalBattle.vue'),
