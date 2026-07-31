@@ -25,12 +25,15 @@ const props = defineProps<{
 const emit = defineEmits<{ exit: []; retry: [] }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const rootRef = ref<HTMLElement | null>(null)
 const stage = ref<'ready' | 'playing' | 'result'>('ready')
 const stats = ref<JudgeStats | null>(null)
 const progress = ref(0)
 const accuracy = ref(100)
-/** 切后台被自动暂停 */
+/** 暂停中（切后台自动触发，或玩家手动触发） */
 const paused = ref(false)
+/** 当前处于全屏（横屏）模式 */
+const isFullscreen = ref(false)
 /** 当前播放位置（秒），用于时间码显示 */
 const elapsed = ref(0)
 /** 按下的轨道，驱动底部键位胶囊的高亮 */
@@ -163,8 +166,54 @@ function resumeGame() {
   game?.resume()
 }
 
+/** 手动暂停：Esc 由 Game 内部处理，这里是给触屏玩家的按钮入口 */
+function pauseGame() {
+  game?.pause()
+}
+
+/**
+ * 横屏（全屏）模式。
+ *
+ * 用 Fullscreen API + orientation.lock 组合：
+ * - 桌面端：全屏本身就是收益（去掉浏览器 chrome，跑道更高）
+ * - 移动端：全屏是 orientation.lock 的**前置条件**（规范要求），
+ *   锁定横屏后 4 条轨道能用上整个长边，键位不再挤成一团
+ *
+ * orientation.lock 失败要静默吞掉：桌面浏览器一律抛 NotSupportedError，
+ * iOS Safari 也不支持——这是增强而非依赖，失败时全屏仍然成立。
+ */
+async function toggleFullscreen() {
+  const el = rootRef.value
+  if (!el) return
+  try {
+    if (!document.fullscreenElement) {
+      await el.requestFullscreen()
+      type LockableOrientation = ScreenOrientation & {
+        lock?: (o: string) => Promise<void>
+      }
+      const orientation = screen.orientation as LockableOrientation
+      await orientation.lock?.('landscape').catch(() => {})
+    } else {
+      await document.exitFullscreen()
+    }
+  } catch {
+    // 全屏被拒绝（iframe 无 allowfullscreen 等），保持原样即可
+  }
+}
+
+/** 全屏状态跟随浏览器事件而非自己记 flag：Esc 退出全屏不会走 toggle */
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+  // 尺寸在全屏进出瞬间变化，让渲染器立刻重新量取，
+  // 不等 ResizeObserver 的下一个回调（有的引擎会延迟一帧）
+  game?.resize()
+  syncStageBox()
+}
+
 function quit() {
   game?.stop()
+  // 退出时把全屏也退掉：回到选曲页还留在全屏里会让人找不到浏览器
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
   emit('exit')
 }
 
@@ -215,10 +264,16 @@ onMounted(() => {
   buildGame()
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
+  document.addEventListener('fullscreenchange', onFullscreenChange)
 
-  // 跑道宽度随容器变化，键位胶囊要跟着走
+  // 跑道宽度随容器变化，键位胶囊要跟着走。
+  // 同时让渲染器重量尺寸：横竖屏切换/全屏进出改变的是容器而非 window，
+  // Game 自己监听的 window resize 收不到这类变化
   if (canvasRef.value && typeof ResizeObserver !== 'undefined') {
-    resizeObserver = new ResizeObserver(() => syncStageBox())
+    resizeObserver = new ResizeObserver(() => {
+      game?.resize()
+      syncStageBox()
+    })
     resizeObserver.observe(canvasRef.value)
   }
 })
@@ -226,6 +281,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
   resizeObserver?.disconnect()
   resizeObserver = null
 })
@@ -236,15 +292,25 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="play-root">
+  <div ref="rootRef" class="play-root">
     <!-- 背景光晕：两个巨大的柔光球，给纯黑背景一点空间深度 -->
     <div class="bg-orb orb-a" />
     <div class="bg-orb orb-b" />
 
     <header class="hud">
-      <button class="exit-btn" @click="quit">
-        <span class="arrow">←</span> 退出
-      </button>
+      <div class="hud-left">
+        <button class="exit-btn" @click="quit">
+          <span class="arrow">←</span> 退出
+        </button>
+        <button
+          v-if="stage === 'playing' && !paused"
+          class="exit-btn"
+          title="暂停（Esc）"
+          @click="pauseGame"
+        >
+          ⏸
+        </button>
+      </div>
 
       <div class="score-block">
         <div class="score">{{ scoreText }}</div>
@@ -255,7 +321,17 @@ onUnmounted(() => {
       </div>
 
       <div class="song-block">
-        <span class="song-name">{{ beatmap.title }}</span>
+        <div class="song-row">
+          <span class="song-name">{{ beatmap.title }}</span>
+          <button
+            class="fs-btn"
+            :class="{ on: isFullscreen }"
+            :title="isFullscreen ? '退出全屏' : '全屏（移动端自动横屏）'"
+            @click="toggleFullscreen"
+          >
+            ⛶
+          </button>
+        </div>
         <div class="song-progress"><i :style="{ width: progress + '%' }" /></div>
         <span class="song-meta">{{ difficulty }} · {{ beatmap.bpm }} BPM</span>
       </div>
@@ -297,16 +373,16 @@ onUnmounted(() => {
           <span>开始演奏</span>
           <small>START</small>
         </button>
-        <p class="tiny">点击后有 {{ (approachTime + PREP_TIME).toFixed(1) }}s 倒计时准备</p>
+        <p class="tiny">点击后有 {{ (approachTime + PREP_TIME).toFixed(1) }}s 倒计时准备 · Esc 暂停</p>
       </div>
 
       <div v-if="stage === 'playing' && paused" class="overlay">
         <p class="eyebrow">PAUSED</p>
         <h2>已暂停</h2>
-        <p class="tiny">切到后台时自动暂停了，避免音符白白漏掉</p>
+        <p class="tiny">继续后会回退 1.5 秒并重新倒数，帮你找回节奏</p>
         <button class="cta" @click="resumeGame">
           <span>继续</span>
-          <small>会重新倒数</small>
+          <small>RESUME</small>
         </button>
         <button class="ghost" @click="quit">退出</button>
       </div>
@@ -426,6 +502,12 @@ onUnmounted(() => {
   padding: 18px 24px 6px;
 }
 
+.hud-left {
+  justify-self: start;
+  display: inline-flex;
+  gap: 8px;
+}
+
 .exit-btn {
   justify-self: start;
   display: inline-flex;
@@ -491,6 +573,39 @@ onUnmounted(() => {
   align-items: flex-end;
   gap: 6px;
   max-width: 260px;
+}
+.song-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+.fs-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #b9b2d4;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 0.2s cubic-bezier(0.25, 1, 0.5, 1),
+    color 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.fs-btn:hover {
+  border-color: rgba(0, 229, 255, 0.55);
+  color: #fff;
+}
+.fs-btn.on {
+  border-color: rgba(0, 229, 255, 0.55);
+  background: rgba(0, 229, 255, 0.12);
+  color: #6fe6ff;
 }
 .song-name {
   font-size: 14px;
@@ -920,6 +1035,62 @@ kbd {
   }
   .breakdown {
     grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * ===== 横屏（矮视口） =====
+ *
+ * 移动端横屏的问题不是宽度而是**高度**：约 375px 高里 HUD + 键位排
+ * 就吃掉 170px，跑道只剩一半。这里按高度而非宽度出压缩布局：
+ * HUD 压成一行、键位排减半、角落信息隐藏，把高度尽量还给跑道。
+ */
+@media (max-height: 480px) {
+  .hud {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding: 8px 14px 2px;
+  }
+  .score {
+    font-size: 24px;
+  }
+  .score-sub {
+    display: none; /* ACC 与评级实时看意义不大，结算页有 */
+  }
+  .song-progress {
+    width: 110px;
+  }
+  .song-meta {
+    display: none;
+  }
+  .keypad-row {
+    height: 46px;
+  }
+  .keycap {
+    top: 4px;
+    width: 36px;
+    height: 36px;
+    margin-left: -18px;
+    font-size: 13px;
+  }
+  .corner {
+    display: none; /* 倍率/时间码给跑道让路 */
+  }
+  .stage-wrap {
+    min-height: 0; /* 380px 的保底在矮视口会把布局撑爆 */
+  }
+  .overlay {
+    gap: 8px;
+  }
+  .ready-stats {
+    margin: 0;
+  }
+  .rank {
+    font-size: 46px;
+  }
+  .breakdown {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    font-size: 11.5px;
   }
 }
 

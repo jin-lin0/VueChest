@@ -5,7 +5,7 @@
 // 既快又可重复。真实音频行为已由 clock.ts 的浏览器实测覆盖（漂移 0.03ms）。
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { Game, PREP_TIME, OUTRO_TAIL, type GameOptions } from '../game'
+import { Game, PREP_TIME, OUTRO_TAIL, type GameOptions, type GameCallbacks } from '../game'
 import { generateBeatmap, type Beatmap } from '../beatmap'
 
 /** 可手动推进的假 AudioContext */
@@ -632,6 +632,126 @@ describe('时间跳变防护（切后台不该凭空扣 combo）', () => {
     const s = game.stats
     expect(s.perfect + s.great + s.good + s.miss + s.skipped).toBe(map.notes.length)
     expect(s.resolved).toBe(map.notes.length)
+    game.dispose()
+  })
+})
+
+describe('手动暂停（与切后台自动暂停共用一条路径）', () => {
+  beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', () => 0)
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+    vi.stubGlobal('window', {
+      devicePixelRatio: 1,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+  })
+
+  function build(map: Beatmap, callbacks: GameCallbacks = {}) {
+    const audioCtx = new FakeAudioContext()
+    const canvas = fakeCanvas()
+    const game = new Game(
+      audioCtx as unknown as AudioContext,
+      { duration: map.duration } as unknown as AudioBuffer,
+      map,
+      canvas as unknown as HTMLCanvasElement,
+      callbacks,
+      { hitSoundVolume: 0, leadIn: 0 },
+    )
+    return { game, audioCtx }
+  }
+
+  /** 手工构造谱面：手动暂停的测试需要精确控制音符（尤其是长按） */
+  function holdMap(): Beatmap {
+    return {
+      songId: 's',
+      title: 't',
+      lanes: 4,
+      bpm: 120,
+      offset: 0,
+      duration: 8,
+      notes: [{ time: 1, lane: 0, duration: 2 }],
+      meta: {
+        quantizeDivision: 2,
+        gridPoints: 0,
+        activePoints: 0,
+        chordPoints: 0,
+        holdNotes: 1,
+        holdTotalSec: 2,
+        threshold: 0,
+        beatFillRate: 0,
+        maxGap: 0,
+      },
+    }
+  }
+
+  it('pause() 置 paused、回调 onPause', async () => {
+    const map = makeBeatmap()
+    const onPause = vi.fn()
+    const { game, audioCtx } = build(map, { onPause })
+    await game.start()
+    audioCtx.currentTime = 2
+    game.tick(2)
+
+    game.pause()
+    expect(game.paused).toBe(true)
+    expect(onPause).toHaveBeenCalledTimes(1)
+    game.dispose()
+  })
+
+  it('未开始 / 已暂停时 pause() 是空操作，不重复回调', async () => {
+    const map = makeBeatmap()
+    const onPause = vi.fn()
+    const { game } = build(map, { onPause })
+
+    game.pause() // 未 start
+    expect(onPause).not.toHaveBeenCalled()
+
+    await game.start()
+    game.pause()
+    game.pause() // 已暂停再按一次
+    expect(onPause).toHaveBeenCalledTimes(1)
+    game.dispose()
+  })
+
+  it('resume() 后回退重新起播并回调 onResume', async () => {
+    const map = makeBeatmap()
+    const onResume = vi.fn()
+    const { game, audioCtx } = build(map, { onResume })
+    await game.start()
+    audioCtx.currentTime = 3
+    game.tick(3)
+
+    game.pause()
+    game.resume()
+    expect(game.paused).toBe(false)
+    expect(onResume).toHaveBeenCalledTimes(1)
+    // 回退量 = RESUME_REWIND，从 3s 退到 1.5s
+    expect(onResume.mock.calls[0][0]).toBeCloseTo(3 - 1.5, 1)
+    game.dispose()
+  })
+
+  it('暂停期间进行中的长按被作废（不算成功也不算失败）', async () => {
+    const map = holdMap()
+    const { game, audioCtx } = build(map)
+    await game.start()
+    // 按住长按头部
+    audioCtx.currentTime = 1
+    game.tick(1)
+    game.tapLane(0)
+
+    game.pause()
+    // 暂停后松手不该被结算成 broken——长按已被 abandonHolds 作废
+    audioCtx.currentTime = 1.5
+    game.releaseLane(0)
+
+    // 播完整局
+    game.resume()
+    for (let t = 0; t <= map.duration + 3; t += 1 / 60) {
+      audioCtx.currentTime = t
+      game.tick(t)
+    }
+    expect(game.stats.holdBreaks).toBe(0)
     game.dispose()
   })
 })

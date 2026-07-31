@@ -224,6 +224,17 @@ export class Game {
   }
 
   /**
+   * 手动暂停（Esc / 暂停按钮）。
+   *
+   * 与切后台自动暂停走**同一条路径**：都要停时钟、清按键状态、
+   * 作废进行中的长按，恢复时都要回退重新给准备期。
+   * 两套暂停逻辑必然漂移，所以这里只是把内部通道开放出去。
+   */
+  pause() {
+    this.autoPause()
+  }
+
+  /**
    * 切后台时自动暂停。
    *
    * 只暂停音乐并停掉循环，不重置进度——回来后 resume() 会带一段
@@ -283,6 +294,16 @@ export class Game {
     this.hitSoundGain = null
   }
 
+  /**
+   * 让渲染器重新量取容器尺寸。
+   *
+   * window resize 之外还有容器自身变化的场景（横竖屏切换时布局重排、
+   * 全屏进出），PlayView 的 ResizeObserver 会调这里。
+   */
+  resize() {
+    this.renderer.resize()
+  }
+
   /** 供触屏/鼠标调用的击打入口 */
   tapLane(lane: number) {
     if (!this.running) return
@@ -304,6 +325,14 @@ export class Game {
 
   private onKeyDown(e: KeyboardEvent) {
     const key = e.key.toLowerCase()
+
+    // Esc 暂停：正在演奏时手边只有键盘，要求玩家腾出手去点按钮
+    // 等于强制 miss 几个音符
+    if (key === 'escape') {
+      this.pause()
+      return
+    }
+
     const lane = this.keys.indexOf(key)
     if (lane === -1) return
     e.preventDefault()
