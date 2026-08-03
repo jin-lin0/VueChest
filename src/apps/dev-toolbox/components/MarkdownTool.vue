@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { debounce } from '@/utils'
 import { CopyButton, Toast } from '@/components'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/lib/markdown'
 import TurndownService from 'turndown'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
@@ -30,8 +30,8 @@ const run = debounce(() => {
   }
   try {
     if (dir.value === 'md2html') {
-      const res = marked.parse(input.value)
-      output.value = typeof res === 'string' ? res : ''
+      // 走统一渲染管线（已含 DOMPurify 消毒），避免直接 marked.parse 绕过消毒
+      output.value = renderMarkdown(input.value)
     } else {
       output.value = turndown.turndown(input.value)
     }

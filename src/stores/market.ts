@@ -38,6 +38,11 @@ const INSTALLED_KEY = 'market_installed_apps'
 const BUNDLE_KEY_PREFIX = 'market-bundle-'
 
 const installedRoutePrefix = 'market-installed-'
+// 已安装市场应用统一收敛到受控命名空间下，路径由 appId 推导，
+// 绝不信任 bundle 自带的 def.route，杜绝其注册 /admin、/login 等核心路由实施劫持。
+function installedRoutePath(appId: number | string): string {
+  return `/market-installed/${appId}`
+}
 
 export const useMarketStore = defineStore('market', () => {
   const availableApps = ref<MarketAppItem[]>([])
@@ -70,8 +75,10 @@ export const useMarketStore = defineStore('market', () => {
     const routeName = `${installedRoutePrefix}${appId}`
     if (router.hasRoute(routeName)) return
 
+    // 关键安全修复：路径由 appId 推导并收束在 /market-installed/ 命名空间，
+    // 不使用 def.route，因此恶意/故障 bundle 无法注册 /admin、/login 等核心路由。
     router.addRoute({
-      path: def.route,
+      path: installedRoutePath(appId),
       name: routeName,
       // @ts-ignore - dynamic component reference
       component: () => Promise.resolve(def.component),
@@ -142,7 +149,8 @@ export const useMarketStore = defineStore('market', () => {
       id: appId,
       name: detail?.name || downloadRes.data.name,
       icon: detail?.icon || def.meta.icon,
-      route: def.route,
+      // route 指向受控命名空间路径，供 Home 等导航使用（见 navigateToApp）
+      route: installedRoutePath(appId),
       description: detail?.description || def.meta.description,
       version: detail?.version || downloadRes.data.version,
       installedAt: Date.now(),

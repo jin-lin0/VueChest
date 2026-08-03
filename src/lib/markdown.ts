@@ -1,4 +1,7 @@
 import { marked, type Tokens } from 'marked'
+// XSS 防护：marked 默认不净化 HTML，必须统一在出口消毒。
+// 所有 markdown 渲染都经 renderMarkdown，在此一处净化即可覆盖全站（AI 回复 / R2 知识库 / 题库 / docs）。
+import DOMPurify from 'dompurify'
 // 仅引入核心 + 按需注册语言，避免全量 1MB+ 的 highlight.js 打包
 import hljs from 'highlight.js/lib/core'
 import 'highlight.js/styles/github-dark.css'
@@ -81,7 +84,13 @@ export function renderMarkdown(
       return `<h${token.depth}${id}>${inner}</h${token.depth}>`
     }
   }
-  return marked.parse(md, { renderer }) as string
+  const rawHtml = marked.parse(md, { renderer }) as string
+  // 统一消毒：剥离 <script>/on* 事件处理器/javascript: 链接等，保留基础排版与代码高亮类。
+  const clean = DOMPurify.sanitize(rawHtml, {
+    USE_PROFILES: { html: true },
+    ADD_ATTR: ['target'],
+  })
+  return clean as string
 }
 
 /**
