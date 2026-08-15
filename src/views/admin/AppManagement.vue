@@ -200,6 +200,16 @@
         ></textarea>
         <p class="form-hint">沙箱默认禁止联网，仅此处声明的域名会被放行（支持 *. 通配子域）。</p>
       </div>
+      <div class="form-group">
+        <label class="toggle-label">
+          <span>官方应用</span>
+          <span class="toggle-hint">标记为官方出品，前端详情页与列表展示「官方」徽章</span>
+        </label>
+        <label class="switch">
+          <input v-model="editForm.isOfficial" type="checkbox" />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
 
       <template #footer>
         <button class="btn-secondary" @click="showEditModal_ = false">取消</button>
@@ -288,6 +298,7 @@ const editForm = reactive({
   category: '',
   readme: '',
   allowNetwork: '',
+  isOfficial: false,
 })
 const saving = ref(false)
 
@@ -421,6 +432,7 @@ function showEditModal(app: MarketAppItem) {
   editForm.category = app.category || ''
   editForm.readme = ''
   editForm.allowNetwork = (app.allowNetwork || []).join(', ')
+  editForm.isOfficial = !!app.isOfficial
   showEditModal_.value = true
 
   api
@@ -439,12 +451,13 @@ async function saveEdit() {
   if (!editingApp.value) return
   saving.value = true
   try {
-    const body: Record<string, string | string[]> = {
+    const body: Record<string, string | string[] | boolean> = {
       name: editForm.name,
       icon: editForm.icon,
       description: editForm.description,
       version: editForm.version || '1.0.0',
       category: editForm.category,
+      isOfficial: editForm.isOfficial,
     }
     if (editForm.readme) body.readme = editForm.readme
     const allowNetwork = editForm.allowNetwork
@@ -911,6 +924,65 @@ async function deleteApp(app: MarketAppItem) {
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+.toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.toggle-hint {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--border-color);
+  border-radius: 26px;
+  transition: background 0.2s;
+}
+
+.switch-slider::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.switch input:checked + .switch-slider {
+  background: var(--accent);
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(20px);
 }
 .form-input {
   width: 100%;

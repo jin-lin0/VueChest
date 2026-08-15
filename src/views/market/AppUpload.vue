@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
 import { extractMetaFromBundle } from '@/lib/app-loader'
+import { api } from '@/lib/request'
 import { CustomSelect, type SelectOption } from '@/components'
 import type { MarketAppMeta } from '@/lib/app-loader'
 
@@ -14,6 +15,7 @@ const selectedFile = ref<File | null>(null)
 const category = ref('工具')
 const readme = ref('')
 const networkDomains = ref('')
+const screenshotFiles = ref<{ file: File; url: string; uploading: boolean; error: string }[]>([])
 const uploading = ref(false)
 const error = ref('')
 const success = ref(false)
@@ -23,14 +25,30 @@ const parsedMeta = ref<MarketAppMeta | null>(null)
 const parseFailed = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
-const categoryOptions: SelectOption[] = [
-  { value: '工具', label: '工具' },
-  { value: '娱乐', label: '娱乐' },
-  { value: '开发', label: '开发' },
-  { value: '游戏', label: '游戏' },
-  { value: '生活', label: '生活' },
-  { value: '教育', label: '教育' },
-]
+const DEFAULT_CATEGORIES = ['工具', '娱乐', '开发', '游戏', '生活', '教育']
+const categoryOptions = ref<SelectOption[]>(
+  DEFAULT_CATEGORIES.map((c) => ({ value: c, label: c })),
+)
+
+// 分类消费后端枚举（GET /api/market/categories），兜底默认类目保证下拉始终可用
+onMounted(async () => {
+  try {
+    const data = await api.get<{ name: string }[]>('/api/market/categories', {
+      auth: false,
+    })
+    if (Array.isArray(data) && data.length) {
+      const names = data.map((c) => c.name).filter(Boolean)
+      const merged = [...names]
+      DEFAULT_CATEGORIES.forEach((c) => {
+        if (!merged.includes(c)) merged.push(c)
+      })
+      categoryOptions.value = merged.map((c) => ({ value: c, label: c }))
+      if (!merged.includes(category.value)) category.value = merged[0]
+    }
+  } catch {
+    /* 后端不可达时保留默认类目 */
+  }
+})
 
 function resetForm() {
   success.value = false
@@ -39,6 +57,8 @@ function resetForm() {
   parsedMeta.value = null
   parseFailed.value = false
   readme.value = ''
+  networkDomains.value = ''
+  screenshotFiles.value = []
   error.value = ''
 }
 
@@ -90,6 +110,58 @@ function handleDrop(e: DragEvent) {
   if (file) processFile(file)
 }
 
+const MAX_SCREENSHOTS = 3
+
+function handleScreenshotSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = Array.from(input.files || [])
+  input.value = ''
+  const remain = MAX_SCREENSHOTS - screenshotFiles.value.length
+  if (remain <= 0) {
+    error.value = `最多上传 ${MAX_SCREENSHOTS} 张截图`
+    return
+  }
+  const toUpload = files.slice(0, remain)
+  if (files.length > remain) {
+    error.value = `最多上传 ${MAX_SCREENSHOTS} 张截图，已忽略多余的 ${files.length - remain} 张`
+  }
+  toUpload.forEach((f) => uploadScreenshot(f))
+}
+
+async function uploadScreenshot(file: File) {
+  if (!file.type.startsWith('image/')) {
+    error.value = '截图仅支持图片文件'
+    return
+  }
+  const item = { file, url: '', uploading: true, error: '' }
+  screenshotFiles.value.push(item)
+  try {
+    const { data } = await api.post<{
+      data: { key: string; uploadUrl: string; publicUrl: string }
+    }>('/api/uploads/presign', {
+      kind: 'screenshot',
+      contentType: file.type,
+      size: file.size,
+      name: file.name.replace(/\.[^.]+$/, ''),
+    })
+    const uploaded = await fetch(data.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    })
+    if (!uploaded.ok) throw new Error('截图上传失败')
+    item.url = data.publicUrl
+  } catch (e) {
+    item.error = e instanceof Error ? e.message : '上传失败'
+  } finally {
+    item.uploading = false
+  }
+}
+
+function removeScreenshot(idx: number) {
+  screenshotFiles.value.splice(idx, 1)
+}
+
 function triggerFileInput() {
   if (!fileContent.value || parseFailed.value) {
     fileInput.value?.click()
@@ -109,6 +181,9 @@ async function handleSubmit() {
       .split(/[,\n\s]+/)
       .map((s) => s.trim())
       .filter(Boolean)
+    const screenshots = screenshotFiles.value
+      .filter((s) => s.url)
+      .map((s) => s.url)
     await market.uploadApp({
       name: parsedMeta.value.name,
       icon: parsedMeta.value.icon,
@@ -117,6 +192,7 @@ async function handleSubmit() {
       category: category.value,
       file: selectedFile.value,
       readme: readme.value,
+      screenshots,
       allowNetwork,
     })
     success.value = true
@@ -318,6 +394,45 @@ async function handleSubmit() {
               rows="3"
             ></textarea>
             <p class="form-hint">沙箱默认禁止联网，仅此处声明的域名会被放行（支持 *. 通配子域）。审核通过后生效。</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">应用截图 <span class="label-optional">选填，最多 3 张</span></label>
+            <div class="shot-grid">
+              <div
+                v-for="(shot, idx) in screenshotFiles"
+                :key="idx"
+                class="shot-thumb"
+                :class="{ 'shot-error': shot.error }"
+              >
+                <img v-if="shot.url" :src="shot.url" alt="截图预览" class="shot-img" />
+                <div v-else class="shot-loading">
+                  <span class="btn-spinner" />
+                </div>
+                <button
+                  type="button"
+                  class="shot-remove"
+                  :disabled="shot.uploading"
+                  @click="removeScreenshot(idx)"
+                >
+                  ✕
+                </button>
+                <p v-if="shot.error" class="shot-err-text">{{ shot.error }}</p>
+              </div>
+
+              <label class="shot-add">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  class="file-input-hidden"
+                  @change="handleScreenshotSelect"
+                />
+                <span class="shot-add-icon">+</span>
+                <span class="shot-add-text">添加截图</span>
+              </label>
+            </div>
+            <p class="form-hint">支持 JPG / PNG / WebP / GIF，单张 ≤ 5MB，可上传多张，审核通过后在应用详情页展示。</p>
           </div>
         </div>
 
@@ -610,6 +725,116 @@ async function handleSubmit() {
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+/* Screenshot uploader */
+.shot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.shot-thumb {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  flex-shrink: 0;
+}
+
+.shot-thumb.shot-error {
+  border-color: var(--danger);
+}
+
+.shot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.shot-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shot-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.shot-remove:hover:not(:disabled) {
+  background: var(--danger);
+}
+
+.shot-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shot-err-text {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 3px 4px;
+  font-size: 10px;
+  color: #fff;
+  background: var(--danger);
+  text-align: center;
+}
+
+.shot-add {
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  border: 2px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.shot-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.shot-add-icon {
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.shot-add-text {
+  font-size: 12px;
 }
 
 .form-textarea {

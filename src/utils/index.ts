@@ -45,3 +45,19 @@ export const downloadFile = (
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
+
+/**
+ * 字节数格式化为可读体积（B / KB / MB / GB）。
+ * 入参为字节数（后端 market_apps.size 即字节），0/undefined 返回 '-'。
+ */
+export const formatFileSize = (bytes?: number | null): string => {
+  if (!bytes || bytes <= 0) return '-'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let val = bytes
+  let i = 0
+  while (val >= 1024 && i < units.length - 1) {
+    val /= 1024
+    i++
+  }
+  return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}

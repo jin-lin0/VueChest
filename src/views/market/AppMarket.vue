@@ -3,11 +3,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
 import { Skeleton, EmptyState } from '@/components'
+import { formatFileSize } from '@/utils'
+import { api } from '@/lib/request'
 
 const router = useRouter()
 const market = useMarketStore()
 
-const categories = ['全部', '工具', '娱乐', '开发', '游戏', '生活', '教育']
+const DEFAULT_CATEGORIES = ['全部', '工具', '娱乐', '开发', '游戏', '生活', '教育']
+const categories = ref<string[]>(DEFAULT_CATEGORIES)
 const activeCategory = ref('全部')
 const searchQuery = ref('')
 const installingId = ref<number | null>(null)
@@ -69,8 +72,24 @@ async function handleInstall(appId: number) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadApps()
+  // 分类 tab 消费后端枚举（GET /api/market/categories），兜底默认类目
+  try {
+    const data = await api.get<{ name: string }[]>('/api/market/categories', {
+      auth: false,
+    })
+    if (Array.isArray(data) && data.length) {
+      const names = data.map((c) => c.name).filter(Boolean)
+      const merged = ['全部', ...names]
+      DEFAULT_CATEGORIES.slice(1).forEach((c) => {
+        if (!merged.includes(c)) merged.push(c)
+      })
+      categories.value = merged
+    }
+  } catch {
+    /* 保留默认类目 */
+  }
 })
 </script>
 
@@ -126,10 +145,14 @@ onMounted(() => {
         <div class="card-glow"></div>
         <div class="card-content">
           <div class="app-icon">{{ app.icon }}</div>
-          <h2 class="app-name">{{ app.name }}</h2>
+          <h2 class="app-name">
+            {{ app.name }}
+            <span v-if="app.isOfficial" class="official-badge">官方</span>
+          </h2>
           <p class="app-description">{{ app.description }}</p>
           <div class="app-meta">
             <span class="app-version">v{{ app.version }}</span>
+            <span class="app-size">{{ formatFileSize(app.size) }}</span>
             <span class="app-downloads">{{ app.downloads }} 次下载</span>
           </div>
           <button
@@ -397,6 +420,21 @@ onMounted(() => {
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.official-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  border-radius: 6px;
+  letter-spacing: 0.02em;
 }
 
 .app-description {
@@ -412,6 +450,10 @@ onMounted(() => {
   font-size: 0.78rem;
   color: var(--text-muted);
   margin-bottom: 0.8rem;
+}
+
+.app-size {
+  color: var(--text-secondary);
 }
 
 .install-btn {

@@ -181,6 +181,8 @@ export const useMarketStore = defineStore('market', () => {
     category: string
     file: File
     readme?: string
+    /** 应用截图 URL 列表（由上传表单逐张上传后得到） */
+    screenshots?: string[]
     /** 应用声明的联网域名白名单，经管理员审核后生效 */
     allowNetwork?: string[]
   }) {
@@ -209,6 +211,7 @@ export const useMarketStore = defineStore('market', () => {
       version: formData.version,
       category: formData.category,
       readme: formData.readme,
+      screenshots: formData.screenshots || [],
       allowNetwork: formData.allowNetwork || [],
       fileKey: upload.key,
       fileSize: formData.file.size,

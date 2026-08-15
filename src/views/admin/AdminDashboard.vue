@@ -73,6 +73,37 @@
         </div>
       </div>
     </div>
+
+    <div class="dashboard-card geo-card">
+      <div class="card-header">
+        <h3>🌍 访问地域分布</h3>
+      </div>
+      <div v-if="!geo" class="geo-empty">暂无访问数据</div>
+      <div v-else class="geo-grid">
+        <div class="geo-col">
+          <h4>国家 / 地区</h4>
+          <div v-for="c in geo.countries" :key="c.country" class="geo-row">
+            <span class="geo-name">{{ c.country }}</span>
+            <div class="geo-bar-wrap">
+              <div class="geo-bar" :style="{ width: geoBarWidth(c.total, geo.countries[0].total) }"></div>
+            </div>
+            <span class="geo-total">{{ c.total }}</span>
+          </div>
+          <p v-if="!geo.countries.length" class="geo-empty">暂无数据</p>
+        </div>
+        <div class="geo-col">
+          <h4>城市</h4>
+          <div v-for="c in geo.cities" :key="c.city" class="geo-row">
+            <span class="geo-name">{{ c.city }}</span>
+            <div class="geo-bar-wrap">
+              <div class="geo-bar" :style="{ width: geoBarWidth(c.total, geo.cities[0].total) }"></div>
+            </div>
+            <span class="geo-total">{{ c.total }}</span>
+          </div>
+          <p v-if="!geo.cities.length" class="geo-empty">暂无数据</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -152,6 +183,16 @@ function formatDateTime(dateStr?: string) {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
+const geo = ref<{
+  countries: { country: string; total: number }[]
+  cities: { city: string; total: number }[]
+} | null>(null)
+
+function geoBarWidth(total: number, max: number) {
+  if (!max || max <= 0) return '0%'
+  return `${Math.max(8, Math.round((total / max) * 100))}%`
+}
+
 function updateTime() {
   const now = new Date()
   currentTime.value = now.toLocaleTimeString('zh-CN', {
@@ -177,6 +218,10 @@ async function fetchStats() {
           todayNewQuestions: number
           todayVisits: number
           totalVisits: number
+          geo: {
+            countries: { country: string; total: number }[]
+            cities: { city: string; total: number }[]
+          }
         }
       }>('/api/stats/dashboard', { auth: true }),
       api.get<{ length: number }[]>('/api/questions/categories'),
@@ -188,6 +233,10 @@ async function fetchStats() {
       stats.value[3].value = String(sData.data.todayNewQuestions ?? '-')
       stats.value[4].value = String(sData.data.todayVisits ?? '-')
       stats.value[4].sub = `累计 ${sData.data.totalVisits ?? 0} 次`
+    }
+
+    if (sData?.data?.geo) {
+      geo.value = sData.data.geo
     }
 
     if (cData) {
@@ -423,5 +472,73 @@ onUnmounted(() => {
   color: var(--text-primary);
   font-weight: 500;
   font-size: 14px;
+}
+
+.geo-card {
+  margin-top: 4px;
+}
+
+.geo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+@media (max-width: 768px) {
+  .geo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.geo-col h4 {
+  margin: 0 0 14px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.geo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.geo-name {
+  width: 88px;
+  flex-shrink: 0;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geo-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-hover);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.geo-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.geo-total {
+  width: 48px;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.geo-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 0;
 }
 </style>

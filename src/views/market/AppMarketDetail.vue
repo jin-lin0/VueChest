@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
 import type { MarketAppItem } from '@/stores/market'
+import { formatFileSize } from '@/utils'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +14,22 @@ const loading = ref(true)
 const installing = ref(false)
 const uninstalling = ref(false)
 const error = ref('')
+
+const screenshots = computed(() => app.value?.screenshots || [])
+const activeShot = ref(0)
+
+function prevShot() {
+  if (screenshots.value.length === 0) return
+  activeShot.value =
+    (activeShot.value - 1 + screenshots.value.length) % screenshots.value.length
+}
+function nextShot() {
+  if (screenshots.value.length === 0) return
+  activeShot.value = (activeShot.value + 1) % screenshots.value.length
+}
+function setShot(i: number) {
+  activeShot.value = i
+}
 
 onMounted(async () => {
   const id = Number(route.params.id)
@@ -69,11 +86,15 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
       <div class="detail-hero">
         <div class="hero-icon">{{ app.icon }}</div>
         <div class="hero-info">
-          <h1>{{ app.name }}</h1>
+          <h1>
+            {{ app.name }}
+            <span v-if="app.isOfficial" class="official-badge">官方</span>
+          </h1>
           <div class="hero-meta">
             <span class="meta-item">v{{ app.version }}</span>
             <span class="meta-item">{{ app.author }}</span>
             <span class="meta-item">{{ app.category }}</span>
+            <span class="meta-item">{{ formatFileSize(app.size) }}</span>
             <span class="meta-item">{{ app.downloads }} 次下载</span>
           </div>
           <p class="hero-desc">{{ app.description }}</p>
@@ -96,6 +117,33 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
       <div v-if="app.readme" class="detail-section">
         <h2>说明</h2>
         <div class="readme-content">{{ app.readme }}</div>
+      </div>
+
+      <div v-if="screenshots.length" class="detail-section">
+        <h2>截图</h2>
+        <div class="shot-viewer">
+          <button class="shot-nav prev" :disabled="screenshots.length <= 1" @click="prevShot">
+            ‹
+          </button>
+          <img
+            :src="screenshots[activeShot]"
+            :alt="`${app.name} 截图 ${activeShot + 1}`"
+            class="shot-main"
+          />
+          <button class="shot-nav next" :disabled="screenshots.length <= 1" @click="nextShot">
+            ›
+          </button>
+        </div>
+        <div v-if="screenshots.length > 1" class="shot-thumbs">
+          <img
+            v-for="(s, i) in screenshots"
+            :key="i"
+            :src="s"
+            class="shot-thumb"
+            :class="{ active: i === activeShot }"
+            @click="setShot(i)"
+          />
+        </div>
       </div>
     </template>
   </div>
@@ -262,6 +310,89 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
   color: var(--text-secondary);
   line-height: 1.8;
   white-space: pre-wrap;
+}
+
+.official-badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 0.6rem;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+/* Screenshot carousel */
+.shot-viewer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.shot-main {
+  max-width: 100%;
+  max-height: 420px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  object-fit: contain;
+  background: var(--bg-subtle);
+}
+
+.shot-nav {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shot-nav:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.shot-nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.shot-thumbs {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.shot-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid transparent;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.shot-thumb:hover {
+  opacity: 1;
+}
+
+.shot-thumb.active {
+  opacity: 1;
+  border-color: var(--accent);
 }
 
 @media (max-width: 768px) {
