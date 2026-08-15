@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { exportAllData, importAllData, getStorage, setStorage } from '@/lib/storage'
+import { useConfirm } from '@/composables/useConfirm'
 import { APP_MODULES, STORAGE_KEYS } from '@/config'
 import type { AppModule } from '@/config'
 import { useMarketStore } from '@/stores/market'
@@ -45,7 +46,10 @@ const isDragging = ref(false)
 const showBackdoorModal = ref(false)
 const importText = ref('')
 const importStatus = ref('')
-const lastClickTime = ref(0)
+const logoClickTimes: number[] = []
+const LOGO_OPEN_CLICKS = 7
+const LOGO_CLICK_WINDOW = 3000
+const { confirm } = useConfirm()
 
 const { nearestSpecialDay } = useSpecialDays()
 
@@ -99,16 +103,18 @@ const saveOrder = () => {
   setStorage(STORAGE_KEYS.HOME_APP_ORDER, order)
 }
 
-const handleLogoClick = (e: MouseEvent) => {
-  if (!e.metaKey && !e.ctrlKey) return
-
+const handleLogoClick = () => {
   const now = Date.now()
-  if (now - lastClickTime.value < 400) {
+  logoClickTimes.push(now)
+  while (logoClickTimes.length && now - logoClickTimes[0] > LOGO_CLICK_WINDOW) {
+    logoClickTimes.shift()
+  }
+  if (logoClickTimes.length >= LOGO_OPEN_CLICKS) {
+    logoClickTimes.length = 0
     showBackdoorModal.value = true
     importText.value = ''
     importStatus.value = ''
   }
-  lastClickTime.value = now
 }
 
 const handleExport = async () => {
@@ -127,8 +133,12 @@ const handleImport = async () => {
   importStatus.value = ''
   try {
     const data = JSON.parse(importText.value)
-    if (typeof data !== 'object' || data === null) {
-      importStatus.value = '数据格式错误：应为 JSON 对象'
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+      importStatus.value = '数据格式错误：应为 JSON 对象（非数组）'
+      return
+    }
+    if (Object.keys(data).length === 0) {
+      importStatus.value = '不能导入空对象：空数据会清空所有本地数据，如需重置请使用「重置应用」'
       return
     }
     await importAllData(data as Record<string, unknown>)
@@ -139,6 +149,14 @@ const handleImport = async () => {
   } catch {
     importStatus.value = 'JSON 解析失败，请检查格式'
   }
+}
+
+const handleReset = async () => {
+  const ok = await confirm('确定要重置应用吗？这将清空所有本地数据，且不可恢复。')
+  if (!ok) return
+  await importAllData({})
+  importStatus.value = '已重置，刷新页面后生效'
+  setTimeout(() => window.location.reload(), 1000)
 }
 
 const handleFileImport = (e: Event) => {
@@ -446,14 +464,6 @@ const navigateToApp = (route: string) => {
       @close="showBackdoorModal = false"
     >
       <div class="backdoor-section">
-        <h4>管理后台</h4>
-        <p class="backdoor-desc">进入面试题库管理后台</p>
-        <button class="backdoor-btn admin-btn" @click="router.push('/admin')">
-          进入管理后台 →
-        </button>
-      </div>
-      <div class="backdoor-divider"></div>
-      <div class="backdoor-section">
         <h4>导出数据</h4>
         <p class="backdoor-desc">将所有应用数据导出为 JSON 文件</p>
         <button class="backdoor-btn export-btn" @click="handleExport">导出全部数据</button>
@@ -488,6 +498,12 @@ const navigateToApp = (route: string) => {
         >
           {{ importStatus }}
         </p>
+      </div>
+      <div class="backdoor-divider"></div>
+      <div class="backdoor-section">
+        <h4>重置应用</h4>
+        <p class="backdoor-desc">清空所有本地数据（应用配置、缓存等），此操作不可恢复</p>
+        <button class="backdoor-btn reset-btn" @click="handleReset">重置应用</button>
       </div>
     </Modal>
   </div>
@@ -1449,6 +1465,17 @@ const navigateToApp = (route: string) => {
 .import-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+.reset-btn {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+  width: 100%;
+}
+
+.reset-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .backdoor-textarea {

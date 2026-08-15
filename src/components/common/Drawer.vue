@@ -107,7 +107,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .vc-drawer-overlay {
   position: fixed;
   inset: 0;
-  z-index: var(--vc-drawer-z, 1000);
+  z-index: var(--vc-drawer-z, var(--z-drawer, 1000));
   background: var(--vc-drawer-overlay, rgba(0, 0, 0, 0.45));
 }
 .vc-drawer {

@@ -330,7 +330,7 @@ onUnmounted(() => {
   box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.12),
     0 2px 10px rgba(0, 0, 0, 0.08);
-  z-index: 2000;
+  z-index: var(--z-custom-select, 2000);
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.06);
 }

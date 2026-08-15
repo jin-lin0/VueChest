@@ -100,6 +100,26 @@
   --scrollbar-track: transparent;
   --scrollbar-thumb: rgba(15, 23, 42, 0.2);
   --scrollbar-thumb-hover: rgba(15, 23, 42, 0.34);
+
+  /* ---------- 层级（z-index）约定（全局唯一出处，仅此一处定义）----------
+     全局顶层覆盖件的稳定分层。任何弹窗/抽屉/下拉自定义 z-index 都不得越过 --z-confirm。
+     修改变量（修改层级只动这里）：
+       --z-drawer        1000  抽屉 overlay（调用处可用 --vc-drawer-z 覆盖）
+       --z-modal         1100  模态 overlay（调用处可用 --vc-modal-z 覆盖）
+       --z-custom-select 2000  下拉浮层（已 Teleport 到 body）
+       --z-confirm       3000  全局单例确认框 ConfirmDialog（盖在任意 Modal/Drawer 之上）
+       --z-toast         9999  Toast / 路由加载条（非阻塞通知，最高）
+     硬规则：全局确认框独占 --z-confirm(3000) 层。
+       ⚠️ 切勿把 --vc-modal-z / --vc-drawer-z / 下拉浮层设到 ≥3000，否则确认框被压后。
+           事故：数据管理 Modal 在 Home.vue 设 --vc-modal-z:2000 与确认框旧值 2000 打平，
+           Modal 走 Teleport to="body" 后于 #app 子树挂载 → DOM 顺序取胜 → 确认框被盖。
+           现 ConfirmDialog 固定 3000、Modal/Drawer/CustomSelect 改读下方 --z-* 变量，
+           此约定防止复发。 */
+  --z-drawer: 1000;
+  --z-modal: 1100;
+  --z-custom-select: 2000;
+  --z-confirm: 3000;
+  --z-toast: 9999;
 }
 
 /* 深色：值对齐 AdminLayout 既有 .dark-mode 设定，

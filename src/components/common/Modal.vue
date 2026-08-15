@@ -103,7 +103,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 .vc-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: var(--vc-modal-z, 1100);
+  z-index: var(--vc-modal-z, var(--z-modal, 1100));
   display: flex;
   align-items: center;
   justify-content: center;
