@@ -1,4 +1,4 @@
-import { API_BASE } from '@/lib/request'
+import { API_BASE, getAuthToken } from '@/lib/request'
 
 export interface ChatStreamMessage {
   role: 'user' | 'assistant' | 'system'
@@ -28,9 +28,13 @@ export function useChatStream() {
       temperature = DEFAULT_TEMPERATURE,
     } = params
 
+    const token = getAuthToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
     const response = await fetch(`${API_BASE}/api/ai-chat/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ conversationId, provider, model, messages, maxTokens, temperature }),
     })
 

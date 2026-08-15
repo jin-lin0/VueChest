@@ -1,10 +1,8 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getStorage, setStorage, removeStorage } from '@/lib/storage'
-import { loadMarketApp } from '@/lib/app-loader'
 import { api } from '@/lib/request'
-import router from '@/router'
-import type { MarketAppDefinition } from '@/lib/app-loader'
+import { useAuthStore } from '@/stores/auth'
 
 export interface MarketAppItem {
   id: number
@@ -20,6 +18,8 @@ export interface MarketAppItem {
   isOfficial: boolean
   downloads: number
   status?: string
+  /** 允许访问的网络域名白名单（沙箱联网能力用，由上传/审核时声明） */
+  allowNetwork?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -32,13 +32,13 @@ export interface InstalledApp {
   description: string
   version: string
   installedAt: number
+  /** 允许访问的网络域名白名单，随详情写入，供沙箱 caps 读取 */
+  allowNetwork?: string[]
 }
 
 const INSTALLED_KEY = 'market_installed_apps'
 const BUNDLE_KEY_PREFIX = 'market-bundle-'
 
-const installedRoutePrefix = 'market-installed-'
-// 已安装市场应用统一收敛到受控命名空间下，路径由 appId 推导，
 // 绝不信任 bundle 自带的 def.route，杜绝其注册 /admin、/login 等核心路由实施劫持。
 function installedRoutePath(appId: number | string): string {
   return `/market-installed/${appId}`
@@ -53,36 +53,6 @@ export const useMarketStore = defineStore('market', () => {
   function initInstalledApps() {
     const saved = getStorage<InstalledApp[]>(INSTALLED_KEY, [])
     installedApps.value = saved || []
-    for (const app of installedApps.value) {
-      restoreApp(app)
-    }
-  }
-
-  function restoreApp(app: InstalledApp) {
-    const code = getStorage<string>(`${BUNDLE_KEY_PREFIX}${app.id}`, '')
-    if (!code) return
-
-    const def = loadMarketApp(code)
-    if (!def) {
-      console.warn(`Failed to restore app: ${app.name}`)
-      return
-    }
-
-    registerRoute(app.id, def)
-  }
-
-  function registerRoute(appId: number | string, def: MarketAppDefinition) {
-    const routeName = `${installedRoutePrefix}${appId}`
-    if (router.hasRoute(routeName)) return
-
-    // 关键安全修复：路径由 appId 推导并收束在 /market-installed/ 命名空间，
-    // 不使用 def.route，因此恶意/故障 bundle 无法注册 /admin、/login 等核心路由。
-    router.addRoute({
-      path: installedRoutePath(appId),
-      name: routeName,
-      // @ts-ignore - dynamic component reference
-      component: () => Promise.resolve(def.component),
-    })
   }
 
   async function fetchApps(params?: {
@@ -136,25 +106,47 @@ export const useMarketStore = defineStore('market', () => {
     const code = await fetch(downloadRes.data.fileUrl).then((res) => res.text())
     if (!code) return null
 
-    // 2. 缓存 bundle 到 IndexedDB
+    // 2. 缓存 bundle 到 IndexedDB（仅在沙箱 iframe 内执行）
     setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, code)
 
-    // 3. 解析 + 注册路由
-    const def = loadMarketApp(code)
-    if (!def) return null
-    registerRoute(appId, def)
-
-    // 4. 构建 InstalledApp 记录
+    // 3. 构建 InstalledApp 记录（元信息来自服务端，不再依赖父进程解析 bundle）
     return {
       id: appId,
       name: detail?.name || downloadRes.data.name,
-      icon: detail?.icon || def.meta.icon,
+      icon: detail?.icon || '🧩',
       // route 指向受控命名空间路径，供 Home 等导航使用（见 navigateToApp）
       route: installedRoutePath(appId),
-      description: detail?.description || def.meta.description,
+      description: detail?.description || '',
       version: detail?.version || downloadRes.data.version,
+      allowNetwork: detail?.allowNetwork || [],
       installedAt: Date.now(),
     }
+  }
+
+  // 确保指定 app 的 bundle 已缓存到本地；没有则先从服务端下载并缓存。
+  // 供 MarketAppSandbox 在本地无缓存时（如跨设备 / 清过 storage）按需拉取，
+  // 使 /market-installed/:id 深度链接始终可用。
+  async function ensureBundle(appId: number): Promise<string | null> {
+    const cached = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`, '')
+    if (cached) return cached
+    try {
+      const downloadRes = await api.get<{
+        data: { fileUrl: string }
+      }>(`/api/market/apps/${appId}/download`, { auth: false })
+      const code = await fetch(downloadRes.data.fileUrl).then((r) => r.text())
+      if (!code) return null
+      setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, code)
+      return code
+    } catch {
+      return null
+    }
+  }
+
+  // 安装/卸载会改变本地已安装列表，同步刷新 auth_user_info 里的 installedApps，
+  // 否则下次启动 syncFromServer 会以陈旧的 auth_user_info 为准把已卸载应用拉回来。
+  function syncAuthInstalled() {
+    const auth = useAuthStore()
+    auth.setInstalledApps(installedApps.value.map((a) => a.id))
   }
 
   async function installApp(appId: number) {
@@ -165,15 +157,11 @@ export const useMarketStore = defineStore('market', () => {
 
     installedApps.value.push(entry)
     setStorage(INSTALLED_KEY, installedApps.value)
+    syncAuthInstalled()
     syncToServer()
   }
 
   async function uninstallApp(appId: number) {
-    const routeName = `${installedRoutePrefix}${appId}`
-    if (router.hasRoute(routeName)) {
-      router.removeRoute(routeName)
-    }
-
     const idx = installedApps.value.findIndex((a) => a.id === appId)
     if (idx !== -1) {
       installedApps.value.splice(idx, 1)
@@ -181,6 +169,7 @@ export const useMarketStore = defineStore('market', () => {
     }
 
     removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
+    syncAuthInstalled()
     syncToServer()
   }
 
@@ -192,6 +181,8 @@ export const useMarketStore = defineStore('market', () => {
     category: string
     file: File
     readme?: string
+    /** 应用声明的联网域名白名单，经管理员审核后生效 */
+    allowNetwork?: string[]
   }) {
     const { data: upload } = await api.post<{
       data: { key: string; uploadUrl: string }
@@ -218,6 +209,7 @@ export const useMarketStore = defineStore('market', () => {
       version: formData.version,
       category: formData.category,
       readme: formData.readme,
+      allowNetwork: formData.allowNetwork || [],
       fileKey: upload.key,
       fileSize: formData.file.size,
     })
@@ -283,7 +275,26 @@ export const useMarketStore = defineStore('market', () => {
 
     installedApps.value.push(...newApps)
     setStorage(INSTALLED_KEY, installedApps.value)
+    syncAuthInstalled()
     syncToServer()
+  }
+
+  // 跨设备同步：以服务端实时列表（GET /api/auth/installed-apps）为唯一真源，
+  // 补齐本地缺失 / 推送本地独有，不再信任 auth_user_info 里的 installedApps 缓存，
+  // 从根上避免因缓存陈旧导致已卸载应用被反复拉回。失败则跳过，不阻塞启动 / 登录。
+  async function syncWithServer() {
+    const auth = useAuthStore()
+    if (!auth.token || !auth.user) return
+    try {
+      const { data: serverIds } = await api.get<{ data: number[] }>('/api/auth/installed-apps')
+      const localIds = installedApps.value.map((a) => a.id)
+      const hasMissingOnLocal = serverIds.some((id) => !localIds.includes(id))
+      const hasMissingOnServer = localIds.some((id) => !serverIds.includes(id))
+      if (hasMissingOnLocal) await syncFromServer(serverIds)
+      if (hasMissingOnServer) await syncToServer()
+    } catch {
+      // 拉取失败则跳过跨设备同步
+    }
   }
 
   return {
@@ -295,10 +306,12 @@ export const useMarketStore = defineStore('market', () => {
     fetchAppDetail,
     installApp,
     uninstallApp,
+    ensureBundle,
     uploadApp,
     isInstalled,
     refreshInstalledMeta,
     syncFromServer,
     syncToServer,
+    syncWithServer,
   }
 })

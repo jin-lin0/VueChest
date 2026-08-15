@@ -26,7 +26,7 @@ const router = createRouter({
       path: '/ai-chat',
       name: 'ai-chat',
       component: () => import('../apps/ai-chat/App.vue'),
-      meta: { title: 'AI 聊天' },
+      meta: { title: 'AI 聊天', requiresAuth: true },
     },
     {
       path: '/stock',
@@ -81,6 +81,16 @@ const router = createRouter({
       name: 'market-upload',
       component: () => import('../views/market/AppUpload.vue'),
       meta: { title: '上传应用', requiresAuth: true },
+    },
+    {
+      // 已安装/可运行的市场应用沙箱页：静态路由，确保直接访问/刷新/深度链接始终可解析。
+      // 组件固定为沙箱容器，bundle 仅在 iframe（sandbox）内执行，路径由 appId 推导，
+      // 杜绝 bundle 注册 /admin、/login 等核心路由实施劫持。
+      path: '/market-installed/:id(\\d+)',
+      name: 'market-installed',
+      component: () => import('@/components/MarketAppSandbox.vue'),
+      props: (route) => ({ appId: Number(route.params.id) }),
+      meta: { title: '应用' },
     },
     {
       path: '/snake',

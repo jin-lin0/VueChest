@@ -37,6 +37,6 @@ export async function fetchConversation(id: string): Promise<{
 }> {
   const res = await api.get<{
     data: { messages: ChatMessage[]; provider: string | null; model: string | null; title: string }
-  }>(`/api/ai-chat/conversations/${id}/messages`, { auth: false })
+  }>(`/api/ai-chat/conversations/${id}/messages`)
   return res.data
 }

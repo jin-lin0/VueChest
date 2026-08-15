@@ -58,29 +58,35 @@ export interface MarketAppDefinition {
 
 VueChest 在运行时会按如下方式加载应用包：
 
-1. 从 R2 下载应用包的文本。
-2. 将代码作为 `<script>` 注入 `document.head` 执行，从而暴露全局 `window.MarketApp`。
-3. 读取 `window.MarketApp`，取 `exports.default || exports`。
-4. 校验其是否同时包含 `component && route && meta`。
+1. 从 R2 下载应用包的文本，缓存到本地存储。
+2. 安装 / 运行阶段，bundle 被送入 **iframe 沙箱**（`sandbox="allow-scripts"`）内执行，暴露全局 `window.MarketApp`。
+3. 沙箱内读取 `window.MarketApp`，取 `exports.default || exports`，校验其是否同时包含 `component && route && meta`，然后挂载组件。
+4. 宿主**不在主页面直接执行 bundle**（仅上传解析阶段会在上传者自己的页面里执行一次以提取 `meta`）。
 
-- **上传解析阶段**用的是 `extractMetaFromBundle(code)`：只要能取到 `meta` 即视为解析成功、回填应用信息；取不到则返回 `null`，页面提示"无法解析应用包"。
-- **安装 / 恢复阶段**用的是 `loadMarketApp(code)`：若缺少 `component / route / meta` 中任一项，会 `console.warn('Invalid market app definition')` 并**返回 `null`**（**不是抛出异常**），该应用将无法注册路由。
-
-> 提示：也就是说，你的 IIFE 包必须把内容挂到 `window.MarketApp`，且 `MarketApp.default` 必须包含前面约定的三个字段。
+> 提示：你的 IIFE 包必须把内容挂到 `window.MarketApp`，且 `MarketApp.default` 必须包含前面约定的三个字段。宿主侧路由已收敛到 `/market-installed/:id`，不再使用 bundle 自带的 `route`。
 
 ## 5. 运行时桥（Runtime Bridge）
 
 宿主通过 `window.__VueChest__` 向市场应用暴露运行环境。核心字段如下（完整清单、时序与示例见 [市场应用可用能力](./market-capabilities.md)）：
 
 - `window.__VueChest__.Vue` —— 宿主的 Vue（务必复用，勿自带）
-- `window.__VueChest__.VueRouter` —— 宿主的 vue-router 模块
+- `window.__VueChest__.VueRouter` —— 沙箱内**不提供 / 恒为 `undefined`**。市场应用运行在封闭 iframe 内，**没有内部路由能力**：应用只能渲染一个 `component`，页内跳转请用条件渲染 / 状态切换，不要依赖 vue-router（`useRouter` / `<router-view>` 不可用）。
 - `window.__VueChest__.Pinia` —— 宿主的 Pinia 模块（含 `defineStore`，跨应用共享状态）
-- `window.__VueChest__.storage` —— 本地存储能力 `{ getStorage, setStorage }`
+- `window.__VueChest__.storage` —— 本地存储能力 `{ getStorage, setStorage }`（沙箱内按应用命名空间隔离）
 - `window.__VueChest__.theme` —— 主题对象（`AppTheme`）
 - 另外还再导出了常用 Vue API：`defineComponent` / `defineAsyncComponent` / `h` / `ref` / `computed` / `reactive` / `watch` / `onMounted` / `onUnmounted`
 - `window.__APP_THEME__` —— 供市场 app 跟随深色模式（与 `__VueChest__.theme` 同一实例）
 
 > 时序提醒：`Pinia` 与 `storage` 在宿主 `initStorage()` 完成后才追加，其余字段首屏即就绪。市场应用通常在宿主启动后才加载，一般无需担心；如需极早访问请判空。
+
+### 5.1 联网能力（fetch 代理）
+
+沙箱为 opaque origin，应用**无法直接 fetch**（会被 CORS 拦截）。所有 `fetch` 会被重写为经过宿主白名单代理：
+
+- 命中 `allowNetwork` 白名单（如 `api.example.com`、`*.example.com`）的域名才会放行，其余一律拒绝；
+- 超时 15s，失败返回标准 `Response`（带错误状态码 / 异常）。
+
+**白名单不由 bundle 自声明**，而是在你**上传应用时填写「联网域名白名单」**、经管理员审核后写入服务端 `market_apps.allowNetwork`。需要联网的应用，请提前在上传表单里把要访问的接口域名都列清楚，否则运行时 fetch 会失败。
 
 ## 6. 最小可运行示例
 

@@ -97,6 +97,9 @@ initStorage().then(async () => {
   // 系统 app（Vue 组件）可 inject('appTheme') 自愿消费主题
   app.provide('appTheme', appTheme)
 
+  const marketStore = useMarketStore()
+  marketStore.initInstalledApps()
+
   app.mount('#app')
 
   // 定位不阻塞首屏，完成后会自动用于后续请求。
@@ -106,23 +109,6 @@ initStorage().then(async () => {
 
   const authStore = useAuthStore()
   await authStore.initAuth()
-
-  const marketStore = useMarketStore()
-  // 先从本地 IndexedDB 恢复已安装的 App
-  marketStore.initInstalledApps()
-  // 再从服务端拉取缺失的 App（跨设备同步）
-  // 同时处理：本地有但服务端没记录的情况（未登录时安装的）
-  if (authStore.token && authStore.user) {
-    const serverIds = authStore.user.installedApps || []
-    const localIds = marketStore.installedApps.map((a) => a.id)
-    const hasMissingOnLocal = serverIds.some((id) => !localIds.includes(id))
-    const hasMissingOnServer = localIds.some((id) => !serverIds.includes(id))
-
-    if (hasMissingOnLocal) {
-      await marketStore.syncFromServer(serverIds)
-    }
-    if (hasMissingOnServer) {
-      await marketStore.syncToServer()
-    }
-  }
+  // 跨设备同步：以服务端实时列表为唯一真源对账，不再信任 auth_user_info 缓存里的 installedApps
+  await marketStore.syncWithServer()
 })

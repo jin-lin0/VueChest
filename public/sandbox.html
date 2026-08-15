@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VueChest 沙箱应用</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #app { height: 100%; }
+    #sandbox-error {
+      display: none; position: fixed; inset: 0; box-sizing: border-box;
+      padding: 32px; background: #fff; color: #dc2626;
+      font: 14px/1.6 -apple-system, "PingFang SC", sans-serif;
+      white-space: pre-wrap; overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="sandbox-error">&nbsp;</div>
+
+  <!-- Vue / Pinia 全局构建：由宿主在构建时复制到 public/vendor -->
+  <script src="./vendor/vue.global.prod.js"></script>
+  <script src="./vendor/pinia.iife.prod.js"></script>
+
+  <script>
+    (function () {
+      'use strict';
+      var Vue = window.Vue;
+      var Pinia = window.Pinia;
+
+      function fail(message) {
+        var el = document.getElementById('sandbox-error');
+        el.style.display = 'block';
+        el.textContent = '应用加载失败：\n' + message;
+      }
+
+      if (!Vue || !Vue.createApp) {
+        fail('沙箱引导失败：Vue 全局构建未加载。');
+        return;
+      }
+
+      // ---- 运行时桥状态 ----
+      var storageCache = Object.create(null); // 命名空间内存储快照（读同步）
+      var isDark = false;
+      var themeSubscribers = new Set();
+      var pending = Object.create(null); // 请求 id -> {resolve, reject, isFetch}
+      var seq = 0;
+      // 宿主 origin 在 bootstrap 时注入；ready 消息先于 bootstrap 发出，用 '*'；
+      // 之后所有回包（capability/fetch 响应）都钉死父站 origin，避免被无关页面接收。
+      var hostOrigin = '*';
+
+      function post(msg) {
+        try { parent.postMessage(msg, hostOrigin); } catch (e) { /* ignore */ }
+      }
+
+      // 沙箱为 opaque origin，iframe 自身无有意义的历史记录；
+      // 将 history.back / history.go(-1) 委托给父站，使应用的「返回」按钮能回到上一页。
+      window.history.back = function () { post({ kind: 'history-back' }); };
+      var _historyGo = window.history.go ? window.history.go.bind(window.history) : function () {};
+      window.history.go = function (delta) {
+        if (delta < 0) post({ kind: 'history-back' });
+        else _historyGo(delta);
+      };
+
+      function requestCapability(name, args) {
+        return new Promise(function (resolve, reject) {
+          var id = 'c' + (++seq);
+          pending[id] = { resolve: resolve, reject: reject };
+          post({ kind: 'capability', id: id, name: name, args: args });
+        });
+      }
+
+      // ---- 主题桥（宿主推送，本地缓存 + 订阅）----
+      var appTheme = {
+        get isDark() { return isDark; },
+        onChange: function (cb) {
+          themeSubscribers.add(cb);
+          return function () { themeSubscribers.delete(cb); };
+        }
+      };
+
+      // ---- 运行时桥 __VueChest__（能力受限，均经 postMessage 白名单代理）----
+      window.__VueChest__ = {
+        Vue: Vue,
+        VueRouter: undefined,
+        Pinia: Pinia,
+        defineComponent: Vue.defineComponent,
+        defineAsyncComponent: Vue.defineAsyncComponent,
+        h: Vue.h,
+        ref: Vue.ref,
+        computed: Vue.computed,
+        reactive: Vue.reactive,
+        watch: Vue.watch,
+        onMounted: Vue.onMounted,
+        onUnmounted: Vue.onUnmounted,
+        theme: appTheme,
+        storage: {
+          // 读操作同步（基于引导时注入的快照）；写操作异步落盘到宿主
+          getStorage: function (key, def) {
+            if (key in storageCache) return storageCache[key];
+            return def !== undefined ? def : null;
+          },
+          setStorage: function (key, value) {
+            storageCache[key] = value;
+            requestCapability('storage.set', [key, JSON.parse(JSON.stringify(value))]);
+          },
+          removeStorage: function (key) {
+            delete storageCache[key];
+            requestCapability('storage.remove', [key]);
+          }
+        }
+      };
+      window.__APP_THEME__ = appTheme;
+
+      // ---- 网络代理：沙箱为 opaque origin，直接 fetch 会被 CORS 拦截，
+      // 统一走宿主白名单代理，超出白名单的域名一律拒绝 ----
+      window.fetch = function (input, init) {
+        var url = typeof input === 'string' ? input : (input && input.url) || String(input);
+        return new Promise(function (resolve, reject) {
+          var id = 'f' + (++seq);
+          pending[id] = { resolve: resolve, reject: reject, isFetch: true };
+          post({ kind: 'fetch', id: id, url: url, options: init || {} });
+        });
+      };
+
+      // ---- 注入并执行应用包 ----
+      function runBundle(code) {
+        var script = document.createElement('script');
+        script.textContent = code;
+        document.head.appendChild(script);
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      function mountApp() {
+        var raw = window.MarketApp;
+        var def = raw ? (raw.default || raw) : null;
+        if (!def) { fail('应用包无效：未导出 MarketApp 定义'); return; }
+        if (!def.component) { fail('应用包无效：缺少 component 入口'); return; }
+        var app = Vue.createApp(def.component);
+        if (Pinia && Pinia.createPinia) app.use(Pinia.createPinia());
+        app.mount('#app');
+      }
+
+      // ---- 消息入口：接收宿主的 bootstrap / theme / capability-response ----
+      window.addEventListener('message', function (ev) {
+        var msg = ev.data;
+        if (!msg || typeof msg !== 'object' || !msg.kind) return;
+        switch (msg.kind) {
+          case 'bootstrap':
+            if (typeof msg.parentOrigin === 'string') hostOrigin = msg.parentOrigin;
+            storageCache = msg.storage || {};
+            isDark = !!msg.theme;
+            try {
+              runBundle(msg.bundle);
+              mountApp();
+            } catch (e) {
+              fail(e && e.message ? e.message : String(e));
+            }
+            break;
+          case 'theme':
+            isDark = !!msg.isDark;
+            themeSubscribers.forEach(function (cb) {
+              try { cb(isDark); } catch (e) { /* ignore */ }
+            });
+            break;
+          case 'capability-response': {
+            var p = pending[msg.id];
+            if (!p) break;
+            delete pending[msg.id];
+            if (msg.error) { p.reject(new Error(msg.error)); break; }
+            if (p.isFetch) {
+              var headers = new Headers(msg.headers || {});
+              var body = msg.body ? new Uint8Array(msg.body) : undefined;
+              p.resolve(new Response(body, {
+                status: msg.status || 200,
+                statusText: msg.statusText || '',
+                headers: headers
+              }));
+            } else {
+              p.resolve(msg.value);
+            }
+            break;
+          }
+        }
+      });
+
+      // 通知宿主沙箱已就绪，等待 bootstrap
+      post({ kind: 'ready' });
+    })();
+  </script>
+</body>
+</html>

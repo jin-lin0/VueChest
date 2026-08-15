@@ -190,6 +190,16 @@
           placeholder="应用说明文档 (Markdown)"
         ></textarea>
       </div>
+      <div class="form-group">
+        <label>联网域名白名单 <span class="label-optional">选填</span></label>
+        <textarea
+          v-model="editForm.allowNetwork"
+          class="form-textarea"
+          rows="2"
+          placeholder="应用需要访问的接口域名，逗号或换行分隔，如：api.example.com, *.example.com"
+        ></textarea>
+        <p class="form-hint">沙箱默认禁止联网，仅此处声明的域名会被放行（支持 *. 通配子域）。</p>
+      </div>
 
       <template #footer>
         <button class="btn-secondary" @click="showEditModal_ = false">取消</button>
@@ -227,6 +237,8 @@ interface MarketAppItem {
   downloads: number
   isOfficial: boolean
   status: string
+  /** 允许访问的网络域名白名单（沙箱联网能力用） */
+  allowNetwork?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -275,6 +287,7 @@ const editForm = reactive({
   version: '',
   category: '',
   readme: '',
+  allowNetwork: '',
 })
 const saving = ref(false)
 
@@ -407,6 +420,7 @@ function showEditModal(app: MarketAppItem) {
   editForm.version = app.version
   editForm.category = app.category || ''
   editForm.readme = ''
+  editForm.allowNetwork = (app.allowNetwork || []).join(', ')
   showEditModal_.value = true
 
   api
@@ -425,7 +439,7 @@ async function saveEdit() {
   if (!editingApp.value) return
   saving.value = true
   try {
-    const body: Record<string, string> = {
+    const body: Record<string, string | string[]> = {
       name: editForm.name,
       icon: editForm.icon,
       description: editForm.description,
@@ -433,6 +447,11 @@ async function saveEdit() {
       category: editForm.category,
     }
     if (editForm.readme) body.readme = editForm.readme
+    const allowNetwork = editForm.allowNetwork
+      .split(/[,\n\s]+/)
+      .map((s: string) => s.trim())
+      .filter(Boolean)
+    if (allowNetwork.length) body.allowNetwork = allowNetwork
 
     await api.put(`/api/market/apps/${editingApp.value.id}`, body)
     showToast('success', '应用已更新')
@@ -881,6 +900,17 @@ async function deleteApp(app: MarketAppItem) {
 }
 .required {
   color: var(--danger);
+}
+.label-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.form-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 .form-input {
   width: 100%;

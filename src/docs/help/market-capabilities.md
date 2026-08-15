@@ -10,7 +10,7 @@
 
 | 全局对象               | 用途                                                            |
 | ---------------------- | --------------------------------------------------------------- |
-| `window.__VueChest__`  | 运行时桥主对象：Vue / 路由 / Pinia / 存储 / 主题 / 常用 Vue API |
+| `window.__VueChest__`  | 运行时桥主对象：Vue / Pinia / 存储 / 主题 / 常用 Vue API |
 | `window.__APP_THEME__` | 主题订阅通道（`AppTheme`），供 app 跟随深色 / 浅色模式          |
 
 > 注意：`window.MarketApp` 是**你的应用包自己**通过 IIFE 暴露的入口（宿主读取它来解析你的 `default.{component, route, meta}`），它不属于运行时桥。
@@ -22,7 +22,7 @@
 | 字段                   | 类型     | 说明                                                          |
 | ---------------------- | -------- | ------------------------------------------------------------- |
 | `Vue`                  | 模块     | 宿主的 Vue（`import * as Vue`），**必须复用它**，不要自带 Vue |
-| `VueRouter`            | 模块     | 宿主的 vue-router 模块                                        |
+| `VueRouter`            | —        | **不提供（恒为 `undefined`）**：沙箱内无内部路由能力，请勿依赖 vue-router |
 | `Pinia`                | 模块     | 宿主的 Pinia 模块（含 `defineStore`），用于跨应用共享状态     |
 | `storage`              | object   | 本地存储能力：`{ getStorage, setStorage }`（见下文）          |
 | `theme`                | AppTheme | 主题对象，与 `window.__APP_THEME__` 指向**同一个实例**        |
@@ -42,7 +42,7 @@
 
 `__VueChest__` 的字段**并非同一时刻全部就绪**：
 
-- **首屏同步阶段**即可用：`Vue`、`VueRouter`、`theme` 以及上面列出的各类 Vue API 再导出。
+- **首屏同步阶段**即可用：`Vue`、`theme` 以及上面列出的各类 Vue API 再导出（`VueRouter` 恒为 `undefined`，无路由能力）。
 - **存储初始化完成后**才追加：`Pinia` 与 `storage`（它们在 `initStorage()` 完成后挂载）。
 
 由于市场应用是在"用户安装 / 进入路由"时才加载的，此时宿主早已启动完毕，因此实际使用中 `Pinia` 与 `storage` 一般都已就绪。若你要在极早期访问，请做好判空。
@@ -129,7 +129,7 @@ const off = theme.onChange(() => paint())
 - **不要自带 Vue / Pinia**：务必外部化，复用宿主实例，否则会与主站冲突。
 - **key 加前缀**：本地存储的键名带上应用前缀，避免冲突。
 - **订阅要清理**：`onChange` 返回的取消函数应在应用卸载时调用，避免内存泄漏。
-- **安全须知**：市场应用直接注入主页面执行，**没有 iframe / 沙箱隔离**，与主站共享权限。请勿滥用这些能力做越权 / 危险操作（详见 [注意事项](./market-notes.md)）。
+- **安全须知**：市场应用运行在 **iframe 沙箱**（`sandbox="allow-scripts"`，opaque origin）内，与主站彻底隔离。存储按应用命名空间隔离，网络默认拒绝（需白名单放行）。详见 [沙箱机制](./market-sandbox.md)。
 
 ## 相关文档
 

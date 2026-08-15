@@ -1,4 +1,11 @@
+import { TOKEN_KEY } from '@/lib/constants'
+
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+
+/** 统一的鉴权 token 读取入口，避免各处硬编码 key（改名只改这一处） */
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
 
 interface ApiResponse<T = any> {
   success: boolean
@@ -32,7 +39,7 @@ async function request<T = any>(path: string, config: RequestConfig = {}): Promi
   const fetchHeaders: Record<string, string> = { ...headers }
 
   if (auth) {
-    const token = localStorage.getItem('admin_auth_token')
+    const token = getAuthToken()
     if (token) {
       fetchHeaders['Authorization'] = `Bearer ${token}`
     }

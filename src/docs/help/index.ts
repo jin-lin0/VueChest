@@ -9,6 +9,7 @@ import themeVariables from './theme-variables.md?raw'
 import marketReview from './market-review.md?raw'
 import marketInstall from './market-install.md?raw'
 import marketNotes from './market-notes.md?raw'
+import marketSandbox from './market-sandbox.md?raw'
 import faq from './faq.md?raw'
 import siteDonate from './site-donate.md?raw'
 import stockKnowledge from './stock-knowledge.md?raw'
@@ -34,6 +35,7 @@ export const helpSections: DocSection[] = [
       { id: 'market-upload', title: '如何上传应用到市场', content: marketUpload },
       { id: 'market-spec', title: '应用包开发规范', content: marketSpec },
       { id: 'market-capabilities', title: '市场应用可用能力', content: marketCapabilities },
+      { id: 'market-sandbox', title: '沙箱机制', content: marketSandbox },
       { id: 'theme-variables', title: '主题变量与深色模式', content: themeVariables },
       { id: 'market-review', title: '审核与发布流程', content: marketReview },
       { id: 'market-install', title: '安装与使用', content: marketInstall },

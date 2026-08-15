@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/lib/request'
+import { TOKEN_KEY, USER_INFO_KEY } from '@/lib/constants'
 
 export interface UserInfo {
   id: number
@@ -18,9 +19,6 @@ export interface LoginCredentials {
   username: string
   password: string
 }
-
-const TOKEN_KEY = 'admin_auth_token'
-const USER_INFO_KEY = 'admin_info'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
@@ -212,6 +210,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // 安装/卸载会改变本地已安装列表，同步刷新 auth_user_info 缓存里的 installedApps，
+  // 否则下次启动 syncFromServer 会以陈旧的 auth_user_info 为准把已卸载应用拉回来。
+  function setInstalledApps(ids: number[]) {
+    if (!user.value) return
+    user.value.installedApps = ids
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(user.value))
+  }
+
   function logout() {
     token.value = null
     user.value = null
@@ -236,6 +242,7 @@ export const useAuthStore = defineStore('auth', () => {
     resetPassword,
     fetchUserInfo,
     updateProfile,
+    setInstalledApps,
     logout,
   }
 })

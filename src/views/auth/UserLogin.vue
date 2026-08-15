@@ -80,20 +80,8 @@ async function handleLogin() {
   })
 
   if (result.success) {
-    // 登录后跨设备同步：
-    // 1. 服务端有但本地没有 → 下载恢复
-    // 2. 本地有但服务端没有 → 推送上去
-    const serverIds = authStore.user?.installedApps || []
-    const localIds = marketStore.installedApps.map((a) => a.id)
-    const hasMissingOnLocal = serverIds.some((id) => !localIds.includes(id))
-    const hasMissingOnServer = localIds.some((id) => !serverIds.includes(id))
-
-    if (hasMissingOnLocal) {
-      await marketStore.syncFromServer(serverIds)
-    }
-    if (hasMissingOnServer) {
-      await marketStore.syncToServer()
-    }
+    // 登录后跨设备同步：以服务端实时列表为唯一真源对账，不再依赖登录响应里的 installedApps 缓存
+    await marketStore.syncWithServer()
 
     const redirect = route.query.redirect as string
     router.push(redirect || '/')

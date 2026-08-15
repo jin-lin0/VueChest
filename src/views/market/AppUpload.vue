@@ -13,6 +13,7 @@ const fileContent = ref('')
 const selectedFile = ref<File | null>(null)
 const category = ref('工具')
 const readme = ref('')
+const networkDomains = ref('')
 const uploading = ref(false)
 const error = ref('')
 const success = ref(false)
@@ -104,6 +105,10 @@ async function handleSubmit() {
   uploading.value = true
   error.value = ''
   try {
+    const allowNetwork = networkDomains.value
+      .split(/[,\n\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
     await market.uploadApp({
       name: parsedMeta.value.name,
       icon: parsedMeta.value.icon,
@@ -112,6 +117,7 @@ async function handleSubmit() {
       category: category.value,
       file: selectedFile.value,
       readme: readme.value,
+      allowNetwork,
     })
     success.value = true
   } catch (e) {
@@ -301,6 +307,17 @@ async function handleSubmit() {
               placeholder="使用 Markdown 格式编写应用说明..."
               rows="6"
             ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">联网域名白名单 <span class="label-optional">选填</span></label>
+            <textarea
+              v-model="networkDomains"
+              class="form-textarea"
+              placeholder="应用需要访问的接口域名，逗号或换行分隔，如：&#10;api.example.com&#10;*.example.com"
+              rows="3"
+            ></textarea>
+            <p class="form-hint">沙箱默认禁止联网，仅此处声明的域名会被放行（支持 *. 通配子域）。审核通过后生效。</p>
           </div>
         </div>
 
@@ -586,6 +603,13 @@ async function handleSubmit() {
   font-weight: 400;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.form-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .form-textarea {
