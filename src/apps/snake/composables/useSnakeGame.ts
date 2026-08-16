@@ -9,7 +9,7 @@ import {
   type LocalPlayerConfig,
   type SnakeState,
   type GameState,
-} from './snakeTypes'
+} from '../types'
 
 export interface UseSnakeGameOptions {
   mode: 'local' | 'ai'

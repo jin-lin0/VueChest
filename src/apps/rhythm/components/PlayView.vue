@@ -8,6 +8,7 @@
 //   底部键位胶囊，横向位置与轨道严格对齐
 //   左下倍率、右下时间码
 import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
+import { formatClock } from '@/utils'
 import { Game, PREP_TIME } from '../core/game'
 import { rankOf, averageError, comboMultiplier, type JudgeStats } from '../core/judge-engine'
 import type { Beatmap } from '../core/beatmap'
@@ -85,15 +86,9 @@ const scoreText = computed(() => {
   return String(s).padStart(7, '0').replace(/\B(?=(\d{3})+$)/g, ',')
 })
 
-const timeCode = computed(() => {
-  const fmt = (t: number) => {
-    const safe = Math.max(0, t)
-    const m = Math.floor(safe / 60)
-    const s = Math.floor(safe % 60)
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  }
-  return `${fmt(elapsed.value)} / ${fmt(props.beatmap.duration)}`
-})
+const timeCode = computed(
+  () => `${formatClock(elapsed.value)} / ${formatClock(props.beatmap.duration)}`,
+)
 
 /** 触屏热区的定位样式：铺满整格轨道，直接复用 Canvas 算出的宽度 */
 function laneStyle(i: number) {

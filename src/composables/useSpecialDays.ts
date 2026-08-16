@@ -59,6 +59,13 @@ export function loadSpecialDays(): SpecialDay[] {
 export function getDaysUntil(day: SpecialDay): number {
   const now = startOfToday()
 
+  if (day.repeatType === 'once') {
+    if (day.solarYear == null) return -1
+    const target = new Date(day.solarYear, day.solarMonth - 1, day.solarDay)
+    target.setHours(0, 0, 0, 0)
+    return target >= now ? diffInCalendarDays(now, target) : -1
+  }
+
   if (day.calendarType === 'lunar') {
     const lunar = solarToLunar(now.getFullYear(), now.getMonth() + 1, now.getDate())
     for (let y = lunar.year; y <= lunar.year + 2; y++) {

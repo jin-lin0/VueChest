@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch, watchEffect } from 'vue'
+import { ref, computed, onUnmounted, nextTick, watch, watchEffect } from 'vue'
 
 export interface SelectOption {
   value: string | number
@@ -206,10 +206,6 @@ watchEffect(() => {
   if (props.defaultFirst && model.value == null && props.options.length > 0) {
     model.value = (props.options.find((o) => !o.disabled) ?? props.options[0]).value
   }
-})
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {

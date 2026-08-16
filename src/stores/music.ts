@@ -87,7 +87,6 @@ export const useMusicStore = defineStore('music', () => {
   const searchQuery = ref('')
   const searchResults = ref<Song[]>([])
   const isSearching = ref(false)
-  const searchServer = ref<'netease' | 'tencent'>('netease')
 
   // Player state
   const playlist = ref<Song[]>([])
@@ -845,7 +844,6 @@ export const useMusicStore = defineStore('music', () => {
     searchQuery,
     searchResults,
     isSearching,
-    searchServer,
     playlist,
     currentIndex,
     activeSong,

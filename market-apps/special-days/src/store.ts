@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { getStorage, setStorage } from './utils'
+import { debounce, getStorage, setStorage } from './utils'
 
 const STORAGE_KEY = 'special_days'
 
@@ -120,23 +120,12 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
     resetForm()
   }
 
-  const submitForm = () => {
-    if (!form.value.name.trim()) return
-    if (editingId.value !== null) {
-      const idx = specialDays.value.findIndex((d) => d.id === editingId.value)
-      if (idx !== -1) specialDays.value[idx] = { ...specialDays.value[idx], ...form.value }
-    } else {
-      specialDays.value.push({ id: Date.now(), ...form.value, createdAt: new Date().toISOString() })
-    }
-    showForm.value = false
-    resetForm()
-  }
-
   const deleteSpecialDay = (id: number) => {
     specialDays.value = specialDays.value.filter((d) => d.id !== id)
   }
 
-  watch(specialDays, () => save(), { deep: true })
+  const debouncedSave = debounce(() => save(), 500)
+  watch(specialDays, debouncedSave, { deep: true })
 
   return {
     specialDays,
@@ -155,7 +144,6 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
     openAddForm,
     openEditForm,
     closeForm,
-    submitForm,
     deleteSpecialDay,
   }
 })

@@ -41,7 +41,7 @@ hljs.registerLanguage('plaintext', plaintext)
 // 全站统一的 markdown 渲染配置（断行 + GitHub 风格表格/删除线等）
 marked.setOptions({ breaks: true, gfm: true })
 
-export interface TocItem {
+interface TocItem {
   id: string
   text: string
   depth: number

@@ -99,7 +99,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { MdEditor } from 'md-editor-v3'
+import { MdEditor, type ToolbarNames } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { CustomSelect, type SelectOption } from '@/components'
 import type { Question, Category, Difficulty } from '@/types/interview'
@@ -137,8 +137,6 @@ const formDifficultyOptions: SelectOption[] = [
   { value: 'medium', label: '中等' },
   { value: 'hard', label: '困难' },
 ]
-
-import type { ToolbarNames } from 'md-editor-v3'
 
 const toolbars: ToolbarNames[] = [
   'bold',

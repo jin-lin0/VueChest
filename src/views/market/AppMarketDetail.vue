@@ -66,7 +66,7 @@ async function handleUninstall() {
   }
 }
 
-const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
+const isInstalled = computed(() => (app.value ? market.isInstalled(app.value.id) : false))
 </script>
 
 <template>
@@ -100,7 +100,7 @@ const isInstalled = () => (app.value ? market.isInstalled(app.value.id) : false)
           <p class="hero-desc">{{ app.description }}</p>
           <div class="hero-actions">
             <button
-              v-if="!isInstalled()"
+              v-if="!isInstalled"
               class="install-btn"
               :disabled="installing"
               @click="handleInstall"

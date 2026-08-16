@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { Direction } from '../composables/snakeTypes'
+import type { Direction } from '../types'
 
 const emit = defineEmits<{
   direction: [dir: Direction]

@@ -88,11 +88,6 @@ export const useStockStore = defineStore('stock', () => {
   const isSearching = ref(false)
   const showSearchResults = ref(false)
 
-  const stockName = computed(() => {
-    if (!stockCode.value) return ''
-    return result.value?.name || ''
-  })
-
   const formattedCode = computed(() => {
     if (!stockCode.value) return ''
     const marketId = getMarketId(stockCode.value)
@@ -163,11 +158,6 @@ export const useStockStore = defineStore('stock', () => {
     } finally {
       isLoading.value = false
     }
-  }
-
-  const clearResult = () => {
-    result.value = null
-    error.value = ''
   }
 
   const searchStocks = async (query: string) => {
@@ -434,11 +424,9 @@ export const useStockStore = defineStore('stock', () => {
     searchResults,
     isSearching,
     showSearchResults,
-    stockName,
     formattedCode,
     queryStock,
     queryStockByDate,
-    clearResult,
     searchStocks,
     selectSearchResult,
     clearSearch,

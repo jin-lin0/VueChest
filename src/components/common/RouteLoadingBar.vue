@@ -12,9 +12,6 @@ const props = withDefaults(
 
 const progress = ref(0)
 const visible = ref(false)
-const resourceCount = ref(0)
-const loadedCount = ref(0)
-let observer: PerformanceObserver | null = null
 let animationFrame: number | null = null
 let hideTimeout: ReturnType<typeof setTimeout> | null = null
 let isNavigating = false
@@ -23,38 +20,8 @@ const startTracking = () => {
   isNavigating = true
   progress.value = 0
   visible.value = true
-  resourceCount.value = 0
-  loadedCount.value = 0
-
-  if (observer) {
-    observer.disconnect()
-  }
-
-  observer = new PerformanceObserver((list) => {
-    const entries = list.getEntries()
-    entries.forEach((entry) => {
-      if (entry.entryType === 'resource') {
-        resourceCount.value++
-        loadedCount.value++
-        updateProgress()
-      }
-    })
-  })
-
-  try {
-    observer.observe({ entryTypes: ['resource'] })
-  } catch {
-    observer.observe({ type: 'resource', buffered: true })
-  }
 
   animateProgress()
-}
-
-const updateProgress = () => {
-  if (resourceCount.value > 0) {
-    const resourceProgress = Math.min((loadedCount.value / resourceCount.value) * 100, 90)
-    progress.value = Math.max(progress.value, resourceProgress)
-  }
 }
 
 const animateProgress = () => {
@@ -102,10 +69,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (observer) {
-    observer.disconnect()
-    observer = null
-  }
   if (animationFrame) {
     cancelAnimationFrame(animationFrame)
   }

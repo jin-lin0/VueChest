@@ -15,7 +15,7 @@ import { dbGetAll } from '@/lib/db'
  */
 
 export interface SandboxCapabilities {
-  /** 允许访问的网络域名白名单（host 名，支持 *.example.com）。空数组 / 缺省 = 拒绝一切网络。 */
+  /** 允许访问的网络域名白名单（host 名，支持 *.example.com）。必须显式声明才放行；缺省 / 空数组 = 默认拒绝一切网络。 */
   allowNetwork?: string[]
 }
 
@@ -23,7 +23,7 @@ export interface SandboxCapabilities {
 const NETWORK_TIMEOUT = 15000
 
 /** 某应用在宿主存储中的命名空间前缀键。 */
-export function sandboxStorageKey(appId: string | number, key: string): string {
+function sandboxStorageKey(appId: string | number, key: string): string {
   return `sandbox:${appId}:${key}`
 }
 
@@ -118,8 +118,8 @@ async function handleSandboxFetch(
     return
   }
 
-  const whitelist = caps.allowNetwork || []
-  if (whitelist.length > 0 && !hostAllowed(host, whitelist)) {
+  const whitelist = caps.allowNetwork ?? null
+  if (!whitelist || !hostAllowed(host, whitelist)) {
     respond({ kind: 'capability-response', id, error: `网络请求被白名单拒绝: ${host}` })
     return
   }

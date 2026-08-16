@@ -148,7 +148,13 @@ export function autoType(t: string): string | number {
 /** UTF-8 安全 Base64 编码（可选 URL-safe）。 */
 export function utf8ToBase64(str: string, urlSafe = false): string {
   const bytes = new TextEncoder().encode(str)
-  let b64 = btoa(String.fromCharCode(...bytes))
+  // 分块拼接：避免 String.fromCharCode(...bytes) 在大输入（约 100KB+）时爆栈
+  const CHUNK = 0x8000
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)))
+  }
+  let b64 = btoa(bin)
   if (urlSafe) b64 = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
   return b64
 }
@@ -157,6 +163,8 @@ export function utf8ToBase64(str: string, urlSafe = false): string {
 export function base64ToUtf8(b64: string, urlSafe = false): string {
   let s = b64.trim()
   if (urlSafe) s = s.replace(/-/g, '+').replace(/_/g, '/')
+  // 补回 = padding：无 padding 的 base64 会让 atob 在部分输入上直接报错
+  s = s.padEnd(Math.ceil(s.length / 4) * 4, '=')
   const bin = atob(s)
   const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
   return new TextDecoder().decode(bytes)

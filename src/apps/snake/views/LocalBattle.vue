@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnakeGame } from '../composables/useSnakeGame'
-import { PLAYER_COLORS, DIR_MAP_WASD, DIR_MAP_ARROWS } from '../composables/snakeTypes'
+import { PLAYER_COLORS, DIR_MAP_WASD, DIR_MAP_ARROWS } from '../types'
 import SnakeCanvas from '../components/SnakeCanvas.vue'
 import SnakeResultModal from '../components/SnakeResultModal.vue'
 import '../styles/battleShared.css'

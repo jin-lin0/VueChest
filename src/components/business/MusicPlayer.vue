@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMusicStore } from '@/stores'
-import { Drawer } from '@/components'
+import { Drawer, EmptyState } from '@/components'
 
 defineOptions({ name: 'MusicPlayer' })
 
@@ -109,19 +109,6 @@ const changeVolume = (e: MouseEvent) => {
   if (audioRef.value) audioRef.value.volume = v
 }
 
-// --- Watch songUrl to load ---
-watch(
-  () => music.songUrl,
-  async (url) => {
-    if (!url) return
-    await nextTick()
-    if (audioRef.value) {
-      audioRef.value.volume = music.volume
-      // 不在这里调用 play()，等待 @loadeddata 事件触发后再播放
-    }
-  },
-)
-
 watch(
   () => music.isPlaying,
   (playing) => {
@@ -186,6 +173,7 @@ const playFromPlaylist = (index: number) => {
 // --- Keyboard shortcuts ---
 const onKeydown = (e: KeyboardEvent) => {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+  if (e.target instanceof HTMLElement && e.target.tagName === 'BUTTON') return
   if (e.code === 'Space') {
     e.preventDefault()
     togglePlayPause()
@@ -236,7 +224,7 @@ onUnmounted(() => {
 
     <!-- 播放列表 -->
     <template v-if="drawerTab === 'playlist'">
-      <div v-if="music.playlist.length === 0" class="empty-state">播放列表为空</div>
+      <EmptyState v-if="music.playlist.length === 0" icon="🎵" title="播放列表为空" />
       <div
         v-for="(song, index) in music.playlist"
         :key="song.id + '-' + index"
@@ -258,7 +246,7 @@ onUnmounted(() => {
     <!-- 相似推荐 -->
     <template v-else>
       <div v-if="music.isLoadingSimi" class="drawer-loading">加载中...</div>
-      <div v-else-if="music.simiSongs.length === 0" class="empty-state">暂无相似歌曲推荐</div>
+      <EmptyState v-else-if="music.simiSongs.length === 0" icon="🎶" title="暂无相似歌曲推荐" />
       <div
         v-for="song in music.simiSongs"
         :key="song.id"
@@ -940,7 +928,6 @@ onUnmounted(() => {
 .drawer-tabs,
 .drawer-close,
 .drawer-loading,
-.empty-state,
 .song-item {
   --accent: #6c5ce7;
   --accent-light: #a29bfe;
@@ -1109,13 +1096,6 @@ onUnmounted(() => {
 .remove-btn:hover {
   color: #fd79a8;
   opacity: 1;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 48px 16px;
-  color: var(--text-dim);
-  font-size: 14px;
 }
 
 /* ===== 不可播放提示 toast ===== */

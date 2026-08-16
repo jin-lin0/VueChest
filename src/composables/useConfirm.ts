@@ -45,5 +45,3 @@ export function useConfirmController() {
 
   return { state, handleConfirm, handleCancel }
 }
-
-export { state as confirmState }

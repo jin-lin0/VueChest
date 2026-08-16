@@ -5,7 +5,6 @@
       class="market-sandbox__frame"
       :src="sandboxSrc"
       :sandbox="sandboxAttr"
-      @load="onLoad"
       referrerpolicy="no-referrer"
     ></iframe>
   </div>
@@ -104,10 +103,6 @@ async function bootstrap() {
       parentOrigin: window.location.origin,
     })
   })
-}
-
-function onLoad() {
-  // iframe 脚本就绪后会 post ready，届时触发 bootstrap
 }
 
 onMounted(() => {

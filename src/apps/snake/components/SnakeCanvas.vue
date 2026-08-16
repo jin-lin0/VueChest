@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { BOARD_SIZE, PLAYER_COLORS } from '../composables/snakeTypes'
-import type { SnakeState, ItemState } from '../composables/snakeTypes'
+import { BOARD_SIZE, PLAYER_COLORS } from '../types'
+import type { SnakeState, ItemState } from '../types'
 import { getAppTheme } from '../../../composables/useTheme'
 
 /**

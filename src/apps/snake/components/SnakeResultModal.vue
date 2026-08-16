@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Modal } from '@/components'
-import { PLAYER_COLORS } from '../composables/snakeTypes'
-import type { StatItem } from '../composables/snakeTypes'
+import { PLAYER_COLORS } from '../types'
+import type { StatItem } from '../types'
 
 const props = defineProps<{
   visible: boolean

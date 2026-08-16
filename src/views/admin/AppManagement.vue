@@ -124,7 +124,7 @@
                   ❌ 拒绝
                 </button>
               </template>
-              <button class="btn-secondary btn-sm" @click="showEditModal(app)">✏️ 编辑</button>
+              <button class="btn-secondary btn-sm" @click="openEditModal(app)">✏️ 编辑</button>
               <button class="btn-danger btn-sm" @click="confirmDelete(app)">🗑️ 删除</button>
             </td>
           </tr>
@@ -147,10 +147,10 @@
     </div>
 
     <Modal
-      :open="showEditModal_"
+      :open="showEditModal"
       :width="640"
       title="✏️ 编辑应用"
-      @close="showEditModal_ = false"
+      @close="showEditModal = false"
     >
       <div class="form-row">
         <div class="form-group">
@@ -212,7 +212,7 @@
       </div>
 
       <template #footer>
-        <button class="btn-secondary" @click="showEditModal_ = false">取消</button>
+        <button class="btn-secondary" @click="showEditModal = false">取消</button>
         <button class="btn-ghost" :disabled="!editingApp" @click="downloadJs(editingApp)">
           📥 下载 JS
         </button>
@@ -288,7 +288,7 @@ const stats = reactive({
   totalAuthors: 0,
 })
 
-const showEditModal_ = ref(false)
+const showEditModal = ref(false)
 const editingApp = ref<MarketAppItem | null>(null)
 const editForm = reactive({
   name: '',
@@ -423,7 +423,7 @@ function goToPage(page: number) {
   fetchApps()
 }
 
-function showEditModal(app: MarketAppItem) {
+function openEditModal(app: MarketAppItem) {
   editingApp.value = app
   editForm.name = app.name
   editForm.icon = app.icon
@@ -433,7 +433,7 @@ function showEditModal(app: MarketAppItem) {
   editForm.readme = ''
   editForm.allowNetwork = (app.allowNetwork || []).join(', ')
   editForm.isOfficial = !!app.isOfficial
-  showEditModal_.value = true
+  showEditModal.value = true
 
   api
     .get<{ data: { readme?: string } }>(`/api/market/apps/${app.id}`, { auth: false })
@@ -468,7 +468,7 @@ async function saveEdit() {
 
     await api.put(`/api/market/apps/${editingApp.value.id}`, body)
     showToast('success', '应用已更新')
-    showEditModal_.value = false
+    showEditModal.value = false
     fetchApps()
   } catch (e) {
     showToast('error', e instanceof Error ? e.message : '更新失败')

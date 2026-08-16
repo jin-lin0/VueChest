@@ -19,8 +19,6 @@ function showToast(type: 'success' | 'error' | 'warning' | 'info', message: stri
   toastRef.value?.addToast(type, message)
 }
 
-const DIGITS = '0123456789abcdefghijklmnopqrstuvwxyz'
-
 function csvEscape(v: string): string {
   if (/[",\n\r]/.test(v)) return '"' + v.replace(/"/g, '""') + '"'
   return v

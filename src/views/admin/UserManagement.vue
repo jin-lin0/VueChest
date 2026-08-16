@@ -211,7 +211,7 @@ onUnmounted(() => {
 })
 
 function roleLabel(role: string) {
-  const map: Record<string, string> = { user: '普通用户', admin: '管理员', super_admin: '超管' }
+  const map: Record<string, string> = { user: '普通用户', admin: '管理员', super_admin: '超级管理员' }
   return map[role] || role
 }
 

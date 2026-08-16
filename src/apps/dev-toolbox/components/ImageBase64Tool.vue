@@ -22,14 +22,6 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }
 
-function reset() {
-  previewUrl.value = ''
-  dataUrl.value = ''
-  fileName.value = ''
-  fileSize.value = 0
-  error.value = ''
-}
-
 function loadFile(file: File) {
   error.value = ''
   fileName.value = file.name

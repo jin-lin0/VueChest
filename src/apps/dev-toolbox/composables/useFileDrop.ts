@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { ref } from 'vue'
 
 export interface UseFileDropOptions {
   /** 逗号分隔的 accept，如 "image/*"；支持通配 image/*、扩展名 .png、精确 MIME text/csv */
