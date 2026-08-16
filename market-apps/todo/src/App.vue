@@ -93,7 +93,7 @@ const goBack = () => {
 .app-header h1 {
   margin: 0;
   font-size: 2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 .add-todo {
   display: flex;
@@ -102,7 +102,7 @@ const goBack = () => {
 .add-todo input {
   flex: 1;
   padding: 0.8rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px 0 0 4px;
   font-size: 1rem;
 }
@@ -119,7 +119,7 @@ const goBack = () => {
   background-color: #27ae60;
 }
 .todo-list {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -128,18 +128,18 @@ const goBack = () => {
   display: flex;
   align-items: center;
   padding: 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
   transition: background-color 0.2s;
 }
 .todo-item:last-child {
   border-bottom: none;
 }
 .todo-item:hover {
-  background-color: #f9f9f9;
+  background-color: var(--bg-hover);
 }
 .todo-item.completed .todo-text {
   text-decoration: line-through;
-  color: #95a5a6;
+  color: var(--text-muted);
 }
 .todo-checkbox {
   margin-right: 1rem;
@@ -155,11 +155,11 @@ const goBack = () => {
 .todo-text {
   font-size: 1.1rem;
   margin-bottom: 0.3rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 .todo-date {
   font-size: 0.8rem;
-  color: #95a5a6;
+  color: var(--text-muted);
 }
 .delete-btn {
   background-color: #e74c3c;
@@ -176,11 +176,11 @@ const goBack = () => {
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-style: italic;
 }
 .back-btn {
-  background: #3498db;
+  background: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -226,4 +226,5 @@ const goBack = () => {
     font-size: 0.8rem;
   }
 }
+
 </style>

@@ -45,20 +45,20 @@ function reset() {
   padding: 2rem;
   text-align: center;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .counter-header h1 {
   font-size: 1.8rem;
   margin: 0 0 0.3rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .counter-desc {
-  color: #8e99a4;
+  color: var(--text-muted);
   font-size: 0.9rem;
   margin: 0 0 2rem;
 }
@@ -74,7 +74,7 @@ function reset() {
 .count-display {
   font-size: 4rem;
   font-weight: 800;
-  color: #667eea;
+  color: var(--accent);
   margin-bottom: 1.5rem;
   font-variant-numeric: tabular-nums;
 }
@@ -123,7 +123,7 @@ function reset() {
 .step-control {
   margin-bottom: 1.2rem;
   font-size: 0.9rem;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .step-btns {
@@ -135,32 +135,32 @@ function reset() {
 
 .step-btns button {
   padding: 0.4rem 1rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: white;
+  background: var(--bg-card);
   cursor: pointer;
   font-size: 0.85rem;
   transition: all 0.2s ease;
 }
 
 .step-btns button.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
   border-color: transparent;
 }
 
 .step-btns button:hover:not(.active) {
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 .reset-btn {
   padding: 0.6rem 2rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-light);
   border-radius: 10px;
-  background: white;
+  background: var(--bg-card);
   cursor: pointer;
   font-size: 0.9rem;
-  color: #8e99a4;
+  color: var(--text-muted);
   transition: all 0.2s ease;
 }
 
@@ -168,4 +168,5 @@ function reset() {
   border-color: #ef4444;
   color: #ef4444;
 }
+
 </style>

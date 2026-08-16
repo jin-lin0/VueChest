@@ -197,7 +197,7 @@ const goBack = () => {
 }
 
 .back-button {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -214,7 +214,7 @@ const goBack = () => {
 .app-header h1 {
   margin: 0;
   font-size: 2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .summary-cards {
@@ -225,7 +225,7 @@ const goBack = () => {
 }
 
 .summary-card {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   padding: 1.2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -234,14 +234,14 @@ const goBack = () => {
 
 .summary-label {
   font-size: 0.85rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   margin-bottom: 0.4rem;
 }
 
 .summary-value {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .summary-card.income .summary-value {
@@ -261,7 +261,7 @@ const goBack = () => {
 }
 
 .add-btn {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.7rem 1.5rem;
@@ -275,14 +275,14 @@ const goBack = () => {
 }
 
 .records-section {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
 .date-group {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .date-group:last-child {
@@ -294,29 +294,29 @@ const goBack = () => {
   justify-content: space-between;
   align-items: center;
   padding: 0.6rem 1rem;
-  background-color: #f9f9f9;
+  background-color: var(--bg-hover);
   font-size: 0.85rem;
 }
 
 .date-text {
-  color: #2c3e50;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .date-summary {
-  color: #95a5a6;
+  color: var(--text-muted);
 }
 
 .record-item {
   display: flex;
   align-items: center;
   padding: 0.8rem 1rem;
-  border-top: 1px solid #f5f5f5;
+  border-top: 1px solid var(--bg-hover);
   transition: background-color 0.2s;
 }
 
 .record-item:hover {
-  background-color: #fafafa;
+  background-color: var(--bg-hover);
 }
 
 .record-icon {
@@ -355,7 +355,7 @@ const goBack = () => {
 
 .record-category {
   font-size: 0.95rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -375,7 +375,7 @@ const goBack = () => {
 
 .record-sub {
   font-size: 0.8rem;
-  color: #95a5a6;
+  color: var(--text-muted);
   margin-top: 0.2rem;
 }
 
@@ -402,7 +402,7 @@ const goBack = () => {
 }
 
 .action-btn.edit {
-  background-color: #3498db;
+  background-color: var(--info);
 }
 
 .action-btn.edit:hover {
@@ -420,7 +420,7 @@ const goBack = () => {
 .empty-state {
   padding: 3rem;
   text-align: center;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-style: italic;
 }
 
@@ -438,7 +438,7 @@ const goBack = () => {
 }
 
 .modal-content {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 12px;
   padding: 2rem;
   width: 90%;
@@ -457,7 +457,7 @@ const goBack = () => {
 .modal-header h2 {
   margin: 0;
   font-size: 1.3rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .close-btn {
@@ -465,20 +465,20 @@ const goBack = () => {
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #7f8c8d;
+  color: var(--text-dim);
   padding: 0;
   line-height: 1;
 }
 
 .close-btn:hover {
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .type-tabs {
   display: flex;
   gap: 0;
   margin-bottom: 1.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -489,13 +489,13 @@ const goBack = () => {
   border: none;
   cursor: pointer;
   font-size: 0.95rem;
-  background-color: #f5f5f5;
-  color: #2c3e50;
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
   transition: all 0.2s;
 }
 
 .type-tab.active {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
 }
 
@@ -506,7 +506,7 @@ const goBack = () => {
 .form-group label {
   display: block;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 0.4rem;
   font-size: 0.9rem;
 }
@@ -514,7 +514,7 @@ const goBack = () => {
 .form-group input {
   width: 100%;
   padding: 0.7rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 1rem;
   box-sizing: border-box;
@@ -528,24 +528,24 @@ const goBack = () => {
 
 .category-btn {
   padding: 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.85rem;
-  background-color: #fff;
-  color: #2c3e50;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
   transition: all 0.2s;
 }
 
 .category-btn:hover {
-  border-color: #3498db;
-  color: #3498db;
+  border-color: var(--info);
+  color: var(--info);
 }
 
 .category-btn.active {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
-  border-color: #3498db;
+  border-color: var(--info);
 }
 
 .submit-btn {
@@ -566,7 +566,7 @@ const goBack = () => {
 }
 
 .back-btn {
-  background: #3498db;
+  background: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -660,4 +660,5 @@ const goBack = () => {
     padding: 1.2rem;
   }
 }
+
 </style>

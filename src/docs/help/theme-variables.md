@@ -6,7 +6,7 @@ VueChest 使用一套**全局设计 Token（CSS 变量）**统一管理颜色、
 
 ## 1. 工作机制
 
-- 变量定义在 `src/styles/tokens.css`：`:root` 为**浅色默认值**，`:root.dark` 覆盖为**深色值**。
+- 变量定义在 `public/tokens.css`：`:root` 为**浅色默认值**，`:root.dark` 覆盖为**深色值**。该文件由 `index.html` 与 `sandbox.html` 共用，是 token 的**唯一可编辑源**（不要在 `src/` 另存一份）。
 - 主题切换靠给根元素加类：`<html class="dark">`。宿主在首屏渲染前就会应用主题，避免闪烁；用户切换时会同步写入 `localStorage['theme']`。
 - 市场应用被注入主页面执行，与宿主**共享同一份全局 CSS 变量**。因此你在应用样式里直接写 `var(--xxx)`，即可自动获得亮 / 暗两套配色，**无需自己写深色样式**。
 

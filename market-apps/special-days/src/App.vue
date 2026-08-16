@@ -383,7 +383,7 @@ const goBack = () => {
 }
 
 .back-button {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -400,12 +400,12 @@ const goBack = () => {
 .app-header h1 {
   margin: 0;
   font-size: 2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   flex: 1;
 }
 
 .add-button {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
   border: none;
   padding: 0.6rem 1.2rem;
@@ -435,14 +435,14 @@ const goBack = () => {
 }
 
 .empty-state p {
-  color: #8e99a4;
+  color: var(--text-muted);
   font-size: 1.1rem;
   margin-bottom: 0.5rem;
 }
 
 .empty-hint {
   font-size: 0.9rem !important;
-  color: #b0b8c1 !important;
+  color: var(--text-dim) !important;
 }
 
 .days-list {
@@ -454,7 +454,7 @@ const goBack = () => {
 .day-card {
   display: flex;
   align-items: center;
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 1.2rem 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -469,7 +469,7 @@ const goBack = () => {
 }
 
 .day-card.today {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
 }
 
@@ -492,7 +492,7 @@ const goBack = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
+  background: var(--bg-subtle);
   border-radius: 12px;
   flex-shrink: 0;
 }
@@ -509,13 +509,13 @@ const goBack = () => {
 .day-name {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 0.3rem;
 }
 
 .day-date {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -531,7 +531,7 @@ const goBack = () => {
 
 .calendar-tag.lunar {
   background: #e8f4fd;
-  color: #3498db;
+  color: var(--info);
 }
 
 .calendar-tag.solar {
@@ -551,7 +551,7 @@ const goBack = () => {
 
 .day-next {
   font-size: 0.8rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .day-countdown {
@@ -563,13 +563,13 @@ const goBack = () => {
 .countdown-number {
   font-size: 2rem;
   font-weight: 800;
-  color: #667eea;
+  color: var(--accent);
   line-height: 1;
 }
 
 .countdown-text {
   font-size: 0.75rem;
-  color: #8e99a4;
+  color: var(--text-muted);
   margin-top: 0.2rem;
 }
 
@@ -607,12 +607,12 @@ const goBack = () => {
 }
 
 .edit-btn {
-  background: #ecf0f1;
-  color: #2c3e50;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 .edit-btn:hover {
-  background: #ddd;
+  background: var(--border-light);
 }
 
 .delete-btn {
@@ -649,7 +649,7 @@ const goBack = () => {
 }
 
 .modal {
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   width: 100%;
   max-width: 480px;
@@ -663,20 +663,20 @@ const goBack = () => {
   align-items: center;
   justify-content: space-between;
   padding: 1.2rem 1.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 1.3rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .close-btn {
   background: none;
   border: none;
   font-size: 1.2rem;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 0.3rem;
 }
@@ -697,14 +697,14 @@ const goBack = () => {
   display: block;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #555;
+  color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
 .form-group input[type='text'] {
   width: 100%;
   padding: 0.7rem 1rem;
-  border: 2px solid #eee;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
   font-size: 1rem;
   outline: none;
@@ -712,7 +712,7 @@ const goBack = () => {
 }
 
 .form-group input[type='text']:focus {
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 .emoji-picker {
@@ -724,9 +724,9 @@ const goBack = () => {
 .emoji-btn {
   width: 40px;
   height: 40px;
-  border: 2px solid #eee;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
-  background: white;
+  background: var(--bg-card);
   font-size: 1.3rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -736,13 +736,13 @@ const goBack = () => {
 }
 
 .emoji-btn:hover {
-  border-color: #667eea;
+  border-color: var(--accent);
   transform: scale(1.1);
 }
 
 .emoji-btn.active {
-  border-color: #667eea;
-  background: #f0f0ff;
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .calendar-type-picker {
@@ -753,9 +753,9 @@ const goBack = () => {
 .type-btn {
   flex: 1;
   padding: 0.7rem;
-  border: 2px solid #eee;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
-  background: white;
+  background: var(--bg-card);
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -763,12 +763,12 @@ const goBack = () => {
 }
 
 .type-btn:hover {
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 .type-btn.active {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
 }
 
@@ -780,17 +780,17 @@ const goBack = () => {
 .date-select {
   flex: 1;
   padding: 0.7rem 1rem;
-  border: 2px solid #eee;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
   font-size: 1rem;
   outline: none;
-  background: white;
+  background: var(--bg-card);
   cursor: pointer;
   transition: border-color 0.2s;
 }
 
 .date-select:focus {
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 .year-select {
@@ -802,30 +802,30 @@ const goBack = () => {
   justify-content: flex-end;
   gap: 0.8rem;
   padding: 1rem 1.5rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-light);
 }
 
 .cancel-btn {
   padding: 0.6rem 1.5rem;
-  border: 2px solid #eee;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
-  background: white;
-  color: #666;
+  background: var(--bg-card);
+  color: var(--text-secondary);
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .cancel-btn:hover {
-  border-color: #ddd;
-  background: #f9f9f9;
+  border-color: var(--border-light);
+  background: var(--bg-hover);
 }
 
 .save-btn {
   padding: 0.6rem 1.5rem;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
   font-size: 1rem;
   font-weight: 600;
@@ -843,7 +843,7 @@ const goBack = () => {
 }
 
 .back-btn {
-  background: #3498db;
+  background: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -971,4 +971,5 @@ const goBack = () => {
     padding: 0.8rem 1rem;
   }
 }
+
 </style>

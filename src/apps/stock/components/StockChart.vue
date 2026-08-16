@@ -14,7 +14,7 @@ interface AppTheme {
 const appTheme = inject<AppTheme | null>('appTheme', null)
 let unsubscribeTheme: (() => void) | null = null
 
-// 图表主题色（对齐 tokens.css：浅色 #fff/#333/#f0f0f0；深色 #1e293b/#94a3b8/#334155）
+// 图表主题色（对齐 public/tokens.css：浅色 #fff/#333/#f0f0f0；深色 #1e293b/#94a3b8/#334155）
 const chartTheme = (dark: boolean) =>
   dark
     ? { background: '#1e293b', text: '#94a3b8', grid: '#334155' }

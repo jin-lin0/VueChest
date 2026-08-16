@@ -186,7 +186,7 @@ const goBack = () => {
 }
 
 .back-button {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -203,11 +203,11 @@ const goBack = () => {
 .app-header h1 {
   margin: 0;
   font-size: 2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .add-section {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   padding: 1.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -224,7 +224,7 @@ const goBack = () => {
   flex: 1;
   min-width: 140px;
   padding: 0.7rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 0.95rem;
 }
@@ -245,7 +245,7 @@ const goBack = () => {
 }
 
 .cancel-btn {
-  background-color: #95a5a6;
+  background-color: var(--text-muted);
   color: white;
   border: none;
   padding: 0 1rem;
@@ -256,7 +256,7 @@ const goBack = () => {
 }
 
 .cancel-btn:hover {
-  background-color: #7f8c8d;
+  background-color: var(--text-dim);
 }
 
 .toolbar {
@@ -269,7 +269,7 @@ const goBack = () => {
 .search-input {
   width: 100%;
   padding: 0.7rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 0.95rem;
   box-sizing: border-box;
@@ -282,27 +282,27 @@ const goBack = () => {
 }
 
 .tag-btn {
-  background-color: #f1f1f1;
+  background-color: var(--tag-bg);
   border: none;
   padding: 0.3rem 0.7rem;
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.85rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   transition: all 0.2s;
 }
 
 .tag-btn:hover {
-  background-color: #e0e0e0;
+  background-color: var(--border-light);
 }
 
 .tag-btn.active {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
 }
 
 .bookmark-list {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -312,7 +312,7 @@ const goBack = () => {
   display: flex;
   align-items: center;
   padding: 0.8rem 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
   transition: background-color 0.2s;
 }
 
@@ -321,7 +321,7 @@ const goBack = () => {
 }
 
 .bookmark-item:hover {
-  background-color: #f9f9f9;
+  background-color: var(--bg-hover);
 }
 
 .bookmark-link {
@@ -346,7 +346,7 @@ const goBack = () => {
 .bookmark-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 0.2rem;
   white-space: nowrap;
   overflow: hidden;
@@ -357,11 +357,11 @@ const goBack = () => {
   display: flex;
   gap: 0.8rem;
   font-size: 0.78rem;
-  color: #95a5a6;
+  color: var(--text-muted);
 }
 
 .bookmark-category {
-  color: #3498db;
+  color: var(--info);
 }
 
 .bookmark-actions {
@@ -381,7 +381,7 @@ const goBack = () => {
 }
 
 .action-btn.edit {
-  background-color: #3498db;
+  background-color: var(--info);
 }
 
 .action-btn.edit:hover {
@@ -399,12 +399,12 @@ const goBack = () => {
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-style: italic;
 }
 
 .back-btn {
-  background: #3498db;
+  background: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -485,4 +485,5 @@ const goBack = () => {
     flex-shrink: 0;
   }
 }
+
 </style>

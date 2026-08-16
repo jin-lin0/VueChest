@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>VueChest 沙箱应用</title>
+  <!-- 设计 token：与主工程 index.html 共用同一份 public/tokens.css（含 :root 浅色 / :root.dark 深色）。
+       沙箱 <html> 上的 .dark class 由本页脚本切换，:root.dark 即生效，
+       市场应用用 var(--xxx) 即可自动跟随深浅色。 -->
+  <link rel="stylesheet" href="./tokens.css" />
   <style>
     html, body { height: 100%; margin: 0; }
     #app { height: 100%; }
@@ -151,6 +155,8 @@
             if (typeof msg.parentOrigin === 'string') hostOrigin = msg.parentOrigin;
             storageCache = msg.storage || {};
             isDark = !!msg.theme;
+            // 在沙箱文档根上切换 dark class，市场应用即可用 :global(html.dark) 适配暗色
+            document.documentElement.classList.toggle('dark', isDark);
             try {
               runBundle(msg.bundle);
               mountApp();
@@ -160,6 +166,7 @@
             break;
           case 'theme':
             isDark = !!msg.isDark;
+            document.documentElement.classList.toggle('dark', isDark);
             themeSubscribers.forEach(function (cb) {
               try { cb(isDark); } catch (e) { /* ignore */ }
             });

@@ -15,6 +15,9 @@
       content="VueChest - 一站式个人效率工具箱，包含待办事项、笔记、番茄钟、记账本、AI对话等实用工具"
     />
     <meta name="format-detection" content="telephone=no" />
+    <!-- 设计 token：宿主与 market 沙箱共用同一份 public/tokens.css（含 :root 浅色 / :root.dark 深色），
+         由 <head> 最先加载，避免首屏浅/深闪烁。改 token 只改这里，勿在 src 另存一份。 -->
+    <link rel="stylesheet" href="/tokens.css" />
     <!--
       Rajdhani：音游界面用的显示字体。
       选它而不是 Orbitron/Space Grotesk 之类：它的数字字形窄而挺，

@@ -213,7 +213,7 @@ const goBack = () => {
 }
 
 .back-button {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -230,7 +230,7 @@ const goBack = () => {
 .app-header h1 {
   margin: 0;
   font-size: 2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .notes-content {
@@ -242,7 +242,7 @@ const goBack = () => {
 
 .notes-sidebar {
   flex: 0 0 300px;
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -252,7 +252,7 @@ const goBack = () => {
 
 .sidebar-header {
   padding: 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -261,7 +261,7 @@ const goBack = () => {
 .sidebar-header h2 {
   margin: 0;
   font-size: 1.2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .new-note-btn {
@@ -285,18 +285,18 @@ const goBack = () => {
 
 .note-item {
   padding: 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .note-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
 }
 
 .note-item.active {
-  background-color: #e3f2fd;
-  border-left: 4px solid #3498db;
+  background-color: var(--accent-bg);
+  border-left: 4px solid var(--info);
 }
 
 .note-item-header {
@@ -308,7 +308,7 @@ const goBack = () => {
 
 .note-title {
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -317,7 +317,7 @@ const goBack = () => {
 
 .md-badge {
   font-size: 0.6rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
   padding: 0.15rem 0.4rem;
   border-radius: 3px;
@@ -327,7 +327,7 @@ const goBack = () => {
 
 .md-badge-lg {
   font-size: 0.75rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
   padding: 0.2rem 0.6rem;
   border-radius: 4px;
@@ -336,7 +336,7 @@ const goBack = () => {
 
 .note-preview {
   font-size: 0.8rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   margin-bottom: 0.3rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -345,12 +345,12 @@ const goBack = () => {
 
 .note-date {
   font-size: 0.75rem;
-  color: #95a5a6;
+  color: var(--text-muted);
 }
 
 .note-detail {
   flex: 1;
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 2rem;
@@ -373,7 +373,7 @@ const goBack = () => {
 
 .detail-title-row h2 {
   margin: 0;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .note-actions {
@@ -383,7 +383,7 @@ const goBack = () => {
 }
 
 .edit-btn {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 0.8rem;
@@ -414,13 +414,13 @@ const goBack = () => {
   display: flex;
   justify-content: space-between;
   font-size: 0.8rem;
-  color: #95a5a6;
+  color: var(--text-muted);
   margin-bottom: 2rem;
 }
 
 .note-content {
   line-height: 1.8;
-  color: #34495e;
+  color: var(--text-body);
   white-space: pre-wrap;
 }
 
@@ -431,7 +431,7 @@ const goBack = () => {
 
 .markdown-body :deep(h1) {
   font-size: 1.8em;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid var(--border-light);
   padding-bottom: 0.3em;
   margin-top: 1em;
   margin-bottom: 0.6em;
@@ -439,7 +439,7 @@ const goBack = () => {
 
 .markdown-body :deep(h2) {
   font-size: 1.5em;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
   padding-bottom: 0.2em;
   margin-top: 1em;
   margin-bottom: 0.5em;
@@ -466,11 +466,11 @@ const goBack = () => {
 }
 
 .markdown-body :deep(blockquote) {
-  border-left: 4px solid #667eea;
+  border-left: 4px solid var(--accent);
   padding: 0.5em 1em;
   margin: 1em 0;
-  background-color: #f8f9fa;
-  color: #555;
+  background-color: var(--bg-subtle);
+  color: var(--text-secondary);
 }
 
 .markdown-body :deep(code) {
@@ -496,7 +496,7 @@ const goBack = () => {
 }
 
 .markdown-body :deep(a) {
-  color: #3498db;
+  color: var(--info);
   text-decoration: none;
 }
 
@@ -506,7 +506,7 @@ const goBack = () => {
 
 .markdown-body :deep(hr) {
   border: none;
-  border-top: 2px solid #eee;
+  border-top: 2px solid var(--border-light);
   margin: 1.5em 0;
 }
 
@@ -518,13 +518,13 @@ const goBack = () => {
 
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   padding: 0.5em 0.8em;
   text-align: left;
 }
 
 .markdown-body :deep(th) {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
   font-weight: 600;
 }
 
@@ -547,13 +547,13 @@ const goBack = () => {
 
 .form-group label {
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .form-group input,
 .form-group textarea {
   padding: 0.8rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 1rem;
   font-family: inherit;
@@ -580,10 +580,10 @@ const goBack = () => {
   min-height: 400px;
   max-height: 600px;
   overflow-y: auto;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   padding: 1rem;
-  background-color: #fff;
+  background-color: var(--bg-card);
 }
 
 .editor-toolbar {
@@ -593,8 +593,8 @@ const goBack = () => {
 }
 
 .toolbar-btn {
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
+  background-color: var(--tag-bg);
+  border: 1px solid var(--border-light);
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
@@ -603,19 +603,19 @@ const goBack = () => {
 }
 
 .toolbar-btn:hover {
-  background-color: #e0e0e0;
+  background-color: var(--border-light);
 }
 
 .toolbar-btn.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
   border-color: transparent;
 }
 
 .preview-btn {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
-  border-color: #3498db;
+  border-color: var(--info);
 }
 
 .preview-btn:hover {
@@ -623,14 +623,14 @@ const goBack = () => {
 }
 
 .preview-btn.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
 }
 
 .markdown-hint {
   font-size: 0.8rem;
-  color: #95a5a6;
+  color: var(--text-muted);
   padding: 0.5rem;
-  background-color: #f8f9fa;
+  background-color: var(--bg-subtle);
   border-radius: 4px;
 }
 
@@ -655,7 +655,7 @@ const goBack = () => {
 }
 
 .cancel-btn {
-  background-color: #95a5a6;
+  background-color: var(--text-muted);
   color: white;
   border: none;
   padding: 0.8rem 1.5rem;
@@ -665,13 +665,13 @@ const goBack = () => {
 }
 
 .cancel-btn:hover {
-  background-color: #7f8c8d;
+  background-color: var(--text-dim);
 }
 
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #7f8c8d;
+  color: var(--text-dim);
 }
 
 .empty-icon {
@@ -684,7 +684,7 @@ const goBack = () => {
 }
 
 .back-btn {
-  background: #3498db;
+  background: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -780,4 +780,5 @@ const goBack = () => {
     width: 100%;
   }
 }
+
 </style>

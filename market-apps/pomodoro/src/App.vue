@@ -325,7 +325,7 @@ const goBack = () => {
 }
 
 .back-button {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -342,7 +342,7 @@ const goBack = () => {
 .app-header h1 {
   margin: 0;
   font-size: 2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .pomodoro-content {
@@ -352,7 +352,7 @@ const goBack = () => {
 }
 
 .timer-section {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 12px;
   padding: 2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -368,18 +368,18 @@ const goBack = () => {
 }
 
 .session-tab {
-  background-color: #f1f1f1;
+  background-color: var(--tag-bg);
   border: none;
   padding: 0.5rem 1.2rem;
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.95rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   transition: all 0.2s;
 }
 
 .session-tab:hover {
-  background-color: #e0e0e0;
+  background-color: var(--border-light);
 }
 
 .session-tab.active {
@@ -394,12 +394,12 @@ const goBack = () => {
 
 .settings-toggle {
   margin-left: 0.5rem;
-  background-color: #f8f9fa;
-  color: #2c3e50;
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 .settings-toggle.active {
-  background-color: #3498db;
+  background-color: var(--info);
   color: white;
 }
 
@@ -417,7 +417,7 @@ const goBack = () => {
 }
 
 .settings-modal {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 16px;
   padding: 0;
   width: 90%;
@@ -442,20 +442,20 @@ const goBack = () => {
   justify-content: space-between;
   align-items: center;
   padding: 0.8rem 1.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .settings-modal-header h3 {
   margin: 0;
   font-size: 1.1rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .settings-close-btn {
   background: none;
   border: none;
   font-size: 1.5rem;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   line-height: 1;
   padding: 0;
@@ -473,7 +473,7 @@ const goBack = () => {
 .settings-title {
   margin: 0 0 0.8rem;
   font-size: 0.95rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -492,23 +492,23 @@ const goBack = () => {
   flex-direction: column;
   gap: 0.3rem;
   font-size: 0.9rem;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .setting-item input {
   width: 80px;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   font-size: 1rem;
   text-align: center;
-  background-color: white;
-  color: #2c3e50;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
 }
 
 .setting-item input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--info);
 }
 
 .setting-item input:disabled {
@@ -524,23 +524,23 @@ const goBack = () => {
 
 .sound-btn {
   padding: 0.45rem 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background-color: white;
+  background-color: var(--bg-card);
   cursor: pointer;
   font-size: 0.9rem;
-  color: #555;
+  color: var(--text-secondary);
   transition: all 0.2s;
 }
 
 .sound-btn:hover {
-  border-color: #3498db;
-  color: #3498db;
+  border-color: var(--info);
+  color: var(--info);
 }
 
 .sound-btn.active {
-  background-color: #3498db;
-  border-color: #3498db;
+  background-color: var(--info);
+  border-color: var(--info);
   color: white;
 }
 
@@ -559,7 +559,7 @@ const goBack = () => {
 
 .ring-bg {
   fill: none;
-  stroke: #eee;
+  stroke: var(--border-light);
   stroke-width: 8;
 }
 
@@ -579,7 +579,7 @@ const goBack = () => {
 }
 
 .ring-progress.longBreak {
-  stroke: #3498db;
+  stroke: var(--info);
 }
 
 .timer-display {
@@ -593,13 +593,13 @@ const goBack = () => {
 .time-text {
   font-size: 3rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .session-label {
   font-size: 1rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   margin-top: 0.3rem;
 }
 
@@ -638,8 +638,8 @@ const goBack = () => {
 }
 
 .control-btn.reset {
-  background-color: #ecf0f1;
-  color: #2c3e50;
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 .control-btn.reset:hover {
@@ -663,12 +663,12 @@ const goBack = () => {
 
 .stat-label {
   font-size: 0.85rem;
-  color: #7f8c8d;
+  color: var(--text-dim);
   margin-top: 0.2rem;
 }
 
 .history-section {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -684,7 +684,7 @@ const goBack = () => {
 .history-header h2 {
   margin: 0;
   font-size: 1.2rem;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .clear-btn {
@@ -711,7 +711,7 @@ const goBack = () => {
   display: flex;
   align-items: center;
   padding: 0.6rem 0;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--bg-hover);
 }
 
 .history-item:last-child {
@@ -725,24 +725,24 @@ const goBack = () => {
 
 .history-label {
   flex: 1;
-  color: #2c3e50;
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
 .history-time {
-  color: #95a5a6;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #7f8c8d;
+  color: var(--text-dim);
   font-style: italic;
 }
 
 .back-btn {
-  background: #3498db;
+  background: var(--info);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -842,4 +842,5 @@ const goBack = () => {
     width: 95%;
   }
 }
+
 </style>

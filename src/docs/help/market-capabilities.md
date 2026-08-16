@@ -105,8 +105,18 @@ interface AppTheme {
 }
 ```
 
-- **样式颜色**：优先用 CSS 变量 `var(--xxx)`，它们会随主题自动切换，无需任何 JS。
-- **JS 决定的颜色**（canvas / ECharts / 手写内联样式）：CSS 变量够不到，需要靠 `isDark` 判断当前主题，并用 `onChange` 在切换时重绘。
+> ✅ **市场 app 零暗色代码**：宿主 `sandbox.html` 注入 `./tokens.css`，与主工程 `index.html` 共用**同一份** `public/tokens.css`（含 `:root` 浅色与 `:root.dark` 深色两套 token）。沙箱会随主题在 `<html>` 上切换 `dark` class，于是 `var(--bg-card)` 等变量**自动**取对应深浅值。市场应用只需用 `var(--xxx)` 取色，无需任何 `:global(html.dark)` 覆盖。
+
+- **样式颜色（推荐）**：所有背景 / 文字 / 边框 / 强调色都用 token 变量，跟随主题全自动切换：
+
+  ```css
+  .card { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+  /* 无需暗色覆盖：dark 下 --bg-card 等已由 tokens.css 的 :root.dark 给出 */
+  ```
+
+  ⚠️ token 的**唯一可编辑源**是 `public/tokens.css`（主工程与沙箱共用）；改 token 只改这一处，不要在 `src/` 另存副本。改完照常 `build:market` + `publish:market` 即可。
+
+- **JS 决定的颜色**（canvas / ECharts / 手写内联样式）：CSS 够不到，需要靠 `isDark` 判断当前主题，并用 `onChange` 在切换时重绘。
 
 ```js
 const theme = window.__APP_THEME__
