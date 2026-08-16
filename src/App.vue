@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { RouteLoadingBar, MusicPlayer } from '@/components'
+import { RouteLoadingBar, MusicPlayer, Toast } from '@/components'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import { registerToastHost } from '@/composables/useToast'
 
 const router = useRouter()
 const isRouteLoading = ref(false)
+
+// 全局唯一 Toast 宿主：注册后任意组件都能用 useToast().addToast(...) 弹提示
+const toastHost = ref<InstanceType<typeof Toast> | null>(null)
+onMounted(() => registerToastHost(toastHost.value))
 
 router.beforeEach((to, from, next) => {
   if (to.path !== from.path) {
@@ -24,6 +29,7 @@ router.afterEach(() => {
 <template>
   <div class="app">
     <RouteLoadingBar :loading="isRouteLoading" />
+    <Toast ref="toastHost" />
     <main class="app-main">
       <RouterView v-slot="{ Component }">
         <!-- 注意：此处不能用 mode="out-in"。

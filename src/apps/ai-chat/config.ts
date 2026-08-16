@@ -1,8 +1,5 @@
 import { api } from '@/lib/request'
 
-export const AI_CHAT_SESSIONS_KEY = 'ai-chat-sessions'
-export const AI_CHAT_PROVIDER_STORAGE = 'ai-chat-provider'
-
 export interface ModelOption {
   id: string
   name: string
@@ -21,8 +18,6 @@ export interface ChatMessage {
   id?: number
   timestamp?: number
 }
-
-export const modelStorageKey = (providerId: string) => `ai-chat-model-${providerId}`
 
 export async function fetchProviders(): Promise<ProviderMeta[]> {
   const res = await api.get<{ data: ProviderMeta[] }>('/api/ai-chat/providers', { auth: false })

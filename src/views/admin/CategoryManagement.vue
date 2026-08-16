@@ -12,7 +12,7 @@
 
     <!-- 加载状态 -->
     <div v-if="isLoading" class="loading-state">
-      <div class="loading-spinner"></div>
+      <div class="vc-loading-spinner"></div>
       <span>加载中...</span>
     </div>
 
@@ -79,7 +79,7 @@
       <template #footer>
         <button class="btn-secondary" @click="showModal = false">取消</button>
         <button class="btn-primary" :disabled="saving" @click="saveCategory">
-          <span v-if="saving" class="loading-spinner-sm"></span>
+          <span v-if="saving" class="vc-loading-spinner-sm"></span>
           {{ editingCategory ? '保存' : '创建' }}
         </button>
       </template>
@@ -324,21 +324,6 @@ async function deleteCategory(id: number) {
   color: var(--text-secondary);
 }
 
-.loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--border-light);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -484,15 +469,5 @@ async function deleteCategory(id: number) {
 .form-textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.loading-spinner-sm {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
 }
 </style>

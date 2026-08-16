@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import { useFileDrop } from '../composables/useFileDrop'
 
 defineOptions({ name: 'ImageBase64Tool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const previewUrl = ref('')
 const dataUrl = ref('')
@@ -34,12 +32,12 @@ function loadFile(file: File) {
       previewUrl.value = result
     } else {
       error.value = '读取文件失败：结果非字符串'
-      showToast('error', error.value)
+      addToast('error', error.value)
     }
   }
   reader.onerror = () => {
     error.value = '读取文件失败'
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
   reader.readAsDataURL(file)
 }
@@ -47,7 +45,7 @@ function loadFile(file: File) {
 const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker } = useFileDrop({
   accept: 'image/*',
   onLoad: loadFile,
-  onError: (m) => showToast('error', m),
+  onError: (m) => addToast('error', m),
 })
 
 </script>
@@ -94,18 +92,16 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
         <div class="card-title">DataURL</div>
         <textarea class="mono out" readonly :value="dataUrl" spellcheck="false"></textarea>
         <div class="actions">
-          <CopyButton :text="dataUrl" variant="mini" success-text="已复制 DataURL" :toast="showToast" />
+          <CopyButton :text="dataUrl" variant="mini" success-text="已复制 DataURL" :toast="addToast" />
           <CopyButton
             :text="dataUrl.indexOf(',') >= 0 ? dataUrl.slice(dataUrl.indexOf(',') + 1) : dataUrl"
             variant="mini"
             success-text="已复制 Base64"
-            :toast="showToast"
+            :toast="addToast"
           />
         </div>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

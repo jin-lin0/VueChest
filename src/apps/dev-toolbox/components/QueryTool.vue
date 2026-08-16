@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'QueryTool' })
 
@@ -13,10 +14,7 @@ const isUrl = ref(false)
 const segments = ref<{ key: string; value: string }[]>([])
 const rebuilt = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function looksLikeUrl(s: string) {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(s) || /^https?:\/\//i.test(s)
@@ -48,7 +46,7 @@ function parse() {
       ]
     } catch {
       error.value = '无法解析为合法 URL'
-      showToast('error', error.value)
+      addToast('error', error.value)
       return
     }
   } else {
@@ -87,14 +85,14 @@ parse()
       <div class="row" v-for="seg in segments" :key="seg.key">
         <span class="k seg-key">{{ seg.key }}</span>
         <code class="mono v seg-val">{{ seg.value }}</code>
-        <CopyButton :text="seg.value" variant="mini" :toast="showToast" :success-text="`已复制${seg.key}`" />
+        <CopyButton :text="seg.value" variant="mini" :toast="addToast" :success-text="`已复制${seg.key}`" />
       </div>
     </div>
 
     <section class="card">
       <div class="card-title">
         Query 参数（{{ params.length }} 项）
-        <CopyButton :text="rebuilt" variant="mini" label="复制重组串" :disabled="!rebuilt" :toast="showToast" success-text="已复制查询串" />
+        <CopyButton :text="rebuilt" variant="mini" label="复制重组串" :disabled="!rebuilt" :toast="addToast" success-text="已复制查询串" />
       </div>
       <table v-if="params.length" class="tbl">
         <thead>
@@ -108,7 +106,7 @@ parse()
           <tr v-for="(p, i) in params" :key="i">
             <td class="mono">{{ p.key }}</td>
             <td class="mono">{{ p.value }}</td>
-            <td><CopyButton :text="p.value" variant="mini" :toast="showToast" success-text="已复制参数值" /></td>
+            <td><CopyButton :text="p.value" variant="mini" :toast="addToast" success-text="已复制参数值" /></td>
           </tr>
         </tbody>
       </table>
@@ -118,8 +116,6 @@ parse()
         <code class="mono">{{ rebuilt || '(空)' }}</code>
       </div>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

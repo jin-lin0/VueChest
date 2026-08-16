@@ -1,51 +1,63 @@
 <script setup lang="ts">
-import { ref, computed, reactive, watch, onMounted, onBeforeUnmount, provide } from 'vue'
+import {
+  ref,
+  computed,
+  reactive,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+  provide,
+  defineAsyncComponent,
+} from 'vue'
 import type { Component } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Drawer } from '@/components'
-
-import TextTransformTool from './components/TextTransformTool.vue'
-import Base64Tool from './components/Base64Tool.vue'
-import TimestampTool from './components/TimestampTool.vue'
-import UrlTool from './components/UrlTool.vue'
-import HtmlEntityTool from './components/HtmlEntityTool.vue'
-import UnicodeTool from './components/UnicodeTool.vue'
-import JwtTool from './components/JwtTool.vue'
-import TimezoneTool from './components/TimezoneTool.vue'
-import CronTool from './components/CronTool.vue'
-import DurationTool from './components/DurationTool.vue'
-import JsonTool from './components/JsonTool.vue'
-import JsonCsvTool from './components/JsonCsvTool.vue'
-import YamlTool from './components/YamlTool.vue'
-import XmlTool from './components/XmlTool.vue'
-import MarkdownTool from './components/MarkdownTool.vue'
-import RadixTool from './components/RadixTool.vue'
-import NamingTool from './components/NamingTool.vue'
-import HashTool from './components/HashTool.vue'
-import GeneratorTool from './components/GeneratorTool.vue'
-import TextStatsTool from './components/TextStatsTool.vue'
-import LinesTool from './components/LinesTool.vue'
-import CaseTool from './components/CaseTool.vue'
-import DiffTool from './components/DiffTool.vue'
-import ColorTool from './components/ColorTool.vue'
-import QueryTool from './components/QueryTool.vue'
-import UaTool from './components/UaTool.vue'
-import QrTool from './components/QrTool.vue'
-import RegexTool from './components/RegexTool.vue'
-// 第二批新增工具
-import TomlTool from './components/TomlTool.vue'
-import IniTool from './components/IniTool.vue'
-import QueryJsonTool from './components/QueryJsonTool.vue'
-import FormDataTool from './components/FormDataTool.vue'
-import CurlTool from './components/CurlTool.vue'
-import JsonSchemaTool from './components/JsonSchemaTool.vue'
-import PunycodeTool from './components/PunycodeTool.vue'
-import HexDumpTool from './components/HexDumpTool.vue'
-import GzipTool from './components/GzipTool.vue'
-import ImageBase64Tool from './components/ImageBase64Tool.vue'
-import PaletteTool from './components/PaletteTool.vue'
+// 外壳自身的侧栏列表保持同步：它和 dev-toolbox 一起进场，拆出去只会多一次请求
 import ToolList from './components/ToolList.vue'
 import { REALTIME_KEY, REGISTER_KEY } from './composables/useRealtime'
+
+// 工具组件一律异步加载：外壳（侧栏 / 抽屉）先出来，选中的工具才拉自己的 chunk，
+// 避免 41 个工具（含 diff、qrcode、yaml 等第三方依赖）压进同一个 dev-toolbox 包。
+const TextTransformTool = defineAsyncComponent(() => import('./components/TextTransformTool.vue'))
+const Base64Tool = defineAsyncComponent(() => import('./components/Base64Tool.vue'))
+const TimestampTool = defineAsyncComponent(() => import('./components/TimestampTool.vue'))
+const UrlTool = defineAsyncComponent(() => import('./components/UrlTool.vue'))
+const HtmlEntityTool = defineAsyncComponent(() => import('./components/HtmlEntityTool.vue'))
+const UnicodeTool = defineAsyncComponent(() => import('./components/UnicodeTool.vue'))
+const JwtTool = defineAsyncComponent(() => import('./components/JwtTool.vue'))
+const TimezoneTool = defineAsyncComponent(() => import('./components/TimezoneTool.vue'))
+const CronTool = defineAsyncComponent(() => import('./components/CronTool.vue'))
+const DurationTool = defineAsyncComponent(() => import('./components/DurationTool.vue'))
+const JsonTool = defineAsyncComponent(() => import('./components/JsonTool.vue'))
+const JsonCsvTool = defineAsyncComponent(() => import('./components/JsonCsvTool.vue'))
+const YamlTool = defineAsyncComponent(() => import('./components/YamlTool.vue'))
+const XmlTool = defineAsyncComponent(() => import('./components/XmlTool.vue'))
+const MarkdownTool = defineAsyncComponent(() => import('./components/MarkdownTool.vue'))
+const RadixTool = defineAsyncComponent(() => import('./components/RadixTool.vue'))
+const NamingTool = defineAsyncComponent(() => import('./components/NamingTool.vue'))
+const HashTool = defineAsyncComponent(() => import('./components/HashTool.vue'))
+const GeneratorTool = defineAsyncComponent(() => import('./components/GeneratorTool.vue'))
+const TextStatsTool = defineAsyncComponent(() => import('./components/TextStatsTool.vue'))
+const LinesTool = defineAsyncComponent(() => import('./components/LinesTool.vue'))
+const CaseTool = defineAsyncComponent(() => import('./components/CaseTool.vue'))
+const DiffTool = defineAsyncComponent(() => import('./components/DiffTool.vue'))
+const ColorTool = defineAsyncComponent(() => import('./components/ColorTool.vue'))
+const QueryTool = defineAsyncComponent(() => import('./components/QueryTool.vue'))
+const UaTool = defineAsyncComponent(() => import('./components/UaTool.vue'))
+const QrTool = defineAsyncComponent(() => import('./components/QrTool.vue'))
+const RegexTool = defineAsyncComponent(() => import('./components/RegexTool.vue'))
+// 第二批新增工具
+const TomlTool = defineAsyncComponent(() => import('./components/TomlTool.vue'))
+const IniTool = defineAsyncComponent(() => import('./components/IniTool.vue'))
+const QueryJsonTool = defineAsyncComponent(() => import('./components/QueryJsonTool.vue'))
+const FormDataTool = defineAsyncComponent(() => import('./components/FormDataTool.vue'))
+const CurlTool = defineAsyncComponent(() => import('./components/CurlTool.vue'))
+const JsonSchemaTool = defineAsyncComponent(() => import('./components/JsonSchemaTool.vue'))
+const PunycodeTool = defineAsyncComponent(() => import('./components/PunycodeTool.vue'))
+const HexDumpTool = defineAsyncComponent(() => import('./components/HexDumpTool.vue'))
+const GzipTool = defineAsyncComponent(() => import('./components/GzipTool.vue'))
+const ImageBase64Tool = defineAsyncComponent(() => import('./components/ImageBase64Tool.vue'))
+const PaletteTool = defineAsyncComponent(() => import('./components/PaletteTool.vue'))
 
 defineOptions({ name: 'DevToolboxView' })
 

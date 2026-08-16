@@ -1,6 +1,7 @@
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from './utils'
+import { useListStore } from '../../shared/useListStore'
+import { getStorage } from './utils'
 
 const STORAGE_KEY = 'special_days'
 
@@ -31,7 +32,8 @@ export interface EditForm {
 }
 
 export const useSpecialDaysStore = defineStore('special-days', () => {
-  const specialDays = ref<SpecialDay[]>([])
+  const list = useListStore<SpecialDay>({ storageKey: STORAGE_KEY, defaultValue: [] })
+  const specialDays = list.items
   const showForm = ref(false)
   const editingId = ref<number | null>(null)
 
@@ -83,13 +85,8 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
 
   const form = ref<EditForm>(defaultForm())
 
-  const load = (): SpecialDay[] => getStorage<SpecialDay[]>(STORAGE_KEY, []) || []
-  const save = () => {
-    setStorage(STORAGE_KEY, specialDays.value)
-  }
-
   const init = () => {
-    specialDays.value = load()
+    specialDays.value = getStorage<SpecialDay[]>(STORAGE_KEY, []) || []
   }
   const resetForm = () => {
     form.value = defaultForm()
@@ -121,11 +118,8 @@ export const useSpecialDaysStore = defineStore('special-days', () => {
   }
 
   const deleteSpecialDay = (id: number) => {
-    specialDays.value = specialDays.value.filter((d) => d.id !== id)
+    list.remove(id)
   }
-
-  const debouncedSave = debounce(() => save(), 500)
-  watch(specialDays, debouncedSave, { deep: true })
 
   return {
     specialDays,

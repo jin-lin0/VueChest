@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { rgbToHex } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import { useFileDrop } from '../composables/useFileDrop'
 
 defineOptions({ name: 'PaletteTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 interface ColorEntry {
   hex: string
@@ -50,12 +48,12 @@ function loadImage(file: File) {
       extract(img)
     } catch {
       error.value = '提取主色失败'
-      showToast('error', error.value)
+      addToast('error', error.value)
     }
   }
   img.onerror = () => {
     error.value = '图片加载失败'
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
   img.src = url
 }
@@ -63,7 +61,7 @@ function loadImage(file: File) {
 const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker } = useFileDrop({
   accept: 'image/*',
   onLoad: loadImage,
-  onError: (m) => showToast('error', m),
+  onError: (m) => addToast('error', m),
 })
 
 onBeforeUnmount(() => {
@@ -85,7 +83,7 @@ function extract(img: HTMLImageElement) {
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     error.value = '无法创建画布上下文'
-    showToast('error', error.value)
+    addToast('error', error.value)
     return
   }
   ctx.drawImage(img, 0, 0, w, h)
@@ -125,7 +123,7 @@ function extract(img: HTMLImageElement) {
 
   if (allColors.value.length === 0) {
     error.value = '未提取到颜色（图片可能全透明）'
-    showToast('info', error.value)
+    addToast('info', error.value)
   }
 }
 
@@ -175,13 +173,11 @@ function extract(img: HTMLImageElement) {
             <span class="mono hex">{{ c.hex }}</span>
             <span class="mono rgb">rgb({{ c.rgb[0] }}, {{ c.rgb[1] }}, {{ c.rgb[2] }})</span>
             <span class="mono cnt">×{{ c.count }}</span>
-            <CopyButton :text="c.hex" variant="mini" :toast="showToast" :success-text="`已复制 ${c.hex}`" />
+            <CopyButton :text="c.hex" variant="mini" :toast="addToast" :success-text="`已复制 ${c.hex}`" />
           </li>
         </ul>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

@@ -10,7 +10,7 @@ import { OnsetClicker } from './core/onset-clicker'
 import { generateBeatmap, beatmapDensity, difficultyLabel, type Beatmap } from './core/beatmap'
 import { loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from './core/settings'
 import PlayView from './components/PlayView.vue'
-import { musicApi } from '@/apps/music/api/musicApi'
+import { musicApi } from '@/lib/musicApi'
 
 type Stage = 'idle' | 'fetching' | 'decoding' | 'analyzing' | 'ready' | 'error'
 

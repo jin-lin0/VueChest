@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { getStorage, setStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config'
+import { formatDate } from '@/utils'
 
 export interface FavoriteStock {
   code: string
@@ -119,8 +120,7 @@ export const useStockStore = defineStore('stock', () => {
     const low = fields[34]
     const volume = fields[36]
 
-    const now = new Date()
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const dateStr = formatDate(new Date(), 'YYYY-MM-DD')
 
     return {
       code,

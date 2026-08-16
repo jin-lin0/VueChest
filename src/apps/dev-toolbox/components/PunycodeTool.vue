@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils'
-import { CopyButton, Toast } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import * as punycode from 'punycode'
 
 defineOptions({ name: 'PunycodeTool' })
@@ -16,10 +17,7 @@ const input = ref('')
 const output = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const run = debounce(() => {
   error.value = ''
@@ -44,7 +42,7 @@ const run = debounce(() => {
     output.value = ''
     const msg = e instanceof Error ? e.message : '处理失败'
     error.value = (dir.value === 'encode' ? '编码失败：' : '解码失败：') + msg
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }, 120)
 
@@ -96,7 +94,7 @@ const outputTitle = () =>
         <button :class="{ active: dir === 'decode' }" @click="dir = 'decode'">解码</button>
       </div>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -132,8 +130,6 @@ const outputTitle = () =>
         <p v-if="error" class="err">{{ error }}</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

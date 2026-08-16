@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch } from 'vue'
+import { useOverlay } from '../../composables/useOverlay'
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
@@ -39,28 +39,13 @@ const emit = defineEmits<{
   close: []
 }>()
 
-function close() {
-  emit('update:open', false)
-  emit('close')
-}
-
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && props.open) {
-    e.stopPropagation()
-    close()
-  }
-}
-
-watch(
-  () => props.open,
-  (v) => {
-    if (v) window.addEventListener('keydown', onKeydown)
-    else window.removeEventListener('keydown', onKeydown)
+const { close } = useOverlay({
+  isOpen: () => props.open,
+  onClose: () => {
+    emit('update:open', false)
+    emit('close')
   },
-  { immediate: true },
-)
-
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+})
 </script>
 
 <template>

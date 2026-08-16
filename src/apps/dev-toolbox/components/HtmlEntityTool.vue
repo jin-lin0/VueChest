@@ -2,7 +2,8 @@
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'HtmlEntityTool' })
 
@@ -11,10 +12,7 @@ const input = ref('')
 const output = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function escapeHtml(s: string): string {
   return s.replace(
@@ -48,7 +46,7 @@ const run = debounce(() => {
   } catch {
     output.value = ''
     error.value = mode.value === 'encode' ? '编码失败' : '解码失败：包含无法处理的实体'
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }, 150)
 
@@ -76,7 +74,7 @@ function clearAll() {
         }}
       </span>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -116,8 +114,6 @@ function clearAll() {
       ></iframe>
       <p v-else class="hint">解码后的 HTML 将在此安全预览（脚本不会执行）。</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

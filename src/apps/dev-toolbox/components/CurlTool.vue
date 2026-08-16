@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { debounce } from '@/utils'
-import { CopyButton, Toast } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
 
@@ -17,10 +18,7 @@ const fetchInput = ref('')
 const output = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 interface ParsedCurl {
   method: string
@@ -176,7 +174,7 @@ const run = debounce(() => {
       const parsed = parseCurl(curlInput.value)
       if (!parsed.url) {
         error.value = '未能从 curl 命令中解析出 URL，请检查命令格式。'
-        showToast('error', error.value)
+        addToast('error', error.value)
         return
       }
       output.value = curlToFetch(parsed)
@@ -185,14 +183,14 @@ const run = debounce(() => {
       const parsed = parseFetch(fetchInput.value)
       if (!parsed.url) {
         error.value = '未能从 fetch 代码中解析出 URL，请检查代码格式。'
-        showToast('error', error.value)
+        addToast('error', error.value)
         return
       }
       output.value = fetchToCurl(parsed)
     }
   } catch {
     error.value = '解析失败：命令或代码格式无法识别。'
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }, 180)
 
@@ -230,7 +228,7 @@ function swap() {
       </div>
       <button class="btn ghost" @click="swap">⇄ 交换方向</button>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -270,8 +268,6 @@ function swap() {
         <p v-if="error" class="err">{{ error }}</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

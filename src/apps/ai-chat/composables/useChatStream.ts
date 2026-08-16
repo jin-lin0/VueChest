@@ -12,6 +12,8 @@ export interface StreamChatParams {
   messages: ChatStreamMessage[]
   maxTokens?: number
   temperature?: number
+  /** 用于切换会话/卸载时中止当前流，避免旧流继续推送 */
+  signal?: AbortSignal
 }
 
 const DEFAULT_MAX_TOKENS = 4096
@@ -26,6 +28,7 @@ export function useChatStream() {
       messages,
       maxTokens = DEFAULT_MAX_TOKENS,
       temperature = DEFAULT_TEMPERATURE,
+      signal,
     } = params
 
     const token = getAuthToken()
@@ -36,6 +39,7 @@ export function useChatStream() {
       method: 'POST',
       headers,
       body: JSON.stringify({ conversationId, provider, model, messages, maxTokens, temperature }),
+      signal,
     })
 
     if (!response.ok) {
@@ -56,31 +60,38 @@ export function useChatStream() {
     let buffer = ''
     let done = false
 
-    while (!done) {
-      const { done: readDone, value } = await reader.read()
-      if (readDone) break
+    try {
+      while (!done) {
+        const { done: readDone, value } = await reader.read()
+        if (readDone) break
 
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
 
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed || !trimmed.startsWith('data: ')) continue
-        const data = trimmed.slice(6)
-        if (data === '[DONE]') {
-          done = true
-          break
-        }
-
-        try {
-          const json = JSON.parse(data)
-          const delta = json?.choices?.[0]?.delta?.content
-          if (delta) {
-            yield delta
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed || !trimmed.startsWith('data: ')) continue
+          const data = trimmed.slice(6)
+          if (data === '[DONE]') {
+            done = true
+            break
           }
-        } catch {}
+
+          try {
+            const json = JSON.parse(data)
+            const delta = json?.choices?.[0]?.delta?.content
+            if (delta) {
+              yield delta
+            }
+          } catch {}
+        }
       }
+    } finally {
+      // 无论正常结束、出错还是被 abort，都取消 reader 释放底层网络流
+      try {
+        await reader.cancel()
+      } catch {}
     }
   }
 

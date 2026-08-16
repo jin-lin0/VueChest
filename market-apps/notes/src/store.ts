@@ -1,6 +1,7 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from './utils'
+import { useListStore } from '../../shared/useListStore'
+import { getStorage } from './utils'
 
 const STORAGE_KEY = 'notes'
 
@@ -35,23 +36,17 @@ export interface Note {
 }
 
 export const useNotesStore = defineStore('notes', () => {
-  const notes = ref<Note[]>([])
+  const list = useListStore<Note>({ storageKey: STORAGE_KEY, defaultValue: DEFAULT_NOTES })
+  const notes = list.items
   const selectedNoteId = ref<number | null>(null)
   const isEditing = ref(false)
   const editingNote = ref<Note | null>(null)
   const isNewNote = ref(false)
   const showPreview = ref(false)
 
-  const loadNotes = (): Note[] => {
-    const loaded = getStorage<Note[]>(STORAGE_KEY, DEFAULT_NOTES) || DEFAULT_NOTES
-    return loaded.map((note) => ({ ...note, isMarkdown: note.isMarkdown ?? false }))
-  }
-  const saveNotes = () => {
-    setStorage(STORAGE_KEY, notes.value)
-  }
-
   const init = () => {
-    notes.value = loadNotes()
+    const loaded = getStorage<Note[]>(STORAGE_KEY, DEFAULT_NOTES) || DEFAULT_NOTES
+    notes.value = loaded.map((note) => ({ ...note, isMarkdown: note.isMarkdown ?? false }))
     if (notes.value.length > 0) selectedNoteId.value = notes.value[0].id
   }
 
@@ -96,12 +91,11 @@ export const useNotesStore = defineStore('notes', () => {
     if (!editingNote.value) return
     editingNote.value.updatedAt = new Date().toISOString()
     if (isNewNote.value) {
-      notes.value.push({ ...editingNote.value })
-      selectedNoteId.value = editingNote.value.id
+      const added = list.add({ ...editingNote.value })
+      selectedNoteId.value = added.id
       isNewNote.value = false
     } else {
-      const idx = notes.value.findIndex((note) => note.id === editingNote.value?.id)
-      if (idx !== -1) notes.value[idx] = { ...editingNote.value }
+      list.update(editingNote.value.id, { ...editingNote.value })
     }
     isEditing.value = false
     editingNote.value = null
@@ -119,16 +113,13 @@ export const useNotesStore = defineStore('notes', () => {
   }
 
   const deleteNote = (id: number) => {
-    notes.value = notes.value.filter((note) => note.id !== id)
+    list.remove(id)
     if (selectedNoteId.value === id)
       selectedNoteId.value = notes.value.length > 0 ? notes.value[0].id : null
     isEditing.value = false
     isNewNote.value = false
     editingNote.value = null
   }
-
-  const debouncedSave = debounce(() => saveNotes(), 500)
-  watch(notes, debouncedSave, { deep: true })
 
   return {
     notes,

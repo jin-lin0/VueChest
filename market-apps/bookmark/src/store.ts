@@ -1,6 +1,7 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from './utils'
+import { useListStore } from '../../shared/useListStore'
+import { getStorage } from './utils'
 
 const STORAGE_KEY = 'bookmarks'
 
@@ -37,18 +38,13 @@ export interface Bookmark {
 }
 
 export const useBookmarkStore = defineStore('bookmark', () => {
-  const bookmarks = ref<Bookmark[]>([])
+  const list = useListStore<Bookmark>({ storageKey: STORAGE_KEY, defaultValue: DEFAULT_BOOKMARKS })
+  const bookmarks = list.items
   const searchQuery = ref('')
   const selectedCategory = ref<string | null>(null)
 
-  const loadBookmarks = (): Bookmark[] =>
-    getStorage<Bookmark[]>(STORAGE_KEY, DEFAULT_BOOKMARKS) || DEFAULT_BOOKMARKS
-  const saveBookmarks = () => {
-    setStorage(STORAGE_KEY, bookmarks.value)
-  }
-
   const init = () => {
-    bookmarks.value = loadBookmarks()
+    bookmarks.value = getStorage<Bookmark[]>(STORAGE_KEY, DEFAULT_BOOKMARKS) || DEFAULT_BOOKMARKS
   }
 
   const categories = computed(() => {
@@ -74,7 +70,7 @@ export const useBookmarkStore = defineStore('bookmark', () => {
   const addBookmark = (title: string, url: string, category: string) => {
     let finalUrl = url.trim()
     if (!/^https?:\/\//i.test(finalUrl)) finalUrl = 'https://' + finalUrl
-    bookmarks.value.push({
+    list.add({
       id: Date.now(),
       title: title.trim(),
       url: finalUrl,
@@ -84,25 +80,18 @@ export const useBookmarkStore = defineStore('bookmark', () => {
   }
 
   const updateBookmark = (id: number, title: string, url: string, category: string) => {
-    const index = bookmarks.value.findIndex((b) => b.id === id)
-    if (index !== -1) {
-      let finalUrl = url.trim()
-      if (!/^https?:\/\//i.test(finalUrl)) finalUrl = 'https://' + finalUrl
-      bookmarks.value[index] = {
-        ...bookmarks.value[index],
-        title: title.trim(),
-        url: finalUrl,
-        category: category.trim() || '未分类',
-      }
-    }
+    let finalUrl = url.trim()
+    if (!/^https?:\/\//i.test(finalUrl)) finalUrl = 'https://' + finalUrl
+    list.update(id, {
+      title: title.trim(),
+      url: finalUrl,
+      category: category.trim() || '未分类',
+    })
   }
 
   const deleteBookmark = (id: number) => {
-    bookmarks.value = bookmarks.value.filter((b) => b.id !== id)
+    list.remove(id)
   }
-
-  const debouncedSave = debounce(() => saveBookmarks(), 500)
-  watch(bookmarks, debouncedSave, { deep: true })
 
   return {
     bookmarks,

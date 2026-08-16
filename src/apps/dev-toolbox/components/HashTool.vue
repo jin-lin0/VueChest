@@ -2,16 +2,14 @@
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 // @ts-ignore spark-md5 未提供类型声明，运行期由依赖提供
 import SparkMD5 from 'spark-md5'
 
 defineOptions({ name: 'HashTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const text = ref('')
 const ALGOS = [
@@ -105,9 +103,9 @@ const compute = debounce(async () => {
     !subtleWarned
   ) {
     subtleWarned = true
-    showToast('error', '当前环境不支持 crypto.subtle（需 HTTPS 或 localhost），SHA/HMAC 无法计算')
+    addToast('error', '当前环境不支持 crypto.subtle（需 HTTPS 或 localhost），SHA/HMAC 无法计算')
   } else if (error.value) {
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }, 150)
 
@@ -184,11 +182,9 @@ function clearAll() {
       <div v-for="r in resultRows" :key="r.key" class="result-row">
         <span class="res-label">{{ r.label }}</span>
         <code class="mono res-value">{{ r.value }}</code>
-        <CopyButton :text="r.value" variant="mini" success-text="已复制结果" :disabled="r.value === '—'" :toast="showToast" />
+        <CopyButton :text="r.value" variant="mini" success-text="已复制结果" :disabled="r.value === '—'" :toast="addToast" />
       </div>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

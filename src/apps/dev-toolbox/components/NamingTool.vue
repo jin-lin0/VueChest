@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'NamingTool' })
 
 const input = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function splitWords(raw: string): string[] {
   return (
@@ -67,7 +65,7 @@ function clearAll() {
         <div v-for="r in results" :key="r.key" class="result-row">
           <span class="k result-name">{{ r.key }}</span>
           <code class="v result-val mono">{{ r.value }}</code>
-          <CopyButton :text="r.value" variant="mini" :disabled="!r.value" :toast="showToast" :success-text="`已复制 ${r.value}`" />
+          <CopyButton :text="r.value" variant="mini" :disabled="!r.value" :toast="addToast" :success-text="`已复制 ${r.value}`" />
         </div>
         <p v-if="results.length === 0" class="hint">输入标识符后即时显示四种命名风格。</p>
       </div>
@@ -76,8 +74,6 @@ function clearAll() {
     <div class="toolbar">
       <button class="btn ghost" @click="clearAll">清空</button>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

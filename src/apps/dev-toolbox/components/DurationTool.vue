@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'DurationTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 type Mode = 'diff' | 'countdown'
 const mode = ref<Mode>('diff')
@@ -157,11 +155,11 @@ function setTargetNow() {
         <div class="out-row">
           <span class="k">{{ diff.isNeg ? '结束早于开始' : '可读' }}</span>
           <span class="v mono">{{ segText(diff) }}</span>
-          <CopyButton :text="segText(diff)" variant="mini" :toast="showToast" />
+          <CopyButton :text="segText(diff)" variant="mini" :toast="addToast" />
         </div>
         <div class="out-row">
           <span class="k">总秒数</span><span class="v mono">{{ diff.totalSec }}</span>
-          <CopyButton :text="String(diff.totalSec)" variant="mini" :toast="showToast" />
+          <CopyButton :text="String(diff.totalSec)" variant="mini" :toast="addToast" />
         </div>
       </div>
       <p v-else class="hint">选择开始与结束时间后自动计算。</p>
@@ -191,13 +189,11 @@ function setTargetNow() {
           <span class="v mono">{{
             countdown.expired ? segText(countdown) + '（前）' : segText(countdown)
           }}</span>
-          <CopyButton :text="segText(countdown)" variant="mini" :toast="showToast" />
+          <CopyButton :text="segText(countdown)" variant="mini" :toast="addToast" />
         </div>
       </div>
       <p v-else class="hint">选择目标时间后，每秒刷新剩余时长。</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

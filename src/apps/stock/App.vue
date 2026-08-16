@@ -9,7 +9,7 @@ import '@vuepic/vue-datepicker/dist/main.css'
 import draggable from 'vuedraggable'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { setStorage } from '@/lib/storage'
-import { debounce } from '@/utils'
+import { debounce, formatDate } from '@/utils'
 import { STOCK_COLORS } from './config'
 
 defineOptions({ name: 'StockAnalysisView' })
@@ -23,10 +23,7 @@ const displayKline = computed(() => activeKline.value ?? stockStore.klineResult)
 
 watch(selectedDate, (val) => {
   if (val) {
-    const y = val.getFullYear()
-    const m = String(val.getMonth() + 1).padStart(2, '0')
-    const d = String(val.getDate()).padStart(2, '0')
-    stockStore.selectedDate = `${y}-${m}-${d}`
+    stockStore.selectedDate = formatDate(val, 'YYYY-MM-DD')
     stockStore.queryStockByDate()
   }
 })
@@ -680,13 +677,7 @@ const handleQuery = async () => {
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  animation: vc-spin 0.8s linear infinite;
 }
 
 .favorites-card {

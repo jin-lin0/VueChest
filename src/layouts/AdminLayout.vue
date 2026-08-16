@@ -70,6 +70,7 @@ import { api } from '@/lib/request'
 import { useTheme } from '@/composables/useTheme'
 import { Toast, Drawer } from '@/components'
 import AdminSidebar from './AdminSidebar.vue'
+import { roleText } from '@/utils'
 
 const router = useRouter()
 const route = useRoute()
@@ -143,12 +144,7 @@ function toggleDark() {
 }
 
 function getRoleLabel(role: string) {
-  const roles: Record<string, string> = {
-    super_admin: '超级管理员',
-    admin: '管理员',
-    user: '普通用户',
-  }
-  return roles[role] || role
+  return roleText(role)
 }
 
 async function handleLogout() {

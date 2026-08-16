@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import { useRealtime } from '../composables/useRealtime'
 
 defineOptions({ name: 'RegexTool' })
@@ -17,10 +18,7 @@ interface MatchItem {
 }
 const matches = ref<MatchItem[]>([])
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function test() {
   error.value = ''
@@ -36,7 +34,7 @@ function test() {
     regex = new RegExp(p, f)
   } catch (e) {
     error.value = '非法正则：' + (e instanceof Error ? e.message : String(e))
-    showToast('error', error.value)
+    addToast('error', error.value)
     return
   }
   // 收集全部匹配需要全局标志；用户未给 g 时迭代副本补上
@@ -82,7 +80,7 @@ test()
     <section class="card">
       <div class="card-title">
         正则
-        <CopyButton :text="matches.map((mm: { value: string }) => mm.value).join('\n')" variant="mini" label="复制全部匹配" :disabled="!matches.length" :toast="showToast" success-text="已复制全部匹配" />
+        <CopyButton :text="matches.map((mm: { value: string }) => mm.value).join('\n')" variant="mini" label="复制全部匹配" :disabled="!matches.length" :toast="addToast" success-text="已复制全部匹配" />
       </div>
       <div class="regex-row">
         <span class="slash">/</span>
@@ -112,8 +110,6 @@ test()
       </div>
       <p v-else class="hint">暂无匹配</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

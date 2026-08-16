@@ -1,6 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from './utils'
+import { useListStore } from '../../shared/useListStore'
+import { getStorage, setStorage } from './utils'
 
 const SETTINGS_KEY = 'pomodoro-settings'
 const HISTORY_KEY = 'pomodoro-history'
@@ -29,7 +30,8 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
   const sessionType = ref<SessionType>('work')
   const isRunning = ref(false)
   const pomodoroCount = ref(0)
-  const history = ref<HistoryRecord[]>([])
+  const list = useListStore<HistoryRecord>({ storageKey: HISTORY_KEY, defaultValue: [] })
+  const history = list.items
   let timer: ReturnType<typeof setInterval> | null = null
 
   const LABELS: Record<SessionType, string> = { work: '专注', break: '短休息', longBreak: '长休息' }
@@ -58,9 +60,6 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
   })
   const loadHistory = (): HistoryRecord[] => getStorage<HistoryRecord[]>(HISTORY_KEY, []) || []
 
-  const saveHistory = () => {
-    setStorage(HISTORY_KEY, history.value)
-  }
   const saveSettings = () => {
     setStorage(SETTINGS_KEY, settings.value)
   }
@@ -166,8 +165,6 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     if (playSoundCallback) playSoundCallback()
   }
 
-  const debouncedSaveHistory = debounce(() => saveHistory(), 500)
-  watch(history, debouncedSaveHistory, { deep: true })
   watch(settings, saveSettings, { deep: true })
 
   return {

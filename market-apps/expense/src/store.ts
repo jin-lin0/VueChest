@@ -1,6 +1,7 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from './utils'
+import { useListStore } from '../../shared/useListStore'
+import { getStorage } from './utils'
 
 const STORAGE_KEY = 'expenses'
 
@@ -17,7 +18,8 @@ export interface ExpenseItem {
 }
 
 export const useExpenseStore = defineStore('expense', () => {
-  const records = ref<ExpenseItem[]>([])
+  const list = useListStore<ExpenseItem>({ storageKey: STORAGE_KEY, defaultValue: [] })
+  const records = list.items
   const showForm = ref(false)
   const formType = ref<'income' | 'expense'>('expense')
   const formAmount = ref('')
@@ -26,13 +28,8 @@ export const useExpenseStore = defineStore('expense', () => {
   const formDate = ref(new Date().toISOString().slice(0, 10))
   const editingId = ref<number | null>(null)
 
-  const loadRecords = (): ExpenseItem[] => getStorage<ExpenseItem[]>(STORAGE_KEY, []) || []
-  const saveRecords = () => {
-    setStorage(STORAGE_KEY, records.value)
-  }
-
   const init = () => {
-    records.value = loadRecords()
+    records.value = getStorage<ExpenseItem[]>(STORAGE_KEY, []) || []
   }
 
   const currentCategories = computed(() =>
@@ -110,19 +107,15 @@ export const useExpenseStore = defineStore('expense', () => {
     if (!amount || amount <= 0) return
     if (!formCategory.value) return
     if (editingId.value !== null) {
-      const index = records.value.findIndex((r) => r.id === editingId.value)
-      if (index !== -1) {
-        records.value[index] = {
-          ...records.value[index],
-          type: formType.value,
-          amount,
-          category: formCategory.value,
-          note: formNote.value.trim(),
-          date: formDate.value,
-        }
-      }
+      list.update(editingId.value, {
+        type: formType.value,
+        amount,
+        category: formCategory.value,
+        note: formNote.value.trim(),
+        date: formDate.value,
+      })
     } else {
-      records.value.push({
+      list.add({
         id: Date.now(),
         type: formType.value,
         amount,
@@ -135,11 +128,8 @@ export const useExpenseStore = defineStore('expense', () => {
   }
 
   const deleteRecord = (id: number) => {
-    records.value = records.value.filter((r) => r.id !== id)
+    list.remove(id)
   }
-
-  const debouncedSave = debounce(() => saveRecords(), 500)
-  watch(records, debouncedSave, { deep: true })
 
   return {
     records,

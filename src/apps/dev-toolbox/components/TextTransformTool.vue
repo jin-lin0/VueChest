@@ -2,7 +2,8 @@
 import { ref, onMounted, watch } from 'vue'
 import type { Plugin } from 'prettier'
 import { downloadFile, debounce } from '@/utils'
-import { Modal, Toast, CopyButton } from '@/components'
+import { Modal, CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
 import RuleSelect from './RuleSelect.vue'
 
@@ -57,10 +58,7 @@ const persist = debounce(() => {
 }, 300)
 watch([inputText, codeText, currentRule], () => persist())
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 /* ---------- 转换引擎：把用户代码编译为 Blob ESM 模块并动态 import ---------- */
 type TransformFn = (input: unknown) => Promise<unknown>
@@ -122,7 +120,7 @@ async function convert() {
     const fn = await getTransform(codeText.value)
     const result = await fn(raw)
     if (result === undefined) {
-      showToast('error', '转换函数未返回结果，请使用 return 返回转换后的数据')
+      addToast('error', '转换函数未返回结果，请使用 return 返回转换后的数据')
       outputText.value = ''
       outputLang.value = 'plaintext'
       return
@@ -136,13 +134,13 @@ async function convert() {
         outputText.value = JSON.stringify(result, null, 2)
         outputLang.value = 'json'
       } catch (e) {
-        showToast('error', '转换结果无法序列化为 JSON：' + (e as Error).message)
+        addToast('error', '转换结果无法序列化为 JSON：' + (e as Error).message)
         outputText.value = ''
         outputLang.value = 'plaintext'
       }
     }
   } catch (e) {
-    showToast('error', '转换执行出错：' + (e instanceof Error ? e.message : String(e)))
+    addToast('error', '转换执行出错：' + (e instanceof Error ? e.message : String(e)))
     outputText.value = ''
     outputLang.value = 'plaintext'
   } finally {
@@ -157,14 +155,14 @@ function formatJsonText(raw: string): string {
 function formatInput() {
   const raw = inputText.value.trim()
   if (!raw) {
-    showToast('error', '请输入内容')
+    addToast('error', '请输入内容')
     return
   }
   try {
     inputText.value = formatJsonText(raw)
-    showToast('success', '输入已格式化')
+    addToast('success', '输入已格式化')
   } catch (e) {
-    showToast('error', '无法格式化：输入不是合法 JSON：' + (e as Error).message)
+    addToast('error', '无法格式化：输入不是合法 JSON：' + (e as Error).message)
   }
 }
 
@@ -182,15 +180,15 @@ function formatInputSilent() {
 function formatOutput() {
   const raw = outputText.value.trim()
   if (!raw) {
-    showToast('error', '暂无结果')
+    addToast('error', '暂无结果')
     return
   }
   try {
     outputText.value = formatJsonText(raw)
     outputLang.value = 'json'
-    showToast('success', '结果已格式化')
+    addToast('success', '结果已格式化')
   } catch (e) {
-    showToast('error', '无法格式化：结果不是合法 JSON：' + (e as Error).message)
+    addToast('error', '无法格式化：结果不是合法 JSON：' + (e as Error).message)
   }
 }
 
@@ -200,9 +198,8 @@ function persistRules() {
 }
 
 function makeId(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : String(Date.now() + Math.random())
+  // 原先的 Date.now() + Math.random() 兜底在同一毫秒批量新增时会撞 id，直接用 UUID
+  return crypto.randomUUID()
 }
 
 // 主页下拉选择规则：把该规则的函数代码载入编辑器（即"应用"）
@@ -221,7 +218,7 @@ function handleDeleteRule(name: string | number) {
   rules.value = rules.value.filter((r) => r.name !== n)
   persistRules()
   if (currentRule.value === n) currentRule.value = ''
-  showToast('success', `已删除规则「${n}」`)
+  addToast('success', `已删除规则「${n}」`)
 }
 
 // 主页下拉「改名」：修改规则名称（value 即名称），避免与现有重名
@@ -230,13 +227,13 @@ function handleRenameRule(oldValue: string | number, newLabel: string) {
   const r = rules.value.find((x) => x.name === old)
   if (!r) return
   if (rules.value.some((x) => x.name === newLabel && x.name !== old)) {
-    showToast('error', `已存在规则「${newLabel}」`)
+    addToast('error', `已存在规则「${newLabel}」`)
     return
   }
   r.name = newLabel
   persistRules()
   if (currentRule.value === old) currentRule.value = newLabel
-  showToast('success', `已重命名为「${newLabel}」`)
+  addToast('success', `已重命名为「${newLabel}」`)
 }
 
 // 新增规则弹窗
@@ -255,7 +252,7 @@ function openNewRuleModal() {
 function createRule() {
   const name = newRuleName.value.trim()
   if (!name) {
-    showToast('error', '请填写规则名称')
+    addToast('error', '请填写规则名称')
     return
   }
   const entry: Rule = { id: makeId(), name, code: newRuleCode.value }
@@ -266,7 +263,7 @@ function createRule() {
   currentRule.value = name
   codeText.value = newRuleCode.value
   showNewRuleModal.value = false
-  showToast('success', `已保存规则「${name}」`)
+  addToast('success', `已保存规则「${name}」`)
 }
 
 function closeNewRuleModal() {
@@ -286,11 +283,11 @@ function closeEditModal() {
 function saveEditRule() {
   const name = editRuleName.value.trim()
   if (!name) {
-    showToast('error', '请填写规则名称')
+    addToast('error', '请填写规则名称')
     return
   }
   if (name !== currentRule.value && rules.value.some((x) => x.name === name)) {
-    showToast('error', `已存在规则「${name}」`)
+    addToast('error', `已存在规则「${name}」`)
     return
   }
   const r = rules.value.find((x) => x.name === currentRule.value)
@@ -304,7 +301,7 @@ function saveEditRule() {
   currentRule.value = name
   codeText.value = editRuleCode.value
   showEditModal.value = false
-  showToast('success', `已更新规则「${name}」`)
+  addToast('success', `已更新规则「${name}」`)
 }
 
 function splitImports(code: string): { imports: string; body: string } {
@@ -372,18 +369,18 @@ async function formatEditRule() {
   const formatted = await formatRuleCode(editRuleCode.value)
   if (formatted !== null) {
     editRuleCode.value = formatted
-    showToast('success', '已格式化代码')
+    addToast('success', '已格式化代码')
   } else {
-    showToast('error', '格式化失败：代码存在语法错误')
+    addToast('error', '格式化失败：代码存在语法错误')
   }
 }
 async function formatNewRule() {
   const formatted = await formatRuleCode(newRuleCode.value)
   if (formatted !== null) {
     newRuleCode.value = formatted
-    showToast('success', '已格式化代码')
+    addToast('success', '已格式化代码')
   } else {
-    showToast('error', '格式化失败：代码存在语法错误')
+    addToast('error', '格式化失败：代码存在语法错误')
   }
 }
 
@@ -487,7 +484,7 @@ function downloadOutput() {
                 :icon="false"
                 label="复制"
                 success-text="已复制结果"
-                :toast="showToast"
+                :toast="addToast"
               />
               <button
                 class="icon-btn"
@@ -603,15 +600,13 @@ function downloadOutput() {
         </div>
       </div>
       <template #footer>
-        <CopyButton :text="editRuleCode" variant="btn" label="复制代码" success-text="已复制函数代码" :toast="showToast" />
+        <CopyButton :text="editRuleCode" variant="btn" label="复制代码" success-text="已复制函数代码" :toast="addToast" />
         <button class="btn" @click="closeEditModal">取消</button>
         <button class="btn primary" :disabled="!editRuleName.trim()" @click="saveEditRule">
           保存修改
         </button>
       </template>
     </Modal>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

@@ -407,7 +407,7 @@ async function handleSubmit() {
               >
                 <img v-if="shot.url" :src="shot.url" alt="截图预览" class="shot-img" />
                 <div v-else class="shot-loading">
-                  <span class="btn-spinner" />
+                  <span class="vc-btn-spinner" />
                 </div>
                 <button
                   type="button"
@@ -441,7 +441,7 @@ async function handleSubmit() {
         </transition>
 
         <button class="submit-btn" :disabled="uploading || !parsedMeta">
-          <span v-if="uploading" class="btn-spinner" />
+          <span v-if="uploading" class="vc-btn-spinner" />
           {{ uploading ? '发布中...' : '发布到市场' }}
         </button>
       </form>
@@ -905,21 +905,6 @@ async function handleSubmit() {
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* Success state */

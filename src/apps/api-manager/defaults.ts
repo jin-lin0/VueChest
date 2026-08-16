@@ -7,7 +7,7 @@ export interface ApiParam {
 }
 
 export interface ApiItem {
-  id: number
+  id: string | number
   name: string
   url: string
   method: 'GET' | 'POST'

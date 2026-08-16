@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { CustomSelect, type SelectOption, Toast, CopyButton } from '@/components'
+import { CustomSelect, type SelectOption, CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'TimestampTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 /* 当前时间（每秒刷新） */
 const now = ref(Date.now())
@@ -113,27 +111,27 @@ function useNowDate() {
         <div class="now-item">
           <span class="k">秒级时间戳</span>
           <span class="v mono">{{ nowSec }}</span>
-          <CopyButton :text="String(nowSec)" variant="mini" :toast="showToast" />
+          <CopyButton :text="String(nowSec)" variant="mini" :toast="addToast" />
         </div>
         <div class="now-item">
           <span class="k">毫秒时间戳</span>
           <span class="v mono">{{ nowMs }}</span>
-          <CopyButton :text="String(nowMs)" variant="mini" :toast="showToast" />
+          <CopyButton :text="String(nowMs)" variant="mini" :toast="addToast" />
         </div>
         <div class="now-item">
           <span class="k">本地时间</span>
           <span class="v mono">{{ nowLocal }}</span>
-          <CopyButton :text="nowLocal" variant="mini" :toast="showToast" />
+          <CopyButton :text="nowLocal" variant="mini" :toast="addToast" />
         </div>
         <div class="now-item">
           <span class="k">UTC 时间</span>
           <span class="v mono">{{ nowUtc }}</span>
-          <CopyButton :text="nowUtc" variant="mini" :toast="showToast" />
+          <CopyButton :text="nowUtc" variant="mini" :toast="addToast" />
         </div>
         <div class="now-item now-item-wide">
           <span class="k">ISO 8601</span>
           <span class="v mono">{{ nowIso }}</span>
-          <CopyButton :text="nowIso" variant="mini" :toast="showToast" />
+          <CopyButton :text="nowIso" variant="mini" :toast="addToast" />
         </div>
       </div>
     </section>
@@ -153,15 +151,15 @@ function useNowDate() {
         <div v-if="tsResult" class="out">
           <div class="out-row">
             <span class="k">本地时间</span><span class="v mono">{{ tsResult.local }}</span>
-            <CopyButton :text="tsResult.local" variant="mini" :toast="showToast" />
+            <CopyButton :text="tsResult.local" variant="mini" :toast="addToast" />
           </div>
           <div class="out-row">
             <span class="k">UTC 时间</span><span class="v mono">{{ tsResult.utc }}</span>
-            <CopyButton :text="tsResult.utc" variant="mini" :toast="showToast" />
+            <CopyButton :text="tsResult.utc" variant="mini" :toast="addToast" />
           </div>
           <div class="out-row">
             <span class="k">ISO 8601</span><span class="v mono">{{ tsResult.iso }}</span>
-            <CopyButton :text="tsResult.iso" variant="mini" :toast="showToast" />
+            <CopyButton :text="tsResult.iso" variant="mini" :toast="addToast" />
           </div>
           <div class="out-row">
             <span class="k">秒 / 毫秒</span>
@@ -184,18 +182,16 @@ function useNowDate() {
         <div v-if="dateResult" class="out">
           <div class="out-row">
             <span class="k">秒级</span><span class="v mono">{{ dateResult.sec }}</span>
-            <CopyButton :text="String(dateResult.sec)" variant="mini" :toast="showToast" />
+            <CopyButton :text="String(dateResult.sec)" variant="mini" :toast="addToast" />
           </div>
           <div class="out-row">
             <span class="k">毫秒级</span><span class="v mono">{{ dateResult.ms }}</span>
-            <CopyButton :text="String(dateResult.ms)" variant="mini" :toast="showToast" />
+            <CopyButton :text="String(dateResult.ms)" variant="mini" :toast="addToast" />
           </div>
         </div>
         <p v-else-if="!dateError" class="hint">选择日期时间后自动转换。</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

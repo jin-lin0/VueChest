@@ -1,0 +1,47 @@
+/* 全局通用工具类：从各组件 <style> 收敛而来的 spinner，避免重复定义。
+   仅收敛「完全相同的通用 spinner」，差异较大（尺寸/配色/速度不同）或特殊动画
+   的 spinner 仍保留在各自组件中，只复用下方这个统一的旋转关键帧。 */
+
+@keyframes vc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 后台加载大圈（36px，accent 色）—— AppManagement / CategoryManagement / UserManagement 共用 */
+.vc-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: vc-spin 0.8s linear infinite;
+}
+
+/* 后台加载小圈（16px，白色，用于按钮内） */
+.vc-loading-spinner-sm {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: vc-spin 0.8s linear infinite;
+}
+
+/* 主按钮内白色旋转图标（18px）—— 登录/注册/找回密码/应用上传 共用 */
+.vc-btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: vc-spin 0.7s linear infinite;
+}
+
+/* 主按钮内小尺寸修饰（14px），配合 .vc-btn-spinner 使用 */
+.vc-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}

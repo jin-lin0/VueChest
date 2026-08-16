@@ -1,6 +1,6 @@
-import { ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { debounce, getStorage, setStorage } from './utils'
+import { useListStore } from '../../shared/useListStore'
+import { getStorage } from './utils'
 
 const STORAGE_KEY = 'todos'
 
@@ -18,23 +18,16 @@ export interface TodoItem {
 }
 
 export const useTodoStore = defineStore('todo', () => {
-  const todos = ref<TodoItem[]>([])
-
-  const loadTodos = (): TodoItem[] => {
-    return getStorage<TodoItem[]>(STORAGE_KEY, DEFAULT_TODOS) || DEFAULT_TODOS
-  }
-
-  const saveTodos = () => {
-    setStorage(STORAGE_KEY, todos.value)
-  }
+  const list = useListStore<TodoItem>({ storageKey: STORAGE_KEY, defaultValue: DEFAULT_TODOS })
+  const todos = list.items
 
   const init = () => {
-    todos.value = loadTodos()
+    todos.value = getStorage<TodoItem[]>(STORAGE_KEY, DEFAULT_TODOS) || DEFAULT_TODOS
   }
 
   const addTodo = (text: string) => {
     if (text.trim()) {
-      todos.value.push({
+      list.add({
         id: Date.now(),
         text: text.trim(),
         completed: false,
@@ -51,11 +44,8 @@ export const useTodoStore = defineStore('todo', () => {
   }
 
   const removeTodo = (id: number) => {
-    todos.value = todos.value.filter((item) => item.id !== id)
+    list.remove(id)
   }
-
-  const debouncedSave = debounce(() => saveTodos(), 500)
-  watch(todos, debouncedSave, { deep: true })
 
   return { todos, init, addTodo, toggleTodo, removeTodo }
 })

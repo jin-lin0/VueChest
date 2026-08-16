@@ -38,7 +38,7 @@
           <p v-if="authStore.error" class="form-error">{{ authStore.error }}</p>
 
           <button type="submit" class="submit-btn" :disabled="authStore.isLoading">
-            <span v-if="authStore.isLoading" class="btn-spinner"></span>
+            <span v-if="authStore.isLoading" class="vc-btn-spinner"></span>
             {{ authStore.isLoading ? '登录中...' : '登录' }}
           </button>
         </form>
@@ -209,21 +209,6 @@ async function handleLogin() {
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .login-footer {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
 import Ajv from 'ajv'
@@ -26,10 +27,7 @@ const valid = ref<boolean | null>(null)
 const errorMsg = ref('')
 const errorsText = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function formatAjvError(e: {
   instancePath: string
@@ -54,14 +52,14 @@ const run = debounce(() => {
     schema = JSON.parse(schemaInput.value)
   } catch (err) {
     errorMsg.value = 'Schema 不是合法 JSON：' + (err as Error).message
-    showToast('error', 'Schema 解析失败')
+    addToast('error', 'Schema 解析失败')
     return
   }
   try {
     data = JSON.parse(dataInput.value)
   } catch (err) {
     errorMsg.value = 'Data 不是合法 JSON：' + (err as Error).message
-    showToast('error', 'Data 解析失败')
+    addToast('error', 'Data 解析失败')
     return
   }
 
@@ -70,7 +68,7 @@ const run = debounce(() => {
     validate = ajv.compile(schema as object)
   } catch (err) {
     errorMsg.value = 'Schema 编译失败：' + (err as Error).message
-    showToast('error', 'Schema 编译失败')
+    addToast('error', 'Schema 编译失败')
     return
   }
 
@@ -80,7 +78,7 @@ const run = debounce(() => {
     const errs = validate.errors ?? []
     errorsText.value = errs.map(formatAjvError).join('\n')
   } else {
-    showToast('success', '校验通过 ✓')
+    addToast('success', '校验通过 ✓')
   }
 }, 220)
 
@@ -130,7 +128,7 @@ function clearAll() {
           :text="valid === null ? '' : valid ? '校验通过 ✓' : '校验失败：\n' + errorsText"
           variant="btn"
           success-text="已复制校验结果"
-          :toast="showToast"
+          :toast="addToast"
         />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
@@ -160,8 +158,6 @@ function clearAll() {
       <p v-else-if="valid === true" class="ok-text">数据符合 Schema 定义。</p>
       <p v-else class="muted">输入 Schema 与数据后将自动校验。</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

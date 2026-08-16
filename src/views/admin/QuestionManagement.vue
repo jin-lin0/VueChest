@@ -462,13 +462,7 @@ async function batchDelete() {
   border: 3px solid var(--border-light);
   border-top-color: var(--accent);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  animation: vc-spin 0.8s linear infinite;
 }
 
 .question-list {

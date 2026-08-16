@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import QRCode from 'qrcode'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import { useRealtime } from '../composables/useRealtime'
 
 defineOptions({ name: 'QrTool' })
@@ -11,10 +12,7 @@ const input = ref('https://www.example.com')
 const dataUrl = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function generate() {
   error.value = ''
@@ -30,7 +28,7 @@ function generate() {
     .catch(() => {
       dataUrl.value = ''
       error.value = '二维码生成失败，内容可能过长或包含无法编码的字符'
-      showToast('error', error.value)
+      addToast('error', error.value)
     })
 }
 
@@ -68,13 +66,11 @@ generate()
           label="复制图片 (data URL)"
           :icon="false"
           success-text="已复制图片 data URL"
-          :toast="showToast"
+          :toast="addToast"
         />
         <a v-if="dataUrl" class="btn" :href="dataUrl" download="qrcode.png">下载 PNG</a>
       </div>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

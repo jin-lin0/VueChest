@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'GeneratorTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 // crypto.getRandomValues 在所有上下文可用；randomUUID / subtle 需安全上下文
 const cryptoReady = typeof crypto !== 'undefined' && !!crypto.getRandomValues
@@ -35,7 +33,7 @@ const uuids = ref<string[]>([])
 
 function genUuid() {
   if (!uuidReady) {
-    showToast('error', '当前环境不支持 crypto.randomUUID（需 HTTPS 或 localhost）')
+    addToast('error', '当前环境不支持 crypto.randomUUID（需 HTTPS 或 localhost）')
     return
   }
   const n = clamp(uuidCount.value, 1, 100)
@@ -83,11 +81,11 @@ const strength = computed(() => {
 function genPassword() {
   const pool = buildPool()
   if (!pool) {
-    showToast('error', '请至少选择一种字符类型')
+    addToast('error', '请至少选择一种字符类型')
     return
   }
   if (!cryptoReady) {
-    showToast('error', '当前环境不支持 crypto.getRandomValues')
+    addToast('error', '当前环境不支持 crypto.getRandomValues')
     return
   }
   const len = clamp(pwLen.value, 4, 64)
@@ -104,7 +102,7 @@ const randoms = ref<number[]>([])
 
 function genRandoms() {
   if (!cryptoReady) {
-    showToast('error', '当前环境不支持 crypto.getRandomValues')
+    addToast('error', '当前环境不支持 crypto.getRandomValues')
     return
   }
   const min = Math.floor(rMin.value)
@@ -131,11 +129,11 @@ const candidateList = computed(() =>
 function draw() {
   const list = candidateList.value
   if (!list.length) {
-    showToast('error', '请先输入候选（每行一个）')
+    addToast('error', '请先输入候选（每行一个）')
     return
   }
   if (!cryptoReady) {
-    showToast('error', '当前环境不支持 crypto.getRandomValues')
+    addToast('error', '当前环境不支持 crypto.getRandomValues')
     return
   }
   winner.value = list[randBelow(list.length)]
@@ -152,12 +150,12 @@ function draw() {
         <label class="k">数量</label>
         <input class="inp num" type="number" min="1" max="100" v-model.number="uuidCount" />
         <button class="btn primary" @click="genUuid">生成</button>
-        <CopyButton :text="uuids.join('\n')" variant="btn" success-text="已复制全部" :toast="showToast" />
+        <CopyButton :text="uuids.join('\n')" variant="btn" success-text="已复制全部" :toast="addToast" />
       </div>
       <ul v-if="uuids.length" class="list">
         <li v-for="(u, i) in uuids" :key="i" class="list-item">
           <code class="mono">{{ u }}</code>
-          <CopyButton :text="u" variant="mini" :toast="showToast" />
+          <CopyButton :text="u" variant="mini" :toast="addToast" />
         </li>
       </ul>
       <p v-else class="hint">点击「生成」创建随机 UUID（crypto.randomUUID）。</p>
@@ -178,7 +176,7 @@ function draw() {
         <label class="chk"><input type="checkbox" v-model="useDigit" /><span>数字</span></label>
         <label class="chk"><input type="checkbox" v-model="useSymbol" /><span>符号</span></label>
         <button class="btn primary" @click="genPassword">生成</button>
-        <CopyButton :text="password" variant="btn" :toast="showToast" />
+        <CopyButton :text="password" variant="btn" :toast="addToast" />
       </div>
       <div v-if="password" class="pw-row">
         <code class="mono pw-value">{{ password }}</code>
@@ -198,12 +196,12 @@ function draw() {
         <label class="k">个数</label>
         <input class="inp num" type="number" min="1" max="200" v-model.number="rCount" />
         <button class="btn primary" @click="genRandoms">生成</button>
-        <CopyButton :text="randoms.map(String).join('\n')" variant="btn" success-text="已复制全部" :toast="showToast" />
+        <CopyButton :text="randoms.map(String).join('\n')" variant="btn" success-text="已复制全部" :toast="addToast" />
       </div>
       <ul v-if="randoms.length" class="list inline">
         <li v-for="(n, i) in randoms" :key="i" class="list-item">
           <code class="mono">{{ n }}</code>
-          <CopyButton :text="String(n)" variant="mini" :toast="showToast" />
+          <CopyButton :text="String(n)" variant="mini" :toast="addToast" />
         </li>
       </ul>
       <p v-else class="hint">使用 crypto.getRandomValues + 拒绝采样，生成无偏随机整数。</p>
@@ -221,14 +219,12 @@ function draw() {
       ></textarea>
       <div class="row" style="margin-top: 0.6rem">
         <button class="btn primary" @click="draw">抽一个</button>
-        <CopyButton :text="winner" variant="btn" label="复制结果" :toast="showToast" />
+        <CopyButton :text="winner" variant="btn" label="复制结果" :toast="addToast" />
         <span class="k">共 {{ candidateList.length }} 个候选</span>
       </div>
       <div v-if="winner" class="winner">🎉 {{ winner }}</div>
       <p v-else class="hint">输入候选后点击「抽一个」，随机抽取并高亮一个。</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

@@ -3,7 +3,8 @@ import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { UAParser } from 'ua-parser-js'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'UaTool' })
 
@@ -13,10 +14,7 @@ const input = ref(
 const error = ref('')
 const fields = ref<{ key: string; value: string }[]>([])
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function parse() {
   error.value = ''
@@ -45,7 +43,7 @@ function parse() {
     fields.value = list
   } catch {
     error.value = '解析失败'
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }
 
@@ -60,7 +58,7 @@ parse()
     <section class="card">
       <div class="card-title">
         User-Agent 输入
-        <CopyButton :text="fields.map((f: { key: string; value: string }) => `${f.key} = ${f.value}`).join('\n')" variant="mini" label="复制全部" :disabled="!fields.length" :toast="showToast" success-text="已复制全部字段" />
+        <CopyButton :text="fields.map((f: { key: string; value: string }) => `${f.key} = ${f.value}`).join('\n')" variant="mini" label="复制全部" :disabled="!fields.length" :toast="addToast" success-text="已复制全部字段" />
       </div>
       <textarea
         v-model="input"
@@ -89,8 +87,6 @@ parse()
         </tbody>
       </table>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

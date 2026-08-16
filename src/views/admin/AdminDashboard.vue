@@ -111,6 +111,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/lib/request'
+import { roleText } from '@/utils'
 
 const authStore = useAuthStore()
 
@@ -171,12 +172,7 @@ const greetingText = computed(() => {
 })
 
 function getRoleLabel(role: string) {
-  const roles: Record<string, string> = {
-    super_admin: '超级管理员',
-    admin: '管理员',
-    user: '普通用户',
-  }
-  return roles[role] || role
+  return roleText(role)
 }
 
 function formatDateTime(dateStr?: string) {

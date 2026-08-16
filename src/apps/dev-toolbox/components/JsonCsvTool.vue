@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { debounce, downloadFile } from '@/utils'
-import { CopyButton, Toast } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
 
@@ -14,10 +15,7 @@ const output = ref('')
 const error = ref('')
 const forceText = ref(false)
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function csvEscape(v: string): string {
   if (/[",\n\r]/.test(v)) return '"' + v.replace(/"/g, '""') + '"'
@@ -145,7 +143,7 @@ const run = debounce(() => {
     output.value = ''
     const msg = '转换失败：' + (e instanceof Error ? e.message : String(e))
     error.value = msg
-    showToast('error', msg)
+    addToast('error', msg)
   }
 }, 150)
 
@@ -163,7 +161,7 @@ function download() {
   const name = dir.value === 'toCsv' ? 'data.csv' : 'data.json'
   const mime = dir.value === 'toCsv' ? 'text/csv' : 'application/json'
   downloadFile(name, output.value, mime)
-  showToast('success', '已下载 ' + name)
+  addToast('success', '已下载 ' + name)
 }
 function clearAll() {
   input.value = ''
@@ -190,7 +188,7 @@ function clearAll() {
         <span>强制文本</span>
       </label>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn" :disabled="!output" @click="download">⬇ 下载</button>
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
@@ -226,8 +224,6 @@ function clearAll() {
         <p v-if="error" class="err">{{ error }}</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

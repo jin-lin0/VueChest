@@ -4,11 +4,9 @@ import { useRouter } from 'vue-router'
 import { getStorage, setStorage } from '@/lib/storage'
 import { copyToClipboard } from '@/utils'
 import { MarkdownView, CustomSelect, Drawer, type SelectOption } from '@/components'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import ChatSidebar from './components/ChatSidebar.vue'
 import {
-  AI_CHAT_SESSIONS_KEY,
-  AI_CHAT_PROVIDER_STORAGE,
-  modelStorageKey,
   fetchProviders,
   fetchConversation,
   type ProviderMeta,
@@ -42,7 +40,7 @@ const currentMessages = ref<Message[]>([])
 const inputMessage = ref('')
 const isLoading = ref(false)
 const providers = ref<ProviderMeta[]>([])
-const selectedProviderId = ref(getStorage<string>(AI_CHAT_PROVIDER_STORAGE, '') || '')
+const selectedProviderId = ref(getStorage<string>(STORAGE_KEYS.AI_CHAT_PROVIDER, '') || '')
 const selectedModel = ref('')
 
 const FALLBACK_PROVIDER: ProviderMeta = { id: '', name: 'AI 助手', models: [], defaultModel: '' }
@@ -60,6 +58,16 @@ const modelOptions = computed<SelectOption[]>(() =>
 const showSettings = ref(false)
 const showSidebar = ref(true)
 const error = ref('')
+/** 当前活跃流的 AbortController：切换会话/卸载时用于中止上一个流 */
+let activeController: AbortController | null = null
+
+/** 中止正在进行的流式请求，避免旧流继续推送增量或造成内存泄漏 */
+const abortActiveStream = () => {
+  if (activeController) {
+    activeController.abort()
+    activeController = null
+  }
+}
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const messagesContainer = ref<HTMLDivElement | null>(null)
 const isMobile = ref(window.innerWidth <= 768)
@@ -91,14 +99,11 @@ const selectProvider = (raw?: string | number) => {
   const meta = providers.value.find((p) => p.id === id)
   if (!meta) return
   selectedProviderId.value = id
-  setStorage(AI_CHAT_PROVIDER_STORAGE, id)
-  selectedModel.value = getStorage<string>(modelStorageKey(id), '') || meta.defaultModel
+  setStorage(STORAGE_KEYS.AI_CHAT_PROVIDER, id)
+  selectedModel.value = getStorage<string>(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${id}`, '') || meta.defaultModel
 }
 
-const generateId = () =>
-  typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random()}`
+const generateId = () => crypto.randomUUID()
 
 const createSession = (): ChatSession => {
   const session: ChatSession = {
@@ -114,6 +119,7 @@ const createSession = (): ChatSession => {
 
 /** 新建并直接跳转到空会话：新会话必为空，不请求 /messages */
 const startNewConversation = () => {
+  abortActiveStream()
   const s = createSession()
   currentSessionId.value = s.id
   currentMessages.value = []
@@ -123,6 +129,7 @@ const startNewConversation = () => {
 }
 
 const switchSession = (id: string) => {
+  abortActiveStream()
   currentSessionId.value = id
   if (isMobile.value) {
     showSidebar.value = false
@@ -131,6 +138,7 @@ const switchSession = (id: string) => {
 }
 
 const deleteSession = (id: string) => {
+  abortActiveStream()
   const idx = sessions.value.findIndex((s) => s.id === id)
   if (idx === -1) return
   sessions.value.splice(idx, 1)
@@ -147,11 +155,11 @@ const deleteSession = (id: string) => {
 }
 
 const saveSessions = () => {
-  setStorage(AI_CHAT_SESSIONS_KEY, sessions.value)
+  setStorage(STORAGE_KEYS.AI_CHAT_SESSIONS, sessions.value)
 }
 
 const loadSessions = () => {
-  const saved = getStorage<ChatSession[]>(AI_CHAT_SESSIONS_KEY, []) ?? []
+  const saved = getStorage<ChatSession[]>(STORAGE_KEYS.AI_CHAT_SESSIONS, []) ?? []
   if (saved.length > 0) {
     sessions.value = saved
     currentSessionId.value = saved[0].id
@@ -164,15 +172,15 @@ const loadProviders = async () => {
     const list = await fetchProviders()
     providers.value = list
     if (list.length === 0) return
-    const stored = getStorage<string>(AI_CHAT_PROVIDER_STORAGE, '')
+    const stored = getStorage<string>(STORAGE_KEYS.AI_CHAT_PROVIDER, '')
     const valid = list.some((p) => p.id === stored)
     if (!valid) {
       selectedProviderId.value = list[0].id
-      setStorage(AI_CHAT_PROVIDER_STORAGE, list[0].id)
+      setStorage(STORAGE_KEYS.AI_CHAT_PROVIDER, list[0].id)
     }
     const meta = list.find((p) => p.id === selectedProviderId.value)
     selectedModel.value =
-      getStorage<string>(modelStorageKey(selectedProviderId.value), '') || meta?.defaultModel || ''
+      getStorage<string>(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${selectedProviderId.value}`, '') || meta?.defaultModel || ''
   } catch {
     error.value = '加载平台列表失败，请检查服务端是否已启动并配置 API Key'
   }
@@ -190,7 +198,7 @@ const loadMessages = async (id: string) => {
     }))
     if (data.provider && providers.value.some((p) => p.id === data.provider)) {
       selectedProviderId.value = data.provider
-      setStorage(AI_CHAT_PROVIDER_STORAGE, data.provider)
+      setStorage(STORAGE_KEYS.AI_CHAT_PROVIDER, data.provider)
     }
     if (data.model) selectedModel.value = data.model
     const sess = sessions.value.find((s) => s.id === id)
@@ -245,6 +253,11 @@ const sendMessage = async () => {
 
   error.value = ''
 
+  // 开始新请求前先释放可能仍在进行的上一个流，确保同一时刻只有一条活跃流
+  abortActiveStream()
+  activeController = new AbortController()
+  const streamSignal = activeController.signal
+
   const convId = currentSessionId.value || createSession().id
   currentSessionId.value = convId
 
@@ -286,6 +299,8 @@ const sendMessage = async () => {
   const { streamChat } = useChatStream()
   let fullContent = ''
   let scrollFrame: number | null = null
+  // 此流归属的会话 id：增量只允许写入「当前激活会话」，切换会话后跳过写入，防止写错目标
+  const streamSessionId = convId
 
   try {
     try {
@@ -294,7 +309,10 @@ const sendMessage = async () => {
         provider: selectedProviderId.value,
         model: selectedModel.value,
         messages: apiMessages,
+        signal: streamSignal,
       })) {
+        // 若已切换到其它会话，跳过写入（旧流会被 watch/abort 及时中止，这里是兜底）
+        if (currentSessionId.value !== streamSessionId) continue
         fullContent += delta
         currentMessages.value[assistantIndex].content = fullContent
         if (scrollFrame === null) {
@@ -305,6 +323,8 @@ const sendMessage = async () => {
         }
       }
     } catch (err) {
+      // 切换会话导致的 abort 不属于错误，直接结束（会话已切换，不写入错误提示）
+      if (err instanceof DOMException && err.name === 'AbortError') return
       // SSE 启动失败（HTTP 非 2xx / 无法读取流 / 网络异常），移除空占位消息后向上抛出
       currentMessages.value.splice(assistantIndex, 1)
       throw err
@@ -329,6 +349,7 @@ const sendMessage = async () => {
     currentMessages.value.push(errorMessage)
     saveSessions()
   } finally {
+    activeController = null
     isLoading.value = false
     await nextTick()
     scrollToBottom()
@@ -365,8 +386,13 @@ watch(inputMessage, () => {
   nextTick(autoResize)
 })
 
+/** 切换会话时释放上一个流，避免旧流把增量写进新会话 */
+watch(currentSessionId, () => {
+  abortActiveStream()
+})
+
 watch(selectedModel, (val) => {
-  setStorage(modelStorageKey(selectedProviderId.value), val)
+  setStorage(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${selectedProviderId.value}`, val)
 })
 
 const handleResize = () => {
@@ -410,6 +436,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  abortActiveStream()
   window.removeEventListener('resize', handleResize)
 })
 </script>

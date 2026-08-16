@@ -8,8 +8,9 @@
 // 恢复一个可能已经失效的歌曲 URL 只会带来困惑。
 
 import { DEFAULT_APPROACH_TIME } from './renderer'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 
-const STORAGE_KEY = 'rhythm:settings'
+const STORAGE_KEY = STORAGE_KEYS.RHYTHM_SETTINGS
 /** 可持久化的玩家设置。全部可选——旧版本存档缺字段时走默认值 */
 export interface RhythmSettings {
   /** 音符下落时间（秒） */

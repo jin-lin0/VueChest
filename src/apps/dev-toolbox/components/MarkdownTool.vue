@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { debounce } from '@/utils'
-import { CopyButton, Toast } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import { renderMarkdown } from '@/lib/markdown'
 import TurndownService from 'turndown'
 import CodeEditor from './CodeEditor.vue'
@@ -17,10 +18,7 @@ const error = ref('')
 
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const run = debounce(() => {
   error.value = ''
@@ -39,7 +37,7 @@ const run = debounce(() => {
     output.value = ''
     const msg = '转换失败：' + (e instanceof Error ? e.message : String(e))
     error.value = msg
-    showToast('error', msg)
+    addToast('error', msg)
   }
 }, 150)
 
@@ -60,7 +58,7 @@ function clearAll() {
         <button :class="{ active: dir === 'html2md' }" @click="dir = 'html2md'">HTML → MD</button>
       </div>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -89,8 +87,6 @@ function clearAll() {
         <p v-if="error" class="err">{{ error }}</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

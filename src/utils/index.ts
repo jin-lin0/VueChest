@@ -61,3 +61,37 @@ export const formatFileSize = (bytes?: number | null): string => {
   }
   return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
 }
+
+/**
+ * 把日期格式化为指定模板字符串。
+ * 默认 `YYYY-MM-DD HH:mm:ss`；支持 YYYY / MM / DD / HH / mm / ss 占位符。
+ * 入参为 Date | 时间戳(number) | 日期字符串；非法输入返回空串。
+ */
+export const formatDate = (
+  date: Date | number | string,
+  fmt = 'YYYY-MM-DD HH:mm:ss',
+): string => {
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return ''
+  const map: Record<string, string> = {
+    YYYY: String(d.getFullYear()),
+    MM: String(d.getMonth() + 1).padStart(2, '0'),
+    DD: String(d.getDate()).padStart(2, '0'),
+    HH: String(d.getHours()).padStart(2, '0'),
+    mm: String(d.getMinutes()).padStart(2, '0'),
+    ss: String(d.getSeconds()).padStart(2, '0'),
+  }
+  return fmt.replace(/YYYY|MM|DD|HH|mm|ss/g, (k) => map[k])
+}
+
+/**
+ * 角色 code → 中文文案。未知角色原样返回。
+ */
+export const roleText = (role: string): string => {
+  const map: Record<string, string> = {
+    super_admin: '超级管理员',
+    admin: '管理员',
+    user: '普通用户',
+  }
+  return map[role] ?? role
+}

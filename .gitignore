@@ -40,3 +40,5 @@ scripts/candidates/
 
 # 知识库数据：源(raw)+聚合产物均在 R2，不进前端仓库
 src/apps/stock/knowledge/data/
+# 知识库构建产物（聚合/生成的 atoms 等，不应入 git；上一条已整体忽略 data/，此处显式标注）
+src/apps/stock/knowledge/data/generated/

@@ -30,7 +30,7 @@
     </div>
 
     <div v-if="isLoading" class="loading-state">
-      <div class="loading-spinner"></div>
+      <div class="vc-loading-spinner"></div>
       <span>加载中...</span>
     </div>
 
@@ -141,7 +141,7 @@
       <template #footer>
         <button class="btn-secondary" @click="showModal = false">取消</button>
         <button class="btn-primary" :disabled="saving" @click="saveUser">
-          <span v-if="saving" class="loading-spinner-sm"></span>
+          <span v-if="saving" class="vc-loading-spinner-sm"></span>
           {{ editingUser ? '保存' : '创建' }}
         </button>
       </template>
@@ -157,6 +157,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CustomSelect, Modal, Toast, EmptyState, type SelectOption } from '@/components'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
+import { roleText } from '@/utils'
 
 const { confirm } = useConfirm()
 const authStore = useAuthStore()
@@ -211,8 +212,7 @@ onUnmounted(() => {
 })
 
 function roleLabel(role: string) {
-  const map: Record<string, string> = { user: '普通用户', admin: '管理员', super_admin: '超级管理员' }
-  return map[role] || role
+  return roleText(role)
 }
 
 function formatDate(d?: string) {
@@ -459,19 +459,6 @@ async function toggleStatus(u: UserItem) {
   padding: 64px 0;
   color: var(--text-secondary);
 }
-.loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--border-light);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 .table-wrapper {
   background: var(--bg-card);
   border-radius: 14px;
@@ -644,15 +631,5 @@ async function toggleStatus(u: UserItem) {
 }
 .checkbox-label input {
   width: auto;
-}
-
-.loading-spinner-sm {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
 }
 </style>

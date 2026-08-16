@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { CustomSelect, type SelectOption, Toast, CopyButton } from '@/components'
+import { CustomSelect, type SelectOption, CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'TimezoneTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 type Mode = 'datetime' | 'timestamp'
 
@@ -212,15 +210,15 @@ function setNowTs() {
       <div v-if="utcReadout" class="out">
         <div class="out-row">
           <span class="k">UTC</span><span class="v mono">{{ utcReadout.utc }}</span>
-          <CopyButton :text="utcReadout.utc" variant="mini" :toast="showToast" />
+          <CopyButton :text="utcReadout.utc" variant="mini" :toast="addToast" />
         </div>
         <div class="out-row">
           <span class="k">本地</span><span class="v mono">{{ utcReadout.local }}</span>
-          <CopyButton :text="utcReadout.local" variant="mini" :toast="showToast" />
+          <CopyButton :text="utcReadout.local" variant="mini" :toast="addToast" />
         </div>
         <div class="out-row">
           <span class="k">ISO 8601</span><span class="v mono">{{ utcReadout.iso }}</span>
-          <CopyButton :text="utcReadout.iso" variant="mini" :toast="showToast" />
+          <CopyButton :text="utcReadout.iso" variant="mini" :toast="addToast" />
         </div>
       </div>
     </section>
@@ -235,13 +233,11 @@ function setNowTs() {
             <span class="tz-off">{{ r.offset }}</span>
           </div>
           <span class="tz-val mono">{{ r.value }}</span>
-          <CopyButton :text="r.value" variant="mini" :toast="showToast" />
+          <CopyButton :text="r.value" variant="mini" :toast="addToast" />
         </div>
       </div>
       <p v-else class="hint">等待输入…</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

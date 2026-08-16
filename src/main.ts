@@ -6,6 +6,7 @@ import * as VueRouter from 'vue-router'
 
 import './styles/scrollbar.css'
 import './styles/markdown.css'
+import './styles/global-utils.css'
 import { initTheme, getAppTheme } from './composables/useTheme'
 // 首屏前先应用主题，避免浅色/深色闪烁
 initTheme()

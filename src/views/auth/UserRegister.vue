@@ -54,7 +54,7 @@
                 :disabled="!canSendCode || authStore.isLoading"
                 @click="handleSendCode"
               >
-                <span v-if="sendingCode" class="btn-spinner btn-spinner-sm"></span>
+                <span v-if="sendingCode" class="vc-btn-spinner vc-spinner-sm"></span>
                 {{ sendBtnText }}
               </button>
             </div>
@@ -87,7 +87,7 @@
           <p v-if="authStore.error && !error" class="form-error">{{ authStore.error }}</p>
 
           <button type="submit" class="submit-btn" :disabled="authStore.isLoading || !isFormValid">
-            <span v-if="authStore.isLoading" class="btn-spinner"></span>
+            <span v-if="authStore.isLoading" class="vc-btn-spinner"></span>
             {{ authStore.isLoading ? '注册中...' : '注册' }}
           </button>
         </form>
@@ -102,10 +102,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
+import { useCountdown } from '@/composables/useCountdown'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -119,9 +120,8 @@ const confirmPassword = ref('')
 const error = ref('')
 
 // 验证码倒计时
-const countdown = ref(0)
+const { count: countdown, start: startCountdown } = useCountdown(60)
 const sendingCode = ref(false)
-let timer: ReturnType<typeof setInterval> | null = null
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -131,25 +131,6 @@ const sendBtnText = computed(() => {
   if (sendingCode.value) return '发送中'
   if (countdown.value > 0) return `${countdown.value}s 后重发`
   return '发送验证码'
-})
-
-function startCountdown(seconds: number) {
-  countdown.value = seconds
-  if (timer) clearInterval(timer)
-  timer = setInterval(() => {
-    countdown.value -= 1
-    if (countdown.value <= 0) {
-      countdown.value = 0
-      if (timer) {
-        clearInterval(timer)
-        timer = null
-      }
-    }
-  }, 1000)
-}
-
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
 })
 
 async function handleSendCode() {
@@ -362,12 +343,6 @@ async function syncInitialApps() {
   background: var(--bg-subtle);
 }
 
-.btn-spinner-sm {
-  width: 14px;
-  height: 14px;
-  border-width: 2px;
-}
-
 .form-error {
   color: var(--danger);
   font-size: 14px;
@@ -400,21 +375,6 @@ async function syncInitialApps() {
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .register-footer {

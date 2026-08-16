@@ -2,7 +2,8 @@
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'UnicodeTool' })
 
@@ -12,10 +13,7 @@ const reverseChar = ref('')
 const reverseUHex = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 // 控制字符显示可读字形
 function displayGlyph(ch: string, cp: number): string {
@@ -67,13 +65,13 @@ const runReverse = debounce(() => {
   const hex = raw.replace(/^(U\+|u\+|0x)/i, '').trim()
   if (!/^[0-9a-fA-F]+$/.test(hex)) {
     error.value = '不是合法的码点：仅支持十六进制（如 4E2D 或 U+4E2D）'
-    showToast('error', error.value)
+    addToast('error', error.value)
     return
   }
   const n = parseInt(hex, 16)
   if (Number.isNaN(n) || n < 0 || n > 0x10ffff) {
     error.value = '码点超出合法范围（U+0000 ~ U+10FFFF）'
-    showToast('error', error.value)
+    addToast('error', error.value)
     return
   }
   reverseChar.value = String.fromCodePoint(n)
@@ -98,7 +96,7 @@ function clearAll() {
         >逐字符查看「字符 / 码点 (U+XXXX) / UTF-8 字节」，并可反向由码点查字符。</span
       >
       <div class="tb-group push-right">
-        <CopyButton :text="tableText" variant="btn" success-text="已复制字符列表" :toast="showToast" />
+        <CopyButton :text="tableText" variant="btn" success-text="已复制字符列表" :toast="addToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -152,7 +150,7 @@ function clearAll() {
           placeholder="输入码点，如 4E2D 或 U+4E2D"
           spellcheck="false"
         />
-        <CopyButton :text="reverseChar" variant="btn" success-text="已复制字符" :toast="showToast" />
+        <CopyButton :text="reverseChar" variant="btn" success-text="已复制字符" :toast="addToast" />
       </div>
       <div class="result" v-if="reverseChar">
         <span class="big mono">{{ reverseChar }}</span>
@@ -160,8 +158,6 @@ function clearAll() {
       </div>
       <p v-if="error" class="err">{{ error }}</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

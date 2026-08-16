@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce, downloadFile } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import { gzipSync, gunzipSync } from 'fflate'
 
 defineOptions({ name: 'GzipTool' })
@@ -13,10 +14,7 @@ const input = ref('')
 const output = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 // 分块拼接二进制串，避免 String.fromCharCode(...bytes) 在大输入时栈溢出
 function bytesToBase64(bytes: Uint8Array): string {
@@ -52,7 +50,7 @@ const run = debounce(() => {
     error.value =
       (dir.value === 'compress' ? '压缩失败：' : '解压失败：不是合法的 Gzip/Base64 数据') +
       (e instanceof Error ? ' ' + e.message : '')
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }, 120)
 
@@ -65,7 +63,7 @@ function download() {
   } else {
     downloadFile(output.value, 'decompressed.txt', 'text/plain')
   }
-  showToast('success', '已下载结果')
+  addToast('success', '已下载结果')
 }
 function clearAll() {
   input.value = ''
@@ -84,7 +82,7 @@ function clearAll() {
         <button :class="{ active: dir === 'decompress' }" @click="dir = 'decompress'">解压</button>
       </div>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn" :disabled="!output" @click="download">⬇ 下载</button>
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
@@ -118,8 +116,6 @@ function clearAll() {
         <p v-if="error" class="err">{{ error }}</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

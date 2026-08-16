@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'LinesTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const inputText = ref('')
 const outputText = ref('')
@@ -61,7 +59,7 @@ function reverseLines() {
 function filterLines() {
   const kw = filterText.value
   if (!kw) {
-    showToast('error', '请先填写过滤子串')
+    addToast('error', '请先填写过滤子串')
     return
   }
   const predicate = (l: string) =>
@@ -72,10 +70,10 @@ function filterLines() {
 
 function finish(msg: string) {
   if (!inputText.value) {
-    showToast('error', '请输入内容')
+    addToast('error', '请输入内容')
     return
   }
-  showToast('success', msg)
+  addToast('success', msg)
 }
 
 </script>
@@ -112,7 +110,7 @@ function finish(msg: string) {
     <section class="card">
       <div class="card-head">
         <span class="card-title">输出结果</span>
-        <CopyButton :text="outputText" variant="mini" :disabled="!outputText" :toast="showToast" success-text="已复制结果" />
+        <CopyButton :text="outputText" variant="mini" :disabled="!outputText" :toast="addToast" success-text="已复制结果" />
       </div>
       <textarea
         v-model="outputText"
@@ -123,8 +121,6 @@ function finish(msg: string) {
         spellcheck="false"
       ></textarea>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { CronExpressionParser, type CronExpression } from 'cron-parser'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'CronTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const cronInput = ref('0 0 * * *')
 const error = ref('')
@@ -80,7 +78,7 @@ function fmt(d: Date): string {
       <div v-if="nextOne" class="next-box">
         <span class="k">下一个执行</span>
         <span class="next-val mono">{{ nextOne }}</span>
-        <CopyButton :text="nextOne" variant="mini" :toast="showToast" />
+        <CopyButton :text="nextOne" variant="mini" :toast="addToast" />
       </div>
     </section>
 
@@ -91,13 +89,11 @@ function fmt(d: Date): string {
         <div v-for="(d, i) in parsed" :key="i" class="row-item">
           <span class="idx">{{ i + 1 }}</span>
           <span class="val mono">{{ fmt(d) }}</span>
-          <CopyButton :text="fmt(d)" variant="mini" :toast="showToast" />
+          <CopyButton :text="fmt(d)" variant="mini" :toast="addToast" />
         </div>
       </div>
       <p v-else-if="!error" class="hint">等待输入…</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

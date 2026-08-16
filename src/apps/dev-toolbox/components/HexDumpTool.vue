@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce, downloadFile } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'HexDumpTool' })
 
@@ -12,10 +13,7 @@ const input = ref('')
 const output = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const COLS = 16
 
@@ -66,7 +64,7 @@ const run = debounce(() => {
     error.value =
       (dir.value === 'dump' ? '转储失败：' : '还原失败：') +
       (e instanceof Error ? e.message : '输入无法处理')
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }, 120)
 
@@ -76,7 +74,7 @@ function download() {
   if (!output.value) return
   const name = dir.value === 'dump' ? 'hexdump.txt' : 'restored.bin'
   downloadFile(output.value, name, dir.value === 'dump' ? 'text/plain' : 'application/octet-stream')
-  showToast('success', `已下载 ${name}`)
+  addToast('success', `已下载 ${name}`)
 }
 function clearAll() {
   input.value = ''
@@ -93,7 +91,7 @@ function clearAll() {
         <button :class="{ active: dir === 'restore' }" @click="dir = 'restore'">还原文本</button>
       </div>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn" :disabled="!output" @click="download">⬇ 下载</button>
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
@@ -135,8 +133,6 @@ function clearAll() {
         <p v-if="error" class="err">{{ error }}</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

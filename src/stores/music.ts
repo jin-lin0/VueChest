@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { getStorage, setStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config'
 import { api } from '@/lib/request'
-import { musicApi } from '@/apps/music/api/musicApi'
+import { musicApi } from '@/lib/musicApi'
 import { useAuthStore } from '@/stores/auth'
 
 export interface Song {

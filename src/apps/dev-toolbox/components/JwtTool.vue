@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
 
 defineOptions({ name: 'JwtTool' })
@@ -14,10 +15,7 @@ const payloadJson = ref('')
 const signatureInfo = ref('')
 const claims = ref<{ key: string; value: string; expired?: boolean }[]>([])
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 function base64UrlDecode(seg: string): string {
   let s = seg.replace(/-/g, '+').replace(/_/g, '/')
@@ -46,7 +44,7 @@ const run = debounce(() => {
   const parts = raw.split('.')
   if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
     error.value = '不是合法的 JWT：应由 header.payload.signature 三段用 "." 分隔'
-    showToast('error', error.value)
+    addToast('error', error.value)
     return
   }
 
@@ -79,7 +77,7 @@ const run = debounce(() => {
     signatureInfo.value = `${parts[2].length} 字节（base64url），前 16 字符：${parts[2].slice(0, 16)}${parts[2].length > 16 ? '…' : ''}`
   } catch {
     error.value = '不是合法的 JWT：header 或 payload 无法解码 / 不是合法 JSON'
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }, 150)
 
@@ -124,7 +122,7 @@ function clearAll() {
       <section class="card">
         <div class="card-head">
           <span class="card-title">Header</span>
-          <CopyButton :text="headerJson" variant="mini" success-text="已复制 header" :toast="showToast" />
+          <CopyButton :text="headerJson" variant="mini" success-text="已复制 header" :toast="addToast" />
         </div>
         <CodeEditor v-model="headerJson" language="json" readonly placeholder="header 将显示在此" />
       </section>
@@ -132,7 +130,7 @@ function clearAll() {
       <section class="card">
         <div class="card-head">
           <span class="card-title">Payload</span>
-          <CopyButton :text="payloadJson" variant="mini" success-text="已复制 payload" :toast="showToast" />
+          <CopyButton :text="payloadJson" variant="mini" success-text="已复制 payload" :toast="addToast" />
         </div>
         <CodeEditor
           v-model="payloadJson"
@@ -162,8 +160,6 @@ function clearAll() {
       <p class="mono sig">{{ signatureInfo }}</p>
       <p class="hint">签名段未校验，仅展示长度与前缀。</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

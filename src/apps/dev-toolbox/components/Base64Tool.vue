@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils'
-import { CopyButton, Toast } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'Base64Tool' })
 
@@ -12,10 +13,7 @@ const input = ref('')
 const output = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 /* UTF-8 安全编解码（避免 btoa 仅支持 Latin1 时中文乱码） */
 function utf8ToBase64(str: string): string {
@@ -61,7 +59,7 @@ const run = debounce(() => {
       mode.value === 'encode'
         ? '编码失败：输入包含无法处理的内容'
         : '解码失败：不是合法的 Base64 字符串'
-    showToast('error', error.value)
+    addToast('error', error.value)
   }
 }, 150)
 
@@ -86,7 +84,7 @@ function clearAll() {
         <span>URL-safe（用 -_ 替换 +/ 并去掉填充）</span>
       </label>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -112,8 +110,6 @@ function clearAll() {
         <p v-if="error" class="err">{{ error }}</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

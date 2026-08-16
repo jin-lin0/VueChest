@@ -2,7 +2,8 @@
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'ColorTool' })
 
@@ -15,10 +16,7 @@ const h = ref(204)
 const s = ref(70)
 const l = ref(53)
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const hexStr = computed(() => rgbToHex(r.value, g.value, b.value))
 const rgbStr = computed(() => `rgb(${r.value}, ${g.value}, ${b.value})`)
@@ -65,7 +63,7 @@ function parse() {
     return
   }
   error.value = '无法识别的颜色格式，支持 HEX / RGB / HSL'
-  showToast('error', error.value)
+  addToast('error', error.value)
 }
 
 function setRgb(ri: number, gi: number, bi: number) {
@@ -187,14 +185,12 @@ parse()
         >
           <div class="fmt-head">
             <span class="k">{{ f.label }}</span>
-            <CopyButton :text="f.val" variant="mini" :disabled="!f.val" :toast="showToast" :success-text="`已复制${f.label}`" />
+            <CopyButton :text="f.val" variant="mini" :disabled="!f.val" :toast="addToast" :success-text="`已复制${f.label}`" />
           </div>
           <code class="mono fmt-val">{{ f.val }}</code>
         </div>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

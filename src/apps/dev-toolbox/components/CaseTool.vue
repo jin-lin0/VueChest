@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'CaseTool' })
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const inputText = ref('')
 const outputText = ref('')
@@ -66,10 +64,10 @@ function toFullWidth() {
 
 function finish(msg: string) {
   if (!inputText.value) {
-    showToast('error', '请输入内容')
+    addToast('error', '请输入内容')
     return
   }
-  showToast('success', msg)
+  addToast('success', msg)
 }
 
 </script>
@@ -98,7 +96,7 @@ function finish(msg: string) {
     <section class="card">
       <div class="card-head">
         <span class="card-title">输出结果</span>
-        <CopyButton :text="outputText" variant="mini" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="outputText" variant="mini" success-text="已复制结果" :toast="addToast" />
       </div>
       <textarea
         v-model="outputText"
@@ -109,8 +107,6 @@ function finish(msg: string) {
         spellcheck="false"
       ></textarea>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

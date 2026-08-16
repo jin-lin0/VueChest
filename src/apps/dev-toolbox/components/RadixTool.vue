@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { CustomSelect, type SelectOption, Toast, CopyButton } from '@/components'
+import { CustomSelect, type SelectOption, CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import { useRealtime } from '../composables/useRealtime'
 
 defineOptions({ name: 'RadixTool' })
@@ -13,10 +14,7 @@ const sourceValue = ref('')
 const targetValue = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const DIGITS = '0123456789abcdefghijklmnopqrstuvwxyz'
 
@@ -67,7 +65,7 @@ function recomputeFromSource() {
     targetValue.value = ''
     const msg = e instanceof Error ? e.message : String(e)
     error.value = msg
-    showToast('error', msg)
+    addToast('error', msg)
   } finally {
     lock.value = false
   }
@@ -89,7 +87,7 @@ function recomputeFromTarget() {
     // 目标解析失败：保留源字段，仅展示错误，不清除用户输入
     const msg = e instanceof Error ? e.message : String(e)
     error.value = msg
-    showToast('error', msg)
+    addToast('error', msg)
   } finally {
     lock.value = false
   }
@@ -122,7 +120,7 @@ function swap() {
     <div class="toolbar">
       <button class="btn" @click="swap">⇄ 交换进制</button>
       <div class="tb-group push-right">
-        <CopyButton :text="targetValue" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="targetValue" success-text="已复制结果" :toast="addToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -163,8 +161,6 @@ function swap() {
       <p v-if="error" class="err">{{ error }}</p>
       <p class="hint">使用 BigInt，支持大整数；允许下划线 _ 作分隔符；仅支持整数（不支持小数）。</p>
     </section>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

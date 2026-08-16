@@ -23,7 +23,7 @@ const goBack = () => {
 }
 
 const userApis = ref<ApiItem[]>([])
-const pinnedSystemIds = ref<number[]>([])
+const pinnedSystemIds = ref<(string | number)[]>([])
 const defaultApis = ref<ApiItem[]>([])
 const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
@@ -34,7 +34,7 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 
 const showAddForm = ref(false)
-const editingId = ref<number | null>(null)
+const editingId = ref<string | number | null>(null)
 const blankForm = (): Partial<ApiItem> => ({
   name: '',
   url: '',
@@ -273,7 +273,7 @@ const saveApi = () => {
       userApis.value[index] = { ...userApis.value[index], ...payload, userCreated: true }
   } else {
     userApis.value.push({
-      id: Date.now(),
+      id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       userCreated: true,
       ...payload,
@@ -284,14 +284,14 @@ const saveApi = () => {
   editingId.value = null
 }
 
-const deleteApi = (id: number) => {
+const deleteApi = (id: string | number) => {
   userApis.value = userApis.value.filter((a) => a.id !== id)
   if (selectedApi.value?.id === id) {
     selectedApi.value = null
   }
 }
 
-const togglePin = (id: number) => {
+const togglePin = (id: string | number) => {
   const isUser = userApis.value.some((a) => a.id === id)
   if (isUser) {
     const u = userApis.value.find((a) => a.id === id)

@@ -14,7 +14,11 @@ if (!existsSync(marketAppsDir)) {
 }
 
 const apps = readdirSync(marketAppsDir, { withFileTypes: true }).filter(
-  (d) => d.isDirectory() && !d.name.startsWith('.'),
+  (d) =>
+    d.isDirectory() &&
+    !d.name.startsWith('.') &&
+    d.name !== 'shared' &&
+    existsSync(join(marketAppsDir, d.name, 'vite.config.ts')),
 )
 
 if (apps.length === 0) {

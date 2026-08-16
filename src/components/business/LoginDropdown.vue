@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import { api } from '@/lib/request'
 import { Toast } from '@/components'
+import { roleText } from '@/utils'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -29,12 +30,7 @@ function goToLogin() {
 }
 
 function getRoleLabel(role?: string) {
-  const roles: Record<string, string> = {
-    super_admin: '超级管理员',
-    admin: '管理员',
-    user: '普通用户',
-  }
-  return roles[role || ''] || role || ''
+  return roleText(role ?? '')
 }
 
 function handleLogout() {

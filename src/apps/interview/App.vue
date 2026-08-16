@@ -160,8 +160,9 @@ import { CustomSelect, MarkdownView, Skeleton, EmptyState, type SelectOption } f
 import type { Question, Category } from '@/types/interview'
 import { api } from '@/lib/request'
 import { getStorage, setStorage } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { debounce } from '@/utils'
-import { INTERVIEW_PRACTICED_KEY, QUESTION_PAGE_SIZE } from './config'
+import { QUESTION_PAGE_SIZE } from './config'
 import { buildQuery } from './utils'
 
 const router = useRouter()
@@ -248,7 +249,7 @@ const readLocalIds = (key: string): number[] | null => {
 // 加载本地存储
 const loadLocalState = () => {
   try {
-    const practiced = readLocalIds(INTERVIEW_PRACTICED_KEY)
+    const practiced = readLocalIds(STORAGE_KEYS.INTERVIEW_PRACTICED)
     if (practiced) practicedIds.value = new Set(practiced)
   } catch (e) {
     console.error('加载本地状态失败:', e)
@@ -257,7 +258,7 @@ const loadLocalState = () => {
 
 // 保存本地存储
 const saveLocalState = () => {
-  setStorage(INTERVIEW_PRACTICED_KEY, [...practicedIds.value])
+  setStorage(STORAGE_KEYS.INTERVIEW_PRACTICED, [...practicedIds.value])
 }
 
 // 获取分类列表
@@ -893,17 +894,8 @@ onMounted(() => {
   border: 4px solid var(--border-light);
   border-top: 4px solid var(--accent);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: vc-spin 1s linear infinite;
   margin: 0 auto 20px;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 .loading-detail {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { debounce } from '@/utils'
-import { Toast, CopyButton } from '@/components'
+import { CopyButton } from '@/components'
+import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'
 
@@ -13,10 +14,7 @@ const input = ref('')
 const output = ref('')
 const error = ref('')
 
-const toastRef = ref<InstanceType<typeof Toast> | null>(null)
-function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
-  toastRef.value?.addToast(type, message)
-}
+const { addToast } = useToast()
 
 const run = debounce(() => {
   error.value = ''
@@ -40,7 +38,7 @@ const run = debounce(() => {
     output.value = ''
     const msg = '非法 JSON：' + (e instanceof Error ? e.message : String(e))
     error.value = msg
-    showToast('error', msg)
+    addToast('error', msg)
   }
 }, 150)
 
@@ -67,7 +65,7 @@ function onEditorSave() {
         <button :class="{ active: mode === 'escape' }" @click="mode = 'escape'">转义</button>
       </div>
       <div class="tb-group push-right">
-        <CopyButton :text="output" success-text="已复制结果" :toast="showToast" />
+        <CopyButton :text="output" success-text="已复制结果" :toast="addToast" />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>
@@ -103,8 +101,6 @@ function onEditorSave() {
         <p v-if="error" class="err">{{ error }}</p>
       </section>
     </div>
-
-    <Toast ref="toastRef" />
   </div>
 </template>
 

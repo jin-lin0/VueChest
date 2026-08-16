@@ -690,13 +690,7 @@ onUnmounted(() => {
 }
 
 .spin-icon {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  animation: vc-spin 1s linear infinite;
 }
 
 .fav-btn.favorited {
