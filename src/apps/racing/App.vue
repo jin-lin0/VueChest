@@ -8,7 +8,7 @@
       </button>
 
       <h1>🏎️ 极速狂飙</h1>
-      <p class="subtitle">3D赛车竞速</p>
+      <p class="subtitle">3D赛车竞速 · AI对手 · 漂移氮气</p>
 
       <div class="mode-select">
         <h3>游戏模式</h3>
@@ -106,8 +106,8 @@
       <button class="start-btn" @click="startGame">开始比赛</button>
 
       <div class="controls-hint">
-        <p v-if="gameMode === 'single'">键盘: WASD/方向键控制，1-4释放技能</p>
-        <p v-else>玩家1: WASD控制 | 玩家2: 方向键控制</p>
+        <p v-if="gameMode === 'single'">键盘: WASD/方向键控制 | 高速下 刹车+转向 触发漂移 | 1-4 释放技能</p>
+        <p v-else>玩家1: WASD控制 | 玩家2: 方向键控制 | 刹车+转向 漂移</p>
       </div>
     </div>
 
@@ -128,7 +128,11 @@
 
       <template v-if="gameMode === 'single'">
         <div class="hud-top">
-          <div class="speed-display">
+          <div class="rank-display">
+            <span class="rank-value">{{ rank }}</span>
+            <span class="rank-total">/{{ totalRacers }} 名</span>
+          </div>
+          <div :class="['speed-display', { boosting }]">
             <span class="speed-value">{{ Math.floor(speed * 5) }}</span>
             <span class="speed-unit">KM/H</span>
           </div>
@@ -140,7 +144,10 @@
             <span>圈数: {{ currentLap }}/{{ totalLaps }}</span>
           </div>
           <div class="time-info">
-            <span>{{ formatClock(gameTime) }}</span>
+            <div class="lap-time-current">{{ formatLap(lapTime) }}</div>
+            <div v-if="player1Data.lastLapTime > 0" class="lap-time-last">
+              上圈 {{ formatLap(player1Data.lastLapTime) }}
+            </div>
           </div>
         </div>
 
@@ -184,6 +191,23 @@
 
       <div class="minimap">
         <canvas ref="minimapCanvas" width="150" height="150"></canvas>
+      </div>
+    </div>
+
+    <!-- 倒计时 / GO 覆盖层 -->
+    <div
+      v-if="gameState === 'countdown' || (gameState === 'playing' && countdownValue === 0)"
+      class="countdown-overlay"
+    >
+      <div class="countdown-lights">
+        <span
+          v-for="i in 3"
+          :key="i"
+          :class="['cd-light', { on: countdownValue > 0 && countdownValue <= 4 - i, go: countdownValue === 0 }]"
+        ></span>
+      </div>
+      <div :class="['countdown-number', { go: countdownValue === 0 }]">
+        {{ countdownValue > 0 ? countdownValue : 'GO!' }}
       </div>
     </div>
 
@@ -242,8 +266,16 @@
       <div class="result-stats">
         <div v-if="gameMode === 'single'">
           <div class="result-item">
-            <span>用时</span>
+            <span>名次</span>
+            <span class="final-rank">第 {{ rank }}/{{ totalRacers }} 名</span>
+          </div>
+          <div class="result-item">
+            <span>总用时</span>
             <span>{{ formatClock(gameTime) }}</span>
+          </div>
+          <div class="result-item">
+            <span>最佳圈速</span>
+            <span>{{ player1Data.bestLapTime > 0 ? formatLap(player1Data.bestLapTime) : '--' }}</span>
           </div>
           <div class="result-item">
             <span>最高时速</span>
@@ -283,8 +315,31 @@ import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import * as THREE from 'three'
 import { formatClock } from '@/utils'
-import { RACING_CARS, RACING_DRIFT, RACING_TRACK, RACING_SCORE, type RacingCar } from './config'
+import {
+  RACING_CARS,
+  RACING_DRIFT,
+  RACING_TRACK,
+  RACING_SCORE,
+  RACING_PHYSICS,
+  RACING_CAMERA,
+  RACING_AI,
+  type RacingCar,
+} from './config'
 import { getCarById, cycleCar, renderSplitScreenView } from './utils'
+import {
+  buildTrack,
+  buildEnvironment,
+  disposeObject,
+  queryTrack,
+  trackFrameAt,
+  type Collectible,
+  type CheckpointGate,
+} from './track'
+import { buildCarMesh } from './car'
+import { ParticleSystem } from './particles'
+import { racingAudio } from './audio'
+import { updateAI, raceProgress, type AICarState } from './ai'
+import { createPlayerData, resetPlayerData, type PlayerData } from './types'
 
 const router = useRouter()
 const gameContainer = ref<HTMLDivElement>()
@@ -292,7 +347,7 @@ const gameCanvas = ref<HTMLCanvasElement>()
 const minimapCanvas = ref<HTMLCanvasElement>()
 
 // 游戏状态
-const gameState = ref<'menu' | 'playing' | 'paused' | 'result'>('menu')
+const gameState = ref<'menu' | 'countdown' | 'playing' | 'paused' | 'result'>('menu')
 const gameMode = ref<'single' | 'multi'>('single')
 const selectedCar = ref(1)
 const selectedCar2 = ref(2)
@@ -305,6 +360,20 @@ const skillsUsed = ref(0)
 const winner = ref(1)
 const score = ref(0)
 const combo = ref(0)
+// 竞速新增：倒计时 / 名次 / 圈速 / 氮气状态
+const countdownValue = ref(-1) // 3/2/1 → 0=GO → -1 隐藏
+const rank = ref(1)
+const totalRacers = ref(1)
+const lapTime = ref(0)
+const boosting = ref(false)
+
+/** 圈速格式化：mm:ss.d（比 formatClock 多一位小数，竞速更需要） */
+function formatLap(t: number): string {
+  if (t <= 0) return '00:00.0'
+  const m = Math.floor(t / 60)
+  const s = t % 60
+  return `${String(m).padStart(2, '0')}:${s < 10 ? '0' : ''}${s.toFixed(1)}`
+}
 
 const cars = RACING_CARS
 
@@ -345,36 +414,9 @@ const skills = reactive([
   { id: 4, name: '导弹', icon: '🎯', cooldown: 0, duration: 0, maxCooldown: 8 },
 ])
 
-// 玩家数据
-interface PlayerData {
-  position: { x: number; z: number }
-  rotation: number
-  speed: number
-  currentLap: number
-  checkpointIndex: number
-  finishTime: number
-  checkpointsPassed: boolean[]
-}
-
-const player1Data = reactive<PlayerData>({
-  position: { x: 0, z: 0 },
-  rotation: 0,
-  speed: 0,
-  currentLap: 1,
-  checkpointIndex: 0,
-  finishTime: 0,
-  checkpointsPassed: [],
-})
-
-const player2Data = reactive<PlayerData>({
-  position: { x: 0, z: 0 },
-  rotation: 0,
-  speed: 0,
-  currentLap: 1,
-  checkpointIndex: 0,
-  finishTime: 0,
-  checkpointsPassed: [],
-})
+// 玩家数据（PlayerData 类型与工厂已抽到 ./types）
+const player1Data = reactive<PlayerData>(createPlayerData())
+const player2Data = reactive<PlayerData>(createPlayerData())
 
 // 控制状态
 const mobileControls = reactive({
@@ -402,14 +444,25 @@ let camera2: THREE.PerspectiveCamera
 let renderer: THREE.WebGLRenderer
 let car1: THREE.Group
 let car2: THREE.Group
+let nitroFlame1: THREE.Mesh | null = null
+let wheels1: THREE.Mesh[] = []
 let animationId: number
 
-// 游戏数据
+// 游戏数据（几何搭建已抽到 ./track）
 let trackPoints: THREE.Vector3[] = []
 let checkpoints: THREE.Vector3[] = []
-let collectibles: { mesh: THREE.Mesh; collected: boolean }[] = []
-let wallMeshes: THREE.Mesh[] = []
+let collectibles: Collectible[] = []
+let gates: CheckpointGate[] = []
+let aiCars: AICarState[] = []
+let particles: ParticleSystem | null = null
 let comboResetTimer: ReturnType<typeof setTimeout> | null = null
+
+// 相机状态（平滑跟随 + 碰撞震动）
+const camPos = new THREE.Vector3()
+let camInitialized = false
+let cameraShake = 0
+// 撞车音效冷却（秒，gameTime 基准），防止每帧连响
+let lastCrashSoundAt = -10
 
 // 统一跟踪定时器 / 动画帧，组件卸载时集中清理，避免泄漏
 const trackedIntervals: ReturnType<typeof setInterval>[] = []
@@ -449,7 +502,9 @@ function goBack() {
 
 // 暂停游戏
 function pauseGame() {
+  if (gameState.value !== 'playing') return
   gameState.value = 'paused'
+  racingAudio.stopEngine()
   if (animationId) {
     cancelAnimationFrame(animationId)
   }
@@ -457,7 +512,9 @@ function pauseGame() {
 
 // 继续游戏
 function resumeGame() {
+  if (gameState.value !== 'paused') return
   gameState.value = 'playing'
+  if (gameMode.value === 'single') racingAudio.startEngine()
   lastTime = performance.now()
   gameLoop()
 }
@@ -470,6 +527,8 @@ function restartGame() {
 // 退出游戏
 function quitGame() {
   gameState.value = 'menu'
+  countdownValue.value = -1
+  racingAudio.stopEngine()
   if (animationId) {
     cancelAnimationFrame(animationId)
   }
@@ -479,16 +538,33 @@ function quitGame() {
 function initScene() {
   if (!gameCanvas.value) return
 
-  scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x87ceeb)
-  scene.fog = new THREE.Fog(0x87ceeb, 100, 500)
+  // 重开比赛前先释放旧场景的 GPU 资源（几何体/材质/贴图），避免内存泄漏
+  if (scene) {
+    disposeObject(scene)
+    while (scene.children.length > 0) {
+      scene.remove(scene.children[0])
+    }
+  }
 
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-  camera.position.set(0, 10, -20)
-  camera.lookAt(0, 0, 0)
+  scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x7fc8f8)
+  scene.fog = new THREE.Fog(0x7fc8f8, 120, 420)
+
+  camera = new THREE.PerspectiveCamera(
+    RACING_CAMERA.FOV_BASE,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000,
+  )
+  camInitialized = false
 
   if (gameMode.value === 'multi') {
-    camera2 = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+    camera2 = new THREE.PerspectiveCamera(
+      RACING_CAMERA.FOV_BASE,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000,
+    )
   }
 
   // 复用同一个 WebGLRenderer，避免每次开始/重开游戏都 new 一个上下文导致泄漏
@@ -498,355 +574,118 @@ function initScene() {
     renderer = new THREE.WebGLRenderer({
       canvas: gameCanvas.value,
       antialias: true,
+      powerPreference: 'high-performance',
     })
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
-  } else {
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.shadowMap.type = THREE.PCFShadowMap
+    // 上下文丢失时阻止默认行为，浏览器才会触发后续的 restored 事件让 three 自动重建
+    gameCanvas.value.addEventListener('webglcontextlost', (e) => e.preventDefault())
   }
+  renderer.setSize(window.innerWidth, window.innerHeight)
+  // 上限 1.5 足够清晰；2x + MSAA + 阴影的填充率压力是集成显卡掉上下文的高发原因
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
+  // 光照：半球光 + 环境光打底，平行光投影。
+  // 显式配置阴影相机范围——DirectionalLight 默认阴影相机只有 ±5，大场景下几乎看不到影子
+  const hemisphereLight = new THREE.HemisphereLight(0xcfe8ff, 0x4a7c3f, 0.55)
+  scene.add(hemisphereLight)
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.25)
   scene.add(ambientLight)
-
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-  directionalLight.position.set(50, 100, 50)
+  const directionalLight = new THREE.DirectionalLight(0xfff5e0, 1.1)
+  directionalLight.position.set(80, 120, 60)
   directionalLight.castShadow = true
+  directionalLight.shadow.mapSize.set(1024, 1024)
+  directionalLight.shadow.camera.left = -160
+  directionalLight.shadow.camera.right = 160
+  directionalLight.shadow.camera.top = 160
+  directionalLight.shadow.camera.bottom = -160
+  directionalLight.shadow.camera.far = 400
+  directionalLight.shadow.bias = -0.0005
   scene.add(directionalLight)
 
-  createTrack()
-  car1 = createCar(selectedCar.value)
+  // 赛道 + 环境（路面 ribbon / 路缘石 / 门楼 / 收集物 / 装饰，见 ./track）
+  const trackBuild = buildTrack(scene)
+  trackPoints = trackBuild.trackPoints
+  checkpoints = trackBuild.checkpoints
+  gates = trackBuild.gates
+  collectibles = trackBuild.collectibles
+  buildEnvironment(scene)
+  particles?.dispose() // 上一局的粒子系统共享几何体
+  particles = new ParticleSystem(scene)
+
+  // 玩家赛车（造型见 ./car）
+  const c1 = buildCarMesh(getCarById(selectedCar.value) || RACING_CARS[0])
+  car1 = c1.group
+  nitroFlame1 = c1.nitroFlame
+  wheels1 = c1.wheels
   scene.add(car1)
 
   if (gameMode.value === 'multi') {
-    car2 = createCar(selectedCar2.value)
+    const c2 = buildCarMesh(getCarById(selectedCar2.value) || RACING_CARS[1])
+    car2 = c2.group
     scene.add(car2)
-  }
-
-  createEnvironment()
-  createCollectibles()
-}
-
-function createTrack() {
-  trackPoints = []
-  const segments = RACING_TRACK.SEGMENTS
-  const radius = RACING_TRACK.RADIUS
-
-  // 随机扰动参数，限制范围确保弯道可通行
-  const wave1 = 10 + Math.random() * 10 // 10-20，较小的波浪
-  const wave2 = 8 + Math.random() * 10 // 8-18
-  const freq1 = 2 // 固定频率2，避免太密集的弯道
-  const freq2 = 3 // 固定频率3
-  const phase1 = Math.random() * Math.PI * 2
-  const phase2 = Math.random() * Math.PI * 2
-
-  for (let i = 0; i < segments; i++) {
-    const angle = (i / segments) * Math.PI * 2
-    const x = Math.cos(angle) * radius + Math.sin(angle * freq1 + phase1) * wave1
-    const z = Math.sin(angle) * radius + Math.cos(angle * freq2 + phase2) * wave2
-    trackPoints.push(new THREE.Vector3(x, 0, z))
-  }
-
-  const trackGeometry = new THREE.PlaneGeometry(250, 250)
-  const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 })
-  const track = new THREE.Mesh(trackGeometry, trackMaterial)
-  track.rotation.x = -Math.PI / 2
-  track.position.y = 0.01
-  track.receiveShadow = true
-  scene.add(track)
-
-  const centerLineGeometry = new THREE.BufferGeometry().setFromPoints(trackPoints)
-  const centerLineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff })
-  const centerLine = new THREE.Line(centerLineGeometry, centerLineMaterial)
-  centerLine.position.y = 0.02
-  scene.add(centerLine)
-
-  wallMeshes = []
-  const wallHeight = RACING_TRACK.WALL_HEIGHT
-  const wallThickness = 1
-  const trackWidth = RACING_TRACK.WIDTH
-
-  for (let i = 0; i < trackPoints.length; i++) {
-    const current = trackPoints[i]
-    const next = trackPoints[(i + 1) % trackPoints.length]
-    const direction = new THREE.Vector3().subVectors(next, current).normalize()
-    const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x)
-
-    const leftWallPos = current.clone().add(perpendicular.clone().multiplyScalar(trackWidth / 2))
-    createWall(leftWallPos, direction, wallHeight, wallThickness, 0x666666)
-
-    const rightWallPos = current.clone().sub(perpendicular.clone().multiplyScalar(trackWidth / 2))
-    createWall(rightWallPos, direction, wallHeight, wallThickness, 0x666666)
-  }
-
-  checkpoints = []
-  for (let i = 0; i < RACING_TRACK.CHECKPOINTS; i++) {
-    const index = Math.floor((i / RACING_TRACK.CHECKPOINTS) * trackPoints.length)
-    const point = trackPoints[index]
-    checkpoints.push(point.clone())
-
-    const checkpointGeometry = new THREE.BoxGeometry(trackWidth, 6, 0.5)
-    const checkpointMaterial = new THREE.MeshStandardMaterial({
-      color: 0x00ff00,
-      transparent: true,
-      opacity: 0.4,
-      emissive: 0x00ff00,
-      emissiveIntensity: 0.3,
+    aiCars = []
+  } else {
+    // AI 对手：用玩家未选的赛车，性格各异（走线偏移 + 配速差异），见 ./ai
+    aiCars = []
+    const aiConfigs = RACING_CARS.filter((c) => c.id !== selectedCar.value).slice(0, RACING_AI.COUNT)
+    aiConfigs.forEach((config, i) => {
+      const meshes = buildCarMesh(config)
+      scene.add(meshes.group)
+      aiCars.push({
+        data: createPlayerData(),
+        mesh: meshes.group,
+        car: config,
+        laneOffset: (i - (aiConfigs.length - 1) / 2) * 2.5,
+        paceFactor: 0.86 + i * 0.05,
+      })
     })
-    const checkpointMesh = new THREE.Mesh(checkpointGeometry, checkpointMaterial)
-    checkpointMesh.position.copy(point)
-    checkpointMesh.position.y = 3
-    scene.add(checkpointMesh)
   }
 }
 
-function createWall(
-  position: THREE.Vector3,
-  direction: THREE.Vector3,
-  height: number,
-  thickness: number,
-  color: number,
-) {
-  const wallLength = 5
-  const wallGeometry = new THREE.BoxGeometry(thickness, height, wallLength)
-  const wallMaterial = new THREE.MeshStandardMaterial({ color, roughness: 0.8 })
-  const wall = new THREE.Mesh(wallGeometry, wallMaterial)
-  wall.position.copy(position)
-  wall.position.y = height / 2
-  wall.lookAt(position.clone().add(direction))
-  wall.castShadow = true
-  wall.receiveShadow = true
-  scene.add(wall)
-  wallMeshes.push(wall)
-  return wall
-}
+/** 发车格摆位：玩家在起步线旁（杆位），AI/玩家2 错落排布。 */
+function placeRacersOnGrid() {
+  const p0 = trackPoints[0]
+  const { dir, perp } = trackFrameAt(trackPoints, 0)
+  const startAngle = Math.atan2(dir.x, dir.z)
 
-function createCar(carId: number): THREE.Group {
-  const car = new THREE.Group()
-  const bodyGeometry = new THREE.BoxGeometry(2, 0.8, 4)
-  const selectedCarData = getCarById(carId)
-  const bodyMaterial = new THREE.MeshStandardMaterial({
-    color: selectedCarData?.color || 0xff0000,
-    metalness: 0.8,
-    roughness: 0.2,
-  })
-  const body = new THREE.Mesh(bodyGeometry, bodyMaterial)
-  body.position.y = 0.6
-  body.castShadow = true
-  car.add(body)
+  resetPlayerData(
+    player1Data,
+    p0.x - perp.x * 3,
+    p0.z - perp.z * 3,
+    startAngle,
+    RACING_TRACK.CHECKPOINTS,
+  )
+  car1.position.set(player1Data.position.x, 0, player1Data.position.z)
+  car1.rotation.y = startAngle
 
-  const roofGeometry = new THREE.BoxGeometry(1.6, 0.6, 2)
-  const roofMaterial = new THREE.MeshStandardMaterial({
-    color: 0x333333,
-    metalness: 0.9,
-    roughness: 0.1,
-  })
-  const roof = new THREE.Mesh(roofGeometry, roofMaterial)
-  roof.position.set(0, 1.2, -0.3)
-  roof.castShadow = true
-  car.add(roof)
-
-  const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.4, 16)
-  const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x111111 })
-  const wheelPositions = [
-    { x: -1, z: 1.2 },
-    { x: 1, z: 1.2 },
-    { x: -1, z: -1.2 },
-    { x: 1, z: -1.2 },
-  ]
-  wheelPositions.forEach((pos) => {
-    const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial)
-    wheel.position.set(pos.x, 0.3, pos.z)
-    wheel.rotation.z = Math.PI / 2
-    wheel.castShadow = true
-    car.add(wheel)
-  })
-
-  const headlightGeometry = new THREE.SphereGeometry(0.2)
-  const headlightMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffff00,
-    emissive: 0xffff00,
-    emissiveIntensity: 0.5,
-  })
-  const headlight1 = new THREE.Mesh(headlightGeometry, headlightMaterial)
-  headlight1.position.set(-0.7, 0.6, 2)
-  car.add(headlight1)
-  const headlight2 = new THREE.Mesh(headlightGeometry, headlightMaterial)
-  headlight2.position.set(0.7, 0.6, 2)
-  car.add(headlight2)
-
-  const taillightMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff0000,
-    emissive: 0xff0000,
-    emissiveIntensity: 0.3,
-  })
-  const taillight1 = new THREE.Mesh(headlightGeometry, taillightMaterial)
-  taillight1.position.set(-0.7, 0.6, -2)
-  car.add(taillight1)
-  const taillight2 = new THREE.Mesh(headlightGeometry, taillightMaterial)
-  taillight2.position.set(0.7, 0.6, -2)
-  car.add(taillight2)
-
-  return car
-}
-
-function createEnvironment() {
-  const groundGeometry = new THREE.PlaneGeometry(500, 500)
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x4a7c3f, roughness: 1 })
-  const ground = new THREE.Mesh(groundGeometry, groundMaterial)
-  ground.rotation.x = -Math.PI / 2
-  ground.position.y = -0.1
-  ground.receiveShadow = true
-  scene.add(ground)
-
-  for (let i = 0; i < 100; i++) {
-    const tree = createTree()
-    const angle = Math.random() * Math.PI * 2
-    const distance = 120 + Math.random() * 100
-    tree.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance)
-    scene.add(tree)
-  }
-
-  for (let i = 0; i < 20; i++) {
-    const building = createBuilding()
-    const angle = Math.random() * Math.PI * 2
-    const distance = 150 + Math.random() * 100
-    building.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance)
-    scene.add(building)
-  }
-}
-
-function createTree(): THREE.Group {
-  const tree = new THREE.Group()
-  const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3)
-  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 })
-  const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial)
-  trunk.position.y = 1.5
-  trunk.castShadow = true
-  tree.add(trunk)
-
-  const leavesGeometry = new THREE.ConeGeometry(2, 4, 8)
-  const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 })
-  const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial)
-  leaves.position.y = 4
-  leaves.castShadow = true
-  tree.add(leaves)
-  return tree
-}
-
-function createBuilding(): THREE.Group {
-  const building = new THREE.Group()
-  const width = 5 + Math.random() * 10
-  const height = 10 + Math.random() * 20
-  const depth = 5 + Math.random() * 10
-  const buildingGeometry = new THREE.BoxGeometry(width, height, depth)
-  const buildingMaterial = new THREE.MeshStandardMaterial({
-    color: new THREE.Color().setHSL(Math.random(), 0.3, 0.6),
-    roughness: 0.7,
-  })
-  const buildingMesh = new THREE.Mesh(buildingGeometry, buildingMaterial)
-  buildingMesh.position.y = height / 2
-  buildingMesh.castShadow = true
-  building.add(buildingMesh)
-  return building
-}
-
-function createCollectibles() {
-  collectibles = []
-  for (let i = 0; i < 20; i++) {
-    const geometry = new THREE.OctahedronGeometry(0.8)
-    const material = new THREE.MeshStandardMaterial({
-      color: 0xffd700,
-      emissive: 0xffd700,
-      emissiveIntensity: 0.5,
+  if (gameMode.value === 'multi') {
+    resetPlayerData(
+      player2Data,
+      p0.x + perp.x * 3,
+      p0.z + perp.z * 3,
+      startAngle,
+      RACING_TRACK.CHECKPOINTS,
+    )
+    car2.position.set(player2Data.position.x, 0, player2Data.position.z)
+    car2.rotation.y = startAngle
+  } else {
+    aiCars.forEach((ai, i) => {
+      const back = 6 + Math.floor(i / 2) * 6
+      const side = i % 2 === 0 ? 3.2 : -3.2
+      const x = p0.x - dir.x * back + perp.x * side
+      const z = p0.z - dir.z * back + perp.z * side
+      resetPlayerData(ai.data, x, z, startAngle, RACING_TRACK.CHECKPOINTS)
+      ai.mesh.position.set(x, 0, z)
+      ai.mesh.rotation.y = startAngle
     })
-    const mesh = new THREE.Mesh(geometry, material)
-    const pointIndex = Math.floor(Math.random() * trackPoints.length)
-    const point = trackPoints[pointIndex]
-    mesh.position.set(point.x + (Math.random() - 0.5) * 8, 1.5, point.z + (Math.random() - 0.5) * 8)
-    scene.add(mesh)
-    collectibles.push({ mesh, collected: false })
   }
 }
 
-// 找到最近的赛道中心点
-function findNearestTrackPoint(x: number, z: number): THREE.Vector3 | null {
-  let minDist = Infinity
-  let nearestPoint: THREE.Vector3 | null = null
-
-  for (const point of trackPoints) {
-    const dist = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(z - point.z, 2))
-    if (dist < minDist) {
-      minDist = dist
-      nearestPoint = point
-    }
-  }
-
-  return nearestPoint
-}
-
-// 检查位置是否在赛道范围内（检查到赛道线段的距离）
-function isOnTrack(x: number, z: number): boolean {
-  const trackHalfWidth = 10 // 赛道宽度20，半宽10
-  let minDist = Infinity
-
-  // 检查到每条赛道线段的距离
-  for (let i = 0; i < trackPoints.length; i++) {
-    const current = trackPoints[i]
-    const next = trackPoints[(i + 1) % trackPoints.length]
-
-    // 计算点到线段的距离
-    const A = x - current.x
-    const B = z - current.z
-    const C = next.x - current.x
-    const D = next.z - current.z
-
-    const dot = A * C + B * D
-    const lenSq = C * C + D * D
-    let param = -1
-
-    if (lenSq !== 0) {
-      param = dot / lenSq
-    }
-
-    let xx, zz
-
-    if (param < 0) {
-      xx = current.x
-      zz = current.z
-    } else if (param > 1) {
-      xx = next.x
-      zz = next.z
-    } else {
-      xx = current.x + param * C
-      zz = current.z + param * D
-    }
-
-    const dist = Math.sqrt(Math.pow(x - xx, 2) + Math.pow(z - zz, 2))
-    if (dist < minDist) {
-      minDist = dist
-    }
-  }
-
-  // 如果距离赛道中心超过赛道半宽，则不在赛道上
-  return minDist <= trackHalfWidth
-}
-
-function checkCollision(x: number, z: number, carWidth: number = 2): boolean {
-  const halfWidth = carWidth / 2
-  for (const wall of wallMeshes) {
-    const wallPos = wall.position
-    const distance = Math.sqrt(Math.pow(x - wallPos.x, 2) + Math.pow(z - wallPos.z, 2))
-    if (distance < halfWidth + 1) {
-      return true
-    }
-  }
-  // 检查是否在赛道范围内
-  if (!isOnTrack(x, z)) {
-    return true
-  }
-  return false
+// 位置是否越出赛道边界（留出车身半宽余量；几何查询见 ./track 的 queryTrack）
+function isOffTrack(x: number, z: number): boolean {
+  const carHalfWidth = 1
+  return queryTrack(trackPoints, x, z).dist > RACING_TRACK.WIDTH / 2 - carHalfWidth
 }
 
 function checkCarCollision(
@@ -860,6 +699,7 @@ function checkCarCollision(
 }
 
 function useSkill(player: number, index: number) {
+  if (gameState.value !== 'playing') return
   const skill = skills[index]
   if (skill.cooldown > 0) return
   skill.cooldown = skill.maxCooldown
@@ -868,14 +708,23 @@ function useSkill(player: number, index: number) {
 
   switch (skill.id) {
     case 1:
-      // 氮气加速 - 临时提高最大速度
+      // 氮气加速 - 临时提高最大速度 + 尾焰 + 音效
       boostActive = true
       boostPlayerData = playerData
       playerData.speed += RACING_SCORE.NITRO_SPEED_BONUS
+      racingAudio.nitro()
+      if (player === 1) {
+        boosting.value = true
+        if (nitroFlame1) nitroFlame1.visible = true
+      }
       trackTimeout(() => {
         boostActive = false
         boostPlayerData = null
         playerData.speed = Math.min(playerData.speed, getCarMaxSpeed(player))
+        if (player === 1) {
+          boosting.value = false
+          if (nitroFlame1) nitroFlame1.visible = false
+        }
       }, skill.duration * 1000)
       break
     case 2:
@@ -894,6 +743,25 @@ function launchMissile(player: number) {
   const playerCar = player === 1 ? car1 : car2
   if (!playerCar) return
 
+  // 锁定目标：双人=对方玩家；单人=最近的未完赛 AI（没有目标就直射）
+  let targetData: PlayerData | null = null
+  if (gameMode.value === 'multi') {
+    targetData = player === 1 ? player2Data : player1Data
+  } else {
+    let best = Infinity
+    for (const ai of aiCars) {
+      if (ai.data.finished) continue
+      const dist = Math.hypot(
+        ai.data.position.x - playerCar.position.x,
+        ai.data.position.z - playerCar.position.z,
+      )
+      if (dist < best) {
+        best = dist
+        targetData = ai.data
+      }
+    }
+  }
+
   const missileGeometry = new THREE.ConeGeometry(0.3, 1.5)
   const missileMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000,
@@ -905,31 +773,48 @@ function launchMissile(player: number) {
   missile.position.y += 1
   missile.rotation.x = Math.PI / 2
   scene.add(missile)
+  racingAudio.missile()
 
   const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(playerCar.quaternion)
-  const missileSpeed = 3
-  const targetData = player === 1 ? player2Data : player1Data
+  const missileSpeed = 1.6 // 每帧位移（约 96 单位/秒，比赛车快）
 
   const animateMissile = () => {
+    // 轻微追踪：每帧把方向朝目标修正 8%
+    if (targetData) {
+      const toTarget = new THREE.Vector3(
+        targetData.position.x - missile.position.x,
+        0,
+        targetData.position.z - missile.position.z,
+      ).normalize()
+      direction.lerp(toTarget, 0.08).normalize()
+      missile.rotation.y = Math.atan2(direction.x, direction.z)
+    }
     missile.position.add(direction.clone().multiplyScalar(missileSpeed))
-    if (gameMode.value === 'multi') {
-      const distance = Math.sqrt(
-        Math.pow(missile.position.x - targetData.position.x, 2) +
-          Math.pow(missile.position.z - targetData.position.z, 2),
+
+    if (targetData) {
+      const distance = Math.hypot(
+        missile.position.x - targetData.position.x,
+        missile.position.z - targetData.position.z,
       )
       if (distance < 3) {
         targetData.speed *= RACING_SCORE.MISSILE_HIT_SPEED_MULTIPLIER
+        particles?.spawnSparks(targetData.position.x, 1, targetData.position.z, 14)
+        racingAudio.crash(0.8)
         scene.remove(missile)
+        missileGeometry.dispose()
+        missileMaterial.dispose()
         if (player === 1) {
           score.value += RACING_SCORE.MISSILE_HIT_SCORE
         }
         return
       }
     }
-    if (missile.position.distanceTo(playerCar.position) < 100) {
+    if (missile.position.distanceTo(playerCar.position) < 120) {
       trackRaf(animateMissile)
     } else {
       scene.remove(missile)
+      missileGeometry.dispose()
+      missileMaterial.dispose()
     }
   }
   animateMissile()
@@ -998,9 +883,10 @@ function activateShield(playerData: PlayerData, duration: number) {
   }, 50)
 
   trackTimeout(() => {
-    // 护盾结束时，如果车在赛道外，传送回赛道
-    if (!isOnTrack(playerData.position.x, playerData.position.z)) {
-      const nearestPoint = findNearestTrackPoint(playerData.position.x, playerData.position.z)
+    // 护盾结束时，如果车在赛道外，传送回赛道中心线最近点
+    if (isOffTrack(playerData.position.x, playerData.position.z)) {
+      const q = queryTrack(trackPoints, playerData.position.x, playerData.position.z)
+      const nearestPoint = trackPoints[q.segIndex]
       if (nearestPoint) {
         playerData.position.x = nearestPoint.x
         playerData.position.z = nearestPoint.z
@@ -1054,7 +940,7 @@ function updateMinimap() {
 
   const p1X = (player1Data.position.x / 200) * 150 + 75
   const p1Y = (player1Data.position.z / 200) * 150 + 75
-  ctx.fillStyle = '#ff0000'
+  ctx.fillStyle = currentCar.value.color
   ctx.beginPath()
   ctx.arc(p1X, p1Y, 4, 0, Math.PI * 2)
   ctx.fill()
@@ -1062,17 +948,28 @@ function updateMinimap() {
   if (gameMode.value === 'multi') {
     const p2X = (player2Data.position.x / 200) * 150 + 75
     const p2Y = (player2Data.position.z / 200) * 150 + 75
-    ctx.fillStyle = '#0000ff'
+    ctx.fillStyle = currentCar2.value.color
     ctx.beginPath()
     ctx.arc(p2X, p2Y, 4, 0, Math.PI * 2)
     ctx.fill()
+  } else {
+    // AI 对手（灰点）
+    ctx.fillStyle = '#aaaaaa'
+    for (const ai of aiCars) {
+      const ax = (ai.data.position.x / 200) * 150 + 75
+      const ay = (ai.data.position.z / 200) * 150 + 75
+      ctx.beginPath()
+      ctx.arc(ax, ay, 3, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 }
 
-// 漂移状态追踪
-const playerDriftState = new Map<PlayerData, { isDrifting: boolean; driftAngle: number }>()
+// 漂移状态追踪（driftVisual：车身视觉侧滑角，只做表现层）
+const playerDriftState = new Map<PlayerData, { isDrifting: boolean; driftVisual: number }>()
 
-// 创建漂移痕迹
+// 创建漂移痕迹（几何体全局共享；材质每条独立——淡出需要各自 opacity，移除时必须 dispose）
+let tireMarkGeometry: THREE.PlaneGeometry | null = null
 function createTireMark(x: number, z: number, rotation: number) {
   const now = performance.now() / 1000
   if (now - lastTireMarkTime < RACING_DRIFT.TIRE_MARK_INTERVAL) return
@@ -1081,22 +978,33 @@ function createTireMark(x: number, z: number, rotation: number) {
   // 控制最大痕迹数量
   if (tireMarks.length >= RACING_DRIFT.MAX_TIRE_MARKS) {
     const oldest = tireMarks.shift()
-    if (oldest) scene.remove(oldest.mesh)
+    if (oldest) {
+      scene.remove(oldest.mesh)
+      ;(oldest.mesh.material as THREE.Material).dispose()
+    }
   }
 
-  const geometry = new THREE.PlaneGeometry(1.5, 0.4)
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x333333,
+  if (!tireMarkGeometry) tireMarkGeometry = new THREE.PlaneGeometry(1.5, 0.4)
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x1a1a1a,
     transparent: true,
-    opacity: 0.7,
+    opacity: 0.55,
     depthWrite: false,
   })
-  const mark = new THREE.Mesh(geometry, material)
+  const mark = new THREE.Mesh(tireMarkGeometry, material)
   mark.rotation.x = -Math.PI / 2
   mark.rotation.z = rotation
   mark.position.set(x, 0.02, z)
   scene.add(mark)
-  tireMarks.push({ mesh: mark, opacity: 0.7, createdAt: now })
+  tireMarks.push({ mesh: mark, opacity: 0.55, createdAt: now })
+}
+
+// 移除单条轮胎痕并释放其材质
+function removeTireMark(index: number) {
+  const mark = tireMarks[index]
+  scene.remove(mark.mesh)
+  ;(mark.mesh.material as THREE.Material).dispose()
+  tireMarks.splice(index, 1)
 }
 
 // 更新漂移痕迹（淡出效果）
@@ -1109,13 +1017,25 @@ function updateTireMarks() {
     if (age > 5) {
       mark.opacity -= 0.01
       if (mark.opacity <= 0) {
-        scene.remove(mark.mesh)
-        tireMarks.splice(i, 1)
+        removeTireMark(i)
       } else {
-        ;(mark.mesh.material as THREE.MeshStandardMaterial).opacity = mark.opacity
+        ;(mark.mesh.material as THREE.MeshBasicMaterial).opacity = mark.opacity
       }
     }
   }
+}
+
+/** 蹭墙反馈：火花 + 闷响 + 相机震动（带冷却，防止每帧连发）。 */
+function onWallScrape(playerData: PlayerData, playerNum: number) {
+  if (playerNum !== 1) return
+  if (gameTime.value - lastCrashSoundAt < 0.4) return
+  if (Math.abs(playerData.speed) < RACING_PHYSICS.CRASH_SPEED_THRESHOLD) return
+  lastCrashSoundAt = gameTime.value
+  racingAudio.crash(0.7)
+  cameraShake = RACING_CAMERA.SHAKE_MAX * 0.7
+  const noseX = playerData.position.x + Math.sin(playerData.rotation) * 2
+  const noseZ = playerData.position.z + Math.cos(playerData.rotation) * 2
+  particles?.spawnSparks(noseX, 0.8, noseZ, 8)
 }
 
 function updatePlayer(
@@ -1123,91 +1043,152 @@ function updatePlayer(
   carMesh: THREE.Group,
   controls: { left: boolean; right: boolean; gas: boolean; brake: boolean },
   playerNum: number,
+  delta: number,
 ) {
   const handling = getCarHandling(playerNum)
   const baseMaxSpeed = getCarMaxSpeed(playerNum)
   // 如果氮气加速激活且是当前玩家，提高最大速度
-  const maxSpeedValue =
-    boostActive && boostPlayerData === playerData
-      ? baseMaxSpeed * RACING_SCORE.NITRO_MAX_SPEED_MULTIPLIER
-      : baseMaxSpeed
-  const delta = 1 / 60
+  const isBoosting = boostActive && boostPlayerData === playerData
+  const maxSpeedValue = isBoosting
+    ? baseMaxSpeed * RACING_SCORE.NITRO_MAX_SPEED_MULTIPLIER
+    : baseMaxSpeed
+  const speedRatio = Math.min(Math.abs(playerData.speed) / maxSpeedValue, 1)
 
   // 获取或初始化漂移状态
   if (!playerDriftState.has(playerData)) {
-    playerDriftState.set(playerData, { isDrifting: false, driftAngle: 0 })
+    playerDriftState.set(playerData, { isDrifting: false, driftVisual: 0 })
   }
   const driftState = playerDriftState.get(playerData)!
 
   // 漂移条件：速度够快 + 转向 + 刹车
   const isDrifting =
-    Math.abs(playerData.speed) > 8 && (controls.left || controls.right) && controls.brake
+    playerData.speed > RACING_DRIFT.MIN_DRIFT_SPEED &&
+    (controls.left || controls.right) &&
+    controls.brake
 
-  // 漂移出弯时给加速
+  // 漂移出弯时给小涡轮加速
   if (driftState.isDrifting && !isDrifting) {
-    playerData.speed *= RACING_DRIFT.EXIT_BOOST
+    playerData.speed = Math.min(playerData.speed * RACING_DRIFT.EXIT_BOOST, maxSpeedValue * 1.3)
   }
   driftState.isDrifting = isDrifting
 
-  // 倒车时方向反转
+  // 转向：速度越快转向越钝（模拟抓地力），低速禁转（禁止原地陀螺）
   const steerDirection = playerData.speed >= 0 ? 1 : -1
   const turnMultiplier = isDrifting ? RACING_DRIFT.TURN_MULTIPLIER : 1
+  const steerRate =
+    RACING_PHYSICS.STEER_RATE *
+    handling *
+    (1 - RACING_PHYSICS.STEER_SPEED_LOSS * speedRatio) *
+    turnMultiplier
 
-  if (controls.left) {
-    playerData.rotation += 3 * handling * delta * steerDirection * turnMultiplier
-  }
-  if (controls.right) {
-    playerData.rotation -= 3 * handling * delta * steerDirection * turnMultiplier
+  if (Math.abs(playerData.speed) > RACING_PHYSICS.MIN_STEER_SPEED) {
+    if (controls.left) {
+      playerData.rotation += steerRate * delta * steerDirection
+    }
+    if (controls.right) {
+      playerData.rotation -= steerRate * delta * steerDirection
+    }
   }
 
+  // 油门：接近极速时加速度衰减，形成"加速曲线"而不是瞬间满速
   if (controls.gas) {
-    playerData.speed = Math.min(playerData.speed + 80 * delta, maxSpeedValue)
-  } else if (!isDrifting) {
-    playerData.speed = Math.max(playerData.speed - 30 * delta, 0)
+    if (playerData.speed >= 0) {
+      const accelFactor = 1 - 0.7 * Math.min(playerData.speed / maxSpeedValue, 1)
+      playerData.speed = Math.min(
+        playerData.speed + RACING_PHYSICS.ACCEL * accelFactor * delta,
+        maxSpeedValue,
+      )
+    } else {
+      // 倒车中踩油门 = 刹车
+      playerData.speed = Math.min(playerData.speed + RACING_PHYSICS.BRAKE_DECEL * delta, 0)
+    }
+  } else if (!isDrifting && !controls.brake) {
+    // 滑行：线性回正到 0
+    if (playerData.speed > 0) {
+      playerData.speed = Math.max(playerData.speed - RACING_PHYSICS.COAST_DECEL * delta, 0)
+    } else if (playerData.speed < 0) {
+      playerData.speed = Math.min(playerData.speed + RACING_PHYSICS.COAST_DECEL * delta, 0)
+    }
   }
   if (controls.brake) {
     if (isDrifting) {
-      // 漂移时保持速度，轻微减速
-      playerData.speed *= RACING_DRIFT.SPEED_RETENTION
+      // 漂移时保速（帧率无关：按 60fps 基准折算）
+      playerData.speed *= Math.pow(RACING_DRIFT.SPEED_RETENTION, delta * 60)
     } else {
-      playerData.speed = Math.max(playerData.speed - 100 * delta, -maxSpeedValue * 0.3)
+      playerData.speed = Math.max(
+        playerData.speed - RACING_PHYSICS.BRAKE_DECEL * delta,
+        -maxSpeedValue * RACING_PHYSICS.REVERSE_MAX_RATIO,
+      )
     }
   }
 
-  const newX = playerData.position.x + Math.sin(playerData.rotation) * playerData.speed * delta
-  const newZ = playerData.position.z + Math.cos(playerData.rotation) * playerData.speed * delta
+  // 位移 + 撞墙滑行：先试全量移动，再退化到单轴滑动，最后才算正面撞死
+  const moveX = Math.sin(playerData.rotation) * playerData.speed * delta
+  const moveZ = Math.cos(playerData.rotation) * playerData.speed * delta
+  const oldX = playerData.position.x
+  const oldZ = playerData.position.z
+  const shieldOn = shieldActive && shieldPlayerData === playerData
 
-  if (!checkCollision(newX, newZ)) {
-    playerData.position.x = newX
-    playerData.position.z = newZ
-  } else {
-    if (shieldActive && shieldPlayerData === playerData) {
-      playerData.position.x = newX
-      playerData.position.z = newZ
+  if (shieldOn || !isOffTrack(oldX + moveX, oldZ + moveZ)) {
+    playerData.position.x = oldX + moveX
+    playerData.position.z = oldZ + moveZ
+    if (shieldOn && isOffTrack(oldX + moveX, oldZ + moveZ)) {
       playerData.speed *= 0.9
-    } else {
-      playerData.speed *= RACING_SCORE.WALL_HIT_SPEED_MULTIPLIER
     }
+  } else if (!isOffTrack(oldX + moveX, oldZ)) {
+    playerData.position.x = oldX + moveX
+    playerData.speed *= Math.pow(RACING_PHYSICS.WALL_SLIDE_KEEP, delta * 60)
+    onWallScrape(playerData, playerNum)
+  } else if (!isOffTrack(oldX, oldZ + moveZ)) {
+    playerData.position.z = oldZ + moveZ
+    playerData.speed *= Math.pow(RACING_PHYSICS.WALL_SLIDE_KEEP, delta * 60)
+    onWallScrape(playerData, playerNum)
+  } else {
+    // 正面撞死：大减速 + 强反馈
+    if (Math.abs(playerData.speed) > RACING_PHYSICS.CRASH_SPEED_THRESHOLD) {
+      onWallScrape(playerData, playerNum)
+      if (playerNum === 1) cameraShake = RACING_CAMERA.SHAKE_MAX
+    }
+    playerData.speed *= RACING_PHYSICS.WALL_BLOCK_KEEP
   }
 
-  // 漂移时生成轮胎痕迹
+  // 漂移表现：轮胎痕迹 + 烟雾 + 车身视觉侧滑
   if (isDrifting) {
     createTireMark(playerData.position.x, playerData.position.z, playerData.rotation)
+    if (particles && Math.random() < 0.6) {
+      const rearX = playerData.position.x - Math.sin(playerData.rotation) * 1.6
+      const rearZ = playerData.position.z - Math.cos(playerData.rotation) * 1.6
+      particles.spawnSmoke(rearX, 0.4, rearZ)
+    }
+    driftState.driftVisual = THREE.MathUtils.lerp(
+      driftState.driftVisual,
+      controls.left ? -0.35 : 0.35,
+      0.2,
+    )
+  } else {
+    driftState.driftVisual = THREE.MathUtils.lerp(driftState.driftVisual, 0, 0.15)
   }
 
   carMesh.position.set(playerData.position.x, 0, playerData.position.z)
-  carMesh.rotation.y = playerData.rotation
+  carMesh.rotation.y = playerData.rotation + driftState.driftVisual
+
+  // 车轮滚动（仅玩家1，AI 在 ./ai 中处理）
+  if (playerNum === 1) {
+    const wheelSpin = (playerData.speed * delta) / 0.38
+    for (const wheel of wheels1) wheel.rotation.x += wheelSpin
+  }
 
   if (playerNum === 1) {
     speed.value = Math.abs(playerData.speed)
     maxSpeed.value = Math.max(maxSpeed.value, speed.value)
+    currentLap.value = Math.min(playerData.currentLap, totalLaps.value)
   }
 
   checkpoints.forEach((checkpoint, index) => {
     if (!playerData.checkpointsPassed[index]) {
-      const distance = Math.sqrt(
-        Math.pow(playerData.position.x - checkpoint.x, 2) +
-          Math.pow(playerData.position.z - checkpoint.z, 2),
+      const distance = Math.hypot(
+        playerData.position.x - checkpoint.x,
+        playerData.position.z - checkpoint.z,
       )
       if (distance < 15) {
         playerData.checkpointsPassed[index] = true
@@ -1219,27 +1200,31 @@ function updatePlayer(
     playerData.checkpointsPassed = new Array(checkpoints.length).fill(false)
     playerData.currentLap++
 
+    // 圈速统计
+    const lapDuration = gameTime.value - playerData.lapStartTime
+    playerData.lastLapTime = lapDuration
+    if (!playerData.bestLapTime || lapDuration < playerData.bestLapTime) {
+      playerData.bestLapTime = lapDuration
+    }
+    playerData.lapStartTime = gameTime.value
+
     if (playerData.currentLap > totalLaps.value) {
+      playerData.finished = true
       playerData.finishTime = gameTime.value
       if (gameMode.value === 'multi') {
         winner.value = playerNum
-        if (player1Data.currentLap > totalLaps.value || player2Data.currentLap > totalLaps.value) {
-          gameState.value = 'result'
-        }
-      } else {
-        currentLap.value = playerData.currentLap
         gameState.value = 'result'
+      } else {
+        finishSingleRace()
       }
-    } else if (playerNum === 1) {
-      currentLap.value = playerData.currentLap
     }
   }
 
   collectibles.forEach((item) => {
     if (!item.collected) {
-      const distance = Math.sqrt(
-        Math.pow(playerData.position.x - item.mesh.position.x, 2) +
-          Math.pow(playerData.position.z - item.mesh.position.z, 2),
+      const distance = Math.hypot(
+        playerData.position.x - item.mesh.position.x,
+        playerData.position.z - item.mesh.position.z,
       )
       if (distance < 3) {
         item.collected = true
@@ -1248,6 +1233,7 @@ function updatePlayer(
           combo.value++
           const comboBonus = Math.min(combo.value, RACING_SCORE.MAX_COMBO)
           score.value += RACING_SCORE.COLLECTIBLE_BASE * comboBonus
+          racingAudio.collect(combo.value)
           playerData.speed = Math.min(
             playerData.speed + RACING_SCORE.DRIFT_BOOST_SPEED,
             getCarMaxSpeed(playerNum),
@@ -1262,113 +1248,270 @@ function updatePlayer(
   })
 }
 
+/** 单人冲线：算名次、奏乐、进结算。 */
+function finishSingleRace() {
+  const playerProg = raceProgress(trackPoints, player1Data)
+  rank.value = 1 + aiCars.filter((a) => raceProgress(trackPoints, a.data) > playerProg).length
+  racingAudio.stopEngine()
+  racingAudio.finish(rank.value === 1)
+  gameState.value = 'result'
+}
+
+/** 平滑跟随相机：滞后跟随 + FOV 随速度拉伸 + 碰撞震动。 */
+function updateCameraSingle(delta: number) {
+  const p = player1Data
+  const desired = new THREE.Vector3(
+    p.position.x - Math.sin(p.rotation) * RACING_CAMERA.OFFSET_BACK,
+    RACING_CAMERA.OFFSET_Y,
+    p.position.z - Math.cos(p.rotation) * RACING_CAMERA.OFFSET_BACK,
+  )
+  if (!camInitialized) {
+    camPos.copy(desired)
+    camInitialized = true
+  }
+  const k = 1 - Math.exp(-RACING_CAMERA.LERP_RATE * delta)
+  camPos.lerp(desired, k)
+  camera.position.copy(camPos)
+
+  if (cameraShake > 0.003) {
+    camera.position.x += (Math.random() - 0.5) * cameraShake
+    camera.position.y += (Math.random() - 0.5) * cameraShake * 0.6
+    cameraShake *= Math.exp(-RACING_CAMERA.SHAKE_DECAY * delta)
+  }
+
+  camera.lookAt(
+    p.position.x + Math.sin(p.rotation) * RACING_CAMERA.LOOK_AHEAD,
+    1.5,
+    p.position.z + Math.cos(p.rotation) * RACING_CAMERA.LOOK_AHEAD,
+  )
+
+  // FOV 随速度拉伸，增强速度感
+  const ratio = Math.abs(p.speed) / getCarMaxSpeed(1)
+  const targetFov = RACING_CAMERA.FOV_BASE + RACING_CAMERA.FOV_BOOST * Math.min(ratio, 1.3)
+  camera.fov += (targetFov - camera.fov) * Math.min(k * 1.5, 1)
+  camera.updateProjectionMatrix()
+}
+
+/** 场景表现层动画：金币旋转浮动、下一个检查点门楼高亮、氮气火焰脉动。 */
+function animateScene(t: number) {
+  collectibles.forEach((item, i) => {
+    if (item.collected) return
+    item.mesh.rotation.y = t * 2 + i
+    item.mesh.position.y = item.baseY + Math.sin(t * 2 + i) * 0.25
+  })
+
+  const nextIndex = player1Data.checkpointsPassed.findIndex((p) => !p)
+  gates.forEach((gate, i) => {
+    const isNext = i === (nextIndex === -1 ? 0 : nextIndex)
+    const intensity = isNext ? 0.75 + Math.sin(t * 5) * 0.25 : 0.2
+    gate.barMaterial.emissiveIntensity = intensity
+    gate.pillarMaterial.emissiveIntensity = intensity
+  })
+
+  if (boosting.value && nitroFlame1 && nitroFlame1.visible) {
+    nitroFlame1.scale.set(1, 0.9 + Math.random() * 0.5, 1)
+  }
+}
+
+/** 玩家 vs AI 碰撞：位置分离始终生效，减速/音效带 0.5s 冷却。 */
+let carCollisionCooldown = 0
+function handleAICollisions(delta: number) {
+  carCollisionCooldown = Math.max(0, carCollisionCooldown - delta)
+  for (const ai of aiCars) {
+    if (!checkCarCollision(player1Data.position, ai.data.position)) continue
+    const angle = Math.atan2(
+      ai.data.position.x - player1Data.position.x,
+      ai.data.position.z - player1Data.position.z,
+    )
+    player1Data.position.x -= Math.sin(angle) * 0.4
+    player1Data.position.z -= Math.cos(angle) * 0.4
+    ai.data.position.x += Math.sin(angle) * 0.4
+    ai.data.position.z += Math.cos(angle) * 0.4
+
+    if (carCollisionCooldown <= 0) {
+      carCollisionCooldown = 0.5
+      player1Data.speed *= RACING_SCORE.CAR_COLLISION_SPEED_MULTIPLIER
+      ai.data.speed *= RACING_SCORE.CAR_COLLISION_SPEED_MULTIPLIER
+      racingAudio.crash(1)
+      cameraShake = RACING_CAMERA.SHAKE_MAX
+      const midX = (player1Data.position.x + ai.data.position.x) / 2
+      const midZ = (player1Data.position.z + ai.data.position.z) / 2
+      particles?.spawnSparks(midX, 0.8, midZ, 12)
+    }
+  }
+}
+
 function startGame() {
-  gameState.value = 'playing'
+  // 防重入：先停掉可能仍在运行的渲染循环（否则两个 rAF 循环同时渲染，GPU 翻倍）
+  if (animationId) {
+    cancelAnimationFrame(animationId)
+    animationId = 0
+  }
+
   gameTime.value = 0
   currentLap.value = 1
   skillsUsed.value = 0
   maxSpeed.value = 0
   score.value = 0
   combo.value = 0
+  lapTime.value = 0
+  rank.value = 1
+  boosting.value = false
+  boostActive = false
+  boostPlayerData = null
+  magnetActive = false
+  magnetPlayerData = null
+  shieldActive = false
+  shieldPlayerData = null
+  // 护盾网格仍挂在旧场景里，由 initScene 的 disposeObject 统一释放
+  shieldMesh = null
+  carCollisionCooldown = 0
+  cameraShake = 0
+  lastCrashSoundAt = -10
 
   skills.forEach((skill) => {
     skill.cooldown = 0
   })
 
+  // 清理上一局的漂移痕迹：逐条移除并 dispose 材质（共享几何体保留复用，
+  // 不能让它被 initScene 的 disposeObject 释放掉）
   if (scene) {
-    while (scene.children.length > 0) {
-      scene.remove(scene.children[0])
+    for (let i = tireMarks.length - 1; i >= 0; i--) {
+      removeTireMark(i)
     }
   }
+  tireMarks.length = 0
+  lastTireMarkTime = 0
+  playerDriftState.clear()
+
   initScene()
+  placeRacersOnGrid()
+  totalRacers.value = gameMode.value === 'multi' ? 2 : 1 + aiCars.length
 
-  const startAngle = Math.atan2(
-    trackPoints[1].x - trackPoints[0].x,
-    trackPoints[1].z - trackPoints[0].z,
-  )
-
-  player1Data.position = { x: trackPoints[0].x - 3, z: trackPoints[0].z }
-  player1Data.rotation = startAngle
-  player1Data.speed = 0
-  player1Data.currentLap = 1
-  player1Data.finishTime = 0
-  player1Data.checkpointsPassed = new Array(RACING_TRACK.CHECKPOINTS).fill(false)
-
-  if (gameMode.value === 'multi') {
-    player2Data.position = { x: trackPoints[0].x + 3, z: trackPoints[0].z }
-    player2Data.rotation = startAngle
-    player2Data.speed = 0
-    player2Data.currentLap = 1
-    player2Data.finishTime = 0
-    player2Data.checkpointsPassed = new Array(RACING_TRACK.CHECKPOINTS).fill(false)
-  }
-
-  collectibles.forEach((item) => {
-    item.collected = false
-    item.mesh.visible = true
-  })
+  // 进入倒计时：先渲染发车格，3-2-1-GO 后才放开操控
+  countdownValue.value = 3
+  gameState.value = 'countdown'
+  racingAudio.init()
+  racingAudio.countBeep(false)
 
   lastTime = performance.now()
   gameLoop()
+
+  let count = 3
+  const countdownInterval = trackInterval(() => {
+    // 倒计时中退出/重开则作废
+    if (gameState.value !== 'countdown') {
+      clearInterval(countdownInterval)
+      return
+    }
+    count--
+    if (count > 0) {
+      countdownValue.value = count
+      racingAudio.countBeep(false)
+    } else {
+      clearInterval(countdownInterval)
+      countdownValue.value = 0
+      racingAudio.countBeep(true)
+      gameState.value = 'playing'
+      if (gameMode.value === 'single') racingAudio.startEngine()
+      // GO 显示 0.9 秒后隐藏
+      trackTimeout(() => {
+        if (countdownValue.value === 0) countdownValue.value = -1
+      }, 900)
+    }
+  }, 1000)
 }
 
 let lastTime = 0
 function gameLoop() {
-  if (gameState.value !== 'playing') return
+  if (gameState.value !== 'playing' && gameState.value !== 'countdown') return
 
   animationId = requestAnimationFrame(gameLoop)
   const now = performance.now()
-  const delta = (now - lastTime) / 1000
+  // clamp 大步长，防止切后台回来一帧飞出赛道
+  const delta = Math.min((now - lastTime) / 1000, 0.05)
   lastTime = now
+  const running = gameState.value === 'playing'
 
-  gameTime.value += delta
+  if (running) {
+    gameTime.value += delta
+    lapTime.value = gameTime.value - player1Data.lapStartTime
 
-  skills.forEach((skill) => {
-    if (skill.cooldown > 0) {
-      skill.cooldown = Math.max(0, skill.cooldown - delta)
-    }
-  })
+    skills.forEach((skill) => {
+      if (skill.cooldown > 0) {
+        skill.cooldown = Math.max(0, skill.cooldown - delta)
+      }
+    })
 
-  // 更新漂移痕迹
-  updateTireMarks()
+    // 更新漂移痕迹
+    updateTireMarks()
+  }
 
   if (gameMode.value === 'single') {
-    const controls = {
-      left: keyboardControls.p1Left || mobileControls.left,
-      right: keyboardControls.p1Right || mobileControls.right,
-      gas: keyboardControls.p1Gas || mobileControls.gas,
-      brake: keyboardControls.p1Brake || mobileControls.brake,
+    if (running) {
+      const controls = {
+        left: keyboardControls.p1Left || mobileControls.left,
+        right: keyboardControls.p1Right || mobileControls.right,
+        gas: keyboardControls.p1Gas || mobileControls.gas,
+        brake: keyboardControls.p1Brake || mobileControls.brake,
+      }
+      updatePlayer(player1Data, car1, controls, 1, delta)
+
+      // AI 对手
+      const playerProgress = raceProgress(trackPoints, player1Data)
+      for (const ai of aiCars) {
+        updateAI(ai, {
+          points: trackPoints,
+          checkpoints,
+          delta,
+          totalLaps: totalLaps.value,
+          gameTime: gameTime.value,
+          playerProgress,
+        })
+      }
+      handleAICollisions(delta)
+
+      // 实时名次
+      rank.value =
+        1 + aiCars.filter((a) => raceProgress(trackPoints, a.data) > playerProgress).length
+
+      // 引擎音调跟随速度
+      racingAudio.setEngine(Math.abs(player1Data.speed) / getCarMaxSpeed(1), boosting.value)
     }
-    updatePlayer(player1Data, car1, controls, 1)
-    renderSplitScreenView(camera, player1Data, window.innerWidth)
+    updateCameraSingle(delta)
+    if (renderer && scene && camera) {
+      renderer.render(scene, camera)
+    }
   } else {
-    const p1Controls = {
-      left: keyboardControls.p1Left,
-      right: keyboardControls.p1Right,
-      gas: keyboardControls.p1Gas,
-      brake: keyboardControls.p1Brake,
-    }
-    const p2Controls = {
-      left: keyboardControls.p2Left,
-      right: keyboardControls.p2Right,
-      gas: keyboardControls.p2Gas,
-      brake: keyboardControls.p2Brake,
-    }
+    if (running) {
+      const p1Controls = {
+        left: keyboardControls.p1Left,
+        right: keyboardControls.p1Right,
+        gas: keyboardControls.p1Gas,
+        brake: keyboardControls.p1Brake,
+      }
+      const p2Controls = {
+        left: keyboardControls.p2Left,
+        right: keyboardControls.p2Right,
+        gas: keyboardControls.p2Gas,
+        brake: keyboardControls.p2Brake,
+      }
 
-    updatePlayer(player1Data, car1, p1Controls, 1)
-    updatePlayer(player2Data, car2, p2Controls, 2)
+      updatePlayer(player1Data, car1, p1Controls, 1, delta)
+      updatePlayer(player2Data, car2, p2Controls, 2, delta)
 
-    if (checkCarCollision(player1Data.position, player2Data.position)) {
-      player1Data.speed *= RACING_SCORE.CAR_COLLISION_SPEED_MULTIPLIER
-      player2Data.speed *= RACING_SCORE.CAR_COLLISION_SPEED_MULTIPLIER
-      const angle = Math.atan2(
-        player2Data.position.x - player1Data.position.x,
-        player2Data.position.z - player1Data.position.z,
-      )
-      player1Data.position.x -= Math.sin(angle) * 0.5
-      player1Data.position.z -= Math.cos(angle) * 0.5
-      player2Data.position.x += Math.sin(angle) * 0.5
-      player2Data.position.z += Math.cos(angle) * 0.5
+      if (checkCarCollision(player1Data.position, player2Data.position)) {
+        player1Data.speed *= RACING_SCORE.CAR_COLLISION_SPEED_MULTIPLIER
+        player2Data.speed *= RACING_SCORE.CAR_COLLISION_SPEED_MULTIPLIER
+        const angle = Math.atan2(
+          player2Data.position.x - player1Data.position.x,
+          player2Data.position.z - player1Data.position.z,
+        )
+        player1Data.position.x -= Math.sin(angle) * 0.5
+        player1Data.position.z -= Math.cos(angle) * 0.5
+        player2Data.position.x += Math.sin(angle) * 0.5
+        player2Data.position.z += Math.cos(angle) * 0.5
+      }
     }
 
     if (renderer && camera && camera2) {
@@ -1390,11 +1533,10 @@ function gameLoop() {
     }
   }
 
+  // 表现层动画倒计时期间也运行（金币旋转、门楼呼吸灯）
+  animateScene(now / 1000)
+  particles?.update(delta)
   updateMinimap()
-
-  if (gameMode.value === 'single' && renderer && scene && camera) {
-    renderer.render(scene, camera)
-  }
 }
 
 // 键盘映射：p1=WASD, p2=方向键。合并 handleKeyDown/handleKeyUp 的对称分支。
@@ -1455,13 +1597,22 @@ onUnmounted(() => {
   if (animationId) {
     cancelAnimationFrame(animationId)
   }
-  // 清理所有被跟踪的定时器 / 动画帧（磁铁、护盾、氮气、连击、导弹等）
+  // 清理所有被跟踪的定时器 / 动画帧（磁铁、护盾、氮气、连击、导弹、倒计时等）
   trackedIntervals.forEach((id) => clearInterval(id))
   trackedTimeouts.forEach((id) => clearTimeout(id))
   trackedRafs.forEach((id) => cancelAnimationFrame(id))
   trackedIntervals.length = 0
   trackedTimeouts.length = 0
   trackedRafs.length = 0
+  racingAudio.dispose()
+  particles?.dispose()
+  if (scene) {
+    disposeObject(scene)
+  }
+  if (tireMarkGeometry) {
+    tireMarkGeometry.dispose()
+    tireMarkGeometry = null
+  }
   if (renderer) {
     renderer.dispose()
   }
@@ -2218,6 +2369,145 @@ canvas {
   transform: scale(1.05);
 }
 
+/* 名次显示 */
+.rank-display {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--racing-gold);
+  min-width: 80px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+
+.rank-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--racing-gold);
+}
+
+.rank-total {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* 氮气激活时的速度表光效 */
+.speed-display.boosting {
+  border-color: #66ccff;
+  box-shadow: 0 0 18px rgba(102, 204, 255, 0.8);
+  animation: boostGlow 0.4s ease-in-out infinite alternate;
+}
+
+.speed-display.boosting .speed-value {
+  color: #66ccff;
+}
+
+@keyframes boostGlow {
+  from {
+    box-shadow: 0 0 10px rgba(102, 204, 255, 0.5);
+  }
+  to {
+    box-shadow: 0 0 24px rgba(102, 204, 255, 0.95);
+  }
+}
+
+/* 圈速 */
+.time-info {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lap-time-current {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--text-inverse);
+}
+
+.lap-time-last {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* 倒计时覆盖层 */
+.countdown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.countdown-lights {
+  display: flex;
+  gap: 18px;
+  padding: 16px 24px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.cd-light {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.cd-light.on {
+  background: #ff3b30;
+  box-shadow: 0 0 18px rgba(255, 59, 48, 0.9);
+}
+
+.cd-light.go {
+  background: #34c759;
+  box-shadow: 0 0 18px rgba(52, 199, 89, 0.9);
+}
+
+.countdown-number {
+  font-size: 6rem;
+  font-weight: 900;
+  color: var(--text-inverse);
+  text-shadow: 0 0 30px var(--racing-accent);
+  animation: countPop 0.9s ease-out;
+}
+
+.countdown-number.go {
+  color: #34c759;
+  text-shadow: 0 0 40px rgba(52, 199, 89, 0.9);
+}
+
+@keyframes countPop {
+  0% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+}
+
+.final-rank {
+  color: var(--racing-gold);
+  font-weight: bold;
+}
+
 /* 响应式设计 - 移动端优化 */
 @media (max-width: 768px) {
   .game-menu {
@@ -2430,6 +2720,28 @@ canvas {
   .car-display {
     touch-action: pan-y;
     user-select: none;
+  }
+
+  .rank-display {
+    padding: 6px 10px;
+    min-width: 60px;
+  }
+
+  .rank-value {
+    font-size: 1.2rem;
+  }
+
+  .countdown-number {
+    font-size: 4rem;
+  }
+
+  .cd-light {
+    width: 26px;
+    height: 26px;
+  }
+
+  .lap-time-last {
+    display: none;
   }
 }
 </style>

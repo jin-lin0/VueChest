@@ -6,6 +6,6 @@ export default {
   meta: {
     name: '3D赛车',
     icon: '🏎️',
-    description: '刺激的3D赛车竞速，支持移动端触控和技能系统',
+    description: '3D赛车竞速：AI对手、漂移氮气、道具技能，支持本地双人分屏',
   },
 }
