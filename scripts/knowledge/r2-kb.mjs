@@ -26,8 +26,9 @@ let _r2 = null
 export function getR2() {
   if (_r2) return _r2
   if (!loadR2Env()) return null
+  const s3ModulePath = resolve(ROOT, '../VueChestServer/node_modules/@aws-sdk/client-s3')
   const { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand } = require(
-    '/Users/hejinlin/Documents/project/VueChestServer/node_modules/@aws-sdk/client-s3',
+    s3ModulePath,
   )
   const client = new S3Client({
     region: 'auto',

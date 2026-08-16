@@ -67,7 +67,7 @@ for (const entry of apps) {
   const presign = await request('/api/uploads/presign', {
     method: 'POST',
     headers: auth,
-    body: JSON.stringify({ kind: 'app', contentType: file.type, size: file.size }),
+    body: JSON.stringify({ kind: 'app', contentType: file.type, size: file.size, name: meta.name }),
   })
 
   const uploaded = await fetch(presign.data.uploadUrl, {
