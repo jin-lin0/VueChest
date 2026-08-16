@@ -26,7 +26,11 @@ router.afterEach(() => {
     <RouteLoadingBar :loading="isRouteLoading" />
     <main class="app-main">
       <RouterView v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
+        <!-- 注意：此处不能用 mode="out-in"。
+             mode="out-in" 与 Vue Router 的异步懒加载路由组件（() => import(...)）存在已知冲突：
+             浏览器返回（popstate）时，离开阶段的 transition 会永久卡死，导致新组件（如首页）永远不挂载，
+             页面只剩白屏（/rhythm、/music 等路由尤为触发）。改用默认模式即可彻底规避。 -->
+        <transition name="fade">
           <component :is="Component" />
         </transition>
       </RouterView>
