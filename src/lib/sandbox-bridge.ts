@@ -27,6 +27,13 @@ export function sandboxStorageKey(appId: string | number, key: string): string {
   return `sandbox:${appId}:${key}`
 }
 
+/**
+ * 宿主共享存储键白名单。
+ * 这些键在沙箱写入时不做 appId 命名空间隔离，直接以裸 key 落库，
+ * 以便宿主（如首页）能跨应用读取。目前仅 special-days 的 special_days 需要此能力。
+ */
+export const HOST_SHARED_KEYS = ['special_days']
+
 function hostAllowed(host: string, whitelist: string[]): boolean {
   return whitelist.some((rule) => {
     if (rule.startsWith('*.')) return host.endsWith(rule.slice(1))
@@ -41,6 +48,10 @@ export async function collectSandboxStorage(appId: string | number): Promise<Rec
   const snapshot: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(all)) {
     if (key.startsWith(prefix)) snapshot[key.slice(prefix.length)] = value
+  }
+  // 宿主共享键以裸 key 提供（无 appId 前缀），供沙箱同步读取自己的共享数据
+  for (const sharedKey of HOST_SHARED_KEYS) {
+    if (sharedKey in all) snapshot[sharedKey] = all[sharedKey]
   }
   return snapshot
 }
@@ -66,13 +77,15 @@ export function handleSandboxMessage(
       switch (name) {
         case 'storage.set': {
           const key = String(args[0])
-          setStorage(sandboxStorageKey(appId, key), args[1])
+          const storageKey = HOST_SHARED_KEYS.includes(key) ? key : sandboxStorageKey(appId, key)
+          setStorage(storageKey, args[1])
           respond({ kind: 'capability-response', id, value: true })
           break
         }
         case 'storage.remove': {
           const key = String(args[0])
-          removeStorage(sandboxStorageKey(appId, key))
+          const storageKey = HOST_SHARED_KEYS.includes(key) ? key : sandboxStorageKey(appId, key)
+          removeStorage(storageKey)
           respond({ kind: 'capability-response', id, value: true })
           break
         }
