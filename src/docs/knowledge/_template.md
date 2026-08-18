@@ -1,8 +1,15 @@
 # 知识库文章模板（复制改名后使用）
 
-> 用途：新增知识文档时复制本文件，重命名为 `xxx.md`，并在 `knowledge/index.ts` 追加
-> `import xxx from './xxx.md?raw'` 与一条 `{ id: 'xxx', title: '标题', content: xxx }`。
-> 文件名即文档 id（**不要带 `kb-` 前缀**，Tab 由所属注册表推导）。
+> 用途：新增知识文档时复制本文件，重命名为 `xxx.md`，放到对应一级目录
+> （`frontend/` `ai/` `interview/` 之一，决定顶层 Tab），**无需改动 `knowledge/index.ts`**。
+> 顶部用 frontmatter 声明分组即可自动注册：
+>
+>     ---
+>     group: 所属二级分组名   # 同 category 内唯一，决定左侧子菜单归属
+>     order: 1                # 可选，跨库全局排序，越小越靠前
+>     ---
+>
+> 标题自动取正文首个 `# H1`（下面照常写 `# 标题`）。文件名即文档 id（**不要带 `kb-` 前缀**，Tab 由所属注册表推导）。
 
 # 标题（一句话说清主题）
 
