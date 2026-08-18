@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
 import type { MarketAppItem } from '@/stores/market'
 import { formatFileSize } from '@/utils'
+import AppComments from '@/components/AppComments.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,6 +146,8 @@ const isInstalled = computed(() => (app.value ? market.isInstalled(app.value.id)
           />
         </div>
       </div>
+
+      <AppComments v-if="app" :app-id="app.id" />
     </template>
   </div>
 </template>

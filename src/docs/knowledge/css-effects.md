@@ -400,3 +400,12 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 - 关键帧覆盖 loading、骨架屏、打字机；
 - 性能上避免过渡 `width/top/left` 等触发布局的属性；
 - 现代特性 `:has()` `:is()` `clamp()` `@property` 让特效更简洁可控。
+
+## 参考来源
+
+- MDN — [`:has()` 父选择器](https://developer.mozilla.org/zh-CN/docs/Web/CSS/:has)
+- MDN — [`@property` 带类型的自定义属性](https://developer.mozilla.org/zh-CN/docs/Web/CSS/@property)
+- MDN — [`backdrop-filter` 毛玻璃](https://developer.mozilla.org/zh-CN/docs/Web/CSS/backdrop-filter)
+- MDN — [`clamp()` 流式尺寸](https://developer.mozilla.org/zh-CN/docs/Web/CSS/clamp)
+- MDN — [过渡使用指南](https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_transitions/Using_CSS_transitions)
+- MDN — [`prefers-reduced-motion` 无障碍](https://developer.mozilla.org/zh-CN/docs/Web/CSS/@media/prefers-reduced-motion)

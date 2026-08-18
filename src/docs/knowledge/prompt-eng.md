@@ -292,3 +292,10 @@ def ask(system: str, user: str, temperature: float = 0.2) -> str:
 ## 十、小结
 
 提示词工程核心是**把任务结构化、把期望显式化、把输出可解析化**。优先级：清晰指令 → 给角色与格式 → 复杂任务加 CoT/few-shot → 用 `json_schema` 锁死结构 → 分隔符防注入 → 用 rubric 量化迭代。把这些模板沉淀为带版本管理的可复用资产，AI 功能才能稳定可维护。
+
+## 参考来源
+
+- OpenAI — [Prompt engineering 指南](https://platform.openai.com/docs/guides/prompt-engineering)
+- OpenAI — [Structured Outputs 结构化输出](https://platform.openai.com/docs/guides/structured-outputs)
+- Anthropic — [Prompt engineering 概述](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview)
+- Google — [Prompt engineering 指南](https://developers.google.com/machine-learning/generative-ai/prompt-engineering)

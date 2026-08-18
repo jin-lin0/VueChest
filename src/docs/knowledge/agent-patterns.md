@@ -224,3 +224,10 @@ def safe_agent(agent, task, max_steps=10, timeout=30):
 4. 无论哪种架构，都加步数上限、错误处理与可观测性——这是可靠性的底线。
 
 > 总结：Agent 没有"银弹"。理解各模式的取舍，按任务确定性、成本与质量需求组合使用，才是工程落地的关键。
+
+## 参考来源
+
+- Anthropic — [Building Effective Agents（高效 Agent 设计指南）](https://www.anthropic.com/research/building-effective-agents)
+- LangChain — [Agents 概念指南](https://python.langchain.com/docs/concepts/agents)
+- OpenAI — [Function Calling 指南](https://platform.openai.com/docs/guides/function-calling)
+- LlamaIndex — [Multi-Agent 协作模式](https://docs.llamaindex.ai/en/stable/use_cases/agents/)

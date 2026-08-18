@@ -1246,3 +1246,11 @@ function createSingleton(cls) {
 时间复杂度 O(1)，空间复杂度 O(1)（单一实例）。
 
 > 场景题的本质是"把需求翻译成健壮代码"：先确认输入输出与边界，再选数据结构和 API，最后补错误处理与清理（timer/observer/listener 的取消）。建议配合算法章节同步练习，二者共同构成手撕能力。
+
+## 参考来源 / 延伸阅读
+
+- 设计模式（图文详解，场景题常考）：[refactoring.guru/design-patterns](https://refactoring.guru/design-patterns)
+- MDN Web 文档（事件 / 异步 / 性能 API）：[developer.mozilla.org/zh-CN](https://developer.mozilla.org/zh-CN/)
+- web.dev（前端性能与最佳实践）：[web.dev](https://web.dev/)
+- LeetCode 力扣（场景题底层算法训练）：[leetcode.cn](https://leetcode.cn/)
+- 牛客网（真实场景题面经）：[nowcoder.com](https://www.nowcoder.com/)

@@ -306,3 +306,12 @@ export const config = await res.json() // 导入方拿到已就绪的配置
 - 数组多用非破坏性方法（`toSorted` 等）与 `at(-1)`；分组用 `groupBy`。
 - 异步错误用 `try/catch` + `allSettled` 隔离；交互用防抖/节流。
 - 体积优化靠动态 `import()` 与顶层 `await`。
+
+## 参考来源
+
+- MDN — [可选链 `?.`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/Optional_chaining)
+- MDN — [空值合并 `??`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing)
+- MDN — [`structuredClone` 深拷贝](https://developer.mozilla.org/zh-CN/docs/Web/API/structuredClone)
+- MDN — [`Promise` 与并发组合](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+- MDN — [`Object.groupBy` / `Map.groupBy`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Object/groupBy)
+- TC39 — [已完成与活跃的提案](https://github.com/tc39/proposals)

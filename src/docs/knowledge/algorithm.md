@@ -3103,3 +3103,11 @@ function majorityElement(nums) {
 时间复杂度 O(n)，空间复杂度 O(1)。
 
 > 建议以 LeetCode 热题 100 + 面试经典 150 为骨架，配合 CodeTop 按目标公司筛选近一年真题；每类题至少掌握「递归/迭代」或「双指针/单调栈」两种思路，并熟练口述复杂度与边界。
+
+## 参考来源 / 延伸阅读
+
+- LeetCode 力扣（含热题 100 / 面试 150 学习计划）：[leetcode.cn](https://leetcode.cn/)
+- CodeTop（按公司筛选近一年真题）：[codetop.cc](https://codetop.cc/)
+- 牛客网（校招 / 社招笔面经）：[nowcoder.com](https://www.nowcoder.com/)
+- VisualGo（算法可视化，理解过程）：[visualgo.net](https://visualgo.net/zh)
+- 《算法导论》（CLRS，复杂度与经典算法理论）

@@ -613,3 +613,34 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 - yarn：扁平 + 确定性锁、并行下载。
 - pnpm：硬链接 + 内容寻址，最快最省、严格隔离、无幽灵依赖。
 - 锁文件固定依赖树，保证环境一致。
+
+### 2026 高频新题补充
+
+**Q：Vue 3.5 的响应式有什么新东西？`reactive` 的深层响应要注意什么？**
+- 3.5 增强了 `reactive` 对 `Map`/`Set`/大对象的内存与追踪效率（底层重构 `proxy` 追踪）；`ref` 解包在模板与 `reactive` 中行为一致。
+- 深层响应：`reactive` 默认深响应，但**替换整个对象丢失响应**（应改属性而非整体赋值）；大列表用 `shallowRef`/`shallowReactive` 减少追踪开销。
+
+**Q：React 19 与 Vue 3 的核心差异，怎么选型？**
+- React 19 主打 `use`（读 Promise/context）、Actions、`useOptimistic`、Ref 可传 props；范式仍是"函数 + 单向数据流 + 手动 memo"。
+- Vue 3 靠编译器 + 响应式自动追踪，模板心智负担低；选型的本质是"团队偏好 + 生态"而非性能（二者生产性能都已足够）。
+
+**Q：CSS 容器查询（container query）和 `subgrid` 实战怎么用？**
+- 容器查询：父容器 `@container (min-width: 400px)` 改变子元素布局，组件级响应式不再依赖视口（见 `layout.md`）。
+- `subgrid`：子网格继承父网格轨道，卡片列表对齐更稳，避免每层重复 grid 定义。
+
+**Q：AI 辅助编程（Copilot / Cursor / Claude Code）对工程流程的改变？**
+- 用例：脚手架生成、单测补全、文档/重构建议、Bug 定位。
+- 风险：生成的代码可能含"看似正确实则错误"的逻辑、依赖过时 API、引入不安全写法——必须 review + 测试覆盖，不能盲信。
+
+**Q：为什么要有 RSC（React Server Components）？和 SSR 区别？**
+- SSR 是"服务端渲染 HTML 再水合"；RSC 让组件在服务端运行、只把结果（含数据）序列化给客户端，减少 JS 包体与客户端取数。
+- 适合数据密集、SEO 内容；但增加了服务端/客户端组件边界的心智成本。
+
+## 参考来源 / 延伸阅读
+
+- MDN Web 文档（JS / CSS / HTTP 权威参考）：[developer.mozilla.org/zh-CN](https://developer.mozilla.org/zh-CN/)
+- Vue 官方文档：[cn.vuejs.org](https://cn.vuejs.org/)
+- React 官方文档：[react.dev](https://react.dev/)
+- TypeScript 官方手册：[www.typescriptlang.org/docs](https://www.typescriptlang.org/docs/)
+- web.dev（性能 / 最佳实践）：[web.dev](https://web.dev/)
+- HTTP 协议规范与指南：[MDN HTTP](https://developer.mozilla.org/zh-CN/docs/Web/HTTP)

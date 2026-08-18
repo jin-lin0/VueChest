@@ -373,3 +373,12 @@ new PerformanceObserver((list) => {
 7. 用 Lighthouse + Performance 面板建立基线，按 INP 长任务逐个击破。
 
 > 提示：先量后优化。以 Lighthouse / 真实字段数据建立基线，优先修复影响第 75 百分位用户的高杠杆问题。
+
+## 参考来源
+
+- web.dev — [Core Web Vitals 总览](https://web.dev/articles/vitals)
+- web.dev — [INP 交互到下次绘制](https://web.dev/articles/inp)
+- web.dev — [LCP 最大内容绘制](https://web.dev/articles/lcp)
+- web.dev — [CLS 累计布局偏移](https://web.dev/articles/cls)
+- Vue 官方 — [性能优化最佳实践](https://vuejs.org/guide/best-practices/performance.html)
+- Vite 官方 — [构建与产物优化](https://vite.dev/guide/build)

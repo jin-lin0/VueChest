@@ -2,7 +2,7 @@
 
 在 Vue 3 组件化开发中，布局是最高频的需求。本文系统讲解 **Flexbox**（一维布局）与 **Grid**（二维布局）的实战用法，配套响应式与现代 CSS 特性，所有示例均可直接复制使用。
 
-> 浏览器支持说明：截至 2024+，`gap` 在 flex 中、容器查询、subgrid、aspect-ratio 均已进入 Baseline，可放心用于生产环境。
+> 浏览器支持说明：截至 2026 年，`gap` 在 flex 中、容器查询、subgrid、aspect-ratio 均已进入 Baseline（广泛可用），可放心用于生产环境。可查 [web.dev Baseline](https://web.dev/baseline) 确认各特性的浏览器支持进度。
 
 ---
 
@@ -424,3 +424,11 @@ grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 - 组件响应式：优先 `@container`，页面级才用 `@media`。
 - 流体尺寸：用 `clamp()` 替代多重断点。
 - 二维跨区对齐：用 `subgrid`。
+
+## 参考来源
+
+- MDN — [Flexbox 布局指南](https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_flexible_box_layout)
+- MDN — [Grid 布局指南](https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_grid_layout)
+- MDN — [容器查询 Container Queries](https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_containment/Container_queries)
+- MDN — [subgrid 子网格](https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_grid_layout/Subgrid)
+- web.dev — [Learn CSS：布局](https://web.dev/learn/css)

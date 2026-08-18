@@ -257,3 +257,12 @@ def answer(query: str, client):
 ## 小结
 
 RAG = **切分 → 向量化 → 入库 → 混合检索 → 重排 → 带上下文生成**。中文场景优先 `BGE-M3` + `Chroma` + `bge-reranker-v2-m3`，chunk 控制在 256–512 token、overlap 10%–20%，并用 BM25 补关键词召回、cross-encoder 精排，可显著提升召回率与答案忠实度。
+
+## 参考来源
+
+- LangChain — [RAG 官方教程](https://python.langchain.com/docs/tutorials/rag/)
+- Chroma 文档：[docs.trychroma.com](https://docs.trychroma.com/)
+- BGE-M3（HuggingFace 模型卡）：[huggingface.co/BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3)
+- Sentence-Transformers 文档：[www.sbert.net](https://www.sbert.net/)
+- pgvector（Postgres 向量扩展）：[github.com/pgvector/pgvector](https://github.com/pgvector/pgvector)
+- LlamaIndex — [RAG 指南](https://docs.llamaindex.ai/en/stable/understanding/rag/)

@@ -602,3 +602,35 @@
 - 可观测性：全链路 tracing、业务指标（成功率/满意度/工具准确率）、异常告警。
 - 安全：用户鉴权、工具权限控制、输入输出安全检查、不可变加密审计日志（不记原始 PII）。
 - 设计模板：目标 → workflow 还是 agent → 工具集 → 状态管理 → 执行闭环 → 安全机制 → 失败处理(retry/fallback/ask-user/handoff) → 观测与评估。
+
+### 前沿补充（MCP / 评估 / 多模态）
+
+**Q：MCP 解决了什么？和 Function Calling 是什么关系？**
+- Function Calling 是"模型调一次工具"的能力；MCP 是"把工具/数据源以标准协议暴露给任意模型客户端"的开放协议（host/client/server + transport）。
+- 关系：MCP 让工具的"提供方"与"使用方"解耦——同一 server 可被不同 Agent 框架复用，不必每个 Agent 重写工具适配（见 `mcp.md`）。
+
+**Q：怎么评估一个 Agent 的好坏？只看回答质量够吗？**
+- 不够。需分层：任务成功率（goal completion）、工具调用准确率、步骤效率（是否绕路）、安全合规（有无越权/注入）、成本（token/步数）、用户满意度。
+- 用轨迹级评估（trace）而非只看最终结果；RAGAS 类指标（见 `rag-evaluation.md`）可复用其忠实度/相关性维度。
+
+**Q：多模态 Agent（能看图/图表）怎么设计？**
+- 感知：图片/表格经多模态模型或 VLM 抽取成结构化描述（见 `multimodal-rag.md`）。
+- 决策：把"视觉信息 + 文本"一起进多模态 LLM；工具调用可包含"取某图区域/查某表"。
+- 风险：VLM 对精细数字/小字易误读，关键数据需二次校验或要求引用原图坐标。
+
+**Q：Agent 面临哪些新安全威胁？**
+- 提示词注入（间接注入：从检索内容/网页带入恶意指令）、工具调用劫持（诱导调用危险工具）、数据外泄（把机密塞进对外请求）。
+- 防护见 `agent-security.md`：输入护栏、工具最小权限、高风险动作人工审批、不可变审计日志。
+
+**Q：RAG 和 Agent 怎么融合？**
+- RAG 是"检索增强的单轮生成"；Agent 可把 RAG 当作一个工具（retrieve 工具），在多次推理中按需检索、交叉验证、结合其他工具（计算/API）给出答案。
+- 趋势是"Agentic RAG"：用 Agent 规划检索策略（先搜什么、是否重搜、如何融合多源）。
+
+## 参考来源 / 延伸阅读
+
+- Anthropic — [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)
+- OpenAI 官方文档（API / Function Calling / 评测）：[platform.openai.com/docs](https://platform.openai.com/docs)
+- LangChain 文档：[python.langchain.com/docs](https://python.langchain.com/docs/concepts/agents)
+- OWASP — [LLM 应用 Top 10（2025）](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+- Model Context Protocol（MCP）：[modelcontextprotocol.io](https://modelcontextprotocol.io/)
+- LlamaIndex 文档（RAG / Multi-Agent）：[docs.llamaindex.ai](https://docs.llamaindex.ai/)

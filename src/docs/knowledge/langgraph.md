@@ -297,4 +297,11 @@ for kind, data in graph.stream(inputs, stream_mode="messages"):
 6. `compile()` 后 `invoke` / `stream` 运行。
 7. 工具 Agent 可直接用 `create_react_agent(model, tools=...)` 快速起手。
 
-LangGraph 把“编排逻辑”显式交给开发者：你定义状态、节点和边，框架负责调度、持久化与恢复。掌握本文的 StateGraph、State/reducer、普通/条件边、Checkpointer、interrupt 与 tools 循环，即可构建绝大多数生产级 Agent。
+LangGraph 把"编排逻辑"显式交给开发者：你定义状态、节点和边，框架负责调度、持久化与恢复。掌握本文的 StateGraph、State/reducer、普通/条件边、Checkpointer、interrupt 与 tools 循环，即可构建绝大多数生产级 Agent。
+
+## 参考来源
+
+- LangGraph 官方文档：[langchain-ai.github.io/langgraph](https://langchain-ai.github.io/langgraph/)
+- LangGraph GitHub 仓库：[github.com/langchain-ai/langgraph](https://github.com/langchain-ai/langgraph)
+- LangGraph Python SDK（PyPI）：[pypi.org/project/langgraph](https://pypi.org/project/langgraph/)
+- LangChain 文档 — Tools / Function Calling：[python.langchain.com](https://python.langchain.com/docs/concepts/tools)

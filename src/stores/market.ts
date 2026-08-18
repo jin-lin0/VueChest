@@ -223,6 +223,51 @@ export const useMarketStore = defineStore('market', () => {
     return installedApps.value.some((a) => a.id === appId)
   }
 
+  // ===== 应用评论相关（强绑定 appId） =====
+  async function fetchComments(
+    appId: number,
+    params?: { page?: number; limit?: number },
+  ): Promise<{
+    items: any[]
+    ratingSummary: { average: number | null; count: number }
+  } | null> {
+    try {
+      const q = new URLSearchParams()
+      if (params?.page) q.set("page", String(params.page))
+      if (params?.limit) q.set("limit", String(params.limit))
+      const { data } = await api.get<{
+        data: {
+          items: any[]
+          ratingSummary: { average: number | null; count: number }
+        }
+      }>(`/api/market/apps/${appId}/comments?${q.toString()}`)
+      return data
+    } catch (e) {
+      console.error("Failed to fetch comments:", e)
+      return null
+    }
+  }
+
+  async function postComment(
+    appId: number,
+    payload: { content: string; rating?: number; parentId?: number },
+  ): Promise<any | null> {
+    try {
+      const { data } = await api.post<{ data: any }>(
+        `/api/market/apps/${appId}/comments`,
+        payload,
+      )
+      return data
+    } catch (e) {
+      console.error("Failed to post comment:", e)
+      throw e
+    }
+  }
+
+  async function deleteComment(commentId: number): Promise<void> {
+    await api.delete(`/api/market/comments/${commentId}`)
+  }
+
   // 将已安装的 App ID 列表同步到服务端
   async function syncToServer() {
     const ids = installedApps.value.map((a) => a.id)
@@ -312,6 +357,9 @@ export const useMarketStore = defineStore('market', () => {
     ensureBundle,
     uploadApp,
     isInstalled,
+    fetchComments,
+    postComment,
+    deleteComment,
     refreshInstalledMeta,
     syncFromServer,
     syncToServer,
