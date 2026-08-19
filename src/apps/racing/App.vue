@@ -30,6 +30,24 @@
         </div>
       </div>
 
+      <!-- 3D 展厅：真实车模旋转展台 -->
+      <div class="showroom">
+        <canvas ref="showroomCanvas" class="showroom-canvas"></canvas>
+        <span class="showroom-hint">滑动 / ← → 切换赛车</span>
+        <div class="showroom-tags">
+          <span class="showroom-tag" :style="{ '--car-color': currentCar.color }">
+            {{ gameMode === 'multi' ? `P1 · ${currentCar.name}` : currentCar.name }}
+          </span>
+          <span
+            v-if="gameMode === 'multi'"
+            class="showroom-tag"
+            :style="{ '--car-color': currentCar2.color }"
+          >
+            P2 · {{ currentCar2.name }}
+          </span>
+        </div>
+      </div>
+
       <div class="car-select">
         <h3>{{ gameMode === 'multi' ? '玩家1选择赛车' : '选择赛车' }}</h3>
         <div
@@ -40,22 +58,24 @@
           <button class="carousel-btn prev" @click="prevCar(1)">‹</button>
           <div class="car-display">
             <div class="car-card">
-              <div class="car-preview-large" :style="{ background: currentCar.color }">
-                <div class="car-shape">🏎️</div>
+              <div class="car-card-head">
+                <h4>{{ currentCar.name }}</h4>
+                <span class="car-trait" :style="{ background: currentCar.color }">
+                  {{ carTrait(currentCar) }}
+                </span>
               </div>
-              <h4>{{ currentCar.name }}</h4>
               <div class="car-stats">
                 <div class="stat">
                   <span>速度</span>
                   <div class="stat-bar">
-                    <div :style="{ width: currentCar.speed / 2 + '%' }"></div>
+                    <div :style="{ width: currentCar.speed / 2 + '%', background: currentCar.color }"></div>
                   </div>
                   <span class="stat-value">{{ currentCar.speed }}</span>
                 </div>
                 <div class="stat">
                   <span>操控</span>
                   <div class="stat-bar">
-                    <div :style="{ width: currentCar.handling + '%' }"></div>
+                    <div :style="{ width: currentCar.handling + '%', background: currentCar.color }"></div>
                   </div>
                   <span class="stat-value">{{ currentCar.handling }}</span>
                 </div>
@@ -69,6 +89,7 @@
             v-for="car in cars"
             :key="car.id"
             :class="['dot', { active: selectedCar === car.id }]"
+            :style="selectedCar === car.id ? { background: car.color, borderColor: car.color } : {}"
             @click="selectedCar = car.id"
           ></span>
         </div>
@@ -85,10 +106,28 @@
           <button class="carousel-btn prev" @click="prevCar(2)">‹</button>
           <div class="car-display">
             <div class="car-card">
-              <div class="car-preview-large" :style="{ background: currentCar2.color }">
-                <div class="car-shape">🏎️</div>
+              <div class="car-card-head">
+                <h4>{{ currentCar2.name }}</h4>
+                <span class="car-trait" :style="{ background: currentCar2.color }">
+                  {{ carTrait(currentCar2) }}
+                </span>
               </div>
-              <h4>{{ currentCar2.name }}</h4>
+              <div class="car-stats">
+                <div class="stat">
+                  <span>速度</span>
+                  <div class="stat-bar">
+                    <div :style="{ width: currentCar2.speed / 2 + '%', background: currentCar2.color }"></div>
+                  </div>
+                  <span class="stat-value">{{ currentCar2.speed }}</span>
+                </div>
+                <div class="stat">
+                  <span>操控</span>
+                  <div class="stat-bar">
+                    <div :style="{ width: currentCar2.handling + '%', background: currentCar2.color }"></div>
+                  </div>
+                  <span class="stat-value">{{ currentCar2.handling }}</span>
+                </div>
+              </div>
             </div>
           </div>
           <button class="carousel-btn next" @click="nextCar(2)">›</button>
@@ -98,6 +137,7 @@
             v-for="car in cars"
             :key="car.id"
             :class="['dot', { active: selectedCar2 === car.id }]"
+            :style="selectedCar2 === car.id ? { background: car.color, borderColor: car.color } : {}"
             @click="selectedCar2 = car.id"
           ></span>
         </div>
@@ -311,7 +351,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
+import { ref, onMounted, onUnmounted, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as THREE from 'three'
 import { formatClock } from '@/utils'
@@ -336,6 +376,7 @@ import {
   type CheckpointGate,
 } from './track'
 import { buildCarMesh } from './car'
+import { CarShowroom } from './showroom'
 import { ParticleSystem } from './particles'
 import { racingAudio } from './audio'
 import { updateAI, raceProgress, type AICarState } from './ai'
@@ -380,6 +421,73 @@ const cars = RACING_CARS
 // 计算当前选择的车辆
 const currentCar = computed(() => getCarById(selectedCar.value) || cars[0])
 const currentCar2 = computed(() => getCarById(selectedCar2.value) || cars[1])
+
+/** 车辆定位标签：极速 / 操控 / 均衡 */
+function carTrait(car: RacingCar): string {
+  if (car.speed >= 190) return '极速型'
+  if (car.handling >= 85) return '操控型'
+  return '均衡型'
+}
+
+// 选车 3D 展厅（仅菜单界面渲染，独立 renderer/场景，详见 ./showroom）
+// 注意：.game-menu 是 v-if，离开菜单时 showroomCanvas DOM 元素会被销毁，旧的
+// renderer 还绑在那个已被卸载的 canvas 上，导致返回菜单后新 canvas 空白。
+// 所以 showroom 的生命周期跟 gameState==='menu' 绑定：进 menu 用当前 canvas 新建，
+// 离开 menu 立即 dispose 释放 WebGL 上下文（顺带也避免比赛期间双上下文共存）。
+const showroomCanvas = ref<HTMLCanvasElement>()
+let showroom: CarShowroom | null = null
+
+function ensureShowroom(): void {
+  if (showroom || !showroomCanvas.value) return
+  showroom = new CarShowroom(showroomCanvas.value)
+  showroom.setSlots(gameMode.value === 'multi' ? 2 : 1)
+  showroom.setCar(0, currentCar.value)
+  showroom.setCar(1, currentCar2.value)
+  showroom.start()
+}
+
+function disposeShowroom(): void {
+  showroom?.dispose()
+  showroom = null
+}
+
+// 选中变化 → 展厅换车 + 切换音效。flush: 'sync' 让 AudioContext 的创建/恢复
+// 保持在点击/按键手势的同步调用栈内，避免被浏览器挂起导致首次无声
+watch(
+  currentCar,
+  (car) => {
+    showroom?.setCar(0, car)
+    racingAudio.init()
+    racingAudio.uiSwitch()
+  },
+  { flush: 'sync' },
+)
+watch(
+  currentCar2,
+  (car) => {
+    showroom?.setCar(1, car)
+    racingAudio.init()
+    racingAudio.uiSwitch()
+  },
+  { flush: 'sync' },
+)
+watch(gameMode, (mode) => {
+  showroom?.setSlots(mode === 'multi' ? 2 : 1)
+})
+// 展厅只在菜单渲染：进 menu 用新 canvas 重建，离开 menu 释放。
+// flush: 'post' 让 watcher 在 Vue DOM 更新（v-if 挂载新 showroomCanvas）之后跑，
+// 否则 ensureShowroom 时 showroomCanvas.value 还是 null，绑不到新 canvas。
+watch(
+  gameState,
+  (state) => {
+    if (state === 'menu') {
+      ensureShowroom()
+    } else {
+      disposeShowroom()
+    }
+  },
+  { flush: 'post' },
+)
 
 // 切换车辆
 function prevCar(player: number) {
@@ -1559,6 +1667,17 @@ function applyKeyBinding(e: KeyboardEvent, value: boolean) {
 }
 
 function handleKeyDown(e: KeyboardEvent) {
+  // 菜单界面：← → 快速切换玩家1赛车（此时方向键尚未绑定驾驶）
+  if (gameState.value === 'menu') {
+    if (e.key === 'ArrowLeft') {
+      prevCar(1)
+      return
+    }
+    if (e.key === 'ArrowRight') {
+      nextCar(1)
+      return
+    }
+  }
   applyKeyBinding(e, true)
 
   if (gameMode.value === 'single') {
@@ -1588,12 +1707,15 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
   window.addEventListener('resize', handleResize)
+  // 初始就是菜单界面，直接搭建展厅并开始渲染
+  ensureShowroom()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('keyup', handleKeyUp)
   window.removeEventListener('resize', handleResize)
+  disposeShowroom()
   if (animationId) {
     cancelAnimationFrame(animationId)
   }
@@ -1740,6 +1862,68 @@ canvas {
   margin-bottom: 0.3rem;
 }
 
+/* 3D 展厅 */
+.showroom {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin-bottom: 1.2rem;
+}
+
+.showroom-canvas {
+  width: 100%;
+  height: 240px;
+  display: block;
+  border-radius: 18px;
+  background: radial-gradient(ellipse at 50% 120%, #232c52 0%, #11142a 60%, #0b0d1f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 0 60px rgba(80, 120, 255, 0.06);
+}
+
+.showroom-hint {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.showroom-tags {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  pointer-events: none;
+}
+
+.showroom-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-inverse);
+  background: rgba(10, 12, 28, 0.6);
+  border: 1px solid var(--car-color);
+  backdrop-filter: blur(4px);
+}
+
+.showroom-tag::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  background: var(--car-color);
+  box-shadow: 0 0 6px var(--car-color);
+}
+
 /* 赛车选择轮播 */
 .car-select {
   margin-bottom: 1.5rem;
@@ -1792,24 +1976,26 @@ canvas {
   text-align: center;
 }
 
-.car-preview-large {
-  width: 100%;
-  height: 100px;
-  border-radius: 12px;
+.car-card-head {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   margin-bottom: 15px;
-}
-
-.car-shape {
-  font-size: 3rem;
 }
 
 .car-card h4 {
   color: var(--text-inverse);
   font-size: 1.3rem;
-  margin-bottom: 15px;
+}
+
+.car-trait {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-inverse);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .car-stats {
@@ -1862,6 +2048,7 @@ canvas {
   height: 10px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.3);
+  border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -2558,18 +2745,20 @@ canvas {
     padding: 14px;
   }
 
-  .car-preview-large {
-    height: 80px;
-    margin-bottom: 10px;
+  .showroom-canvas {
+    height: 180px;
   }
 
-  .car-shape {
-    font-size: 2.2rem;
+  .showroom-hint {
+    display: none;
+  }
+
+  .car-card-head {
+    margin-bottom: 10px;
   }
 
   .car-card h4 {
     font-size: 1.1rem;
-    margin-bottom: 10px;
   }
 
   .start-btn {

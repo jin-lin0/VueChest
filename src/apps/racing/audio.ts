@@ -106,6 +106,12 @@ class RacingAudio {
     }
   }
 
+  /** 选车 / 界面切换：短促双音 blip。 */
+  uiSwitch(): void {
+    this.tone(660, 0.08, 'sine', 0.15)
+    this.tone(990, 0.1, 'sine', 0.1, 0.05)
+  }
+
   /** 收集金币：连击越高音调越高。 */
   collect(combo: number): void {
     const step = Math.min(Math.max(combo, 1), 10)
