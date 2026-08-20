@@ -2,152 +2,147 @@
   <div class="racing-game" ref="gameContainer">
     <canvas ref="gameCanvas"></canvas>
     <div v-if="gameState === 'menu'" class="game-menu">
-      <button class="back-btn" @click="goBack">
-        <span>←</span>
-        <span>返回</span>
-      </button>
-
-      <h1>🏎️ 极速狂飙</h1>
-      <p class="subtitle">3D赛车竞速 · AI对手 · 漂移氮气</p>
-
-      <div class="mode-select">
-        <h3>游戏模式</h3>
-        <div class="mode-options">
-          <div
-            :class="['mode-option', { selected: gameMode === 'single' }]"
-            @click="gameMode = 'single'"
-          >
-            <span class="mode-icon">👤</span>
-            <span>单人模式</span>
-          </div>
-          <div
-            :class="['mode-option', { selected: gameMode === 'multi' }]"
-            @click="gameMode = 'multi'"
-          >
-            <span class="mode-icon">👥</span>
-            <span>本地双人</span>
-          </div>
-        </div>
+      <!-- 动态背景：漂移网格 + 漂浮光晕 -->
+      <div class="menu-bg">
+        <div class="menu-grid"></div>
+        <span class="menu-orb orb-a"></span>
+        <span class="menu-orb orb-b"></span>
+        <span class="menu-orb orb-c"></span>
       </div>
 
-      <!-- 3D 展厅：真实车模旋转展台 -->
-      <div class="showroom">
-        <canvas ref="showroomCanvas" class="showroom-canvas"></canvas>
-        <span class="showroom-hint">滑动 / ← → 切换赛车</span>
-        <div class="showroom-tags">
-          <span class="showroom-tag" :style="{ '--car-color': currentCar.color }">
-            {{ gameMode === 'multi' ? `P1 · ${currentCar.name}` : currentCar.name }}
-          </span>
-          <span
-            v-if="gameMode === 'multi'"
-            class="showroom-tag"
-            :style="{ '--car-color': currentCar2.color }"
-          >
-            P2 · {{ currentCar2.name }}
-          </span>
+      <!-- 全屏 3D 展厅：真实车模旋转展台 -->
+      <canvas
+        ref="showroomCanvas"
+        class="showroom-canvas"
+        @touchstart.passive="onCarTouchStart($event)"
+        @touchend.passive="onCarTouchEnd($event, 1)"
+      ></canvas>
+      <div class="menu-vignette"></div>
+
+      <!-- 顶部条：返回 / 标题 / 模式切换 -->
+      <header class="menu-topbar">
+        <button class="back-btn" @click="goBack">
+          <span>←</span>
+          <span>返回</span>
+        </button>
+        <div class="menu-title">
+          <h1>🏎️ 极速狂飙</h1>
+          <p class="subtitle">3D赛车竞速 · AI对手 · 漂移氮气</p>
         </div>
+        <div class="mode-seg">
+          <button :class="['seg-btn', { active: gameMode === 'single' }]" @click="gameMode = 'single'">
+            👤 单人
+          </button>
+          <button :class="['seg-btn', { active: gameMode === 'multi' }]" @click="gameMode = 'multi'">
+            👥 双人
+          </button>
+        </div>
+      </header>
+
+      <!-- 屏幕两侧换车箭头（单人模式；双人模式用坞站内小箭头） -->
+      <template v-if="gameMode === 'single'">
+        <button class="edge-btn prev" @click="prevCar(1)">‹</button>
+        <button class="edge-btn next" @click="nextCar(1)">›</button>
+      </template>
+
+      <!-- 车位标签（悬浮在 3D 车上方） -->
+      <div class="showroom-tags">
+        <span class="showroom-tag" :style="{ '--car-color': currentCar.color }">
+          {{ gameMode === 'multi' ? `P1 · ${currentCar.name}` : currentCar.name }}
+        </span>
+        <span v-if="gameMode === 'multi'" class="showroom-tag" :style="{ '--car-color': currentCar2.color }">
+          P2 · {{ currentCar2.name }}
+        </span>
       </div>
 
-      <div class="car-select">
-        <h3>{{ gameMode === 'multi' ? '玩家1选择赛车' : '选择赛车' }}</h3>
-        <div
-          class="car-carousel"
-          @touchstart.passive="onCarTouchStart($event)"
-          @touchend.passive="onCarTouchEnd($event, 1)"
-        >
-          <button class="carousel-btn prev" @click="prevCar(1)">‹</button>
-          <div class="car-display">
-            <div class="car-card">
-              <div class="car-card-head">
-                <h4>{{ currentCar.name }}</h4>
-                <span class="car-trait" :style="{ background: currentCar.color }">
-                  {{ carTrait(currentCar) }}
-                </span>
+      <!-- 底部玻璃坞站 -->
+      <div class="menu-dock">
+        <div :class="['dock-grid', { multi: gameMode === 'multi' }]">
+          <div class="dock-car">
+            <div class="dock-car-head">
+              <button v-if="gameMode === 'multi'" class="mini-btn" @click="prevCar(1)">‹</button>
+              <h2 class="car-big-name" :style="{ textShadow: `0 0 26px ${currentCar.color}` }">
+                {{ currentCar.name }}
+              </h2>
+              <span class="car-trait" :style="{ background: currentCar.color }">
+                {{ carTrait(currentCar) }}
+              </span>
+              <button v-if="gameMode === 'multi'" class="mini-btn" @click="nextCar(1)">›</button>
+            </div>
+            <div class="car-stats">
+              <div class="stat">
+                <span>速度</span>
+                <div class="stat-bar">
+                  <div :style="{ width: currentCar.speed / 2 + '%', background: currentCar.color }"></div>
+                </div>
+                <span class="stat-value">{{ currentCar.speed }}</span>
               </div>
-              <div class="car-stats">
-                <div class="stat">
-                  <span>速度</span>
-                  <div class="stat-bar">
-                    <div :style="{ width: currentCar.speed / 2 + '%', background: currentCar.color }"></div>
-                  </div>
-                  <span class="stat-value">{{ currentCar.speed }}</span>
+              <div class="stat">
+                <span>操控</span>
+                <div class="stat-bar">
+                  <div :style="{ width: currentCar.handling + '%', background: currentCar.color }"></div>
                 </div>
-                <div class="stat">
-                  <span>操控</span>
-                  <div class="stat-bar">
-                    <div :style="{ width: currentCar.handling + '%', background: currentCar.color }"></div>
-                  </div>
-                  <span class="stat-value">{{ currentCar.handling }}</span>
-                </div>
+                <span class="stat-value">{{ currentCar.handling }}</span>
               </div>
             </div>
-          </div>
-          <button class="carousel-btn next" @click="nextCar(1)">›</button>
-        </div>
-        <div class="car-dots">
-          <span
-            v-for="car in cars"
-            :key="car.id"
-            :class="['dot', { active: selectedCar === car.id }]"
-            :style="selectedCar === car.id ? { background: car.color, borderColor: car.color } : {}"
-            @click="selectedCar = car.id"
-          ></span>
-        </div>
-      </div>
-
-      <!-- 玩家2选择 -->
-      <div v-if="gameMode === 'multi'" class="car-select">
-        <h3>玩家2选择赛车</h3>
-        <div
-          class="car-carousel"
-          @touchstart.passive="onCarTouchStart($event)"
-          @touchend.passive="onCarTouchEnd($event, 2)"
-        >
-          <button class="carousel-btn prev" @click="prevCar(2)">‹</button>
-          <div class="car-display">
-            <div class="car-card">
-              <div class="car-card-head">
-                <h4>{{ currentCar2.name }}</h4>
-                <span class="car-trait" :style="{ background: currentCar2.color }">
-                  {{ carTrait(currentCar2) }}
-                </span>
-              </div>
-              <div class="car-stats">
-                <div class="stat">
-                  <span>速度</span>
-                  <div class="stat-bar">
-                    <div :style="{ width: currentCar2.speed / 2 + '%', background: currentCar2.color }"></div>
-                  </div>
-                  <span class="stat-value">{{ currentCar2.speed }}</span>
-                </div>
-                <div class="stat">
-                  <span>操控</span>
-                  <div class="stat-bar">
-                    <div :style="{ width: currentCar2.handling + '%', background: currentCar2.color }"></div>
-                  </div>
-                  <span class="stat-value">{{ currentCar2.handling }}</span>
-                </div>
-              </div>
+            <div class="car-dots">
+              <span
+                v-for="car in cars"
+                :key="car.id"
+                :class="['dot', { active: selectedCar === car.id }]"
+                :style="selectedCar === car.id ? { background: car.color, borderColor: car.color } : {}"
+                @click="selectedCar = car.id"
+              ></span>
             </div>
           </div>
-          <button class="carousel-btn next" @click="nextCar(2)">›</button>
-        </div>
-        <div class="car-dots">
-          <span
-            v-for="car in cars"
-            :key="car.id"
-            :class="['dot', { active: selectedCar2 === car.id }]"
-            :style="selectedCar2 === car.id ? { background: car.color, borderColor: car.color } : {}"
-            @click="selectedCar2 = car.id"
-          ></span>
-        </div>
-      </div>
 
-      <button class="start-btn" @click="startGame">开始比赛</button>
+          <div v-if="gameMode === 'multi'" class="dock-car">
+            <div class="dock-car-head">
+              <button class="mini-btn" @click="prevCar(2)">‹</button>
+              <h2 class="car-big-name" :style="{ textShadow: `0 0 26px ${currentCar2.color}` }">
+                {{ currentCar2.name }}
+              </h2>
+              <span class="car-trait" :style="{ background: currentCar2.color }">
+                {{ carTrait(currentCar2) }}
+              </span>
+              <button class="mini-btn" @click="nextCar(2)">›</button>
+            </div>
+            <div class="car-stats">
+              <div class="stat">
+                <span>速度</span>
+                <div class="stat-bar">
+                  <div :style="{ width: currentCar2.speed / 2 + '%', background: currentCar2.color }"></div>
+                </div>
+                <span class="stat-value">{{ currentCar2.speed }}</span>
+              </div>
+              <div class="stat">
+                <span>操控</span>
+                <div class="stat-bar">
+                  <div :style="{ width: currentCar2.handling + '%', background: currentCar2.color }"></div>
+                </div>
+                <span class="stat-value">{{ currentCar2.handling }}</span>
+              </div>
+            </div>
+            <div class="car-dots">
+              <span
+                v-for="car in cars"
+                :key="car.id"
+                :class="['dot', { active: selectedCar2 === car.id }]"
+                :style="selectedCar2 === car.id ? { background: car.color, borderColor: car.color } : {}"
+                @click="selectedCar2 = car.id"
+              ></span>
+            </div>
+          </div>
+        </div>
 
-      <div class="controls-hint">
-        <p v-if="gameMode === 'single'">键盘: WASD/方向键控制 | 高速下 刹车+转向 触发漂移 | 1-4 释放技能</p>
-        <p v-else>玩家1: WASD控制 | 玩家2: 方向键控制 | 刹车+转向 漂移</p>
+        <button class="start-btn" @click="startGame">开始比赛</button>
+        <p class="controls-hint">
+          {{
+            gameMode === 'single'
+              ? 'WASD/方向键驾驶 · 刹车+转向漂移 · 1-4 技能 · 菜单内 ←→ 选车'
+              : '玩家1: WASD · 玩家2: 方向键 · 刹车+转向漂移'
+          }}
+        </p>
       </div>
     </div>
 
@@ -1763,139 +1758,346 @@ canvas {
   height: 100%;
 }
 
-/* 返回按钮 */
+/* 返回按钮（位于顶部条内，随文档流，不悬浮压内容） */
 .back-btn {
-  position: absolute;
-  top: 20px;
-  left: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 25px;
+  padding: 9px 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
   color: var(--text-inverse);
-  font-size: 16px;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s;
-  z-index: 20;
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
 }
 
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: var(--racing-accent);
+  box-shadow: 0 0 14px rgba(var(--racing-accent-rgb), 0.3);
 }
 
-/* 游戏菜单 */
+/* 游戏菜单：全屏 3D 展厅 + 悬浮 UI（顶部条 / 底部坞站） */
 .game-menu {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(90, 120, 255, 0.18) 0%, transparent 55%),
+    linear-gradient(135deg, #101223 0%, #141a35 55%, #0b0d1f 100%);
   z-index: 10;
-  overflow-y: auto;
-  padding: 80px 20px 40px;
+  overflow: hidden;
 }
 
-.game-menu h1 {
-  font-size: 2.5rem;
-  color: var(--text-inverse);
-  text-shadow: 0 0 20px var(--racing-accent);
-  margin-bottom: 0.5rem;
-}
-
-.subtitle {
-  color: var(--text-muted);
-  font-size: 1.2rem;
-  margin-bottom: 1.5rem;
-}
-
-/* 模式选择 */
-.mode-select {
-  margin-bottom: 1.5rem;
+/* 顶部条：返回 + 标题 + 模式切换，三栏布局 */
+.menu-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  max-width: 400px;
-}
-
-.mode-select h3 {
-  color: var(--text-inverse);
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.mode-options {
+  z-index: 3;
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+}
+
+.menu-title {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+
+.menu-title h1 {
+  font-size: 1.7rem;
+  letter-spacing: 4px;
+  background: linear-gradient(90deg, #ff6b6b, #ffd700, #7f9dff, #ff6b6b);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-shine 5s linear infinite;
+  filter: drop-shadow(0 0 16px rgba(255, 107, 107, 0.35));
+}
+
+.menu-title .subtitle {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+/* 模式切换：分段控件 */
+.mode-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+}
+
+.seg-btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.seg-btn:hover {
+  color: var(--text-inverse);
+}
+
+.seg-btn.active {
+  background: linear-gradient(135deg, var(--racing-accent), var(--racing-accent-2));
+  color: var(--text-inverse);
+  box-shadow: 0 0 14px rgba(var(--racing-accent-rgb), 0.45);
+}
+
+/* 屏幕两侧换车大箭头 */
+.edge-btn {
+  position: absolute;
+  top: 42%;
+  z-index: 3;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  color: var(--text-inverse);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
   justify-content: center;
 }
 
-.mode-option {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid transparent;
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: center;
-  color: var(--text-inverse);
-  flex: 1;
+.edge-btn.prev {
+  left: 22px;
 }
 
-.mode-option:hover {
-  background: rgba(255, 255, 255, 0.2);
+.edge-btn.next {
+  right: 22px;
 }
 
-.mode-option.selected {
+.edge-btn:hover {
+  background: rgba(var(--racing-accent-rgb), 0.25);
   border-color: var(--racing-accent);
-  background: rgba(var(--racing-accent-rgb), 0.2);
+  box-shadow: 0 0 18px rgba(var(--racing-accent-rgb), 0.45);
+  transform: scale(1.08);
 }
 
-.mode-icon {
-  font-size: 1.5rem;
-  display: block;
-  margin-bottom: 0.3rem;
-}
-
-/* 3D 展厅 */
-.showroom {
-  position: relative;
-  width: 100%;
-  max-width: 640px;
-  margin-bottom: 1.2rem;
-}
-
-.showroom-canvas {
-  width: 100%;
-  height: 240px;
-  display: block;
-  border-radius: 18px;
-  background: radial-gradient(ellipse at 50% 120%, #232c52 0%, #11142a 60%, #0b0d1f 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.45),
-    inset 0 0 60px rgba(80, 120, 255, 0.06);
-}
-
-.showroom-hint {
+/* 暗角：视线聚焦中央展台 */
+.menu-vignette {
   position: absolute;
-  top: 10px;
-  right: 14px;
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.35);
+  inset: 0;
+  z-index: 2;
   pointer-events: none;
+  background: radial-gradient(ellipse at 50% 42%, transparent 42%, rgba(5, 7, 18, 0.72) 100%);
+}
+
+/* 底部玻璃坞站 */
+.menu-dock {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 16px;
+  background: linear-gradient(180deg, rgba(12, 15, 32, 0.55), rgba(8, 10, 24, 0.88));
+  border-top: 1px solid rgba(130, 160, 255, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.dock-grid {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  width: 100%;
+  max-width: 680px;
+}
+
+.dock-grid.multi .dock-car {
+  flex: 1;
+  min-width: 0;
+}
+
+.dock-car {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.dock-car-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.car-big-name {
+  font-size: 1.6rem;
+  letter-spacing: 3px;
+  color: var(--text-inverse);
+}
+
+.mini-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-inverse);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mini-btn:hover {
+  background: rgba(var(--racing-accent-rgb), 0.25);
+  border-color: var(--racing-accent);
+}
+
+/* 动态背景层：网格漂移 + 光晕漂浮，全部纯 CSS 合成 */
+.menu-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.menu-grid {
+  position: absolute;
+  inset: -60px;
+  background-image:
+    linear-gradient(rgba(100, 140, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 140, 255, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 50% 45%, black 25%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 45%, black 25%, transparent 72%);
+  animation: grid-drift 16s linear infinite;
+}
+
+@keyframes grid-drift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(44px, 44px);
+  }
+}
+
+.menu-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.5;
+}
+
+.orb-a {
+  width: 340px;
+  height: 340px;
+  left: -80px;
+  top: -60px;
+  background: rgba(255, 107, 107, 0.35);
+  animation: orb-float-a 13s ease-in-out infinite;
+}
+
+.orb-b {
+  width: 420px;
+  height: 420px;
+  right: -120px;
+  top: 20%;
+  background: rgba(80, 120, 255, 0.32);
+  animation: orb-float-b 17s ease-in-out infinite;
+}
+
+.orb-c {
+  width: 260px;
+  height: 260px;
+  left: 30%;
+  bottom: -100px;
+  background: rgba(255, 215, 0, 0.16);
+  animation: orb-float-c 15s ease-in-out infinite;
+}
+
+@keyframes orb-float-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(60px, 40px) scale(1.15);
+  }
+}
+
+@keyframes orb-float-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-70px, -30px) scale(1.1);
+  }
+}
+
+@keyframes orb-float-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-40px, -50px) scale(1.2);
+  }
+}
+
+@keyframes title-shine {
+  to {
+    background-position: 300% center;
+  }
+}
+
+/* 全屏 3D 展厅画布 */
+.showroom-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .showroom-tags {
   position: absolute;
-  bottom: 12px;
+  top: 62%;
   left: 0;
   width: 100%;
+  z-index: 3;
   display: flex;
   justify-content: space-around;
   pointer-events: none;
@@ -1924,71 +2126,6 @@ canvas {
   box-shadow: 0 0 6px var(--car-color);
 }
 
-/* 赛车选择轮播 */
-.car-select {
-  margin-bottom: 1.5rem;
-  width: 100%;
-  max-width: 400px;
-}
-
-.car-select h3 {
-  color: var(--text-inverse);
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.car-carousel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-}
-
-.carousel-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-inverse);
-  font-size: 1.5rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.carousel-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: var(--racing-accent);
-}
-
-.car-display {
-  flex: 1;
-  max-width: 250px;
-}
-
-.car-card {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 20px;
-  text-align: center;
-}
-
-.car-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.car-card h4 {
-  color: var(--text-inverse);
-  font-size: 1.3rem;
-}
-
 .car-trait {
   padding: 2px 10px;
   border-radius: 999px;
@@ -2001,7 +2138,8 @@ canvas {
 .car-stats {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  width: 250px;
 }
 
 .stat {
@@ -2061,7 +2199,10 @@ canvas {
 .start-btn {
   padding: 14px 50px;
   font-size: 1.2rem;
-  background: linear-gradient(135deg, var(--racing-accent) 0%, var(--racing-accent-2) 100%);
+  font-weight: 600;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--racing-accent) 0%, var(--racing-accent-2) 50%, var(--racing-accent) 100%);
+  background-size: 200% auto;
   color: var(--text-inverse);
   border: none;
   border-radius: 50px;
@@ -2069,12 +2210,31 @@ canvas {
   transition:
     transform 0.3s,
     box-shadow 0.3s;
-  margin-bottom: 15px;
+  margin-bottom: 0;
+  animation:
+    start-btn-flow 3s linear infinite,
+    start-btn-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes start-btn-flow {
+  to {
+    background-position: 200% center;
+  }
+}
+
+@keyframes start-btn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 16px rgba(var(--racing-accent-rgb), 0.35);
+  }
+  50% {
+    box-shadow: 0 0 32px rgba(var(--racing-accent-rgb), 0.6);
+  }
 }
 
 .start-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 30px rgba(var(--racing-accent-rgb), 0.5);
+  box-shadow: 0 0 40px rgba(var(--racing-accent-rgb), 0.7);
 }
 
 .controls-hint {
@@ -2697,68 +2857,66 @@ canvas {
 
 /* 响应式设计 - 移动端优化 */
 @media (max-width: 768px) {
-  .game-menu {
-    padding: 70px 15px 30px;
+  .menu-topbar {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 12px 14px;
+    gap: 10px;
   }
 
-  .game-menu h1 {
-    font-size: 1.8rem;
+  .menu-title {
+    order: 3;
+    flex-basis: 100%;
   }
 
-  .subtitle {
-    font-size: 1rem;
-    margin-bottom: 1rem;
+  .menu-title h1 {
+    font-size: 1.3rem;
+    letter-spacing: 2px;
   }
 
-  .mode-select {
-    margin-bottom: 1rem;
+  .seg-btn {
+    padding: 6px 14px;
+    font-size: 0.8rem;
   }
 
-  .mode-options {
-    gap: 0.6rem;
+  .edge-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 1.3rem;
+    top: 38%;
   }
 
-  .mode-option {
-    padding: 0.8rem 1rem;
-    font-size: 0.9rem;
+  .edge-btn.prev {
+    left: 10px;
   }
 
-  .mode-icon {
+  .edge-btn.next {
+    right: 10px;
+  }
+
+  .menu-dock {
+    max-height: 58%;
+    overflow-y: auto;
+    padding: 14px 14px 12px;
+    gap: 10px;
+  }
+
+  .dock-grid {
+    gap: 18px;
+  }
+
+  .dock-grid.multi {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .car-big-name {
     font-size: 1.2rem;
+    letter-spacing: 2px;
   }
 
-  .car-select {
-    margin-bottom: 1rem;
-  }
-
-  .carousel-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 1.2rem;
-  }
-
-  .car-display {
-    max-width: 200px;
-  }
-
-  .car-card {
-    padding: 14px;
-  }
-
-  .showroom-canvas {
-    height: 180px;
-  }
-
-  .showroom-hint {
-    display: none;
-  }
-
-  .car-card-head {
-    margin-bottom: 10px;
-  }
-
-  .car-card h4 {
-    font-size: 1.1rem;
+  .showroom-tags {
+    top: 48%;
   }
 
   .start-btn {
@@ -2767,7 +2925,7 @@ canvas {
   }
 
   .controls-hint {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
   }
 
   .hud-top {

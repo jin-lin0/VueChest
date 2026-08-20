@@ -5,12 +5,13 @@ import { buildCarMesh } from './car'
 import { disposeObject } from './track'
 import type { RacingCar } from './config'
 
-/** 展台槽位：转盘 + 车 + 发光环 + 交换动画状态机。 */
+/** 展台槽位：转盘 + 车 + 发光环 + 车底光晕 + 交换动画状态机。 */
 interface ShowroomSlot {
   root: THREE.Group
   pivot: THREE.Group
   ringMat: THREE.MeshStandardMaterial
   ringColor: THREE.Color
+  glowMat: THREE.MeshBasicMaterial
   car: THREE.Group | null
   carId: number
   /** 交换动画进度（0..1），1 = 空闲 */
@@ -26,13 +27,28 @@ interface ShowroomSlot {
 
 const ROT_SPEED = 0.55 // 展台基础转速（rad/s）
 const SWAP_DURATION = 0.55 // 换车动画时长（秒）
-const DOUBLE_X = 2.7 // 双展台（本地双人）时的横向偏移
+const DOUBLE_X = 2.9 // 双展台（本地双人）时的横向偏移（略大于底座半径，避免两环相叠）
+const PARTICLE_COUNT = 140 // 漂浮粒子数
 
 /** 回弹缓动：换车登场时轻微 overshoot，更有弹性 */
 function easeOutBack(t: number): number {
   const c1 = 1.70158
   const c3 = c1 + 1
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+}
+
+/** 车底光晕贴图：径向渐变圆，Additive 叠加出"发光地板"效果。每个展台一张，随场景 dispose。 */
+function makeGlowTexture(): THREE.Texture {
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const ctx = c.getContext('2d')!
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
+  g.addColorStop(0, 'rgba(255,255,255,0.9)')
+  g.addColorStop(0.4, 'rgba(255,255,255,0.28)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 128, 128)
+  return new THREE.CanvasTexture(c)
 }
 
 export class CarShowroom {
@@ -46,6 +62,10 @@ export class CarShowroom {
   private lastTime = 0
   private elapsed = 0
   private resizeObserver: ResizeObserver
+  private particles: THREE.Points
+  private particlePositions: Float32Array
+  /** 前补光：颜色跟随 P1 赛车，把整个展厅染上当前车的色调 */
+  private accent: THREE.DirectionalLight
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
@@ -56,8 +76,8 @@ export class CarShowroom {
     canvas.addEventListener('webglcontextlost', (e) => e.preventDefault())
 
     this.scene = new THREE.Scene()
-    this.camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100)
-    this.camera.position.set(0, 3.8, 11)
+    this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
+    this.camera.position.set(0, 3.4, 12.5)
 
     // 灯光：半球光打底 + 主平行光（投影）+ 冷色轮廓光，小场景阴影相机 ±8 即可
     this.scene.add(new THREE.HemisphereLight(0xdfeaff, 0x1a2038, 0.9))
@@ -73,18 +93,43 @@ export class CarShowroom {
     const rim = new THREE.DirectionalLight(0x88aaff, 1.2)
     rim.position.set(-6, 4, -8)
     this.scene.add(rim)
+    // 车色补光（正面低位打上来的染色光，跟随当前车）
+    this.accent = new THREE.DirectionalLight(0xffffff, 0.9)
+    this.accent.position.set(0, 2.5, 8)
+    this.scene.add(this.accent)
 
     // 地面 + 极坐标网格（展厅氛围）
     const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(9, 48),
+      new THREE.CircleGeometry(13, 48),
       new THREE.MeshStandardMaterial({ color: 0x11162e, roughness: 0.85, metalness: 0.25 }),
     )
     floor.rotation.x = -Math.PI / 2
     floor.receiveShadow = true
     this.scene.add(floor)
-    const grid = new THREE.PolarGridHelper(9, 12, 5, 48, 0x2a3560, 0x1c2444)
+    const grid = new THREE.PolarGridHelper(13, 14, 6, 56, 0x2a3560, 0x1c2444)
     grid.position.y = 0.01
     this.scene.add(grid)
+
+    // 漂浮粒子：Additive 小点缓慢上升，循环回到底部，营造"能量尘埃"
+    this.particlePositions = new Float32Array(PARTICLE_COUNT * 3)
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      this.particlePositions[i * 3] = (Math.random() - 0.5) * 16
+      this.particlePositions[i * 3 + 1] = Math.random() * 6
+      this.particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 12
+    }
+    const particleGeo = new THREE.BufferGeometry()
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(this.particlePositions, 3))
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x7f9dff,
+      size: 0.09,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    })
+    this.particles = new THREE.Points(particleGeo, particleMat)
+    this.scene.add(this.particles)
 
     this.slots = [this.makeSlot(), this.makeSlot()]
     this.slots.forEach((s) => this.scene.add(s.root))
@@ -169,6 +214,35 @@ export class CarShowroom {
     ring.position.y = 0.31
     root.add(ring)
 
+    // 车底光晕（Additive 径向渐变，颜色跟随当前赛车）
+    const glowMat = new THREE.MeshBasicMaterial({
+      map: makeGlowTexture(),
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      color: 0xffffff,
+    })
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 5.4), glowMat)
+    glow.rotation.x = -Math.PI / 2
+    glow.position.y = 0.32
+    root.add(glow)
+
+    // 顶部光柱：Additive 开口锥体，假体积光（旋转对称，随转盘转无形变）
+    const shaft = new THREE.Mesh(
+      new THREE.ConeGeometry(2.3, 7.5, 32, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x8fb0ff,
+        transparent: true,
+        opacity: 0.05,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    )
+    shaft.position.y = 4.05
+    root.add(shaft)
+
     const pivot = new THREE.Group()
     pivot.position.y = 0.3
     root.add(pivot)
@@ -178,6 +252,7 @@ export class CarShowroom {
       pivot,
       ringMat,
       ringColor: new THREE.Color(0xffffff),
+      glowMat,
       car: null,
       carId: -1,
       swapT: 1,
@@ -223,9 +298,11 @@ export class CarShowroom {
       slot.spinBoost *= Math.exp(-3 * delta)
       slot.root.rotation.y += (ROT_SPEED + slot.spinBoost) * delta
 
-      // 发光环：颜色向当前车渐变 + 呼吸脉动
+      // 发光环 + 车底光晕：颜色向当前车渐变；环呼吸脉动、光晕缓慢缩放
       slot.ringMat.emissive.lerp(slot.ringColor, 1 - Math.exp(-10 * delta))
       slot.ringMat.emissiveIntensity = 1.3 + Math.sin(this.elapsed * 3) * 0.4
+      slot.glowMat.color.lerp(slot.ringColor, 1 - Math.exp(-10 * delta))
+      slot.glowMat.opacity = 0.75 + Math.sin(this.elapsed * 2.2) * 0.15
 
       // 换车动画：前半段缩小退场 → 中点换新 → 后半段回弹登场
       if (slot.swapT < 1) {
@@ -243,9 +320,21 @@ export class CarShowroom {
       }
     }
 
-    // 相机轻微漂移，画面更活
+    // 粒子缓慢上升 + 整体微旋，到底/到顶循环
+    const pos = this.particlePositions
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      pos[i * 3 + 1] += delta * 0.35
+      if (pos[i * 3 + 1] > 6) pos[i * 3 + 1] = 0
+    }
+    this.particles.geometry.attributes.position.needsUpdate = true
+    this.particles.rotation.y += delta * 0.02
+
+    // 前补光染上 P1 车色，整个展厅色调跟随当前选择
+    this.accent.color.lerp(this.slots[0].ringColor, 1 - Math.exp(-6 * delta))
+
+    // 相机轻微漂移，画面更活（lookAt 略低于车身，把车构图在坞站上方）
     this.camera.position.x = Math.sin(this.elapsed * 0.3) * 0.5
-    this.camera.lookAt(0, 1.1, 0)
+    this.camera.lookAt(0, 0.55, 0)
   }
 
   private resize(): void {
@@ -254,6 +343,8 @@ export class CarShowroom {
     if (!w || !h) return
     this.renderer.setSize(w, h, false)
     this.camera.aspect = w / h
+    // 自适应取景：窄屏（竖屏手机）拉远相机，宽屏拉近，保证展台不被裁切
+    this.camera.position.z = THREE.MathUtils.clamp(16 / this.camera.aspect, 11, 30)
     this.camera.updateProjectionMatrix()
   }
 }
