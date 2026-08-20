@@ -1,12 +1,27 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { RouteLoadingBar, MusicPlayer, Toast } from '@/components'
+import { APP_MODULES } from '@/config'
+import { RouteLoadingBar, MusicPlayer, Toast, CommandPalette } from '@/components'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { registerToastHost } from '@/composables/useToast'
+import { useAuthStore, useWorkspaceStore } from '@/stores'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const workspaceStore = useWorkspaceStore()
 const isRouteLoading = ref(false)
+
+workspaceStore.init()
+
+watch(
+  () => authStore.user?.id,
+  (userId) => {
+    if (userId) void workspaceStore.syncWithServer(userId)
+    else workspaceStore.switchToGuest()
+  },
+  { immediate: true },
+)
 
 // 全局唯一 Toast 宿主：注册后任意组件都能用 useToast().addToast(...) 弹提示
 const toastHost = ref<InstanceType<typeof Toast> | null>(null)
@@ -19,10 +34,16 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
-router.afterEach(() => {
+router.afterEach((to) => {
   setTimeout(() => {
     isRouteLoading.value = false
   }, 100)
+
+  const builtin = APP_MODULES.find((app) => app.route === to.path)
+  if (builtin) workspaceStore.recordRecent(`builtin:${builtin.id}`)
+  else if (to.name === 'market-installed' && Number(to.params.id)) {
+    workspaceStore.recordRecent(`market:${Number(to.params.id)}`)
+  }
 })
 </script>
 
@@ -42,6 +63,7 @@ router.afterEach(() => {
       </RouterView>
     </main>
     <MusicPlayer />
+    <CommandPalette />
     <ConfirmDialog />
   </div>
 </template>

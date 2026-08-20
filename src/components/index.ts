@@ -17,6 +17,7 @@ export { default as DocNavTree, DOC_EXPANDED_KEY } from './DocNavTree.vue'
 
 // 平台业务组件
 export { default as LoginDropdown } from './business/LoginDropdown.vue'
+export { default as CommandPalette } from './business/CommandPalette.vue'
 export { default as MusicPlayer } from './business/MusicPlayer.vue'
 export { default as DonatePanel } from './business/DonatePanel.vue'
 export { default as DonorsWall } from './business/DonorsWall.vue'
