@@ -14,7 +14,9 @@ const app = ref<MarketAppItem | null>(null)
 const loading = ref(true)
 const installing = ref(false)
 const uninstalling = ref(false)
+const updating = ref(false)
 const error = ref('')
+const actionError = ref('')
 
 const screenshots = computed(() => app.value?.screenshots || [])
 const activeShot = ref(0)
@@ -42,16 +44,19 @@ onMounted(async () => {
   loading.value = false
   if (!app.value) {
     error.value = '应用不存在'
+  } else {
+    void market.checkForUpdates()
   }
 })
 
 async function handleInstall() {
   if (!app.value) return
   installing.value = true
+  actionError.value = ''
   try {
     await market.installApp(app.value.id)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '安装失败'
+    actionError.value = e instanceof Error ? e.message : '安装失败'
   } finally {
     installing.value = false
   }
@@ -60,14 +65,31 @@ async function handleInstall() {
 async function handleUninstall() {
   if (!app.value) return
   uninstalling.value = true
+  actionError.value = ''
   try {
     await market.uninstallApp(app.value.id)
+  } catch (e) {
+    actionError.value = e instanceof Error ? e.message : '卸载失败'
   } finally {
     uninstalling.value = false
   }
 }
 
+async function handleUpdate() {
+  if (!app.value) return
+  updating.value = true
+  actionError.value = ''
+  try {
+    await market.updateApp(app.value.id)
+  } catch (e) {
+    actionError.value = e instanceof Error ? e.message : '更新失败'
+  } finally {
+    updating.value = false
+  }
+}
+
 const isInstalled = computed(() => (app.value ? market.isInstalled(app.value.id) : false))
+const hasUpdate = computed(() => (app.value ? market.hasUpdate(app.value.id) : false))
 </script>
 
 <template>
@@ -108,16 +130,35 @@ const isInstalled = computed(() => (app.value ? market.isInstalled(app.value.id)
             >
               {{ installing ? '安装中...' : '安装' }}
             </button>
-            <button v-else class="uninstall-btn" :disabled="uninstalling" @click="handleUninstall">
+            <button
+              v-if="isInstalled && hasUpdate"
+              class="install-btn"
+              :disabled="updating"
+              @click="handleUpdate"
+            >
+              {{ updating ? '更新中...' : '更新到最新版' }}
+            </button>
+            <button
+              v-if="isInstalled"
+              class="uninstall-btn"
+              :disabled="uninstalling || updating"
+              @click="handleUninstall"
+            >
               {{ uninstalling ? '卸载中...' : '卸载' }}
             </button>
           </div>
+          <p v-if="actionError" class="action-error">{{ actionError }}</p>
         </div>
       </div>
 
       <div v-if="app.readme" class="detail-section">
         <h2>说明</h2>
         <div class="readme-content">{{ app.readme }}</div>
+      </div>
+
+      <div v-if="app.releaseNotes" class="detail-section">
+        <h2>本次更新</h2>
+        <div class="readme-content">{{ app.releaseNotes }}</div>
       </div>
 
       <div v-if="screenshots.length" class="detail-section">
@@ -291,6 +332,12 @@ const isInstalled = computed(() => (app.value ? market.isInstalled(app.value.id)
 .uninstall-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.action-error {
+  margin-top: 0.7rem;
+  color: var(--danger);
+  font-size: 0.85rem;
 }
 
 .detail-section {

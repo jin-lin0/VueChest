@@ -191,6 +191,15 @@
         ></textarea>
       </div>
       <div class="form-group">
+        <label>更新说明</label>
+        <textarea
+          v-model="editForm.releaseNotes"
+          class="form-textarea"
+          rows="3"
+          placeholder="本次版本的新增、调整或修复内容"
+        ></textarea>
+      </div>
+      <div class="form-group">
         <label>联网域名白名单 <span class="label-optional">选填</span></label>
         <textarea
           v-model="editForm.allowNetwork"
@@ -297,6 +306,7 @@ const editForm = reactive({
   version: '',
   category: '',
   readme: '',
+  releaseNotes: '',
   allowNetwork: '',
   isOfficial: false,
 })
@@ -431,14 +441,16 @@ function openEditModal(app: MarketAppItem) {
   editForm.version = app.version
   editForm.category = app.category || ''
   editForm.readme = ''
+  editForm.releaseNotes = ''
   editForm.allowNetwork = (app.allowNetwork || []).join(', ')
   editForm.isOfficial = !!app.isOfficial
   showEditModal.value = true
 
   api
-    .get<{ data: { readme?: string } }>(`/api/market/apps/${app.id}`, { auth: false })
+    .get<{ data: { readme?: string; releaseNotes?: string } }>(`/api/market/apps/${app.id}`, { auth: false })
     .then((res) => {
       if (res.data?.readme) editForm.readme = res.data.readme
+      if (res.data?.releaseNotes) editForm.releaseNotes = res.data.releaseNotes
     })
     .catch(() => {})
 }
@@ -460,6 +472,7 @@ async function saveEdit() {
       isOfficial: editForm.isOfficial,
     }
     if (editForm.readme) body.readme = editForm.readme
+    if (editForm.releaseNotes) body.releaseNotes = editForm.releaseNotes
     const allowNetwork = editForm.allowNetwork
       .split(/[,\n\s]+/)
       .map((s: string) => s.trim())

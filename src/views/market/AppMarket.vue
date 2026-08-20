@@ -32,7 +32,7 @@ const filteredApps = computed(() => {
 const currentPage = ref(1)
 
 function loadApps() {
-  market.fetchApps({
+  return market.fetchApps({
     category: activeCategory.value !== '全部' ? activeCategory.value : undefined,
     keyword: searchQuery.value.trim() || undefined,
     page: currentPage.value,
@@ -72,8 +72,17 @@ async function handleInstall(appId: number) {
   }
 }
 
+async function handleUpdate(appId: number) {
+  try {
+    await market.updateApp(appId)
+  } catch (e) {
+    console.error('更新失败', e)
+  }
+}
+
 onMounted(async () => {
   loadApps()
+  void market.checkForUpdates()
   // 分类 tab 消费后端枚举（GET /api/market/categories），兜底默认类目
   try {
     const data = await api.get<{ name: string }[]>('/api/market/categories', {
@@ -103,16 +112,24 @@ onMounted(async () => {
           <p class="subtitle">发现更多实用应用</p>
         </div>
       </div>
-      <div class="search-bar">
-        <span class="search-icon">🔍</span>
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="搜索应用..."
-          class="search-input"
-          @input="onSearch"
-        />
-        <button v-if="searchQuery" class="search-clear" @click="clearSearch">✕</button>
+      <div class="header-tools">
+        <button class="updates-btn" @click="router.push('/market/updates')">
+          应用更新
+          <span v-if="market.availableUpdates.length" class="update-count">
+            {{ market.availableUpdates.length }}
+          </span>
+        </button>
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="搜索应用..."
+            class="search-input"
+            @input="onSearch"
+          />
+          <button v-if="searchQuery" class="search-clear" @click="clearSearch">✕</button>
+        </div>
       </div>
     </header>
 
@@ -152,6 +169,7 @@ onMounted(async () => {
           <p class="app-description">{{ app.description }}</p>
           <div class="app-meta">
             <span class="app-version">v{{ app.version }}</span>
+            <span v-if="market.hasUpdate(app.id)" class="update-badge">可更新</span>
             <span class="app-size">{{ formatFileSize(app.size) }}</span>
             <span class="app-downloads">{{ app.downloads }} 次下载</span>
           </div>
@@ -160,13 +178,26 @@ onMounted(async () => {
             :class="{
               installed: market.isInstalled(app.id),
               installing: installingId === app.id,
+              update: market.hasUpdate(app.id),
             }"
-            :disabled="market.isInstalled(app.id) || installingId === app.id"
-            @click.stop="handleInstall(app.id)"
+            :disabled="
+              installingId === app.id ||
+              market.isUpdating(app.id) ||
+              (market.isInstalled(app.id) && !market.hasUpdate(app.id))
+            "
+            @click.stop="market.hasUpdate(app.id) ? handleUpdate(app.id) : handleInstall(app.id)"
           >
-            <span v-if="installingId === app.id" class="btn-spinner" />
+            <span v-if="installingId === app.id || market.isUpdating(app.id)" class="btn-spinner" />
             {{
-              installingId === app.id ? '安装中' : market.isInstalled(app.id) ? '已安装' : '安装'
+              installingId === app.id
+                ? '安装中'
+                : market.isUpdating(app.id)
+                  ? '更新中'
+                  : market.hasUpdate(app.id)
+                    ? '更新'
+                    : market.isInstalled(app.id)
+                      ? '已安装'
+                      : '安装'
             }}
           </button>
         </div>
@@ -176,6 +207,66 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.updates-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.update-count {
+  min-width: 19px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.update-badge {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.install-btn.update,
+.install-btn.installed.update {
+  background: var(--gradient-primary);
+  color: white;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .header-tools {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .updates-btn,
+  .search-bar {
+    width: 100%;
+  }
+
+  .updates-btn {
+    justify-content: center;
+  }
+}
+
 .market-container {
   min-height: 100vh;
   max-width: 1200px;

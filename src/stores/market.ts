@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getStorage, setStorage, removeStorage } from '@/lib/storage'
 import { api } from '@/lib/request'
@@ -15,6 +15,7 @@ export interface MarketAppItem {
   size: number
   screenshots?: string[]
   readme?: string
+  releaseNotes?: string
   isOfficial: boolean
   downloads: number
   status?: string
@@ -32,12 +33,43 @@ export interface InstalledApp {
   description: string
   version: string
   installedAt: number
+  updatedAt?: number
   /** 允许访问的网络域名白名单，随详情写入，供沙箱 caps 读取 */
   allowNetwork?: string[]
 }
 
 const INSTALLED_KEY = 'market_installed_apps'
 const BUNDLE_KEY_PREFIX = 'market-bundle-'
+const AUTO_UPDATE_KEY = 'market-auto-update'
+const UPDATE_CHECK_INTERVAL = 60 * 1000
+
+export interface AppUpdateInfo {
+  installed: InstalledApp
+  latest: MarketAppItem
+}
+
+function parseVersion(value: string) {
+  const normalized = String(value || '0').trim().replace(/^v/i, '').split('+')[0]
+  const [main, prerelease = ''] = normalized.split('-', 2)
+  return {
+    parts: main.split('.').map((part) => Number.parseInt(part, 10) || 0),
+    prerelease,
+  }
+}
+
+export function compareVersions(left: string, right: string): number {
+  if (left === right) return 0
+  const a = parseVersion(left)
+  const b = parseVersion(right)
+  const length = Math.max(a.parts.length, b.parts.length)
+  for (let index = 0; index < length; index += 1) {
+    const diff = (a.parts[index] || 0) - (b.parts[index] || 0)
+    if (diff !== 0) return diff > 0 ? 1 : -1
+  }
+  if (!a.prerelease && b.prerelease) return 1
+  if (a.prerelease && !b.prerelease) return -1
+  return a.prerelease.localeCompare(b.prerelease, undefined, { numeric: true })
+}
 
 // 绝不信任 bundle 自带的 def.route，杜绝其注册 /admin、/login 等核心路由实施劫持。
 function installedRoutePath(appId: number | string): string {
@@ -49,6 +81,26 @@ export const useMarketStore = defineStore('market', () => {
   const isLoading = ref(false)
 
   const installedApps = ref<InstalledApp[]>([])
+  const latestApps = ref<Record<number, MarketAppItem>>({})
+  const isCheckingUpdates = ref(false)
+  const updatingIds = ref<number[]>([])
+  const isUpdatingAll = ref(false)
+  const updateErrors = ref<Record<number, string>>({})
+  const updateCheckError = ref('')
+  const lastUpdateCheckAt = ref(0)
+  const autoUpdateEnabled = ref(getStorage<boolean>(AUTO_UPDATE_KEY, false) === true)
+  let updateCheckPromise: Promise<AppUpdateInfo[]> | null = null
+
+  const availableUpdates = computed<AppUpdateInfo[]>(() =>
+    installedApps.value
+      .map((installed) => ({ installed, latest: latestApps.value[installed.id] }))
+      .filter(
+        (item): item is AppUpdateInfo =>
+          !!item.latest && compareVersions(item.latest.version, item.installed.version) > 0,
+      ),
+  )
+
+  const persistInstalledApps = () => setStorage(INSTALLED_KEY, installedApps.value)
 
   function initInstalledApps() {
     const saved = getStorage<InstalledApp[]>(INSTALLED_KEY, [])
@@ -103,8 +155,11 @@ export const useMarketStore = defineStore('market', () => {
       fetchAppDetail(appId),
     ])
 
-    const code = await fetch(downloadRes.data.fileUrl).then((res) => res.text())
-    if (!code) return null
+    if (!downloadRes.data.fileUrl) throw new Error('应用下载地址无效')
+    const response = await fetch(downloadRes.data.fileUrl)
+    if (!response.ok) throw new Error(`应用包下载失败 (${response.status})`)
+    const code = await response.text()
+    if (!code.trim()) throw new Error('应用包内容为空')
 
     // 2. 缓存 bundle 到 IndexedDB（仅在沙箱 iframe 内执行）
     setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, code)
@@ -133,8 +188,11 @@ export const useMarketStore = defineStore('market', () => {
       const downloadRes = await api.get<{
         data: { fileUrl: string }
       }>(`/api/market/apps/${appId}/download`, { auth: false })
-      const code = await fetch(downloadRes.data.fileUrl).then((r) => r.text())
-      if (!code) return null
+      if (!downloadRes.data.fileUrl) return null
+      const response = await fetch(downloadRes.data.fileUrl)
+      if (!response.ok) return null
+      const code = await response.text()
+      if (!code.trim()) return null
       setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, code)
       return code
     } catch {
@@ -162,13 +220,17 @@ export const useMarketStore = defineStore('market', () => {
   }
 
   async function uninstallApp(appId: number) {
+    if (isUpdating(appId)) throw new Error('应用正在更新，请稍后再卸载')
     const idx = installedApps.value.findIndex((a) => a.id === appId)
     if (idx !== -1) {
       installedApps.value.splice(idx, 1)
-      setStorage(INSTALLED_KEY, installedApps.value)
+      persistInstalledApps()
     }
 
     removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
+    const nextLatest = { ...latestApps.value }
+    delete nextLatest[appId]
+    latestApps.value = nextLatest
     syncAuthInstalled()
     syncToServer()
   }
@@ -181,6 +243,7 @@ export const useMarketStore = defineStore('market', () => {
     category: string
     file: File
     readme?: string
+    releaseNotes?: string
     /** 应用截图 URL 列表（由上传表单逐张上传后得到） */
     screenshots?: string[]
     /** 应用声明的联网域名白名单，经管理员审核后生效 */
@@ -211,6 +274,7 @@ export const useMarketStore = defineStore('market', () => {
       version: formData.version,
       category: formData.category,
       readme: formData.readme,
+      releaseNotes: formData.releaseNotes,
       screenshots: formData.screenshots || [],
       allowNetwork: formData.allowNetwork || [],
       fileKey: upload.key,
@@ -279,26 +343,163 @@ export const useMarketStore = defineStore('market', () => {
   }
 
   async function refreshInstalledMeta() {
-    if (installedApps.value.length === 0) return
-    let changed = false
-    for (const app of installedApps.value) {
-      const detail = await fetchAppDetail(app.id)
-      if (
-        detail &&
-        (detail.icon !== app.icon ||
-          detail.name !== app.name ||
-          detail.description !== app.description)
-      ) {
-        app.icon = detail.icon
-        app.name = detail.name
-        app.description = detail.description
-        app.version = detail.version
-        changed = true
+    await checkForUpdates({ force: true })
+  }
+
+  function hasUpdate(appId: number) {
+    return availableUpdates.value.some((item) => item.installed.id === appId)
+  }
+
+  function isUpdating(appId: number) {
+    return updatingIds.value.includes(appId)
+  }
+
+  function setAutoUpdate(enabled: boolean) {
+    autoUpdateEnabled.value = enabled
+    setStorage(AUTO_UPDATE_KEY, enabled)
+    if (enabled) void checkForUpdates({ force: true, autoApply: true })
+  }
+
+  async function updateApp(appId: number): Promise<InstalledApp> {
+    if (isUpdating(appId)) {
+      const current = installedApps.value.find((item) => item.id === appId)
+      if (!current) throw new Error('应用未安装')
+      return current
+    }
+
+    let latest: MarketAppItem | undefined = latestApps.value[appId]
+    const currentIndex = installedApps.value.findIndex((item) => item.id === appId)
+    if (currentIndex < 0) throw new Error('应用未安装')
+    if (!latest) {
+      latest = (await fetchAppDetail(appId)) || undefined
+      if (latest) latestApps.value = { ...latestApps.value, [appId]: latest }
+    }
+    if (!latest || compareVersions(latest.version, installedApps.value[currentIndex].version) <= 0) {
+      return installedApps.value[currentIndex]
+    }
+
+    updatingIds.value = [...updatingIds.value, appId]
+    const oldEntry = { ...installedApps.value[currentIndex] }
+    const oldBundle = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`)
+    updateErrors.value = { ...updateErrors.value, [appId]: '' }
+
+    try {
+      const nextEntry = await downloadAndInstall(appId)
+      if (!nextEntry) throw new Error('新版本下载失败')
+      if (compareVersions(nextEntry.version, oldEntry.version) <= 0) {
+        if (oldBundle) setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, oldBundle)
+        else removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
+        const nextLatest = { ...latestApps.value }
+        delete nextLatest[appId]
+        latestApps.value = nextLatest
+        return oldEntry
       }
+      nextEntry.installedAt = oldEntry.installedAt
+      nextEntry.updatedAt = Date.now()
+      const replaceIndex = installedApps.value.findIndex((item) => item.id === appId)
+      if (replaceIndex < 0) throw new Error('应用已被卸载，已取消更新')
+      installedApps.value.splice(replaceIndex, 1, nextEntry)
+      persistInstalledApps()
+      return nextEntry
+    } catch (error) {
+      if (oldBundle) setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, oldBundle)
+      else removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
+      const restoreIndex = installedApps.value.findIndex((item) => item.id === appId)
+      if (restoreIndex >= 0) {
+        installedApps.value.splice(restoreIndex, 1, oldEntry)
+        persistInstalledApps()
+      }
+      const message = error instanceof Error ? error.message : '更新失败'
+      updateErrors.value = { ...updateErrors.value, [appId]: message }
+      throw error
+    } finally {
+      updatingIds.value = updatingIds.value.filter((id) => id !== appId)
     }
-    if (changed) {
-      setStorage(INSTALLED_KEY, installedApps.value)
+  }
+
+  async function updateAll() {
+    if (isUpdatingAll.value || availableUpdates.value.length === 0) return
+    isUpdatingAll.value = true
+    const ids = availableUpdates.value.map((item) => item.installed.id)
+    try {
+      for (const id of ids) {
+        try {
+          await updateApp(id)
+        } catch {
+          // 单个应用失败不阻塞其余更新，错误会记录到 updateErrors
+        }
+      }
+    } finally {
+      isUpdatingAll.value = false
     }
+  }
+
+  async function runUpdateCheck(force = false): Promise<AppUpdateInfo[]> {
+    if (installedApps.value.length === 0) {
+      latestApps.value = {}
+      updateCheckError.value = ''
+      return []
+    }
+
+    const now = Date.now()
+    if (!force && now - lastUpdateCheckAt.value < UPDATE_CHECK_INTERVAL) {
+      return availableUpdates.value
+    }
+
+    isCheckingUpdates.value = true
+    updateCheckError.value = ''
+    try {
+      const requestedIds = installedApps.value.map((item) => item.id)
+      const results = await Promise.allSettled(requestedIds.map((id) => fetchAppDetail(id)))
+      const nextLatest: Record<number, MarketAppItem> = { ...latestApps.value }
+      let metadataChanged = false
+      let successCount = 0
+
+      results.forEach((result, index) => {
+        if (result.status !== 'fulfilled' || !result.value) return
+        const detail = result.value
+        const installed = installedApps.value.find((item) => item.id === requestedIds[index])
+        successCount += 1
+        nextLatest[detail.id] = detail
+        if (
+          installed &&
+          (installed.icon !== detail.icon ||
+            installed.name !== detail.name ||
+            installed.description !== detail.description)
+        ) {
+          installed.icon = detail.icon
+          installed.name = detail.name
+          installed.description = detail.description
+          metadataChanged = true
+        }
+      })
+
+      if (successCount === 0) {
+        updateCheckError.value = '检查更新失败，请确认网络或服务状态后重试'
+        return availableUpdates.value
+      }
+      if (successCount < requestedIds.length) {
+        updateCheckError.value = `有 ${requestedIds.length - successCount} 个应用暂时无法检查更新`
+      }
+
+      latestApps.value = nextLatest
+      lastUpdateCheckAt.value = now
+      if (metadataChanged) persistInstalledApps()
+      return availableUpdates.value
+    } finally {
+      isCheckingUpdates.value = false
+    }
+  }
+
+  async function checkForUpdates(options?: { force?: boolean; autoApply?: boolean }) {
+    if (!updateCheckPromise) {
+      updateCheckPromise = runUpdateCheck(options?.force).finally(() => {
+        updateCheckPromise = null
+      })
+    }
+    const updates = await updateCheckPromise
+    if (options?.autoApply && autoUpdateEnabled.value) await updateAll()
+    return updates
   }
 
   /**
@@ -349,6 +550,8 @@ export const useMarketStore = defineStore('market', () => {
     availableApps,
     isLoading,
     installedApps,
+    latestApps,
+    availableUpdates,
     initInstalledApps,
     fetchApps,
     fetchAppDetail,
@@ -357,6 +560,18 @@ export const useMarketStore = defineStore('market', () => {
     ensureBundle,
     uploadApp,
     isInstalled,
+    hasUpdate,
+    isUpdating,
+    isCheckingUpdates,
+    isUpdatingAll,
+    autoUpdateEnabled,
+    updateErrors,
+    updateCheckError,
+    lastUpdateCheckAt,
+    checkForUpdates,
+    updateApp,
+    updateAll,
+    setAutoUpdate,
     fetchComments,
     postComment,
     deleteComment,

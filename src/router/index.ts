@@ -71,6 +71,12 @@ const router = createRouter({
       meta: { title: '应用市场' },
     },
     {
+      path: '/market/updates',
+      name: 'market-updates',
+      component: () => import('../views/market/AppUpdates.vue'),
+      meta: { title: '应用更新' },
+    },
+    {
       path: '/market/:id(\\d+)',
       name: 'market-detail',
       component: () => import('../views/market/AppMarketDetail.vue'),

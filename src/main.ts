@@ -111,4 +111,6 @@ initStorage().then(async () => {
   await authStore.initAuth()
   // 跨设备同步：以服务端实时列表为唯一真源对账，不再信任 auth_user_info 缓存里的 installedApps
   await marketStore.syncWithServer()
+  // 检查市场应用更新；仅在用户开启自动更新时下载新版本。
+  await marketStore.checkForUpdates({ autoApply: true })
 })

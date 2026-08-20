@@ -14,6 +14,7 @@ const fileContent = ref('')
 const selectedFile = ref<File | null>(null)
 const category = ref('工具')
 const readme = ref('')
+const releaseNotes = ref('')
 const networkDomains = ref('')
 const screenshotFiles = ref<{ file: File; url: string; uploading: boolean; error: string }[]>([])
 const uploading = ref(false)
@@ -57,6 +58,7 @@ function resetForm() {
   parsedMeta.value = null
   parseFailed.value = false
   readme.value = ''
+  releaseNotes.value = ''
   networkDomains.value = ''
   screenshotFiles.value = []
   error.value = ''
@@ -192,6 +194,7 @@ async function handleSubmit() {
       category: category.value,
       file: selectedFile.value,
       readme: readme.value,
+      releaseNotes: releaseNotes.value,
       screenshots,
       allowNetwork,
     })
@@ -373,6 +376,16 @@ async function handleSubmit() {
           <div class="form-group">
             <label class="form-label">分类</label>
             <CustomSelect v-model="category" :options="categoryOptions" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">更新说明 <span class="label-optional">选填</span></label>
+            <textarea
+              v-model="releaseNotes"
+              class="form-textarea"
+              placeholder="说明本次版本新增、调整或修复的内容..."
+              rows="4"
+            ></textarea>
           </div>
 
           <div class="form-group">
