@@ -58,7 +58,22 @@ export interface AppUpdateInfo {
   latest: MarketAppItem
 }
 
-export type MarketComment = Record<string, unknown>
+export interface MarketComment {
+  id: number
+  appId: number
+  userId: number
+  content: string
+  rating?: number | null
+  parentId?: number | null
+  createdAt: string
+  updatedAt?: string
+  canDelete?: boolean
+  author?: {
+    id?: number
+    username: string
+    avatar?: string | null
+  }
+}
 
 function parseVersion(value: string) {
   const normalized = String(value || '0').trim().replace(/^v/i, '').split('+')[0]

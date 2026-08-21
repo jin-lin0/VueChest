@@ -95,6 +95,12 @@ const router = createRouter({
       meta: { title: '设备与云端', requiresAuth: true },
     },
     {
+      path: '/developer',
+      name: 'developer-center',
+      component: () => import('../views/DeveloperCenter.vue'),
+      meta: { title: '开发者中心', requiresAuth: true },
+    },
+    {
       path: '/market/:id(\\d+)',
       name: 'market-detail',
       component: () => import('../views/market/AppMarketDetail.vue'),

@@ -83,8 +83,12 @@ async function handleLogin() {
     // 登录后跨设备同步：以服务端实时列表为唯一真源对账，不再依赖登录响应里的 installedApps 缓存
     await marketStore.syncWithServer()
 
-    const redirect = route.query.redirect as string
-    router.push(redirect || '/')
+    const redirect = route.query.redirect
+    const safeRedirect =
+      typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+        ? redirect
+        : '/'
+    router.push(safeRedirect)
   }
 }
 </script>

@@ -5,7 +5,7 @@
         <h1>📱 应用管理</h1>
         <p class="page-desc">管理市场应用，共 {{ totalApps }} 个应用</p>
       </div>
-      <router-link to="/market/upload" class="btn-primary">
+      <router-link :to="{ path: '/market/upload', query: { from: 'admin' } }" class="btn-primary">
         <span class="btn-icon">+</span> 上传应用
       </router-link>
     </div>
@@ -40,6 +40,44 @@
         </div>
       </div>
     </div>
+
+    <section v-if="pendingVersions.length" class="pending-panel">
+      <div class="pending-header">
+        <div>
+          <h2>待审核版本</h2>
+          <p>共 {{ pendingVersions.length }} 个版本等待审核</p>
+        </div>
+      </div>
+      <div class="pending-list">
+        <article v-for="version in pendingVersions" :key="version.id" class="pending-item">
+          <div class="pending-app">
+            <span>{{ version.app?.icon || '🧩' }}</span>
+            <div>
+              <strong>{{ version.app?.name || `应用 #${version.appId}` }}</strong>
+              <small>v{{ version.app?.version }} → v{{ version.version }}</small>
+            </div>
+          </div>
+          <p>{{ version.releaseNotes || '未填写更新说明' }}</p>
+          <time>{{ new Date(version.createdAt).toLocaleString() }}</time>
+          <div class="pending-actions">
+            <button
+              class="btn-approve"
+              :disabled="reviewingVersionId === version.id"
+              @click="reviewVersion(version, true)"
+            >
+              通过
+            </button>
+            <button
+              class="btn-reject"
+              :disabled="reviewingVersionId === version.id"
+              @click="reviewVersion(version, false)"
+            >
+              拒绝
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
 
     <div class="toolbar">
       <div class="search-box">
@@ -267,6 +305,15 @@ interface CategoryInfo {
   count: number
 }
 
+interface PendingVersion {
+  id: number
+  appId: number
+  version: string
+  releaseNotes?: string
+  createdAt: string
+  app?: { id: number; name: string; icon: string; version: string; status: string }
+}
+
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
 function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
@@ -274,6 +321,8 @@ function showToast(type: 'success' | 'error' | 'warning' | 'info', message: stri
 }
 
 const apps = ref<MarketAppItem[]>([])
+const pendingVersions = ref<PendingVersion[]>([])
+const reviewingVersionId = ref<number | null>(null)
 const categories = ref<CategoryInfo[]>([])
 const totalApps = ref(0)
 const totalPages = ref(0)
@@ -315,6 +364,7 @@ const saving = ref(false)
 onMounted(() => {
   fetchCategories()
   fetchApps()
+  fetchPendingVersions()
 })
 
 onUnmounted(() => {
@@ -357,6 +407,32 @@ async function handleReject(app: MarketAppItem) {
     showToast('error', e instanceof Error ? e.message : '操作失败')
   } finally {
     reviewingId.value = null
+  }
+}
+
+async function fetchPendingVersions() {
+  try {
+    const { data } = await api.get<{ data: PendingVersion[] }>(
+      '/api/market/admin/pending-versions',
+    )
+    pendingVersions.value = data
+  } catch (error) {
+    showToast('error', error instanceof Error ? error.message : '待审核版本加载失败')
+  }
+}
+
+async function reviewVersion(version: PendingVersion, approve: boolean) {
+  reviewingVersionId.value = version.id
+  try {
+    await api.post(
+      `/api/market/apps/${version.appId}/versions/${version.id}/${approve ? 'approve' : 'reject'}`,
+    )
+    showToast('success', `版本 v${version.version} 已${approve ? '通过' : '拒绝'}`)
+    await Promise.all([fetchPendingVersions(), fetchApps()])
+  } catch (error) {
+    showToast('error', error instanceof Error ? error.message : '审核失败')
+  } finally {
+    reviewingVersionId.value = null
   }
 }
 
@@ -696,6 +772,100 @@ async function deleteApp(app: MarketAppItem) {
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
+}
+
+.pending-panel {
+  margin-bottom: 24px;
+  padding: 18px;
+  border: 1px solid var(--warning-border, #f3d38a);
+  border-radius: 14px;
+  background: var(--warning-bg);
+}
+
+.pending-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.pending-header p {
+  margin: 2px 0 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pending-list {
+  display: grid;
+  gap: 8px;
+}
+
+.pending-item {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 2fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+
+.pending-app {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pending-app > span {
+  font-size: 24px;
+}
+
+.pending-app div {
+  display: flex;
+  flex-direction: column;
+}
+
+.pending-app small,
+.pending-item time,
+.pending-item p {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pending-item p {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pending-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pending-actions button {
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.pending-actions .btn-approve {
+  border: 1px solid var(--success);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.pending-actions .btn-reject {
+  border: 1px solid var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .pending-item {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 768px) {
   .stats-row {

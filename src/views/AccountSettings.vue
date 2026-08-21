@@ -31,7 +31,9 @@ async function revoke(id: string, isCurrent: boolean) {
   if (!ok) return
   try {
     await auth.revokeSession(id)
-    if (!auth.isAuthenticated) router.push('/login')
+    if (!auth.isAuthenticated) {
+      router.push({ path: '/login', query: { redirect: '/settings/account' } })
+    }
   } catch (error) {
     message.value = error instanceof Error ? error.message : '设备退出失败'
   }

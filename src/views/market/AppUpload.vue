@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useMarketStore } from '@/stores/market'
+import { computed, ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { compareVersions, useMarketStore, type MarketAppItem } from '@/stores/market'
 import { extractMetaFromBundle } from '@/lib/app-loader'
 import { api } from '@/lib/request'
 import { CustomSelect, type SelectOption } from '@/components'
 import type { MarketAppMeta } from '@/lib/app-loader'
 
 const router = useRouter()
+const route = useRoute()
 const market = useMarketStore()
 
 const fileContent = ref('')
@@ -23,6 +24,32 @@ const success = ref(false)
 const dragOver = ref(false)
 
 const parsedMeta = ref<MarketAppMeta | null>(null)
+const targetApp = ref<MarketAppItem | null>(null)
+const fromDeveloper = computed(
+  () => route.query.from === 'developer' || route.query.appId !== undefined,
+)
+const safeReturnTo = computed(() => {
+  const value = route.query.returnTo
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
+    ? value
+    : null
+})
+const returnPath = computed(() => {
+  if (fromDeveloper.value) return '/developer'
+  if (route.query.from === 'admin') return '/admin/apps'
+  if (safeReturnTo.value) return safeReturnTo.value
+  return '/'
+})
+const successPath = computed(() => {
+  if (fromDeveloper.value) return '/developer'
+  if (route.query.from === 'admin') return '/admin/apps'
+  return '/market'
+})
+const successLabel = computed(() => {
+  if (fromDeveloper.value) return '返回开发者中心'
+  if (route.query.from === 'admin') return '返回应用管理'
+  return '前往市场'
+})
 const parseFailed = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
@@ -33,6 +60,15 @@ const categoryOptions = ref<SelectOption[]>(
 
 // 分类消费后端枚举（GET /api/market/categories），兜底默认类目保证下拉始终可用
 onMounted(async () => {
+  const targetId = Number(route.query.appId)
+  if (targetId) {
+    try {
+      const { data } = await api.get<{ data: MarketAppItem }>(`/api/market/apps/${targetId}`)
+      targetApp.value = data
+    } catch (reason) {
+      error.value = reason instanceof Error ? reason.message : '目标应用加载失败'
+    }
+  }
   try {
     const data = await api.get<{ name: string }[]>('/api/market/categories', {
       auth: false,
@@ -91,6 +127,19 @@ function processFile(file: File) {
 
     const meta = extractMetaFromBundle(code)
     if (meta) {
+      if (targetApp.value && meta.name !== targetApp.value.name) {
+        parseFailed.value = true
+        error.value = `应用名称必须与“${targetApp.value.name}”一致`
+        return
+      }
+      if (
+        targetApp.value &&
+        compareVersions(meta.version || '0', targetApp.value.version) <= 0
+      ) {
+        parseFailed.value = true
+        error.value = `新版本必须高于当前线上版本 v${targetApp.value.version}`
+        return
+      }
       parsedMeta.value = meta
     } else {
       parseFailed.value = true
@@ -212,7 +261,7 @@ async function handleSubmit() {
     <div class="upload-container">
       <div class="upload-header">
         <div class="header-left">
-          <button class="back-btn" @click="router.push('/')">
+          <button class="back-btn" @click="router.push(returnPath)">
             <svg
               width="18"
               height="18"
@@ -230,8 +279,10 @@ async function handleSubmit() {
           </button>
         </div>
         <div class="header-center">
-          <h1>发布应用到市场</h1>
-          <p>上传你的应用包，分享给所有用户</p>
+          <h1>{{ targetApp ? `发布 ${targetApp.name} 新版本` : '发布应用到市场' }}</h1>
+          <p>
+            {{ targetApp ? `当前线上版本 v${targetApp.version}，新版本提交后进入审核` : '上传你的应用包，分享给所有用户' }}
+          </p>
         </div>
         <div class="header-right" />
       </div>
@@ -243,7 +294,12 @@ async function handleSubmit() {
         <h2>发布成功！</h2>
         <p class="success-desc">{{ parsedMeta?.name }} 已提交，等待管理员审核</p>
         <div class="success-actions">
-          <button class="btn btn-primary" @click="router.push('/market')">前往市场</button>
+          <button
+            class="btn btn-primary"
+            @click="router.push(successPath)"
+          >
+            {{ successLabel }}
+          </button>
           <button class="btn btn-ghost" @click="resetForm">继续上传</button>
         </div>
       </div>
@@ -455,7 +511,7 @@ async function handleSubmit() {
 
         <button class="submit-btn" :disabled="uploading || !parsedMeta">
           <span v-if="uploading" class="vc-btn-spinner" />
-          {{ uploading ? '发布中...' : '发布到市场' }}
+          {{ uploading ? '发布中...' : targetApp ? '提交新版本审核' : '发布到市场' }}
         </button>
       </form>
     </div>

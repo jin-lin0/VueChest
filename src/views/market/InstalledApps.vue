@@ -152,7 +152,11 @@ onMounted(async () => {
 
         <div class="card-actions">
           <button @click="router.push(app.route)">打开</button>
-          <button @click="router.push(`/market/${app.id}`)">版本与详情</button>
+          <button
+            @click="router.push({ path: `/market/${app.id}`, query: { from: 'installed' } })"
+          >
+            版本与详情
+          </button>
           <button @click="checkOne(app)">检查此应用</button>
           <button @click="exportData(app)">导出数据</button>
           <button :disabled="!(usage[app.id]?.entries)" @click="clearData(app)">清除数据</button>

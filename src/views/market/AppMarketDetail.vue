@@ -40,7 +40,7 @@ function setShot(i: number) {
 onMounted(async () => {
   const id = Number(route.params.id)
   if (!id) {
-    router.push('/market')
+    router.push(returnContext.value.path)
     return
   }
   app.value = await market.fetchAppDetail(id)
@@ -97,6 +97,13 @@ const hasUpdate = computed(() => (app.value ? market.hasUpdate(app.value.id) : f
 const installedVersion = computed(() =>
   app.value ? market.installedApps.find((item) => item.id === app.value?.id)?.version : undefined,
 )
+const returnContext = computed(() => {
+  const source = route.query.from
+  if (source === 'developer') return { path: '/developer', label: '返回开发者中心' }
+  if (source === 'updates') return { path: '/market/updates', label: '返回应用更新' }
+  if (source === 'installed') return { path: '/market/installed', label: '返回已安装应用' }
+  return { path: '/market', label: '返回市场' }
+})
 
 async function handleInstallVersion(version: MarketAppVersion) {
   if (!app.value) return
@@ -129,14 +136,18 @@ async function handleVersionStatus(version: MarketAppVersion) {
 <template>
   <div class="detail-container">
     <header class="detail-header">
-      <button class="back-btn" @click="router.push('/market')">← 返回市场</button>
+      <button class="back-btn" @click="router.push(returnContext.path)">
+        ← {{ returnContext.label }}
+      </button>
     </header>
 
     <div v-if="loading" class="loading-state">加载中...</div>
 
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
-      <button class="back-btn" @click="router.push('/market')">返回市场</button>
+      <button class="back-btn" @click="router.push(returnContext.path)">
+        {{ returnContext.label }}
+      </button>
     </div>
 
     <template v-else-if="app">

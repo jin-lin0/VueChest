@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
+import type { MarketComment } from '@/stores/market'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{ appId: number }>()
 const market = useMarketStore()
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
-const comments = ref<any[]>([])
+const comments = ref<MarketComment[]>([])
 const ratingSummary = ref<{ average: number | null; count: number }>({
   average: null,
   count: 0,
@@ -73,7 +75,7 @@ async function load() {
 onMounted(load)
 
 function goLogin() {
-  router.push('/login')
+  router.push({ path: '/login', query: { redirect: route.fullPath } })
 }
 
 async function submit() {

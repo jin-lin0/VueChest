@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import { api } from '@/lib/request'
 import { Toast } from '@/components'
 import { roleText } from '@/utils'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -26,7 +27,12 @@ function closeDropdown() {
 
 function goToLogin() {
   showDropdown.value = false
-  router.push('/login')
+  router.push({ path: '/login', query: { redirect: route.fullPath } })
+}
+
+function goToUpload() {
+  showDropdown.value = false
+  router.push({ path: '/market/upload', query: { returnTo: route.fullPath } })
 }
 
 function getRoleLabel(role?: string) {
@@ -169,8 +175,11 @@ async function saveName() {
           </div>
         </div>
         <div class="dropdown-divider"></div>
-        <button class="dropdown-item upload-link" @click.stop="$router.push('/market/upload')">
+        <button class="dropdown-item upload-link" @click.stop="goToUpload">
           📤 上传应用
+        </button>
+        <button class="dropdown-item" @click.stop="$router.push('/developer')">
+          🧑‍💻 开发者中心
         </button>
         <button class="dropdown-item" @click.stop="$router.push('/settings/account')">
           🔐 设备与云端

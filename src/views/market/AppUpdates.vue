@@ -77,7 +77,12 @@ async function handleUpdate(appId: number) {
 
     <main v-else-if="market.availableUpdates.length" class="update-list">
       <article v-for="item in market.availableUpdates" :key="item.installed.id" class="update-card">
-        <button class="app-summary" @click="router.push(`/market/${item.installed.id}`)">
+        <button
+          class="app-summary"
+          @click="
+            router.push({ path: `/market/${item.installed.id}`, query: { from: 'updates' } })
+          "
+        >
           <span class="app-icon">{{ item.latest.icon }}</span>
           <span class="app-info">
             <strong>{{ item.latest.name }}</strong>
