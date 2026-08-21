@@ -352,7 +352,10 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
         <button class="icon-action" :title="isDark ? '切换亮色模式' : '切换暗色模式'" @click="toggleTheme">
           {{ isDark ? '☀' : '◐' }}
         </button>
-        <button class="text-action" @click="router.push('/market')">应用市场</button>
+        <button class="text-action market-action" aria-label="应用市场" @click="router.push('/market')">
+          <span class="market-label-full">应用市场</span>
+          <span class="market-label-short">市场</span>
+        </button>
         <button class="text-action docs-action" @click="router.push('/docs')">文档</button>
         <LoginDropdown />
       </nav>
@@ -834,6 +837,10 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
 .text-action {
   padding: 8px 11px;
   border-radius: 9px;
+}
+
+.market-label-short {
+  display: none;
 }
 
 .text-action:hover,
@@ -1910,6 +1917,20 @@ kbd {
 @media (max-width: 500px) {
   .top-actions .text-action {
     display: none;
+  }
+
+  .top-actions .market-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .market-label-full {
+    display: none;
+  }
+
+  .market-label-short {
+    display: inline;
   }
 
   .topbar {
