@@ -1,4 +1,4 @@
-import { setStorage, removeStorage } from '@/lib/storage'
+import { setStorage, removeStorage, removeStorageAsync } from '@/lib/storage'
 import { dbGetAll } from '@/lib/db'
 
 /**
@@ -17,6 +17,19 @@ import { dbGetAll } from '@/lib/db'
 export interface SandboxCapabilities {
   /** 允许访问的网络域名白名单（host 名，支持 *.example.com）。必须显式声明才放行；缺省 / 空数组 = 默认拒绝一切网络。 */
   allowNetwork?: string[]
+}
+
+interface SandboxMessage {
+  kind: string
+  id?: string
+  name?: string
+  args?: unknown[]
+  url?: string
+  options?: RequestInit
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback
 }
 
 /** 单次网络请求的超时（毫秒），防止沙箱应用挂起父页面请求。 */
@@ -56,6 +69,34 @@ export async function collectSandboxStorage(appId: string | number): Promise<Rec
   return snapshot
 }
 
+export interface SandboxStorageInfo {
+  entries: number
+  bytes: number
+  data: Record<string, unknown>
+}
+
+export async function inspectSandboxStorage(
+  appId: string | number,
+): Promise<SandboxStorageInfo> {
+  const data = await collectSandboxStorage(appId)
+  // 共享宿主键不属于单个应用，管理页不展示也不删除。
+  HOST_SHARED_KEYS.forEach((key) => delete data[key])
+  const serialized = JSON.stringify(data)
+  return {
+    entries: Object.keys(data).length,
+    bytes: new Blob([serialized]).size,
+    data,
+  }
+}
+
+export async function clearSandboxStorage(appId: string | number): Promise<number> {
+  const prefix = `sandbox:${appId}:`
+  const all = await dbGetAll()
+  const keys = Object.keys(all).filter((key) => key.startsWith(prefix))
+  await Promise.all(keys.map((key) => removeStorageAsync(key)))
+  return keys.length
+}
+
 /**
  * 处理一条来自沙箱应用的消息。
  * @param msg        沙箱发来的消息对象
@@ -64,15 +105,16 @@ export async function collectSandboxStorage(appId: string | number): Promise<Rec
  * @param respond    回包函数（把响应 postMessage 回沙箱）
  */
 export function handleSandboxMessage(
-  msg: any,
+  msg: unknown,
   appId: string | number,
   caps: SandboxCapabilities,
   respond: (msg: unknown) => void,
 ): void {
-  if (!msg || typeof msg !== 'object' || !msg.kind) return
+  if (!msg || typeof msg !== 'object' || !('kind' in msg)) return
+  const message = msg as SandboxMessage
 
-  if (msg.kind === 'capability') {
-    const { id, name, args = [] } = msg
+  if (message.kind === 'capability') {
+    const { id, name, args = [] } = message
     try {
       switch (name) {
         case 'storage.set': {
@@ -92,14 +134,14 @@ export function handleSandboxMessage(
         default:
           respond({ kind: 'capability-response', id, error: `未授权的能力: ${name}` })
       }
-    } catch (e: any) {
-      respond({ kind: 'capability-response', id, error: e?.message || String(e) })
+    } catch (error: unknown) {
+      respond({ kind: 'capability-response', id, error: errorMessage(error, String(error)) })
     }
     return
   }
 
-  if (msg.kind === 'fetch') {
-    handleSandboxFetch(msg.id, msg.url, msg.options, caps, respond)
+  if (message.kind === 'fetch' && message.id && message.url) {
+    handleSandboxFetch(message.id, message.url, message.options, caps, respond)
   }
 }
 
@@ -145,7 +187,7 @@ async function handleSandboxFetch(
       headers,
       body: Array.from(new Uint8Array(body)),
     })
-  } catch (e: any) {
-    respond({ kind: 'capability-response', id, error: e?.message || '网络请求失败' })
+  } catch (error: unknown) {
+    respond({ kind: 'capability-response', id, error: errorMessage(error, '网络请求失败') })
   }
 }

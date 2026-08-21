@@ -2,13 +2,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
-import type { MarketAppItem } from '@/stores/market'
+import type { MarketAppItem, MarketAppVersion } from '@/stores/market'
+import { useAuthStore } from '@/stores/auth'
 import { formatFileSize } from '@/utils'
 import AppComments from '@/components/AppComments.vue'
 
 const route = useRoute()
 const router = useRouter()
 const market = useMarketStore()
+const auth = useAuthStore()
 
 const app = ref<MarketAppItem | null>(null)
 const loading = ref(true)
@@ -17,6 +19,7 @@ const uninstalling = ref(false)
 const updating = ref(false)
 const error = ref('')
 const actionError = ref('')
+const versions = ref<MarketAppVersion[]>([])
 
 const screenshots = computed(() => app.value?.screenshots || [])
 const activeShot = ref(0)
@@ -46,6 +49,7 @@ onMounted(async () => {
     error.value = '应用不存在'
   } else {
     void market.checkForUpdates()
+    versions.value = await market.fetchAppVersions(id).catch(() => [])
   }
 })
 
@@ -90,6 +94,36 @@ async function handleUpdate() {
 
 const isInstalled = computed(() => (app.value ? market.isInstalled(app.value.id) : false))
 const hasUpdate = computed(() => (app.value ? market.hasUpdate(app.value.id) : false))
+const installedVersion = computed(() =>
+  app.value ? market.installedApps.find((item) => item.id === app.value?.id)?.version : undefined,
+)
+
+async function handleInstallVersion(version: MarketAppVersion) {
+  if (!app.value) return
+  actionError.value = ''
+  try {
+    await market.installVersion(app.value.id, version.id)
+  } catch (e) {
+    actionError.value = e instanceof Error ? e.message : '版本安装失败'
+  }
+}
+
+async function handleVersionStatus(version: MarketAppVersion) {
+  if (!app.value) return
+  actionError.value = ''
+  try {
+    await market.setVersionStatus(
+      app.value.id,
+      version.id,
+      version.status === 'active' ? 'yanked' : 'active',
+    )
+    app.value = await market.fetchAppDetail(app.value.id)
+    versions.value = await market.fetchAppVersions(Number(route.params.id))
+    await market.checkForUpdates({ force: true })
+  } catch (e) {
+    actionError.value = e instanceof Error ? e.message : '版本状态更新失败'
+  }
+}
 </script>
 
 <template>
@@ -159,6 +193,42 @@ const hasUpdate = computed(() => (app.value ? market.hasUpdate(app.value.id) : f
       <div v-if="app.releaseNotes" class="detail-section">
         <h2>本次更新</h2>
         <div class="readme-content">{{ app.releaseNotes }}</div>
+      </div>
+
+      <div v-if="versions.length" class="detail-section">
+        <h2>版本历史</h2>
+        <div class="version-list">
+          <div v-for="version in versions" :key="version.id" class="version-item">
+            <div class="version-main">
+              <strong>v{{ version.version }}</strong>
+              <span v-if="version.version === app.version" class="version-tag">市场最新版</span>
+              <span v-if="version.version === installedVersion" class="version-tag installed">当前安装</span>
+              <span v-if="version.status === 'yanked'" class="version-tag yanked">已下架</span>
+              <time>{{ new Date(version.createdAt).toLocaleDateString() }}</time>
+            </div>
+            <p>{{ version.releaseNotes || '未提供更新说明。' }}</p>
+            <div class="version-actions">
+              <button
+                v-if="
+                  version.status === 'active' &&
+                  version.version !== installedVersion &&
+                  (isInstalled || version.version !== app.version)
+                "
+                :disabled="market.isUpdating(app.id)"
+                @click="handleInstallVersion(version)"
+              >
+                {{ installedVersion ? '安装此版本' : '安装' }}
+              </button>
+              <button
+                v-if="auth.isAdmin"
+                class="version-admin-btn"
+                @click="handleVersionStatus(version)"
+              >
+                {{ version.status === 'active' ? '下架版本' : '恢复版本' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-if="screenshots.length" class="detail-section">
@@ -338,6 +408,74 @@ const hasUpdate = computed(() => (app.value ? market.hasUpdate(app.value.id) : f
   margin-top: 0.7rem;
   color: var(--danger);
   font-size: 0.85rem;
+}
+
+.version-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.version-item {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: 11px;
+  background: var(--bg-card);
+}
+
+.version-main,
+.version-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.version-main time {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.version-tag {
+  padding: 0.12rem 0.42rem;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 0.68rem;
+}
+
+.version-tag.installed {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.version-tag.yanked {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.version-item p {
+  margin: 0.55rem 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  white-space: pre-wrap;
+}
+
+.version-actions {
+  justify-content: flex-end;
+}
+
+.version-actions button {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.version-actions .version-admin-btn {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .detail-section {

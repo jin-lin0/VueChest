@@ -33,8 +33,8 @@ function getRoleLabel(role?: string) {
   return roleText(role ?? '')
 }
 
-function handleLogout() {
-  authStore.logout()
+async function handleLogout() {
+  await authStore.logout()
   showDropdown.value = false
 }
 
@@ -171,6 +171,9 @@ async function saveName() {
         <div class="dropdown-divider"></div>
         <button class="dropdown-item upload-link" @click.stop="$router.push('/market/upload')">
           📤 上传应用
+        </button>
+        <button class="dropdown-item" @click.stop="$router.push('/settings/account')">
+          🔐 设备与云端
         </button>
         <button v-if="authStore.isAdmin" class="dropdown-item" @click.stop="$router.push('/admin')">
           ⚙️ 管理后台

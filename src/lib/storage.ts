@@ -47,6 +47,11 @@ export function removeStorage(key: string): void {
   })
 }
 
+export async function removeStorageAsync(key: string): Promise<void> {
+  cache.delete(key)
+  await dbRemove(key)
+}
+
 export const exportAllData = async (): Promise<Record<string, unknown>> => {
   if (!initialized) await initStorage()
   const data: Record<string, unknown> = {}

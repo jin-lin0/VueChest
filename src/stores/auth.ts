@@ -20,11 +20,22 @@ export interface LoginCredentials {
   password: string
 }
 
+export interface UserSessionInfo {
+  id: string
+  deviceName: string
+  ip?: string
+  lastActiveAt: string
+  expiresAt: string
+  createdAt: string
+  isCurrent: boolean
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
   const user = ref<UserInfo | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const sessions = ref<UserSessionInfo[]>([])
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
 
@@ -39,11 +50,10 @@ export const useAuthStore = defineStore('auth', () => {
       const savedUser = localStorage.getItem(USER_INFO_KEY)
       if (savedUser) {
         user.value = JSON.parse(savedUser)
-      } else {
-        await fetchUserInfo()
       }
+      await fetchUserInfo()
     } catch {
-      logout()
+      clearAuth()
     }
   }
 
@@ -189,8 +199,9 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = data
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(data))
       return true
-    } catch {
-      logout()
+    } catch (error) {
+      const status = (error as { status?: number })?.status
+      if (status === 401 || status === 403) clearAuth()
       return false
     }
   }
@@ -218,12 +229,37 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(user.value))
   }
 
-  function logout() {
+  function clearAuth() {
     token.value = null
     user.value = null
+    sessions.value = []
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_INFO_KEY)
     error.value = null
+  }
+
+  async function logout() {
+    if (token.value) await api.post('/api/auth/logout').catch(() => {})
+    clearAuth()
+  }
+
+  async function fetchSessions() {
+    const { data } = await api.get<{ data: UserSessionInfo[] }>('/api/auth/sessions')
+    sessions.value = data
+    return data
+  }
+
+  async function revokeSession(id: string) {
+    const { data } = await api.delete<{ data: { revokedCurrent: boolean } }>(
+      `/api/auth/sessions/${id}`,
+    )
+    if (data.revokedCurrent) clearAuth()
+    else await fetchSessions()
+  }
+
+  async function revokeOtherSessions() {
+    await api.delete('/api/auth/sessions/others')
+    await fetchSessions()
   }
 
   return {
@@ -231,6 +267,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isLoading,
     error,
+    sessions,
     isAuthenticated,
     isSuperAdmin,
     isAdmin,
@@ -243,6 +280,10 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUserInfo,
     updateProfile,
     setInstalledApps,
+    fetchSessions,
+    revokeSession,
+    revokeOtherSessions,
+    clearAuth,
     logout,
   }
 })

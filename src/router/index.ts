@@ -77,6 +77,24 @@ const router = createRouter({
       meta: { title: '应用更新' },
     },
     {
+      path: '/market/installed',
+      name: 'market-installed-management',
+      component: () => import('../views/market/InstalledApps.vue'),
+      meta: { title: '已安装应用' },
+    },
+    {
+      path: '/workspace/templates',
+      name: 'workspace-templates',
+      component: () => import('../views/WorkspaceTemplates.vue'),
+      meta: { title: '工作区模板' },
+    },
+    {
+      path: '/settings/account',
+      name: 'account-settings',
+      component: () => import('../views/AccountSettings.vue'),
+      meta: { title: '设备与云端', requiresAuth: true },
+    },
+    {
       path: '/market/:id(\\d+)',
       name: 'market-detail',
       component: () => import('../views/market/AppMarketDetail.vue'),

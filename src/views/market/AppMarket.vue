@@ -113,6 +113,7 @@ onMounted(async () => {
         </div>
       </div>
       <div class="header-tools">
+        <button class="updates-btn" @click="router.push('/market/installed')">已安装应用</button>
         <button class="updates-btn" @click="router.push('/market/updates')">
           应用更新
           <span v-if="market.availableUpdates.length" class="update-count">

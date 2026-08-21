@@ -42,6 +42,14 @@ export interface WorkspaceCloudConfig {
   updatedAt: number
 }
 
+export interface WorkspaceTemplateData {
+  version: 1
+  name: string
+  icon: string
+  description?: string
+  appKeys: string[]
+}
+
 export type WorkspaceSyncState = 'local' | 'syncing' | 'synced' | 'error'
 
 const MAX_WORKSPACES = 8
@@ -212,6 +220,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function pushToServer() {
     if (ownerId.value === null) return false
+    if (config.value.layoutUpdatedAt <= 0) {
+      config.value.layoutUpdatedAt = Date.now()
+      saveLocal()
+    }
     syncState.value = 'syncing'
     try {
       await api.put('/api/auth/workspace', { config: getCloudConfig() })
@@ -268,6 +280,34 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  async function fetchCloudWorkspace(): Promise<WorkspaceCloudConfig | null> {
+    if (ownerId.value === null) return null
+    const { data } = await api.get<{
+      data: { config: WorkspaceCloudConfig; updatedAt: string } | null
+    }>('/api/auth/workspace')
+    return data?.config ? normalizeCloudConfig(data.config) : null
+  }
+
+  async function downloadCloudWorkspace() {
+    const remote = await fetchCloudWorkspace()
+    if (!remote) throw new Error('云端还没有工作区数据')
+    config.value.workspaces = remote.workspaces
+    config.value.layoutUpdatedAt = remote.updatedAt
+    if (!remote.workspaces.some((item) => item.id === config.value.activeWorkspaceId)) {
+      config.value.activeWorkspaceId = remote.workspaces[0].id
+    }
+    saveLocal()
+    lastSyncedAt.value = Date.now()
+    syncState.value = 'synced'
+  }
+
+  async function deleteCloudWorkspace() {
+    if (ownerId.value === null) return
+    await api.delete('/api/auth/workspace')
+    lastSyncedAt.value = null
+    syncState.value = 'local'
+  }
+
   function switchToGuest() {
     init()
     if (ownerId.value === null) return
@@ -314,6 +354,35 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     config.value.workspaces.push(workspace)
     config.value.activeWorkspaceId = workspace.id
+    saveLayout()
+    return workspace.id
+  }
+
+  function exportActiveWorkspace(): WorkspaceTemplateData {
+    return {
+      version: 1,
+      name: activeWorkspace.value.name,
+      icon: activeWorkspace.value.icon,
+      appKeys: activeWorkspace.value.items.map((item) => item.appKey),
+    }
+  }
+
+  function importWorkspace(template: WorkspaceTemplateData) {
+    if (config.value.workspaces.length >= MAX_WORKSPACES) {
+      throw new Error(`最多创建 ${MAX_WORKSPACES} 个工作区`)
+    }
+    const appKeys = [
+      ...new Set((template.appKeys || []).filter((key) => APP_KEY_RE.test(key))),
+    ].slice(0, 100)
+    const workspace: WorkspaceDefinition = {
+      id: createId(),
+      name: String(template.name || '导入的工作区').trim().slice(0, 20),
+      icon: String(template.icon || '◫').slice(0, 8),
+      items: appKeys.map((appKey) => ({ appKey })),
+    }
+    config.value.workspaces.push(workspace)
+    config.value.activeWorkspaceId = workspace.id
+    config.value.knownApps = [...new Set([...config.value.knownApps, ...appKeys])]
     saveLayout()
     return workspace.id
   }
@@ -392,12 +461,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     activeWorkspace,
     init,
     syncWithServer,
+    fetchCloudWorkspace,
+    downloadCloudWorkspace,
+    deleteCloudWorkspace,
     pushToServer,
     switchToGuest,
     setActiveWorkspace,
     setWorkspaceOrder,
     updatePreferences,
     createWorkspace,
+    exportActiveWorkspace,
+    importWorkspace,
     updateWorkspace,
     deleteWorkspace,
     setActiveItems,

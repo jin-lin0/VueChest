@@ -11,7 +11,8 @@ interface CommandItem {
   label: string
   description: string
   icon: string
-  route: string
+  route?: string
+  action?: () => void
   appKey?: string
   keywords: string
 }
@@ -49,6 +50,35 @@ const appCommands = computed<CommandItem[]>(() => [
   })),
 ])
 
+const marketCommands = computed<CommandItem[]>(() =>
+  marketStore.availableApps
+    .filter((app) => !marketStore.isInstalled(app.id))
+    .map((app) => ({
+      id: `market-${app.id}`,
+      type: 'navigation' as const,
+      label: `${app.name}（市场）`,
+      description: app.description,
+      icon: app.icon,
+      route: `/market/${app.id}`,
+      keywords: `${app.name} ${app.description} 市场 安装`,
+    })),
+)
+
+const workspaceCommands = computed<CommandItem[]>(() =>
+  workspaceStore.config.workspaces.map((workspace) => ({
+    id: `workspace-${workspace.id}`,
+    type: 'navigation' as const,
+    label: `切换到 ${workspace.name}`,
+    description: '切换当前工作区并返回首页',
+    icon: workspace.icon,
+    action: () => {
+      workspaceStore.setActiveWorkspace(workspace.id)
+      router.push('/')
+    },
+    keywords: `${workspace.name} 工作区 切换 workspace`,
+  })),
+)
+
 const navigationCommands = computed<CommandItem[]>(() => {
   const entries: CommandItem[] = [
     {
@@ -68,6 +98,60 @@ const navigationCommands = computed<CommandItem[]>(() => {
       icon: '◇',
       route: '/market',
       keywords: '市场 安装 market apps',
+    },
+    {
+      id: 'nav-installed-apps',
+      type: 'navigation',
+      label: '已安装应用管理',
+      description: '管理应用数据、权限、版本和卸载',
+      icon: '▦',
+      route: '/market/installed',
+      keywords: '已安装 应用 数据 权限 卸载',
+    },
+    {
+      id: 'nav-app-updates',
+      type: 'navigation',
+      label: '应用更新',
+      description: '检查、批量更新和自动更新',
+      icon: '↻',
+      route: '/market/updates',
+      keywords: '应用 更新 版本 update',
+    },
+    {
+      id: 'nav-workspace-templates',
+      type: 'navigation',
+      label: '工作区模板',
+      description: '导入、导出和分享工作区',
+      icon: '▧',
+      route: '/workspace/templates',
+      keywords: '工作区 模板 分享 导入 导出',
+    },
+    {
+      id: 'action-global-settings',
+      type: 'navigation',
+      label: '打开全局设置',
+      description: '调整首页显示和设备偏好',
+      icon: '⚙',
+      route: '/?panel=settings',
+      keywords: '全局 设置 preferences',
+    },
+    {
+      id: 'action-create-workspace',
+      type: 'navigation',
+      label: '创建工作区',
+      description: '新建一个空白工作区',
+      icon: '+',
+      route: '/?panel=create-workspace',
+      keywords: '新建 创建 工作区',
+    },
+    {
+      id: 'action-organize-apps',
+      type: 'navigation',
+      label: '整理当前工作区',
+      description: '添加或移除当前工作区应用',
+      icon: '⠿',
+      route: '/?panel=organize',
+      keywords: '整理 应用 工作区',
     },
     {
       id: 'nav-docs',
@@ -90,10 +174,39 @@ const navigationCommands = computed<CommandItem[]>(() => {
       keywords: '管理 后台 admin',
     })
   }
+  if (authStore.isAuthenticated) {
+    entries.push({
+      id: 'nav-account-settings',
+      type: 'navigation',
+      label: '设备与云端',
+      description: '管理登录设备和云端工作区',
+      icon: '🔐',
+      route: '/settings/account',
+      keywords: '设备 会话 登录 云端 同步 account sessions',
+    })
+  }
   return entries
 })
 
-const allCommands = computed(() => [...appCommands.value, ...navigationCommands.value])
+const dataCommands = computed<CommandItem[]>(() =>
+  marketStore.installedApps.map((app) => ({
+    id: `clear-data-${app.id}`,
+    type: 'navigation' as const,
+    label: `清除 ${app.name} 数据`,
+    description: '打开应用管理并确认清除本地数据',
+    icon: app.icon,
+    route: `/market/installed?action=clear&app=${app.id}`,
+    keywords: `${app.name} 清除 数据 storage`,
+  })),
+)
+
+const allCommands = computed(() => [
+  ...appCommands.value,
+  ...marketCommands.value,
+  ...workspaceCommands.value,
+  ...navigationCommands.value,
+  ...dataCommands.value,
+])
 
 const results = computed(() => {
   const text = query.value.trim().toLowerCase()
@@ -117,6 +230,7 @@ const open = (initialQuery = '') => {
   query.value = initialQuery
   selectedIndex.value = 0
   isOpen.value = true
+  if (marketStore.availableApps.length === 0) void marketStore.fetchApps({ limit: 50 })
   nextTick(() => inputRef.value?.focus())
 }
 
@@ -129,7 +243,8 @@ const execute = (item: CommandItem | undefined) => {
   if (!item) return
   if (item.appKey) workspaceStore.recordRecent(item.appKey)
   close()
-  router.push(item.route)
+  if (item.action) item.action()
+  else if (item.route) router.push(item.route)
 }
 
 const handleOpenEvent = (event: Event) => {
@@ -140,7 +255,8 @@ const handleOpenEvent = (event: Event) => {
 const handleKeydown = (event: KeyboardEvent) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
-    isOpen.value ? close() : open()
+    if (isOpen.value) close()
+    else open()
     return
   }
   if (!isOpen.value) return

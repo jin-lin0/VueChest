@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import { APP_MODULES } from '@/config'
 import type { AppModule } from '@/config'
@@ -38,6 +38,7 @@ interface WorkspaceContextMenuState {
 }
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const marketStore = useMarketStore()
 const workspaceStore = useWorkspaceStore()
@@ -231,6 +232,20 @@ const selectWorkspaceFromSettings = (event: Event) => {
   workspaceStore.setActiveWorkspace((event.target as HTMLSelectElement).value)
 }
 
+const openRequestedPanel = (panel: unknown) => {
+  let handled = true
+  if (panel === 'settings') showGlobalSettings.value = true
+  else if (panel === 'organize') showAppManager.value = true
+  else if (panel === 'create-workspace') openCreateWorkspace()
+  else handled = false
+  if (handled && route.query.panel) void router.replace('/')
+}
+
+watch(
+  () => route.query.panel,
+  (panel) => openRequestedPanel(panel),
+)
+
 const handleLogoClick = () => {
   const now = Date.now()
   logoClickTimes.push(now)
@@ -293,6 +308,7 @@ const handleReset = async () => {
 onMounted(() => {
   marketStore.refreshInstalledMeta()
   document.addEventListener('click', closeContextMenu)
+  openRequestedPanel(route.query.panel)
 })
 
 onUnmounted(() => document.removeEventListener('click', closeContextMenu))
@@ -549,6 +565,14 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
             </option>
           </select>
         </label>
+
+        <div class="settings-links">
+          <button @click="router.push('/workspace/templates')">工作区模板</button>
+          <button @click="router.push('/market/installed')">已安装应用</button>
+          <button v-if="authStore.isAuthenticated" @click="router.push('/settings/account')">
+            设备与云端
+          </button>
+        </div>
       </div>
     </Modal>
 
@@ -1453,6 +1477,23 @@ kbd {
   background: #667eea;
   color: white;
   box-shadow: 0 2px 6px rgba(102, 126, 234, 0.22);
+}
+
+.settings-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.settings-links button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(102, 126, 234, 0.24);
+  border-radius: 8px;
+  background: transparent;
+  color: #667eea;
+  cursor: pointer;
+  font-weight: 600;
 }
 
 .manager-toolbar {

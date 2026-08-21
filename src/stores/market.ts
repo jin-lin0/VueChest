@@ -38,6 +38,16 @@ export interface InstalledApp {
   allowNetwork?: string[]
 }
 
+export interface MarketAppVersion {
+  id: number
+  version: string
+  size?: number
+  releaseNotes?: string
+  status: 'active' | 'yanked'
+  createdAt: string
+  updatedAt: string
+}
+
 const INSTALLED_KEY = 'market_installed_apps'
 const BUNDLE_KEY_PREFIX = 'market-bundle-'
 const AUTO_UPDATE_KEY = 'market-auto-update'
@@ -47,6 +57,8 @@ export interface AppUpdateInfo {
   installed: InstalledApp
   latest: MarketAppItem
 }
+
+export type MarketComment = Record<string, unknown>
 
 function parseVersion(value: string) {
   const normalized = String(value || '0').trim().replace(/^v/i, '').split('+')[0]
@@ -146,12 +158,20 @@ export const useMarketStore = defineStore('market', () => {
    * 从服务端下载并安装单个 App（核心安装逻辑）
    * 供 installApp / syncFromServer 共用
    */
-  async function downloadAndInstall(appId: number): Promise<InstalledApp | null> {
+  async function downloadAndInstall(
+    appId: number,
+    versionId?: number,
+  ): Promise<InstalledApp | null> {
     // 1. 下载 bundle + 详情（并发）
     const [downloadRes, detail] = await Promise.all([
       api.get<{
-        data: { fileUrl: string; name: string; version: string }
-      }>(`/api/market/apps/${appId}/download`, { auth: false }),
+        data: { fileUrl: string; name: string; version: string; allowNetwork?: string[] }
+      }>(
+        versionId
+          ? `/api/market/apps/${appId}/versions/${versionId}/download`
+          : `/api/market/apps/${appId}/download`,
+        { auth: false },
+      ),
       fetchAppDetail(appId),
     ])
 
@@ -172,8 +192,8 @@ export const useMarketStore = defineStore('market', () => {
       // route 指向受控命名空间路径，供 Home 等导航使用（见 navigateToApp）
       route: installedRoutePath(appId),
       description: detail?.description || '',
-      version: detail?.version || downloadRes.data.version,
-      allowNetwork: detail?.allowNetwork || [],
+      version: downloadRes.data.version,
+      allowNetwork: downloadRes.data.allowNetwork || detail?.allowNetwork || [],
       installedAt: Date.now(),
     }
   }
@@ -292,7 +312,7 @@ export const useMarketStore = defineStore('market', () => {
     appId: number,
     params?: { page?: number; limit?: number },
   ): Promise<{
-    items: any[]
+    items: MarketComment[]
     ratingSummary: { average: number | null; count: number }
   } | null> {
     try {
@@ -301,7 +321,7 @@ export const useMarketStore = defineStore('market', () => {
       if (params?.limit) q.set("limit", String(params.limit))
       const { data } = await api.get<{
         data: {
-          items: any[]
+          items: MarketComment[]
           ratingSummary: { average: number | null; count: number }
         }
       }>(`/api/market/apps/${appId}/comments?${q.toString()}`)
@@ -315,9 +335,9 @@ export const useMarketStore = defineStore('market', () => {
   async function postComment(
     appId: number,
     payload: { content: string; rating?: number; parentId?: number },
-  ): Promise<any | null> {
+  ): Promise<MarketComment | null> {
     try {
-      const { data } = await api.post<{ data: any }>(
+      const { data } = await api.post<{ data: MarketComment }>(
         `/api/market/apps/${appId}/comments`,
         payload,
       )
@@ -358,6 +378,74 @@ export const useMarketStore = defineStore('market', () => {
     autoUpdateEnabled.value = enabled
     setStorage(AUTO_UPDATE_KEY, enabled)
     if (enabled) void checkForUpdates({ force: true, autoApply: true })
+  }
+
+  async function fetchAppVersions(appId: number): Promise<MarketAppVersion[]> {
+    const { data } = await api.get<{ data: MarketAppVersion[] }>(
+      `/api/market/apps/${appId}/versions`,
+    )
+    return data
+  }
+
+  async function checkAppUpdate(appId: number) {
+    const detail = await fetchAppDetail(appId)
+    if (!detail) throw new Error('暂时无法检查该应用更新')
+    latestApps.value = { ...latestApps.value, [appId]: detail }
+    return hasUpdate(appId)
+  }
+
+  async function setVersionStatus(
+    appId: number,
+    versionId: number,
+    status: 'active' | 'yanked',
+  ) {
+    await api.put(`/api/market/apps/${appId}/versions/${versionId}/status`, { status })
+  }
+
+  async function installVersion(appId: number, versionId: number): Promise<InstalledApp> {
+    if (isUpdating(appId)) {
+      const current = installedApps.value.find((item) => item.id === appId)
+      if (!current) throw new Error('应用正在安装')
+      return current
+    }
+
+    updatingIds.value = [...updatingIds.value, appId]
+    const currentIndex = installedApps.value.findIndex((item) => item.id === appId)
+    const oldEntry = currentIndex >= 0 ? { ...installedApps.value[currentIndex] } : null
+    const oldBundle = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`)
+    updateErrors.value = { ...updateErrors.value, [appId]: '' }
+
+    try {
+      const nextEntry = await downloadAndInstall(appId, versionId)
+      if (!nextEntry) throw new Error('应用版本下载失败')
+      if (oldEntry) {
+        nextEntry.installedAt = oldEntry.installedAt
+        nextEntry.updatedAt = Date.now()
+        const replaceIndex = installedApps.value.findIndex((item) => item.id === appId)
+        if (replaceIndex < 0) throw new Error('应用已被卸载，已取消安装')
+        installedApps.value.splice(replaceIndex, 1, nextEntry)
+      } else {
+        installedApps.value.push(nextEntry)
+        syncAuthInstalled()
+        void syncToServer()
+      }
+      persistInstalledApps()
+      await checkForUpdates({ force: true })
+      return nextEntry
+    } catch (error) {
+      if (oldBundle) setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, oldBundle)
+      else removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
+      if (oldEntry) {
+        const restoreIndex = installedApps.value.findIndex((item) => item.id === appId)
+        if (restoreIndex >= 0) installedApps.value.splice(restoreIndex, 1, oldEntry)
+      }
+      persistInstalledApps()
+      const message = error instanceof Error ? error.message : '版本安装失败'
+      updateErrors.value = { ...updateErrors.value, [appId]: message }
+      throw error
+    } finally {
+      updatingIds.value = updatingIds.value.filter((id) => id !== appId)
+    }
   }
 
   async function updateApp(appId: number): Promise<InstalledApp> {
@@ -572,6 +660,10 @@ export const useMarketStore = defineStore('market', () => {
     updateApp,
     updateAll,
     setAutoUpdate,
+    fetchAppVersions,
+    checkAppUpdate,
+    installVersion,
+    setVersionStatus,
     fetchComments,
     postComment,
     deleteComment,
