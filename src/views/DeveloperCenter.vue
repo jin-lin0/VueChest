@@ -5,6 +5,14 @@ import { api } from '@/lib/request'
 import { EmptyState } from '@/components'
 import { formatFileSize } from '@/utils'
 
+interface VersionReview {
+  id: number
+  action: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'resubmitted'
+  category?: string | null
+  message?: string | null
+  createdAt: string
+}
+
 interface DeveloperVersion {
   id: number
   version: string
@@ -12,6 +20,11 @@ interface DeveloperVersion {
   releaseNotes?: string
   status: 'active' | 'yanked'
   reviewStatus: 'pending' | 'approved' | 'rejected' | 'withdrawn'
+  reviewCategory?: string | null
+  reviewNote?: string | null
+  reviewedAt?: string | null
+  submissionCount: number
+  reviews: VersionReview[]
   createdAt: string
 }
 
@@ -61,6 +74,22 @@ const appStatusLabel: Record<DeveloperApp['status'], string> = {
   rejected: '未通过',
 }
 
+const categoryLabel: Record<string, string> = {
+  functionality: '功能问题',
+  security: '安全或权限问题',
+  metadata: '描述或素材问题',
+  compatibility: '兼容性问题',
+  other: '其他问题',
+}
+
+const actionLabel: Record<VersionReview['action'], string> = {
+  submitted: '首次提交',
+  approved: '审核通过',
+  rejected: '审核拒绝',
+  withdrawn: '开发者撤回',
+  resubmitted: '重新提交',
+}
+
 async function loadApps() {
   loading.value = true
   error.value = ''
@@ -93,6 +122,18 @@ async function withdraw(app: DeveloperApp, version: DeveloperVersion) {
     await loadApps()
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : '撤回失败'
+  } finally {
+    actionId.value = null
+  }
+}
+
+async function resubmit(app: DeveloperApp, version: DeveloperVersion) {
+  actionId.value = version.id
+  try {
+    await api.post(`/api/developer/apps/${app.id}/versions/${version.id}/resubmit`)
+    await loadApps()
+  } catch (reason) {
+    error.value = reason instanceof Error ? reason.message : '重新提交失败'
   } finally {
     actionId.value = null
   }
@@ -191,6 +232,16 @@ onMounted(() => void loadApps())
               <small>{{ new Date(version.createdAt).toLocaleString() }}</small>
             </div>
             <p>{{ version.releaseNotes || '未填写更新说明' }}</p>
+            <div
+              v-if="version.reviewStatus === 'rejected' && version.reviewNote"
+              class="review-feedback"
+            >
+              <strong>{{ categoryLabel[version.reviewCategory || 'other'] || '审核意见' }}</strong>
+              <p>{{ version.reviewNote }}</p>
+              <small v-if="version.reviewedAt">
+                {{ new Date(version.reviewedAt).toLocaleString() }}
+              </small>
+            </div>
             <span>{{ formatFileSize(version.size || 0) }}</span>
             <button
               v-if="version.reviewStatus === 'pending'"
@@ -200,6 +251,39 @@ onMounted(() => void loadApps())
             >
               撤回审核
             </button>
+            <div
+              v-if="version.reviewStatus === 'rejected' || version.reviewStatus === 'withdrawn'"
+              class="resubmit-actions"
+            >
+              <button :disabled="actionId === version.id" @click="resubmit(app, version)">
+                直接重新提交
+              </button>
+              <button
+                @click="
+                  router.push({
+                    path: '/market/upload',
+                    query: { appId: app.id, from: 'developer' },
+                  })
+                "
+              >
+                修改后重新提交
+              </button>
+            </div>
+            <details v-if="version.reviews.length" class="review-history">
+              <summary>
+                审核记录 {{ version.reviews.length }} 条 · 已提交 {{ version.submissionCount }} 次
+              </summary>
+              <ol>
+                <li v-for="review in version.reviews" :key="review.id">
+                  <div>
+                    <strong>{{ actionLabel[review.action] }}</strong>
+                    <time>{{ new Date(review.createdAt).toLocaleString() }}</time>
+                  </div>
+                  <span v-if="review.category">{{ categoryLabel[review.category] }}</span>
+                  <p v-if="review.message">{{ review.message }}</p>
+                </li>
+              </ol>
+            </details>
           </div>
         </div>
       </article>
@@ -395,6 +479,84 @@ onMounted(() => void loadApps())
   background: var(--bg-card);
 }
 
+.review-feedback,
+.review-history {
+  grid-column: 1 / -1;
+}
+
+.review-feedback {
+  padding: 0.65rem 0.75rem;
+  border-left: 3px solid var(--danger);
+  border-radius: 6px;
+  background: var(--danger-bg);
+}
+
+.review-feedback strong {
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
+.review-feedback p {
+  margin: 0.25rem 0;
+  color: var(--text-primary);
+}
+
+.review-feedback small {
+  color: var(--text-secondary);
+}
+
+.resubmit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.resubmit-actions button {
+  padding: 0.38rem 0.62rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.review-history summary {
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.review-history ol {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-history li {
+  padding: 0.55rem 0.65rem;
+  border-radius: 7px;
+  background: var(--bg-page);
+}
+
+.review-history li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.review-history time,
+.review-history li > span {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.review-history li p {
+  margin: 0.25rem 0 0;
+}
+
 .version-row > div {
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -436,6 +598,11 @@ button:disabled {
   }
 
   .version-row p {
+    grid-column: auto;
+  }
+
+  .review-feedback,
+  .review-history {
     grid-column: auto;
   }
 }

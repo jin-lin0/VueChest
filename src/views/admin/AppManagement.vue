@@ -63,14 +63,14 @@
             <button
               class="btn-approve"
               :disabled="reviewingVersionId === version.id"
-              @click="reviewVersion(version, true)"
+              @click="approvePendingVersion(version)"
             >
               通过
             </button>
             <button
               class="btn-reject"
               :disabled="reviewingVersionId === version.id"
-              @click="reviewVersion(version, false)"
+              @click="openVersionReject(version)"
             >
               拒绝
             </button>
@@ -270,6 +270,48 @@
       </template>
     </Modal>
 
+    <Modal
+      :open="!!rejectTarget"
+      title="填写拒绝原因"
+      width="min(520px, 94vw)"
+      @close="rejectTarget = null"
+    >
+      <div v-if="rejectTarget" class="reject-form">
+        <p>将拒绝：{{ rejectTarget.label }}</p>
+        <label>
+          <span>问题类型</span>
+          <select v-model="rejectCategory" class="form-input">
+            <option value="functionality">功能问题</option>
+            <option value="security">安全或权限问题</option>
+            <option value="metadata">描述或素材问题</option>
+            <option value="compatibility">兼容性问题</option>
+            <option value="other">其他问题</option>
+          </select>
+        </label>
+        <label>
+          <span>审核意见</span>
+          <textarea
+            v-model="rejectMessage"
+            class="form-textarea"
+            rows="5"
+            maxlength="1000"
+            placeholder="请明确说明问题和修改建议，开发者将看到这段内容"
+          ></textarea>
+          <small>{{ rejectMessage.length }}/1000</small>
+        </label>
+        <div class="reject-actions">
+          <button class="btn-secondary" @click="rejectTarget = null">取消</button>
+          <button
+            class="confirm-reject"
+            :disabled="rejecting || rejectMessage.trim().length < 2"
+            @click="submitReject"
+          >
+            {{ rejecting ? '提交中...' : '确认拒绝' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
+
     <Toast ref="toastRef" />
   </div>
 </template>
@@ -323,6 +365,15 @@ function showToast(type: 'success' | 'error' | 'warning' | 'info', message: stri
 const apps = ref<MarketAppItem[]>([])
 const pendingVersions = ref<PendingVersion[]>([])
 const reviewingVersionId = ref<number | null>(null)
+const rejectTarget = ref<{
+  kind: 'app' | 'version'
+  appId: number
+  versionId?: number
+  label: string
+} | null>(null)
+const rejectCategory = ref('functionality')
+const rejectMessage = ref('')
+const rejecting = ref(false)
 const categories = ref<CategoryInfo[]>([])
 const totalApps = ref(0)
 const totalPages = ref(0)
@@ -389,7 +440,7 @@ async function handleApprove(app: MarketAppItem) {
   try {
     await api.post(`/api/market/apps/${app.id}/approve`)
     showToast('success', `应用「${app.name}」已通过审核`)
-    fetchApps()
+    await Promise.all([fetchApps(), fetchPendingVersions()])
   } catch (e) {
     showToast('error', e instanceof Error ? e.message : '操作失败')
   } finally {
@@ -398,16 +449,9 @@ async function handleApprove(app: MarketAppItem) {
 }
 
 async function handleReject(app: MarketAppItem) {
-  reviewingId.value = app.id
-  try {
-    await api.post(`/api/market/apps/${app.id}/reject`)
-    showToast('success', `应用「${app.name}」已拒绝`)
-    fetchApps()
-  } catch (e) {
-    showToast('error', e instanceof Error ? e.message : '操作失败')
-  } finally {
-    reviewingId.value = null
-  }
+  rejectTarget.value = { kind: 'app', appId: app.id, label: `应用“${app.name}”` }
+  rejectCategory.value = 'functionality'
+  rejectMessage.value = ''
 }
 
 async function fetchPendingVersions() {
@@ -421,18 +465,50 @@ async function fetchPendingVersions() {
   }
 }
 
-async function reviewVersion(version: PendingVersion, approve: boolean) {
+async function approvePendingVersion(version: PendingVersion) {
   reviewingVersionId.value = version.id
   try {
-    await api.post(
-      `/api/market/apps/${version.appId}/versions/${version.id}/${approve ? 'approve' : 'reject'}`,
-    )
-    showToast('success', `版本 v${version.version} 已${approve ? '通过' : '拒绝'}`)
+    await api.post(`/api/market/apps/${version.appId}/versions/${version.id}/approve`)
+    showToast('success', `版本 v${version.version} 已通过`)
     await Promise.all([fetchPendingVersions(), fetchApps()])
   } catch (error) {
     showToast('error', error instanceof Error ? error.message : '审核失败')
   } finally {
     reviewingVersionId.value = null
+  }
+}
+
+function openVersionReject(version: PendingVersion) {
+  rejectTarget.value = {
+    kind: 'version',
+    appId: version.appId,
+    versionId: version.id,
+    label: `${version.app?.name || `应用 #${version.appId}`} v${version.version}`,
+  }
+  rejectCategory.value = 'functionality'
+  rejectMessage.value = ''
+}
+
+async function submitReject() {
+  const target = rejectTarget.value
+  if (!target || rejectMessage.value.trim().length < 2) return
+  rejecting.value = true
+  try {
+    const path =
+      target.kind === 'version'
+        ? `/api/market/apps/${target.appId}/versions/${target.versionId}/reject`
+        : `/api/market/apps/${target.appId}/reject`
+    await api.post(path, {
+      category: rejectCategory.value,
+      message: rejectMessage.value.trim(),
+    })
+    showToast('success', `${target.label} 已拒绝并发送审核意见`)
+    rejectTarget.value = null
+    await Promise.all([fetchPendingVersions(), fetchApps()])
+  } catch (error) {
+    showToast('error', error instanceof Error ? error.message : '拒绝失败')
+  } finally {
+    rejecting.value = false
   }
 }
 
@@ -860,6 +936,49 @@ async function deleteApp(app: MarketAppItem) {
   border: 1px solid var(--danger);
   background: var(--danger-bg);
   color: var(--danger);
+}
+
+.reject-form {
+  display: grid;
+  gap: 14px;
+}
+
+.reject-form > p {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.reject-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.reject-form small {
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.reject-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-reject {
+  padding: 8px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.confirm-reject:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 @media (max-width: 900px) {
