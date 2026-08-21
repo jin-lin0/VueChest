@@ -156,6 +156,11 @@ onMounted(async () => {
       </div>
     </div>
 
+    <EmptyState v-else-if="market.fetchError" icon="⚠️" title="应用市场加载失败">
+      <p class="load-error-text">{{ market.fetchError }}</p>
+      <button class="retry-btn" @click="loadApps">重新加载</button>
+    </EmptyState>
+
     <EmptyState v-else-if="filteredApps.length === 0" icon="📦" title="暂无应用" />
 
     <main v-else class="app-grid">
@@ -212,6 +217,22 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.7rem;
+}
+
+.load-error-text {
+  margin-bottom: 0.7rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.retry-btn {
+  padding: 0.48rem 0.85rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--gradient-primary);
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
 }
 
 .updates-btn {

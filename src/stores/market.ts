@@ -106,6 +106,7 @@ function installedRoutePath(appId: number | string): string {
 export const useMarketStore = defineStore('market', () => {
   const availableApps = ref<MarketAppItem[]>([])
   const isLoading = ref(false)
+  const fetchError = ref('')
 
   const installedApps = ref<InstalledApp[]>([])
   const latestApps = ref<Record<number, MarketAppItem>>({})
@@ -141,6 +142,7 @@ export const useMarketStore = defineStore('market', () => {
     limit?: number
   }) {
     isLoading.value = true
+    fetchError.value = ''
     try {
       const query = new URLSearchParams()
       if (params?.category) query.set('category', params.category)
@@ -154,6 +156,7 @@ export const useMarketStore = defineStore('market', () => {
       availableApps.value = data.items
     } catch (e) {
       console.error('Failed to fetch market apps:', e)
+      fetchError.value = e instanceof Error ? e.message : '应用市场加载失败'
     } finally {
       isLoading.value = false
     }
@@ -652,6 +655,7 @@ export const useMarketStore = defineStore('market', () => {
   return {
     availableApps,
     isLoading,
+    fetchError,
     installedApps,
     latestApps,
     availableUpdates,
