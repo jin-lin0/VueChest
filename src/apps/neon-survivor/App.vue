@@ -54,6 +54,13 @@ let resizeObserver: ResizeObserver | null = null
 let audioContext: AudioContext | null = null
 let masterGain: GainNode | null = null
 type SoundName = Parameters<EngineCallbacks['onSound']>[0]
+interface ActiveTone {
+  oscillator: OscillatorNode
+  gain: GainNode
+}
+
+const activeTones = new Set<ActiveTone>()
+const soundTimers = new Set<number>()
 const lastSoundAt: Partial<Record<SoundName, number>> = {}
 
 const hpRatio = computed(() => `${Math.max(0, (hud.value.hp / hud.value.maxHp) * 100)}%`)
@@ -91,19 +98,62 @@ function playTone(
   volume: number,
   type: OscillatorType = 'sine',
 ) {
-  if (!soundEnabled.value || !audioContext || !masterGain) return
-  const now = audioContext.currentTime
-  const oscillator = audioContext.createOscillator()
-  const gain = audioContext.createGain()
+  const context = audioContext
+  const output = masterGain
+  if (!soundEnabled.value || !context || context.state === 'closed' || !output) return
+  const now = context.currentTime
+  const oscillator = context.createOscillator()
+  const gain = context.createGain()
+  const tone = { oscillator, gain }
+  const release = () => {
+    oscillator.onended = null
+    oscillator.disconnect()
+    gain.disconnect()
+    activeTones.delete(tone)
+  }
+
   oscillator.type = type
   oscillator.frequency.setValueAtTime(frequency, now)
   oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), now + duration)
   gain.gain.setValueAtTime(volume, now)
   gain.gain.exponentialRampToValueAtTime(0.0001, now + duration)
   oscillator.connect(gain)
-  gain.connect(masterGain)
+  gain.connect(output)
+  oscillator.onended = release
+  activeTones.add(tone)
   oscillator.start(now)
   oscillator.stop(now + duration)
+}
+
+function scheduleSound(callback: () => void, delay: number) {
+  const timer = window.setTimeout(() => {
+    soundTimers.delete(timer)
+    callback()
+  }, delay)
+  soundTimers.add(timer)
+}
+
+function shutdownAudio() {
+  for (const timer of soundTimers) window.clearTimeout(timer)
+  soundTimers.clear()
+
+  for (const tone of activeTones) {
+    tone.oscillator.onended = null
+    try {
+      tone.oscillator.stop()
+    } catch {
+      // 已自然结束的振荡器可以直接断开。
+    }
+    tone.oscillator.disconnect()
+    tone.gain.disconnect()
+  }
+  activeTones.clear()
+
+  masterGain?.disconnect()
+  const context = audioContext
+  masterGain = null
+  audioContext = null
+  if (context && context.state !== 'closed') void context.close()
 }
 
 function playSound(name: SoundName) {
@@ -120,7 +170,7 @@ function playSound(name: SoundName) {
   else if (name === 'pickup') playTone(700, 980, 0.07, 0.055, 'sine')
   else if (name === 'level') {
     playTone(440, 660, 0.16, 0.13, 'sine')
-    window.setTimeout(() => playTone(660, 990, 0.2, 0.12, 'sine'), 90)
+    scheduleSound(() => playTone(660, 990, 0.2, 0.12, 'sine'), 90)
   } else if (name === 'boss') playTone(90, 36, 0.7, 0.28, 'sawtooth')
 }
 
@@ -161,6 +211,7 @@ function toggleSound() {
   soundEnabled.value = !soundEnabled.value
   setStorage(SOUND_KEY, soundEnabled.value)
   if (soundEnabled.value) ensureAudio()
+  else shutdownAudio()
 }
 
 function onKeyDown(event: KeyboardEvent) {
@@ -308,7 +359,7 @@ onUnmounted(() => {
   window.removeEventListener('keyup', onKeyUp)
   window.removeEventListener('pointerup', stopFiring)
   document.removeEventListener('visibilitychange', onVisibilityChange)
-  if (audioContext) void audioContext.close()
+  shutdownAudio()
 })
 </script>
 

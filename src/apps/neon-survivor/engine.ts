@@ -118,6 +118,7 @@ export class NeonSurvivorEngine {
   private spawnTimer = 0
   private hudTimer = 0
   private rafId = 0
+  private finishTimerId: number | null = null
   private previousTime = 0
   private enemyId = 0
   private kills = 0
@@ -174,6 +175,7 @@ export class NeonSurvivorEngine {
   }
 
   start(difficulty: Difficulty) {
+    this.clearFinishTimer()
     this.player = createPlayer()
     this.enemies = []
     this.bullets = []
@@ -202,6 +204,7 @@ export class NeonSurvivorEngine {
     this.renderDirty = true
     this.previousTime = performance.now()
     this.emitHud()
+    this.requestFrame()
   }
 
   pause() {
@@ -214,6 +217,7 @@ export class NeonSurvivorEngine {
     if (this.ended || this.pendingLevelUp) return
     this.active = true
     this.previousTime = performance.now()
+    this.requestFrame()
   }
 
   startFiring() {
@@ -241,15 +245,28 @@ export class NeonSurvivorEngine {
     this.active = true
     this.previousTime = performance.now()
     this.emitHud()
+    this.requestFrame()
   }
 
   destroy() {
-    cancelAnimationFrame(this.rafId)
+    if (this.rafId) cancelAnimationFrame(this.rafId)
+    this.rafId = 0
+    this.clearFinishTimer()
     this.active = false
+    this.ended = true
     this.input.keys.clear()
+    this.enemies.length = 0
+    this.bullets.length = 0
+    this.pickups.length = 0
+    this.particles.length = 0
+    this.texts.length = 0
+    this.stars.length = 0
+    this.enemyGrid.clear()
+    this.upgradeLevels.clear()
   }
 
   private frame = (time: number) => {
+    this.rafId = 0
     const rawDelta = this.previousTime ? (time - this.previousTime) / 1000 : 0
     this.previousTime = time
     if (this.active) {
@@ -260,7 +277,17 @@ export class NeonSurvivorEngine {
       this.draw()
       this.renderDirty = false
     }
-    this.rafId = requestAnimationFrame(this.frame)
+    if (this.active || this.renderDirty) this.requestFrame()
+  }
+
+  private requestFrame() {
+    if (!this.rafId) this.rafId = requestAnimationFrame(this.frame)
+  }
+
+  private clearFinishTimer() {
+    if (this.finishTimerId === null) return
+    window.clearTimeout(this.finishTimerId)
+    this.finishTimerId = null
   }
 
   private update(dt: number) {
@@ -963,7 +990,13 @@ export class NeonSurvivorEngine {
       elapsed: this.elapsed,
       victory,
     }
-    window.setTimeout(() => this.callbacks.onEnd(summary), victory ? 650 : 350)
+    this.finishTimerId = window.setTimeout(
+      () => {
+        this.finishTimerId = null
+        this.callbacks.onEnd(summary)
+      },
+      victory ? 650 : 350,
+    )
   }
 
   private currentWave() {
