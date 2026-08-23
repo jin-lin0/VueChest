@@ -141,6 +141,12 @@ const router = createRouter({
       meta: { title: '音游实验室' },
     },
     {
+      path: '/neon-survivor',
+      name: 'neon-survivor',
+      component: () => import('../apps/neon-survivor/App.vue'),
+      meta: { title: '星渊幸存者' },
+    },
+    {
       path: '/snake/local',
       name: 'snake-local',
       component: () => import('../apps/snake/views/LocalBattle.vue'),

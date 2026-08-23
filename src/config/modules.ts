@@ -8,6 +8,7 @@ import bilibiliSubtitle from '@/apps/bilibili-subtitle'
 import snake from '@/apps/snake'
 import devToolbox from '@/apps/dev-toolbox'
 import rhythm from '@/apps/rhythm'
+import neonSurvivor from '@/apps/neon-survivor'
 
 export interface AppModule {
   id: number
@@ -34,6 +35,7 @@ function appDef(
 }
 
 export const APP_MODULES: AppModule[] = [
+  appDef(17, neonSurvivor),
   appDef(16, rhythm),
   appDef(14, bilibiliSubtitle),
   appDef(13, snake),
