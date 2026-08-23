@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest'
+import * as THREE from 'three'
 import { getMedal, normalizeRaceConfig, seededRandom, TRACKS, type RaceConfig } from '../game'
-import { generateTrackPoints } from '../track'
+import {
+  checkpointPointIndices,
+  generateTrackPoints,
+  isOutsideTrack,
+  trackOffsetAt,
+} from '../track'
 import {
   addCombo,
   AI_DIFFICULTY,
   championshipPoints,
   driftBoostMultiplier,
   driftLevel,
+  driftScore,
   itemPoolForRank,
   perfectStart,
   resolveHit,
@@ -42,8 +49,77 @@ describe('赛车模式规则', () => {
   it('固定赛道的中心线与检查点基数保持确定', () => {
     const first = generateTrackPoints(TRACKS.desert)
     const second = generateTrackPoints(TRACKS.desert)
-    expect(first.map((point) => [point.x, point.z])).toEqual(second.map((point) => [point.x, point.z]))
+    expect(first.map((point) => [point.x, point.z])).toEqual(
+      second.map((point) => [point.x, point.z]),
+    )
     expect(TRACKS.desert.checkpoints).toBe(6)
+    const checkpointIndices = checkpointPointIndices(first.length, TRACKS.desert.checkpoints)
+    expect(checkpointIndices[0]).toBeGreaterThan(0)
+    expect(checkpointIndices.at(-1)).toBe(0)
+  })
+
+  it('全部固定赛道的两侧边界均不自交', () => {
+    const intersects = (
+      a: { x: number; z: number },
+      b: { x: number; z: number },
+      c: { x: number; z: number },
+      d: { x: number; z: number },
+    ) => {
+      const cross = (p: typeof a, q: typeof a, r: typeof a) =>
+        (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x)
+      return cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0
+    }
+
+    for (const track of Object.values(TRACKS)) {
+      const points = generateTrackPoints(track)
+      for (const side of [-1, 1]) {
+        const edge = points.map((_, index) =>
+          trackOffsetAt(points, index, (track.width / 2) * side),
+        )
+        for (let i = 0; i < edge.length; i++) {
+          for (let j = i + 2; j < edge.length; j++) {
+            if (i === 0 && j === edge.length - 1) continue
+            expect(
+              intersects(
+                edge[i],
+                edge[(i + 1) % edge.length],
+                edge[j],
+                edge[(j + 1) % edge.length],
+              ),
+              `${track.id} 边界 ${i} 与 ${j} 不应相交`,
+            ).toBe(false)
+          }
+        }
+      }
+      expect(isOutsideTrack(points, points[0].x, points[0].z, track.width)).toBe(false)
+    }
+  })
+
+  it('极夜回环比赤沙峡谷更窄且单位距离弯角更密集', () => {
+    const turnMetrics = (track: (typeof TRACKS)[keyof typeof TRACKS]) => {
+      const points = generateTrackPoints(track)
+      let length = 0
+      let turns = 0
+      let maxTurn = 0
+      for (let i = 0; i < points.length; i++) {
+        const previous = points[(i - 1 + points.length) % points.length]
+        const current = points[i]
+        const next = points[(i + 1) % points.length]
+        const incoming = current.clone().sub(previous).normalize()
+        const outgoing = next.clone().sub(current).normalize()
+        length += current.distanceTo(next)
+        const turn = Math.acos(Math.max(-1, Math.min(1, incoming.dot(outgoing))))
+        turns += turn
+        maxTurn = Math.max(maxTurn, turn)
+      }
+      return { density: turns / length, maxTurn: THREE.MathUtils.radToDeg(maxTurn) }
+    }
+    const ridge = turnMetrics(TRACKS.ridge)
+    const desert = turnMetrics(TRACKS.desert)
+    expect(TRACKS.ridge.width).toBeLessThan(TRACKS.desert.width)
+    expect(ridge.density).toBeGreaterThan(desert.density * 1.4)
+    expect(ridge.maxTurn).toBeGreaterThanOrEqual(40)
+    expect(ridge.maxTurn).toBeLessThanOrEqual(45)
   })
 
   it('圈速按照配置判定奖牌', () => {
@@ -57,11 +133,13 @@ describe('赛车模式规则', () => {
 
 describe('驾驶反馈规则', () => {
   it('漂移蓄力映射到三级反馈和加速倍率', () => {
-    expect(driftLevel(24)).toBe('none')
-    expect(driftLevel(25)).toBe('good')
-    expect(driftLevel(55)).toBe('great')
-    expect(driftLevel(90)).toBe('perfect')
+    expect(driftLevel(11)).toBe('none')
+    expect(driftLevel(12)).toBe('good')
+    expect(driftLevel(30)).toBe('great')
+    expect(driftLevel(50)).toBe('perfect')
     expect(driftBoostMultiplier('perfect')).toBeCloseTo(1.16)
+    expect(driftScore('good')).toBe(120)
+    expect(driftScore('perfect')).toBe(500)
   })
 
   it('完美起步窗口与烧胎判定互斥', () => {
@@ -96,8 +174,10 @@ describe('道具与锦标赛', () => {
 
   it('领先与落后玩家拥有不同道具池', () => {
     expect(itemPoolForRank(1, 4)).toContain('roadblock')
-    expect(itemPoolForRank(4, 4)).toContain('swap')
-    expect(itemPoolForRank(1, 4)).not.toContain('swap')
+    expect(itemPoolForRank(4, 4).filter((item) => item === 'nitro')).toHaveLength(2)
+    expect(Object.values([itemPoolForRank(1, 4), itemPoolForRank(4, 4)]).flat()).not.toContain(
+      'swap',
+    )
   })
 
   it('锦标赛按积分、冠军数、总时间排序', () => {

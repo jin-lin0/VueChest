@@ -7,6 +7,7 @@ export const TRACK_ENVIRONMENT_URLS: Record<FixedTrackId, string> = {
   forest: '/assets/racing/forest/tief_etz_1k.hdr',
   desert: '/assets/racing/desert/quarry_01_1k.hdr',
   snow: '/assets/racing/snow/snowy_field_1k.hdr',
+  ridge: '/assets/racing/snow/snowy_field_1k.hdr',
 }
 
 const TRACK_PROP_URLS: Record<FixedTrackId, [string, string]> = {
@@ -19,6 +20,7 @@ const TRACK_PROP_URLS: Record<FixedTrackId, [string, string]> = {
     '/assets/racing/props/desert/rock-tall.glb',
   ],
   snow: ['/assets/racing/props/snow/tree-snow-a.glb', '/assets/racing/props/snow/rocks-large.glb'],
+  ridge: ['/assets/racing/props/snow/tree-snow-a.glb', '/assets/racing/props/snow/rocks-large.glb'],
 }
 
 const COMMON_PROP_URLS = [

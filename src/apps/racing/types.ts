@@ -23,10 +23,14 @@ export interface PlayerData {
   driftCharge: number
   /** 当前氮气能量 */
   nitro: number
+  /** 道具赛涡轮冲刺结束时刻（gameTime 秒） */
+  boostUntil: number
   /** 道具乱斗单道具槽 */
   heldItem: ItemId | null
   /** 护盾可抵挡的攻击次数 */
   shieldHits: number
+  /** 护盾结束时刻（gameTime 秒） */
+  shieldUntil: number
   /** HUD 干扰结束时刻 */
   jammedUntil: number
   /** 手动重置等产生的时间惩罚 */
@@ -49,15 +53,28 @@ export function createPlayerData(): PlayerData {
     eliminated: false,
     driftCharge: 0,
     nitro: 40,
+    boostUntil: 0,
     heldItem: null,
     shieldHits: 0,
+    shieldUntil: 0,
     jammedUntil: 0,
     penaltyTime: 0,
   }
 }
 
+/** 仍参与驾驶、碰撞和道具交互的赛车。 */
+export function isRacerActive(data: PlayerData): boolean {
+  return !data.finished && !data.eliminated
+}
+
 /** 重置一场比赛所需的玩家状态（保留对象引用以维持响应式）。 */
-export function resetPlayerData(data: PlayerData, x: number, z: number, rotation: number, checkpointCount: number): void {
+export function resetPlayerData(
+  data: PlayerData,
+  x: number,
+  z: number,
+  rotation: number,
+  checkpointCount: number,
+): void {
   data.position = { x, z }
   data.rotation = rotation
   data.speed = 0
@@ -72,8 +89,10 @@ export function resetPlayerData(data: PlayerData, x: number, z: number, rotation
   data.eliminated = false
   data.driftCharge = 0
   data.nitro = 40
+  data.boostUntil = 0
   data.heldItem = null
   data.shieldHits = 0
+  data.shieldUntil = 0
   data.jammedUntil = 0
   data.penaltyTime = 0
 }

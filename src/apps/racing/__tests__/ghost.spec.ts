@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { GhostRecorder, interpolateGhost, loadGhost, saveGhost } from '../ghost'
+import { GhostRecorder, interpolateGhost, isGhostLap, loadGhost, saveGhost } from '../ghost'
 
 describe('幽灵车', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -26,9 +26,30 @@ describe('幽灵车', () => {
     expect(value?.speed).toBeCloseTo(30)
   })
 
+  it('接受极夜回环的新版幽灵记录', () => {
+    expect(
+      isGhostLap({
+        version: 2,
+        trackId: 'ridge',
+        carId: 1,
+        lapTime: 47,
+        frames: [
+          { time: 0, x: 0, z: 0, rotation: 0, speed: 0 },
+          { time: 1, x: 1, z: 1, rotation: 0, speed: 1 },
+        ],
+      }),
+    ).toBe(true)
+  })
+
   it('IndexedDB 不可用时安静回退', async () => {
-    vi.stubGlobal('indexedDB', { open: () => { throw new Error('disabled') } })
+    vi.stubGlobal('indexedDB', {
+      open: () => {
+        throw new Error('disabled')
+      },
+    })
     await expect(loadGhost('forest', 1)).resolves.toBeNull()
-    await expect(saveGhost({ version: 1, trackId: 'forest', carId: 1, lapTime: 30, frames: [] })).resolves.toBeUndefined()
+    await expect(
+      saveGhost({ version: 2, trackId: 'forest', carId: 1, lapTime: 30, frames: [] }),
+    ).resolves.toBeUndefined()
   })
 })

@@ -1,7 +1,7 @@
 import type { Difficulty, Medal } from './game'
 
 export type DriftLevel = 'none' | 'good' | 'great' | 'perfect'
-export type ItemId = 'nitro' | 'shield' | 'missile' | 'magnet' | 'oil' | 'roadblock' | 'jammer' | 'swap'
+export type ItemId = 'nitro' | 'shield' | 'missile' | 'magnet' | 'oil' | 'roadblock' | 'jammer'
 
 export interface ComboState {
   value: number
@@ -15,7 +15,7 @@ export interface ChampionshipEntry {
   totalTime: number
 }
 
-export const DRIFT_THRESHOLDS = { good: 25, great: 55, perfect: 90 } as const
+export const DRIFT_THRESHOLDS = { good: 12, great: 30, perfect: 50 } as const
 
 export function driftLevel(charge: number): DriftLevel {
   if (charge >= DRIFT_THRESHOLDS.perfect) return 'perfect'
@@ -31,7 +31,17 @@ export function driftBoostMultiplier(level: DriftLevel): number {
   return 1
 }
 
-export function perfectStart(offsetSeconds: number, windowSeconds = 0.15): 'perfect' | 'burnout' | 'normal' {
+export function driftScore(level: DriftLevel): number {
+  if (level === 'perfect') return 500
+  if (level === 'great') return 260
+  if (level === 'good') return 120
+  return 0
+}
+
+export function perfectStart(
+  offsetSeconds: number,
+  windowSeconds = 0.15,
+): 'perfect' | 'burnout' | 'normal' {
   if (Math.abs(offsetSeconds) <= windowSeconds) return 'perfect'
   if (offsetSeconds < -windowSeconds) return 'burnout'
   return 'normal'
@@ -61,7 +71,7 @@ export function addCombo(state: ComboState, amount = 1): ComboState {
 const ITEM_POOLS: Record<'leader' | 'middle' | 'trailing', ItemId[]> = {
   leader: ['shield', 'oil', 'roadblock', 'nitro', 'shield', 'oil'],
   middle: ['missile', 'magnet', 'nitro', 'shield', 'oil', 'jammer'],
-  trailing: ['nitro', 'nitro', 'missile', 'swap', 'magnet', 'jammer'],
+  trailing: ['nitro', 'nitro', 'missile', 'missile', 'magnet', 'jammer'],
 }
 
 export function itemPoolForRank(rank: number, total: number): ItemId[] {

@@ -91,8 +91,12 @@ export const RACING_PHYSICS = {
 export const RACING_DRIFT = {
   TURN_MULTIPLIER: 1.8, // 漂移时转向增强
   SPEED_RETENTION: 0.997, // 漂移时速度保持率（每帧 60fps 基准，≈每秒保留 84%）
-  EXIT_BOOST: 1.15, // 出弯时速度提升
   MIN_DRIFT_SPEED: 8, // 进入漂移的最低速度
+  CHARGE_RATE: 55, // 漂移等级蓄力；组合弯可到 GREAT，长弯可到 PERFECT
+  NITRO_GAIN_RATE: 22, // 满速漂移每秒直接获得的氮气
+  NITRO_DRAIN_RATE: 26, // 常规氮气每秒消耗，车辆 nitroDrain 再做个性修正
+  ITEM_BOOST_DURATION: 2.4, // 道具赛“涡轮冲刺”持续时间
+  BOOST_MAX_SPEED_MULTIPLIER: 1.35,
   MAX_TIRE_MARKS: 200, // 最大轮胎痕迹数量
   TIRE_MARK_INTERVAL: 0.05, // 痕迹生成间隔（秒）
 } as const
@@ -110,13 +114,15 @@ export const RACING_TRACK = {
 export const RACING_AI = {
   COUNT: 3, // AI 数量
   LOOKAHEAD: 3, // 前瞻分段数（越大走线越平滑）
-  TURN_RATE: 2.6, // 转向角速度基准（rad/s）
-  CURVE_SLOWDOWN: 1.1, // 弯道减速系数（乘在转向偏差上）
-  MIN_SPEED_RATIO: 0.35, // 弯中最低速度比例
+  CURVE_SLOWDOWN: 0.72, // 非漂移弯道减速系数
+  MIN_SPEED_RATIO: 0.52, // 非漂移弯中最低速度比例
   RUBBER_BAND_GAP: 18, // 橡皮筋触发进度差（分段）
   RUBBER_BAND_UP: 1.12, // 落后玩家时的提速
   RUBBER_BAND_DOWN: 0.9, // 领先玩家时的放水
-  MAX_OFF_TRACK: 8, // 偏离中心线超过该距离则回拉
+  STUCK_TIMEOUT: 3, // 持续无有效进度达到该秒数后自动复位
+  RESET_COOLDOWN: 4, // 复位后的检测宽限期
+  RESET_PENALTY: 2.5, // 与玩家手动复位相同的罚时
+  MIN_PROGRESS_DELTA: 0.15, // 视为有效前进的最小赛道分段进度
 } as const
 
 /** 跟随相机参数。 */

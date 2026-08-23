@@ -147,7 +147,9 @@ const isLockedRace = computed(() => ['time-trial', 'knockout', 'item-battle', 'c
       <span>·</span>
       <span>{{ model.laps }} 圈</span>
     </div>
-    <p v-if="model.aiCount > 0" class="ai-roster">AI 性格：进攻 · 稳健 · 漂移 · 极速</p>
+    <p v-if="model.aiCount > 0" class="ai-roster">
+      同车辆物理 · AI 性格：进攻 · 稳健 · 漂移 · 极速
+    </p>
 
     <button type="button" class="launch-btn" @click="emit('start')">
       <span>进入赛道</span>

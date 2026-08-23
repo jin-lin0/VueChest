@@ -1,0 +1,13 @@
+{
+  "id": "ridge",
+  "name": "极夜回环",
+  "environment": "/assets/racing/snow/snowy_field_1k.hdr",
+  "props": [
+    "/assets/racing/props/snow/tree-snow-a.glb",
+    "/assets/racing/props/snow/rocks-large.glb",
+    "/assets/racing/props/common/bannerTowerRed.glb",
+    "/assets/racing/props/common/grandStandCovered.glb"
+  ],
+  "source": "https://polyhaven.com/a/snowy_field",
+  "license": "CC0"
+}

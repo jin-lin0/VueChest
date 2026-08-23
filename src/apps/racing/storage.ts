@@ -107,7 +107,7 @@ export function loadRaceConfig(): RaceConfig {
   )
     ? (o.mode as RaceConfig['mode'])
     : DEFAULT_RACE_CONFIG.mode
-  const trackId = ['forest', 'desert', 'snow', 'random'].includes(String(o.trackId))
+  const trackId = ['forest', 'desert', 'snow', 'ridge', 'random'].includes(String(o.trackId))
     ? (o.trackId as RaceConfig['trackId'])
     : DEFAULT_RACE_CONFIG.trackId
   const difficulty = ['casual', 'standard', 'expert'].includes(String(o.difficulty))
@@ -141,7 +141,10 @@ export function loadRacingSave(): RacingSaveV1 {
       if (!raw || typeof raw !== 'object') continue
       const r = raw as Record<string, unknown>
       if (
-        (r.trackId !== 'forest' && r.trackId !== 'desert' && r.trackId !== 'snow') ||
+        (r.trackId !== 'forest' &&
+          r.trackId !== 'desert' &&
+          r.trackId !== 'snow' &&
+          r.trackId !== 'ridge') ||
         typeof r.carId !== 'number'
       )
         continue

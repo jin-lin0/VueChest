@@ -27,20 +27,30 @@ export interface TrackBuild {
   collectibles: Collectible[]
 }
 
+/** 检查点按赛道顺序排布，最后一个固定落在起终点，用它完成圈数结算。 */
+export function checkpointPointIndices(pointCount: number, checkpointCount: number): number[] {
+  return Array.from(
+    { length: checkpointCount },
+    (_, index) => Math.floor(((index + 1) / checkpointCount) * pointCount) % pointCount,
+  )
+}
+
 /** 生成带随机扰动的环形赛道中心线（与原有一致的正弦叠加，限制弯密度）。 */
 export function generateTrackPoints(definition?: TrackDefinition): THREE.Vector3[] {
   const points: THREE.Vector3[] = []
-  const segments = RACING_TRACK.SEGMENTS
+  const segments = definition?.id === 'ridge' ? 72 : RACING_TRACK.SEGMENTS
   const radius = RACING_TRACK.RADIUS
   const random = definition ? seededRandom(definition.seed) : Math.random
   const profile =
-    definition?.id === 'desert'
-      ? { wave1: 18, wave2: 14, freq1: 3, freq2: 5 }
-      : definition?.id === 'snow'
-        ? { wave1: 8, wave2: 12, freq1: 2, freq2: 4 }
-        : definition?.id === 'forest'
-          ? { wave1: 12, wave2: 9, freq1: 2, freq2: 3 }
-          : { wave1: 10 + random() * 10, wave2: 8 + random() * 10, freq1: 2, freq2: 3 }
+    definition?.id === 'ridge'
+      ? { wave1: 7, wave2: 10, freq1: 5, freq2: 6 }
+      : definition?.id === 'desert'
+        ? { wave1: 14, wave2: 9, freq1: 3, freq2: 4 }
+        : definition?.id === 'snow'
+          ? { wave1: 8, wave2: 12, freq1: 2, freq2: 4 }
+          : definition?.id === 'forest'
+            ? { wave1: 10, wave2: 8, freq1: 3, freq2: 4 }
+            : { wave1: 10 + random() * 10, wave2: 8 + random() * 10, freq1: 2, freq2: 3 }
   const phase1 = random() * Math.PI * 2
   const phase2 = random() * Math.PI * 2
 
@@ -73,14 +83,52 @@ export interface TrackQuery {
   segParam: number
 }
 
-/** 查询 (x,z) 到赛道中心线的最近距离与所在线段（碰撞 & 名次进度共用）。 */
+/** 玩家与 AI 共用的赛道边界判定。 */
+export function isOutsideTrack(
+  points: THREE.Vector3[],
+  x: number,
+  z: number,
+  trackWidth: number,
+  carHalfWidth = 1,
+): boolean {
+  return queryTrack(points, x, z).dist > trackWidth / 2 - carHalfWidth
+}
+
+/**
+ * 折线顶点的斜接偏移点。相比直接取下一段法线，急弯两侧不会出现裂缝或翻折。
+ */
+export function trackOffsetAt(points: THREE.Vector3[], i: number, offset: number): THREE.Vector3 {
+  const n = points.length
+  const previous = trackFrameAt(points, (i - 1 + n) % n)
+  const current = trackFrameAt(points, i)
+  const miter = previous.perp.clone().add(current.perp)
+  if (miter.lengthSq() < 1e-8) return points[i].clone().addScaledVector(current.perp, offset)
+  miter.normalize()
+  const scale = offset / Math.max(0.35, miter.dot(current.perp))
+  return points[i].clone().addScaledVector(miter, scale)
+}
+
+/** 查询 (x,z) 到整条赛道中心线的最近距离与所在线段（主要用于碰撞）。 */
 export function queryTrack(points: THREE.Vector3[], x: number, z: number): TrackQuery {
+  return queryTrackRange(points, x, z, 0, points.length)
+}
+
+/**
+ * 只在指定的不跨圈线段区间内查询。比赛进度用当前检查点区间约束，避免组合弯误跳段。
+ */
+export function queryTrackRange(
+  points: THREE.Vector3[],
+  x: number,
+  z: number,
+  startIndex: number,
+  endIndex: number,
+): TrackQuery {
   let minDist = Infinity
-  let segIndex = 0
+  let segIndex = startIndex
   let segParam = 0
   const n = points.length
 
-  for (let i = 0; i < n; i++) {
+  for (let i = startIndex; i < endIndex; i++) {
     const current = points[i]
     const next = points[(i + 1) % n]
     const A = x - current.x
@@ -130,14 +178,14 @@ function buildStrip(
   const white = new THREE.Color(0xffffff)
 
   for (let i = 0; i < n; i++) {
-    const { perp } = trackFrameAt(points, i)
-    const p = points[i]
-    positions[i * 2 * 3 + 0] = p.x + perp.x * offsetA
+    const pointA = trackOffsetAt(points, i, offsetA)
+    const pointB = trackOffsetAt(points, i, offsetB)
+    positions[i * 2 * 3 + 0] = pointA.x
     positions[i * 2 * 3 + 1] = y
-    positions[i * 2 * 3 + 2] = p.z + perp.z * offsetA
-    positions[(i * 2 + 1) * 3 + 0] = p.x + perp.x * offsetB
+    positions[i * 2 * 3 + 2] = pointA.z
+    positions[(i * 2 + 1) * 3 + 0] = pointB.x
     positions[(i * 2 + 1) * 3 + 1] = y
-    positions[(i * 2 + 1) * 3 + 2] = p.z + perp.z * offsetB
+    positions[(i * 2 + 1) * 3 + 2] = pointB.z
 
     const c = colorAt ? colorAt(i) : white
     colors[i * 2 * 3 + 0] = c.r
@@ -160,6 +208,34 @@ function buildStrip(
   for (let i = 0; i < n * 2; i++) normals[i * 3 + 1] = 1
   geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3))
   return geo
+}
+
+/** 沿路面边缘生成连续竖直墙体，避免长方体墙段在急弯处互相穿插或留缝。 */
+function buildWallGeometry(
+  points: THREE.Vector3[],
+  offset: number,
+  height: number,
+): THREE.BufferGeometry {
+  const n = points.length
+  const positions = new Float32Array(n * 2 * 3)
+  const indices: number[] = []
+  for (let i = 0; i < n; i++) {
+    const point = trackOffsetAt(points, i, offset)
+    positions[i * 6] = point.x
+    positions[i * 6 + 1] = 0
+    positions[i * 6 + 2] = point.z
+    positions[i * 6 + 3] = point.x
+    positions[i * 6 + 4] = height
+    positions[i * 6 + 5] = point.z
+    const next = (i + 1) % n
+    indices.push(i * 2, next * 2, i * 2 + 1)
+    indices.push(i * 2 + 1, next * 2, next * 2 + 1)
+  }
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.setIndex(indices)
+  geometry.computeVertexNormals()
+  return geometry
 }
 
 /** 起跑线黑白格贴图（Canvas 程序化生成）。 */
@@ -216,6 +292,14 @@ export function buildTrack(
       center: 0xcdf7ff,
       wall: 0x91b5d4,
       gate: 0x71ebff,
+    },
+    ridge: {
+      road: 0x272a3d,
+      curbA: 0xf5d76e,
+      curbB: 0xa45cff,
+      center: 0xd7c7ff,
+      wall: 0x4d4a68,
+      gate: 0xc58cff,
     },
   }[theme]
 
@@ -279,28 +363,22 @@ export function buildTrack(
   startLine.rotation.y = Math.atan2(-startPerp.z, startPerp.x)
   scene.add(startLine)
 
-  // 围墙：长度跟随真实分段，不再有缺口
+  // 连续围墙：与路面共用斜接边界，不再用长方体墙段拼接。
   const wallMeshes: THREE.Mesh[] = []
   const wallHeight = RACING_TRACK.WALL_HEIGHT
-  const wallMat = new THREE.MeshStandardMaterial({ color: trackStyle.wall, roughness: 0.85 })
-  for (let i = 0; i < trackPoints.length; i++) {
-    const p = trackPoints[i]
-    const { dir, perp } = trackFrameAt(trackPoints, i)
-    const segLen = trackPoints[(i + 1) % trackPoints.length].distanceTo(p) + 0.4
-    for (const side of [1, -1]) {
-      const geo = new THREE.BoxGeometry(0.6, wallHeight, segLen)
-      const wall = new THREE.Mesh(geo, wallMat)
-      wall.position.set(
-        p.x + perp.x * (halfWidth + 0.5) * side,
-        wallHeight / 2,
-        p.z + perp.z * (halfWidth + 0.5) * side,
-      )
-      wall.lookAt(wall.position.clone().add(dir))
-      // 不投影：120 段围墙进阴影 pass 太贵，只接收阴影
-      wall.receiveShadow = true
-      scene.add(wall)
-      wallMeshes.push(wall)
-    }
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: trackStyle.wall,
+    roughness: 0.85,
+    side: THREE.DoubleSide,
+  })
+  for (const side of [1, -1]) {
+    const wall = new THREE.Mesh(
+      buildWallGeometry(trackPoints, (halfWidth + 0.5) * side, wallHeight),
+      wallMat,
+    )
+    wall.receiveShadow = true
+    scene.add(wall)
+    wallMeshes.push(wall)
   }
   void startDir
 
@@ -309,8 +387,9 @@ export function buildTrack(
   const gates: CheckpointGate[] = []
   const pillarGeo = new THREE.BoxGeometry(0.5, 6, 0.5)
   const barGeo = new THREE.BoxGeometry(trackWidth - 1, 0.6, 0.6)
+  const checkpointIndices = checkpointPointIndices(trackPoints.length, checkpointCount)
   for (let i = 0; i < checkpointCount; i++) {
-    const index = Math.floor((i / checkpointCount) * trackPoints.length)
+    const index = checkpointIndices[i]
     const point = trackPoints[index]
     checkpoints.push(point.clone())
 
@@ -402,7 +481,7 @@ export function buildEnvironment(
   // 树
   const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 3)
   const trunkMat = new THREE.MeshStandardMaterial({
-    color: theme === 'snow' ? 0x6b5b52 : 0x8b4513,
+    color: theme === 'snow' || theme === 'ridge' ? 0x6b5b52 : 0x8b4513,
     roughness: 0.9,
   })
   const leavesGeo = new THREE.ConeGeometry(2, 4, 8)
@@ -411,11 +490,13 @@ export function buildEnvironment(
       ? [0x7f8b3a, 0xa6883a, 0x6f7930]
       : theme === 'snow'
         ? [0xe9f4ff, 0xb8d3e6, 0xf7fbff]
-        : [0x228b22, 0x2e9e2e, 0x1e7d32]
+        : theme === 'ridge'
+          ? [0xc8d2e8, 0x7784aa, 0xa8b3cf]
+          : [0x228b22, 0x2e9e2e, 0x1e7d32]
   const leafMats = leafColors.map(
     (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 }),
   )
-  const treeCount = theme === 'desert' ? 10 : theme === 'snow' ? 74 : 96
+  const treeCount = theme === 'desert' ? 10 : theme === 'snow' ? 74 : theme === 'ridge' ? 52 : 96
   for (let i = 0; i < Math.round(treeCount * density); i++) {
     const tree = new THREE.Group()
     const trunk = new THREE.Mesh(trunkGeo, trunkMat)
@@ -443,7 +524,7 @@ export function buildEnvironment(
         color:
           theme === 'desert'
             ? new THREE.Color().setHSL(0.06 + random() * 0.04, 0.45, 0.42 + random() * 0.18)
-            : theme === 'snow'
+            : theme === 'snow' || theme === 'ridge'
               ? new THREE.Color().setHSL(0.58 + random() * 0.08, 0.2, 0.65 + random() * 0.18)
               : new THREE.Color().setHSL(0.55 + random() * 0.1, 0.15, 0.45 + random() * 0.2),
         roughness: 0.7,
@@ -458,12 +539,19 @@ export function buildEnvironment(
 
   // 云（几坨压扁的白色球）
   const cloudMat = new THREE.MeshStandardMaterial({
-    color: theme === 'desert' ? 0xffd5a3 : theme === 'snow' ? 0xe6f5ff : 0xffffff,
+    color:
+      theme === 'desert'
+        ? 0xffd5a3
+        : theme === 'snow'
+          ? 0xe6f5ff
+          : theme === 'ridge'
+            ? 0xc6cce0
+            : 0xffffff,
     roughness: 1,
     transparent: true,
-    opacity: theme === 'desert' ? 0.58 : 0.9,
+    opacity: theme === 'desert' ? 0.58 : theme === 'ridge' ? 0.66 : 0.9,
   })
-  const cloudCount = theme === 'desert' ? 5 : 12
+  const cloudCount = theme === 'desert' ? 5 : theme === 'ridge' ? 8 : 12
   for (let i = 0; i < Math.round(cloudCount * density); i++) {
     const cloud = new THREE.Group()
     const puffs = 2 + Math.floor(random() * 3)
@@ -482,7 +570,14 @@ export function buildEnvironment(
 
   // 远山剪影
   const mountainMat = new THREE.MeshStandardMaterial({
-    color: theme === 'desert' ? 0x9d4f32 : theme === 'snow' ? 0xa9c9e5 : 0x526d62,
+    color:
+      theme === 'desert'
+        ? 0x9d4f32
+        : theme === 'snow'
+          ? 0xa9c9e5
+          : theme === 'ridge'
+            ? 0x444a69
+            : 0x526d62,
     roughness: 1,
   })
   for (let i = 0; i < Math.round(14 * density); i++) {

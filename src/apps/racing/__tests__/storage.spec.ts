@@ -32,7 +32,11 @@ describe('赛车存档', () => {
 
   it('设置字段会夹到安全范围', () => {
     installStorage({
-      'racing:settings:v1': JSON.stringify({ steeringSensitivity: 9, masterVolume: -2, particles: 999 }),
+      'racing:settings:v1': JSON.stringify({
+        steeringSensitivity: 9,
+        masterVolume: -2,
+        particles: 999,
+      }),
     })
     const settings = loadRacingSettings()
     expect(settings.steeringSensitivity).toBe(1.5)
@@ -42,14 +46,53 @@ describe('赛车存档', () => {
 
   it('非法比赛配置回退安全默认值，写入失败不阻断游戏', () => {
     installStorage({
-      'racing:config:v1': JSON.stringify({ mode: 'unknown', trackId: 'moon', laps: 99, aiCount: 12 }),
+      'racing:config:v1': JSON.stringify({
+        mode: 'unknown',
+        trackId: 'moon',
+        laps: 99,
+        aiCount: 12,
+      }),
     })
-    expect(loadRaceConfig()).toMatchObject({ mode: 'quick', trackId: 'forest', laps: 3, aiCount: 3 })
+    expect(loadRaceConfig()).toMatchObject({
+      mode: 'quick',
+      trackId: 'forest',
+      laps: 3,
+      aiCount: 3,
+    })
     vi.stubGlobal('localStorage', {
       getItem: () => null,
-      setItem: () => { throw new Error('quota') },
+      setItem: () => {
+        throw new Error('quota')
+      },
     })
     expect(() => saveRacingSettings(loadRacingSettings())).not.toThrow()
+  })
+
+  it('高难赛道配置和纪录可以持久化读取', () => {
+    installStorage({
+      'racing:config:v1': JSON.stringify({
+        mode: 'quick',
+        trackId: 'ridge',
+        difficulty: 'expert',
+        laps: 3,
+        aiCount: 3,
+        localPlayers: 1,
+      }),
+      'racing:save:v1': JSON.stringify({
+        ...DEFAULT_RACING_SAVE,
+        records: {
+          'ridge:1': {
+            trackId: 'ridge',
+            carId: 1,
+            bestLap: 52,
+            bestTotal: 160,
+            medal: 'silver',
+          },
+        },
+      }),
+    })
+    expect(loadRaceConfig().trackId).toBe('ridge')
+    expect(loadRacingSave().records['ridge:1']?.medal).toBe('silver')
   })
 
   it('只保留更快纪录并按三条赛道奖牌解锁外观', () => {

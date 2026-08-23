@@ -1,11 +1,17 @@
 export type RaceMode = 'quick' | 'time-trial' | 'knockout' | 'item-battle' | 'championship'
-export type TrackId = 'forest' | 'desert' | 'snow' | 'random'
+export type TrackId = 'forest' | 'desert' | 'snow' | 'ridge' | 'random'
 export type FixedTrackId = Exclude<TrackId, 'random'>
 export type Difficulty = 'casual' | 'standard' | 'expert'
 export type QualityPreset = 'low' | 'medium' | 'high'
 export type GhostMode = 'personal' | 'gold' | 'off'
 export type Medal = 'none' | 'bronze' | 'silver' | 'gold'
-export type LiveryId = 'classic' | 'duotone' | 'sandstorm' | 'glacier' | 'champion-metal' | 'champion-stripe'
+export type LiveryId =
+  | 'classic'
+  | 'duotone'
+  | 'sandstorm'
+  | 'glacier'
+  | 'champion-metal'
+  | 'champion-stripe'
 
 export interface RaceConfig {
   mode: RaceMode
@@ -96,6 +102,21 @@ export const TRACKS: Record<FixedTrackId, TrackDefinition> = {
     accent: '#7de7ff',
     difficulty: '高速',
   },
+  ridge: {
+    id: 'ridge',
+    name: '极夜回环',
+    subtitle: '连续 S 弯 · 复合急弯 · 极窄路面',
+    seed: 2718,
+    width: 13,
+    checkpoints: 8,
+    medalLapTimes: { bronze: 62, silver: 53, gold: 47 },
+    assetManifest: '/assets/racing/ridge/manifest.json',
+    sky: 0x182444,
+    fog: 0x26365e,
+    ground: 0x18203a,
+    accent: '#c58cff',
+    difficulty: '专家',
+  },
 }
 
 export const DEFAULT_RACE_CONFIG: RaceConfig = {
@@ -150,7 +171,13 @@ export const MODE_LABELS: Record<RaceMode, { label: string; description: string 
 
 export function normalizeRaceConfig(config: RaceConfig): RaceConfig {
   if (config.mode === 'time-trial') {
-    return { ...config, localPlayers: 1, aiCount: 0, laps: 3, trackId: config.trackId === 'random' ? 'forest' : config.trackId }
+    return {
+      ...config,
+      localPlayers: 1,
+      aiCount: 0,
+      laps: 3,
+      trackId: config.trackId === 'random' ? 'forest' : config.trackId,
+    }
   }
   if (config.mode === 'knockout') {
     return { ...config, localPlayers: 1, aiCount: 3, laps: 3 }

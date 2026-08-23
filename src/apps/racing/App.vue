@@ -65,20 +65,6 @@
         <button class="edge-btn next" @click="nextCar(1)">›</button>
       </template>
 
-      <!-- 车位标签（悬浮在 3D 车上方） -->
-      <div class="showroom-tags">
-        <span class="showroom-tag" :style="{ '--car-color': currentCar.color }">
-          {{ gameMode === 'multi' ? `P1 · ${currentCar.name}` : currentCar.name }}
-        </span>
-        <span
-          v-if="gameMode === 'multi'"
-          class="showroom-tag"
-          :style="{ '--car-color': currentCar2.color }"
-        >
-          P2 · {{ currentCar2.name }}
-        </span>
-      </div>
-
       <!-- 底部玻璃坞站 -->
       <div class="menu-dock">
         <div :class="['dock-grid', { multi: gameMode === 'multi' }]">
@@ -277,7 +263,11 @@
         </div>
 
         <div class="race-tech-bar">
-          <div class="tech-meter nitro-meter" aria-label="氮气能量">
+          <div
+            v-if="raceConfig.mode !== 'item-battle'"
+            class="tech-meter nitro-meter"
+            aria-label="氮气能量"
+          >
             <span>氮气</span>
             <div><i :style="{ width: `${nitroPercent}%` }"></i></div>
             <b>{{ Math.round(player1Data.nitro) }}</b>
@@ -317,7 +307,7 @@
               <span class="speed-unit">KM/H</span>
             </div>
             <div class="lap-info small">圈数: {{ player1Data.currentLap }}/{{ totalLaps }}</div>
-            <div class="split-meter">
+            <div v-if="raceConfig.mode !== 'item-battle'" class="split-meter">
               <i :style="{ width: `${playerNitroPercent(player1Data, 1)}%` }"></i>
             </div>
             <button
@@ -337,7 +327,7 @@
               <span class="speed-unit">KM/H</span>
             </div>
             <div class="lap-info small">圈数: {{ player2Data.currentLap }}/{{ totalLaps }}</div>
-            <div class="split-meter">
+            <div v-if="raceConfig.mode !== 'item-battle'" class="split-meter">
               <i :style="{ width: `${playerNitroPercent(player2Data, 2)}%` }"></i>
             </div>
             <button
@@ -595,6 +585,7 @@ import {
   buildTrack,
   buildEnvironment,
   disposeObject,
+  isOutsideTrack,
   queryTrack,
   trackFrameAt,
   type Collectible,
@@ -611,7 +602,7 @@ import { CarShowroom } from './showroom'
 import { ParticleSystem } from './particles'
 import { racingAudio } from './audio'
 import { updateAI, raceProgress, type AICarState } from './ai'
-import { createPlayerData, resetPlayerData, type PlayerData } from './types'
+import { createPlayerData, isRacerActive, resetPlayerData, type PlayerData } from './types'
 import RaceSetup from './components/RaceSetup.vue'
 import RacingSettingsPanel from './components/RacingSettingsPanel.vue'
 import {
@@ -630,6 +621,7 @@ import {
   championshipPoints,
   driftBoostMultiplier,
   driftLevel,
+  driftScore,
   pickItem,
   perfectStart,
   resolveHit,
@@ -722,14 +714,13 @@ const medalLabel = computed(
   () => ({ none: '未获奖牌', bronze: '铜牌', silver: '银牌', gold: '金牌' })[earnedMedal.value],
 )
 const ITEM_LABELS: Record<ItemId, string> = {
-  nitro: '氮气补充',
+  nitro: '涡轮冲刺',
   shield: '护盾',
   missile: '追踪导弹',
   magnet: '磁铁',
   oil: '油渍',
   roadblock: '路障',
   jammer: '干扰器',
-  swap: '位置交换',
 }
 const LIVERY_LABELS: Record<string, string> = {
   duotone: '基础双色',
@@ -741,9 +732,9 @@ const LIVERY_LABELS: Record<string, string> = {
 const LIVERY_UNLOCK_HINTS: Record<LiveryId, string> = {
   classic: '默认可用',
   duotone: '获得任意一枚奖牌后解锁',
-  sandstorm: '三条固定赛道均获得铜牌后解锁',
-  glacier: '三条固定赛道均获得银牌后解锁',
-  'champion-metal': '三条固定赛道均获得金牌后解锁',
+  sandstorm: '任意三条固定赛道获得铜牌后解锁',
+  glacier: '任意三条固定赛道获得银牌后解锁',
+  'champion-metal': '任意三条固定赛道获得金牌后解锁',
   'champion-stripe': '赢得一次三站锦标赛后解锁',
 }
 const liveryOptions = computed(() =>
@@ -1385,12 +1376,17 @@ function initScene() {
       aiCars.push({
         data: createPlayerData(),
         mesh: meshes.group,
+        nitroFlame: meshes.nitroFlame,
         car: config,
         laneOffset: (i - (aiConfigs.length - 1) / 2) * 2.5,
         paceFactor: 0.96 + i * 0.025,
         personality: personalities[i % personalities.length],
+        isDrifting: false,
         mistakeTimer: 0,
         itemCooldown: 4 + i * 1.5,
+        stuckTimer: 0,
+        lastProgress: -Infinity,
+        resetCooldown: 0,
       })
     })
   }
@@ -1479,7 +1475,7 @@ function buildGoldGhost(trackId: FixedTrackId, carId: number): GhostLap {
       speed: (a.distanceTo(b) * trackPoints.length) / lapTimeValue,
     })
   }
-  return { version: 1, trackId, carId, lapTime: lapTimeValue, frames }
+  return { version: 2, trackId, carId, lapTime: lapTimeValue, frames }
 }
 
 async function prepareGhost() {
@@ -1527,8 +1523,7 @@ function updateGhostPlayback() {
 
 // 位置是否越出赛道边界（留出车身半宽余量；几何查询见 ./track 的 queryTrack）
 function isOffTrack(x: number, z: number): boolean {
-  const carHalfWidth = 1
-  return queryTrack(trackPoints, x, z).dist > activeTrackWidth.value / 2 - carHalfWidth
+  return isOutsideTrack(trackPoints, x, z, activeTrackWidth.value)
 }
 
 function checkCarCollision(
@@ -1608,9 +1603,11 @@ function useHeldItem(player: number) {
   if (!item) return
   data.heldItem = null
   if (item === 'nitro') {
-    const car = getSelectedCarData(player) || RACING_CARS[0]
-    data.nitro = Math.min(car.nitroCapacity, data.nitro + 60)
-    data.speed += 10
+    data.boostUntil = Math.max(data.boostUntil, gameTime.value) + RACING_DRIFT.ITEM_BOOST_DURATION
+    data.speed = Math.min(
+      data.speed + 12,
+      getCarMaxSpeed(player) * RACING_DRIFT.BOOST_MAX_SPEED_MULTIPLIER,
+    )
     racingAudio.nitro()
   } else if (item === 'shield') {
     activateShield(data, 8)
@@ -1630,30 +1627,6 @@ function useHeldItem(player: number) {
     if (target) {
       target.jammedUntil = gameTime.value + 4
       target.speed *= 0.86
-    }
-  } else if (item === 'swap') {
-    const targets =
-      gameMode.value === 'single'
-        ? aiCars.filter(
-            (ai) => raceProgress(trackPoints, ai.data) > raceProgress(trackPoints, data),
-          )
-        : []
-    const target =
-      gameMode.value === 'multi'
-        ? player === 1
-          ? player2Data
-          : player1Data
-        : targets.sort(
-            (a, b) => raceProgress(trackPoints, a.data) - raceProgress(trackPoints, b.data),
-          )[0]?.data
-    if (target) {
-      const own = { ...data.position, rotation: data.rotation, speed: data.speed }
-      data.position = { ...target.position }
-      data.rotation = target.rotation
-      data.speed = target.speed
-      target.position = { x: own.x, z: own.z }
-      target.rotation = own.rotation
-      target.speed = own.speed
     }
   }
   skillsUsed.value++
@@ -1736,39 +1709,29 @@ function updateAIItems(delta: number) {
     if (ai.data.heldItem === 'missile') {
       incomingWarningUntil.value = Math.max(incomingWarningUntil.value, gameTime.value + 1.35)
       trackTimeout(() => {
-        if (gameState.value !== 'playing') return
-        if (applyHit(player1Data, RACING_SCORE.MISSILE_HIT_SPEED_MULTIPLIER)) {
-          cameraShake = racingSettings.cameraShake ? RACING_CAMERA.SHAKE_MAX : 0
-          particles?.spawnSparks(
-            player1Data.position.x,
-            0.7,
-            player1Data.position.z,
-            particleCount(10),
-          )
-        }
+        if (gameState.value !== 'playing' || !isRacerActive(ai.data)) return
+        launchMissileFrom(ai.mesh, player1Data)
       }, 1200)
     } else if (ai.data.heldItem === 'jammer') {
       player1Data.jammedUntil = gameTime.value + 4
+      player1Data.speed *= 0.86
     } else if (ai.data.heldItem === 'nitro') {
-      ai.data.speed += 8
+      ai.data.boostUntil = gameTime.value + RACING_DRIFT.ITEM_BOOST_DURATION
+      ai.data.speed = Math.min(
+        ai.data.speed + 12,
+        (ai.car.speed / 5) * RACING_DRIFT.BOOST_MAX_SPEED_MULTIPLIER,
+      )
     } else if (ai.data.heldItem === 'oil' || ai.data.heldItem === 'roadblock') {
       deployObstacle(ai.data, ai.data.heldItem)
     } else if (ai.data.heldItem === 'shield') {
       ai.data.shieldHits = 1
+      ai.data.shieldUntil = gameTime.value + 8
     } else if (ai.data.heldItem === 'magnet') {
       const box = collectibles.find((item) => !item.collected && item.kind === 'item')
       if (box) {
         box.mesh.position.x += (ai.data.position.x - box.mesh.position.x) * 0.8
         box.mesh.position.z += (ai.data.position.z - box.mesh.position.z) * 0.8
       }
-    } else if (ai.data.heldItem === 'swap' && aiRank > 2) {
-      const own = { ...ai.data.position, rotation: ai.data.rotation, speed: ai.data.speed }
-      ai.data.position = { ...player1Data.position }
-      ai.data.rotation = player1Data.rotation
-      ai.data.speed = player1Data.speed
-      player1Data.position = { x: own.x, z: own.z }
-      player1Data.rotation = own.rotation
-      player1Data.speed = own.speed
     }
     ai.data.heldItem = null
   })
@@ -1826,7 +1789,7 @@ function launchMissile(player: number) {
   } else {
     let best = Infinity
     for (const ai of aiCars) {
-      if (ai.data.finished) continue
+      if (!isRacerActive(ai.data)) continue
       const dist = Math.hypot(
         ai.data.position.x - playerCar.position.x,
         ai.data.position.z - playerCar.position.z,
@@ -1838,6 +1801,20 @@ function launchMissile(player: number) {
     }
   }
 
+  launchMissileFrom(playerCar, targetData, (hit) => {
+    if (player === 1 && hit) {
+      score.value += RACING_SCORE.MISSILE_HIT_SCORE
+      awardTechnique(180, 8)
+    }
+  })
+}
+
+/** 玩家和 AI 共用同一个可见、可躲避、可被护盾抵挡的追踪导弹。 */
+function launchMissileFrom(
+  sourceCar: THREE.Object3D,
+  targetData: PlayerData | null,
+  onResolved?: (hit: boolean) => void,
+) {
   const missileGeometry = new THREE.ConeGeometry(0.3, 1.5)
   const missileMaterial = new THREE.MeshStandardMaterial({
     color: 0xff0000,
@@ -1845,16 +1822,21 @@ function launchMissile(player: number) {
     emissiveIntensity: 0.8,
   })
   const missile = new THREE.Mesh(missileGeometry, missileMaterial)
-  missile.position.copy(playerCar.position)
+  missile.position.copy(sourceCar.position)
   missile.position.y += 1
   missile.rotation.x = Math.PI / 2
   scene.add(missile)
   racingAudio.missile()
 
-  const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(playerCar.quaternion)
-  const missileSpeed = 1.6 // 每帧位移（约 96 单位/秒，比赛车快）
+  const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(sourceCar.quaternion)
+  const missileSpeed = 96 // 赛道单位/秒，比赛车快
+  let traveled = 0
+  let lastMissileFrame = performance.now()
 
-  const animateMissile = () => {
+  const animateMissile = (now: number) => {
+    const missileDelta = Math.min((now - lastMissileFrame) / 1000, 0.05)
+    lastMissileFrame = now
+    if (targetData && !isRacerActive(targetData)) targetData = null
     // 轻微追踪：每帧把方向朝目标修正 8%
     if (targetData) {
       const toTarget = new THREE.Vector3(
@@ -1865,7 +1847,9 @@ function launchMissile(player: number) {
       direction.lerp(toTarget, 0.08).normalize()
       missile.rotation.y = Math.atan2(direction.x, direction.z)
     }
-    missile.position.add(direction.clone().multiplyScalar(missileSpeed))
+    const step = missileSpeed * missileDelta
+    missile.position.add(direction.clone().multiplyScalar(step))
+    traveled += step
 
     if (targetData) {
       const distance = Math.hypot(
@@ -1876,25 +1860,26 @@ function launchMissile(player: number) {
         const hit = applyHit(targetData, RACING_SCORE.MISSILE_HIT_SPEED_MULTIPLIER)
         particles?.spawnSparks(targetData.position.x, 1, targetData.position.z, particleCount(14))
         if (hit) racingAudio.crash(0.8)
+        if (targetData === player1Data && hit) {
+          cameraShake = racingSettings.cameraShake ? RACING_CAMERA.SHAKE_MAX : 0
+        }
         scene.remove(missile)
         missileGeometry.dispose()
         missileMaterial.dispose()
-        if (player === 1 && hit) {
-          score.value += RACING_SCORE.MISSILE_HIT_SCORE
-          awardTechnique(180, 8)
-        }
+        onResolved?.(hit)
         return
       }
     }
-    if (missile.position.distanceTo(playerCar.position) < 120) {
+    if (traveled < 120) {
       trackRaf(animateMissile)
     } else {
       scene.remove(missile)
       missileGeometry.dispose()
       missileMaterial.dispose()
+      onResolved?.(false)
     }
   }
-  animateMissile()
+  animateMissile(performance.now())
 }
 
 function activateMagnet(playerData: PlayerData, duration: number) {
@@ -1939,6 +1924,7 @@ function activateShield(playerData: PlayerData, duration: number) {
   shieldActive = true
   shieldPlayerData = playerData
   playerData.shieldHits = 1
+  playerData.shieldUntil = gameTime.value + duration
 
   const shieldGeometry = new THREE.SphereGeometry(3, 16, 16)
   const shieldMaterial = new THREE.MeshStandardMaterial({
@@ -1968,7 +1954,10 @@ function activateShield(playerData: PlayerData, duration: number) {
 }
 
 function deactivateShield() {
-  if (shieldPlayerData) shieldPlayerData.shieldHits = 0
+  if (shieldPlayerData) {
+    shieldPlayerData.shieldHits = 0
+    shieldPlayerData.shieldUntil = 0
+  }
   shieldActive = false
   shieldPlayerData = null
   if (shieldMesh) {
@@ -2032,6 +2021,7 @@ function updateMinimap() {
     // AI 对手（灰点）
     ctx.fillStyle = '#aaaaaa'
     for (const ai of aiCars) {
+      if (ai.data.eliminated) continue
       const ax = (ai.data.position.x / 200) * 150 + 75
       const ay = (ai.data.position.z / 200) * 150 + 75
       ctx.beginPath()
@@ -2125,12 +2115,28 @@ function updatePlayer(
   delta: number,
 ) {
   if (playerData.eliminated || playerData.finished) return
+  if (
+    playerData.shieldHits > 0 &&
+    playerData.shieldUntil > 0 &&
+    gameTime.value >= playerData.shieldUntil
+  ) {
+    if (shieldPlayerData === playerData) deactivateShield()
+    else {
+      playerData.shieldHits = 0
+      playerData.shieldUntil = 0
+    }
+  }
   const carData = getSelectedCarData(playerNum) || RACING_CARS[0]
   const handling = getCarHandling(playerNum)
   const baseMaxSpeed = getCarMaxSpeed(playerNum)
   const canUseNitro = raceConfig.mode !== 'item-battle'
-  const isBoosting = canUseNitro && controls.action && playerData.speed > 1 && playerData.nitro > 0
-  const maxSpeedValue = isBoosting ? baseMaxSpeed * 1.35 : baseMaxSpeed
+  const tankBoosting =
+    canUseNitro && controls.action && playerData.speed > 1 && playerData.nitro > 0
+  const itemBoosting = playerData.boostUntil > gameTime.value
+  const isBoosting = tankBoosting || itemBoosting
+  const maxSpeedValue = isBoosting
+    ? baseMaxSpeed * RACING_DRIFT.BOOST_MAX_SPEED_MULTIPLIER
+    : baseMaxSpeed
   const speedRatio = Math.min(Math.abs(playerData.speed) / maxSpeedValue, 1)
 
   // 获取或初始化漂移状态
@@ -2156,21 +2162,26 @@ function updatePlayer(
   if (driftInterrupted) playerData.driftCharge = 0
 
   if (isDrifting) {
-    const chargeRate = 31 * carData.driftGain * Math.max(0.35, speedRatio)
+    const driftIntensity = carData.driftGain * Math.max(0.35, speedRatio)
+    const chargeRate = RACING_DRIFT.CHARGE_RATE * driftIntensity
     playerData.driftCharge = Math.min(100, playerData.driftCharge + chargeRate * delta)
+    if (canUseNitro) {
+      playerData.nitro = Math.min(
+        carData.nitroCapacity,
+        playerData.nitro + RACING_DRIFT.NITRO_GAIN_RATE * driftIntensity * delta,
+      )
+    }
   }
 
-  // 漂移出弯时按蓄力等级给小涡轮，并给氮气槽充能。
+  // 氮气在漂移过程中连续充入；出弯只结算速度倍率与技巧分。
   if (driftState.isDrifting && !isDrifting && !driftInterrupted) {
     const level = driftLevel(playerData.driftCharge)
     playerData.speed = Math.min(playerData.speed * driftBoostMultiplier(level), maxSpeedValue * 1.2)
     if (level !== 'none') {
-      const gain = level === 'perfect' ? 24 : level === 'great' ? 16 : 9
-      playerData.nitro = Math.min(carData.nitroCapacity, playerData.nitro + gain)
       const nextCombo = addCombo({ value: combo.value, idle: comboIdle.value })
       combo.value = nextCombo.value
       comboIdle.value = nextCombo.idle
-      score.value += gain * 10
+      score.value += driftScore(level)
     }
     playerData.driftCharge = 0
   }
@@ -2217,8 +2228,11 @@ function updatePlayer(
     }
   }
 
-  if (isBoosting) {
-    playerData.nitro = Math.max(0, playerData.nitro - 35 * carData.nitroDrain * delta)
+  if (tankBoosting) {
+    playerData.nitro = Math.max(
+      0,
+      playerData.nitro - RACING_DRIFT.NITRO_DRAIN_RATE * carData.nitroDrain * delta,
+    )
   }
   if (playerNum === 1) {
     boosting.value = isBoosting
@@ -2241,14 +2255,9 @@ function updatePlayer(
   const moveZ = Math.cos(playerData.rotation) * playerData.speed * delta
   const oldX = playerData.position.x
   const oldZ = playerData.position.z
-  const shieldOn = playerData.shieldHits > 0
-
-  if (shieldOn || !isOffTrack(oldX + moveX, oldZ + moveZ)) {
+  if (!isOffTrack(oldX + moveX, oldZ + moveZ)) {
     playerData.position.x = oldX + moveX
     playerData.position.z = oldZ + moveZ
-    if (shieldOn && isOffTrack(oldX + moveX, oldZ + moveZ)) {
-      playerData.speed *= 0.9
-    }
   } else if (!isOffTrack(oldX + moveX, oldZ)) {
     playerData.position.x = oldX + moveX
     playerData.speed *= Math.pow(RACING_PHYSICS.WALL_SLIDE_KEEP, delta * 60)
@@ -2413,7 +2422,10 @@ function eliminateLastRacer() {
 /** 单人冲线：算名次、奏乐、进结算。 */
 function finishSingleRace() {
   const playerProg = raceProgress(trackPoints, player1Data)
-  rank.value = 1 + aiCars.filter((a) => raceProgress(trackPoints, a.data) > playerProg).length
+  rank.value =
+    1 +
+    aiCars.filter((a) => !a.data.eliminated && raceProgress(trackPoints, a.data) > playerProg)
+      .length
   finalizeProgress()
   racingAudio.stopEngine()
   racingAudio.finish(rank.value === 1)
@@ -2569,6 +2581,7 @@ let carCollisionCooldown = 0
 function handleAICollisions(delta: number) {
   carCollisionCooldown = Math.max(0, carCollisionCooldown - delta)
   for (const ai of aiCars) {
+    if (!isRacerActive(ai.data)) continue
     const distance = Math.hypot(
       player1Data.position.x - ai.data.position.x,
       player1Data.position.z - ai.data.position.z,
@@ -2784,6 +2797,8 @@ function gameLoop() {
           delta,
           totalLaps: totalLaps.value,
           gameTime: gameTime.value,
+          trackWidth: activeTrackWidth.value,
+          allowTankNitro: raceConfig.mode !== 'item-battle',
           playerProgress,
           difficulty: raceConfig.difficulty,
         })
@@ -2794,7 +2809,10 @@ function gameLoop() {
 
       // 实时名次
       rank.value =
-        1 + aiCars.filter((a) => raceProgress(trackPoints, a.data) > playerProgress).length
+        1 +
+        aiCars.filter(
+          (a) => !a.data.eliminated && raceProgress(trackPoints, a.data) > playerProgress,
+        ).length
       if (rank.value < previousRank.value) awardTechnique(200, 10)
       previousRank.value = rank.value
 
@@ -3390,40 +3408,6 @@ canvas {
   to {
     transform: rotate(360deg);
   }
-}
-
-.showroom-tags {
-  position: absolute;
-  top: 62%;
-  left: 0;
-  width: 100%;
-  z-index: 3;
-  display: flex;
-  justify-content: space-around;
-  pointer-events: none;
-}
-
-.showroom-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 12px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-inverse);
-  background: rgba(10, 12, 28, 0.6);
-  border: 1px solid var(--car-color);
-  backdrop-filter: blur(4px);
-}
-
-.showroom-tag::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 6px;
-  background: var(--car-color);
-  box-shadow: 0 0 6px var(--car-color);
 }
 
 .car-trait {
@@ -4579,10 +4563,6 @@ canvas {
   .car-big-name {
     font-size: 1.2rem;
     letter-spacing: 2px;
-  }
-
-  .showroom-tags {
-    top: 48%;
   }
 
   .start-btn {

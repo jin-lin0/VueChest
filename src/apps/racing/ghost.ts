@@ -10,7 +10,7 @@ export interface GhostFrame {
 }
 
 export interface GhostLap {
-  version: 1
+  version: 2
   trackId: FixedTrackId
   carId: number
   lapTime: number
@@ -34,7 +34,7 @@ function getDb(): Promise<IDBPDatabase> {
 }
 
 export function ghostKey(trackId: FixedTrackId, carId: number): string {
-  return `${trackId}:${carId}`
+  return `${trackId}:${carId}:v2`
 }
 
 export async function loadGhost(trackId: FixedTrackId, carId: number): Promise<GhostLap | null> {
@@ -58,8 +58,11 @@ export function isGhostLap(value: unknown): value is GhostLap {
   if (!value || typeof value !== 'object') return false
   const o = value as Record<string, unknown>
   return (
-    o.version === 1 &&
-    (o.trackId === 'forest' || o.trackId === 'desert' || o.trackId === 'snow') &&
+    o.version === 2 &&
+    (o.trackId === 'forest' ||
+      o.trackId === 'desert' ||
+      o.trackId === 'snow' ||
+      o.trackId === 'ridge') &&
     typeof o.carId === 'number' &&
     typeof o.lapTime === 'number' &&
     Array.isArray(o.frames) &&
@@ -84,7 +87,7 @@ export class GhostRecorder {
   }
 
   finish(trackId: FixedTrackId, carId: number, lapTime: number): GhostLap {
-    return { version: 1, trackId, carId, lapTime, frames: this.frames.map((f) => ({ ...f })) }
+    return { version: 2, trackId, carId, lapTime, frames: this.frames.map((f) => ({ ...f })) }
   }
 }
 
