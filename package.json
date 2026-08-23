@@ -21,6 +21,8 @@
     "publish:market": "node scripts/publish-market-apps-r2.mjs",
     "kb:pull": "node scripts/knowledge/kb-sync-raw.mjs --pull",
     "kb:validate": "node scripts/knowledge/validate-knowledge.mjs",
+    "docs:validate": "node scripts/knowledge/validate-docs-structure.mjs && pnpm interview:validate",
+    "interview:validate": "node scripts/knowledge/validate-niuke-coverage.mjs && node scripts/knowledge/validate-interview-code.mjs",
     "kb:publish": "node scripts/knowledge/kb-sync-raw.mjs --push && node scripts/knowledge/build-knowledge.mjs"
   },
   "dependencies": {

@@ -8,7 +8,7 @@ import { inject } from 'vue'
 import type { DocItem } from '@/docs/types'
 import { isFolder } from '@/docs/types'
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     nodes: DocItem[]
     activeId: string
@@ -17,20 +17,28 @@ const props = withDefaults(
   }>(),
   { depth: 0 },
 )
-const emit = defineEmits<{ (e: 'select', id: string): void }>()
+const emit = defineEmits<{
+  (e: 'select', id: string): void
+  (e: 'folder-contextmenu', payload: { node: DocItem; x: number; y: number }): void
+}>()
 
-// 共享展开表：默认展开（undefined 视为展开），只有显式置 false 才收起
+// 共享展开表：默认收起，只展开激活路径或用户主动打开的目录。
 const expanded = inject<Record<string, boolean>>(DOC_EXPANDED_KEY, {})
 
 function toggle(n: DocItem) {
-  // 当前展开（非 false）→ 收起；当前收起（false）→ 展开
-  expanded[n.id] = expanded[n.id] === false ? true : false
+  expanded[n.id] = !isOpen(n)
 }
 function isOpen(n: DocItem) {
-  return expanded[n.id] !== false
+  return expanded[n.id] === true
 }
 function onSelect(id: string) {
   emit('select', id)
+}
+function onFolderContextMenu(payload: { node: DocItem; x: number; y: number }) {
+  emit('folder-contextmenu', payload)
+}
+function openFolderContextMenu(event: MouseEvent, node: DocItem) {
+  emit('folder-contextmenu', { node, x: event.clientX, y: event.clientY })
 }
 </script>
 
@@ -39,7 +47,13 @@ function onSelect(id: string) {
     <li v-for="n in nodes" :key="n.id">
       <!-- 文件夹节点：可折叠分组（只切换自身展开状态，不影响其它文件夹） -->
       <template v-if="isFolder(n)">
-        <button class="doc-nav-folder" :class="{ open: isOpen(n) }" @click="toggle(n)">
+        <button
+          class="doc-nav-folder"
+          :class="{ open: isOpen(n) }"
+          title="右键可展开全部层级"
+          @click="toggle(n)"
+          @contextmenu.prevent.stop="openFolderContextMenu($event, n)"
+        >
           <span class="doc-caret">▸</span>
           <span class="doc-folder-title">{{ n.title }}</span>
         </button>
@@ -49,6 +63,7 @@ function onSelect(id: string) {
             :active-id="activeId"
             :depth="depth + 1"
             @select="onSelect"
+            @folder-contextmenu="onFolderContextMenu"
           />
         </div>
       </template>

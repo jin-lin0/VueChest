@@ -12,11 +12,11 @@ order: 40
 
 ## 一、三者定位
 
-| 数据库 | 形态 | 适合 | 上手成本 |
-|--------|------|------|----------|
-| **Chroma** | 轻量、可嵌入（Python/JS SDK，内存或本地持久化） | 原型、单机、中小规模、快速验证 | 极低 |
-| **Qdrant** | 独立服务（Rust，Docker 部署，gRPC/REST） | 生产、高并发、需过滤/量化/扩展 | 中 |
-| **pgvector** | PostgreSQL 扩展 | 已有 PG、要「关系数据 + 向量」一体、事务一致 | 低（若已用 PG） |
+| 数据库       | 形态                                            | 适合                                         | 上手成本        |
+| ------------ | ----------------------------------------------- | -------------------------------------------- | --------------- |
+| **Chroma**   | 轻量、可嵌入（Python/JS SDK，内存或本地持久化） | 原型、单机、中小规模、快速验证               | 极低            |
+| **Qdrant**   | 独立服务（Rust，Docker 部署，gRPC/REST）        | 生产、高并发、需过滤/量化/扩展               | 中              |
+| **pgvector** | PostgreSQL 扩展                                 | 已有 PG、要「关系数据 + 向量」一体、事务一致 | 低（若已用 PG） |
 
 > 没有「最好」，只有「最合适」：**原型用 Chroma，生产独立服务用 Qdrant，已有 PG 且不想多维护一套用 pgvector**。
 
@@ -66,6 +66,7 @@ CREATE TABLE docs (id serial PRIMARY KEY, text text, embedding vector(1024));
 -- 近似检索（HNSW 索引）
 CREATE INDEX ON docs USING hnsw (embedding vector_cosine_ops);
 ```
+
 ```python
 # 用 SQL 查最近邻
 cur.execute(

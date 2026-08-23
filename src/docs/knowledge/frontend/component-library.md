@@ -134,7 +134,9 @@ const theme = inject('theme', ref('light')) // 第二参是默认值
 import { useConfirm } from '@/components'
 const { confirm } = useConfirm()
 const ok = await confirm('确定删除？')
-if (ok) { /* 执行删除 */ }
+if (ok) {
+  /* 执行删除 */
+}
 
 // 替代 window.alert —— Toast
 const toastRef = ref()

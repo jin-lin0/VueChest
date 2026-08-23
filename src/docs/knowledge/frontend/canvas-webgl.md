@@ -15,6 +15,7 @@ Vue 管「界面与状态」，但遇到高频像素绘制（赛车、粒子、�
 ```html
 <canvas ref="cv" width="800" height="600"></canvas>
 ```
+
 ```ts
 const cv = cvRef.value!
 const ctx = cv.getContext('2d')!
@@ -34,9 +35,9 @@ ctx.fill()
 ```ts
 function loop(t: number) {
   ctx.clearRect(0, 0, cv.width, cv.height) // 清屏
-  x += speed                                    // 更新状态
-  ctx.fillRect(x, 100, 50, 50)                  // 重绘
-  rafId = requestAnimationFrame(loop)          // 下一帧
+  x += speed // 更新状态
+  ctx.fillRect(x, 100, 50, 50) // 重绘
+  rafId = requestAnimationFrame(loop) // 下一帧
 }
 rafId = requestAnimationFrame(loop)
 // 卸载时取消，避免泄漏
@@ -55,7 +56,8 @@ onUnmounted(() => cancelAnimationFrame(rafId))
 
 ```ts
 const dpr = window.devicePixelRatio || 1
-cv.width = 800 * dpr; cv.height = 600 * dpr
+cv.width = 800 * dpr
+cv.height = 600 * dpr
 ctx.scale(dpr, dpr)
 ```
 
@@ -86,12 +88,12 @@ const renderer = new THREE.WebGLRenderer({ canvas: cv })
 
 ## 六、选型
 
-| 需求 | 选 |
-|------|-----|
-| 简单图表 / 小动画 / 2D 游戏 | Canvas 2D |
-| 图表库 | ECharts / D3（底层也是 Canvas/SVG） |
-| 3D / 粒子 / 大规模图元 | WebGL + Three.js |
-| 数据报表（非实时） | SVG / 组件库 |
+| 需求                        | 选                                  |
+| --------------------------- | ----------------------------------- |
+| 简单图表 / 小动画 / 2D 游戏 | Canvas 2D                           |
+| 图表库                      | ECharts / D3（底层也是 Canvas/SVG） |
+| 3D / 粒子 / 大规模图元      | WebGL + Three.js                    |
+| 数据报表（非实时）          | SVG / 组件库                        |
 
 ## 参考来源
 

@@ -13,11 +13,11 @@ Design Token 是"设计决策的原子化变量"——颜色、间距、圆角�
 
 ## 二、三层 Token 模型（推荐）
 
-| 层 | 命名 | 含义 | 示例 |
-| --- | --- | --- | --- |
-| **Primitive（原始）** | `--color-blue-500` | 调色板原子，不含语义 | `--color-blue-500: #3b82f6` |
-| **Semantic（语义）** | `--color-primary` | 业务语义，指向 primitive | `--color-primary: var(--color-blue-500)` |
-| **Component（组件）** | `--button-bg` | 组件级映射语义 | `--button-bg: var(--color-primary)` |
+| 层                    | 命名               | 含义                     | 示例                                     |
+| --------------------- | ------------------ | ------------------------ | ---------------------------------------- |
+| **Primitive（原始）** | `--color-blue-500` | 调色板原子，不含语义     | `--color-blue-500: #3b82f6`              |
+| **Semantic（语义）**  | `--color-primary`  | 业务语义，指向 primitive | `--color-primary: var(--color-blue-500)` |
+| **Component（组件）** | `--button-bg`      | 组件级映射语义           | `--button-bg: var(--color-primary)`      |
 
 > VueChest 实践：在 `tokens.css` 把"可编辑源"全放这里；组件用 `var(--xxx)` 自动随主题，无需 `onDark` 变体；canvas/JS 上色用 `getAppTheme()` + `onChange` 监听。暗色作用域 `.vc-dark` 让任意元素加类即进入暗色子树。
 
@@ -31,7 +31,8 @@ Design Token 是"设计决策的原子化变量"——颜色、间距、圆角�
   --color-primary: #4f8cff;
   --z-modal: 1100;
 }
-:root.dark, .vc-dark {
+:root.dark,
+.vc-dark {
   --color-bg: #0f172a;
   --color-text: #e5e7eb;
   --color-primary: #60a5fa;
@@ -49,12 +50,12 @@ function getAppTheme() {
 
 ## 四、现代 CSS 架构
 
-| 方案 | 思路 | 适用 |
-| --- | --- | --- |
-| **BEM** | `block__element--modifier` 命名约定 | 无构建时的强约束 |
-| **ITCSS** | 分层（设置→工具→通用→组件→截断）控制优先级 | 大型手写下项目 |
-| **CSS Modules** | 构建期作用域哈希，类名局部化 | 组件库、Vue `scoped` 同理 |
-| **Utility（Tailwind）** | 原子类组合 | 快速开发 |
+| 方案                    | 思路                                       | 适用                      |
+| ----------------------- | ------------------------------------------ | ------------------------- |
+| **BEM**                 | `block__element--modifier` 命名约定        | 无构建时的强约束          |
+| **ITCSS**               | 分层（设置→工具→通用→组件→截断）控制优先级 | 大型手写下项目            |
+| **CSS Modules**         | 构建期作用域哈希，类名局部化               | 组件库、Vue `scoped` 同理 |
+| **Utility（Tailwind）** | 原子类组合                                 | 快速开发                  |
 
 Vue 单文件组件用 `scoped` 即自带组件级隔离，配合 Token 变量即可，无需额外 BEM 包袱；全局通用样式（reset、布局骨架）走 `tokens.css` + 少量全局类。
 

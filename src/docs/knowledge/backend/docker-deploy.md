@@ -1,6 +1,6 @@
 ---
-group: 后端与基础设施
-order: 54
+group: 部署与云原生
+order: 1
 ---
 
 # Docker 容器化部署
@@ -62,17 +62,17 @@ CMD ["node", "server.js"]
 services:
   web:
     build: ./VueChest
-    ports: ["8080:80"]
+    ports: ['8080:80']
   server:
     build: ./VueChestServer
-    ports: ["3000:3000"]
+    ports: ['3000:3000']
     environment:
       - DATABASE_URL=mysql://...
       - REDIS_URL=redis://redis:6379
     depends_on: [mysql, redis]
   mysql:
     image: mysql:8
-    environment: { MYSQL_ROOT_PASSWORD: "***" }
+    environment: { MYSQL_ROOT_PASSWORD: '***' }
   redis:
     image: redis:7
 ```
@@ -88,10 +88,10 @@ services:
 
 ## 六、部署形态
 
-| 形态 | 说明 |
-| --- | --- |
-| 云服务器 + Docker | 自建，灵活 |
-| 容器服务（K8s/托管） | 自动扩缩容、滚动发布 |
+| 形态                  | 说明                   |
+| --------------------- | ---------------------- |
+| 云服务器 + Docker     | 自建，灵活             |
+| 容器服务（K8s/托管）  | 自动扩缩容、滚动发布   |
 | 静态托管 + Serverless | 前端扔 CDN，后端函数化 |
 
 > VueChest 前端是纯静态，最适合 CDN/对象存储（R2）+ 边缘；后端 Node 用容器或 Serverless。CloudStudio 等也可直接部署静态产物。

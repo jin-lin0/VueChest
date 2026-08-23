@@ -29,7 +29,7 @@ window.addEventListener('hashchange', () => {
 
 ```js
 // 用 History API 改 URL 而不刷新
-history.pushState({ }, '', '/user/1') // 压入新历史
+history.pushState({}, '', '/user/1') // 压入新历史
 window.addEventListener('popstate', () => renderView(location.pathname))
 // 拦截 <a> 点击，改为 pushState 并渲染，阻止默认跳转
 ```

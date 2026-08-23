@@ -1,14 +1,40 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted, nextTick, reactive, provide } from 'vue'
+import {
+  computed,
+  ref,
+  watch,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  reactive,
+  provide,
+  shallowRef,
+} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { helpSections, knowledgeSections, flattenDocs, firstLeafIdOf, containsId } from '../docs'
-import type { DocItem } from '../docs/types'
+import { helpSections } from '../docs/help'
+import { containsId, firstLeafIdOf, flattenDocs, folderIdsOfSections } from '../docs/tree'
+import type { DocItem, DocSection } from '../docs/types'
+import { isFolder } from '../docs/types'
 import { useTheme } from '../composables/useTheme'
 import { renderMarkdown, extractToc } from '@/lib/markdown'
-import { DonatePanel, DonorsWall, DocNavTree, DOC_EXPANDED_KEY } from '@/components'
+import {
+  CustomSelect,
+  DonatePanel,
+  DonorsWall,
+  DocNavTree,
+  DOC_EXPANDED_KEY,
+  Modal,
+  type SelectOption,
+} from '@/components'
+import { useAuthStore } from '@/stores'
+import { getStorage, setStorage } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+
+defineOptions({ name: 'DocsCenter' })
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const { isDark, toggleTheme } = useTheme()
 
 const contentRef = ref<HTMLElement | null>(null)
@@ -19,22 +45,88 @@ const scroller = ref<HTMLElement | null>(null)
 const expandedMap = reactive<Record<string, boolean>>({})
 provide(DOC_EXPANDED_KEY, expandedMap)
 
+type DocTab = 'help' | 'kb'
+type FolderDepthPreference = 'active' | '1' | '2' | '3' | 'all'
+
+interface FolderDepthSettings {
+  help: FolderDepthPreference
+  kb: FolderDepthPreference
+}
+
+const defaultFolderDepthSettings: FolderDepthSettings = { help: 'all', kb: '1' }
+const validFolderDepths = new Set<FolderDepthPreference>(['active', '1', '2', '3', 'all'])
+const savedFolderDepthSettings = getStorage<Partial<FolderDepthSettings>>(
+  STORAGE_KEYS.DOCS_FOLDER_DEPTH,
+)
+const normalizeFolderDepth = (
+  value: FolderDepthPreference | undefined,
+  fallback: FolderDepthPreference,
+): FolderDepthPreference => (value && validFolderDepths.has(value) ? value : fallback)
+const folderDepthSettings = reactive<FolderDepthSettings>({
+  help: normalizeFolderDepth(savedFolderDepthSettings?.help, defaultFolderDepthSettings.help),
+  kb: normalizeFolderDepth(savedFolderDepthSettings?.kb, defaultFolderDepthSettings.kb),
+})
+const folderDepthOptions: SelectOption[] = [
+  { value: 'active', label: '仅当前路径', icon: '↳' },
+  { value: '1', label: '一级目录', icon: '1' },
+  { value: '2', label: '二级目录', icon: '2' },
+  { value: '3', label: '三级目录', icon: '3' },
+  { value: 'all', label: '全部层级', icon: '∞' },
+]
+const settingsOpen = ref(false)
+
+interface FolderContextMenuState {
+  node: DocItem
+  x: number
+  y: number
+}
+
+const folderContextMenu = ref<FolderContextMenuState | null>(null)
+
+function openFolderContextMenu(payload: FolderContextMenuState) {
+  const menuWidth = 224
+  const menuHeight = 116
+  const viewportPadding = 8
+  folderContextMenu.value = {
+    node: payload.node,
+    x: Math.max(
+      viewportPadding,
+      Math.min(payload.x, window.innerWidth - menuWidth - viewportPadding),
+    ),
+    y: Math.max(
+      viewportPadding,
+      Math.min(payload.y, window.innerHeight - menuHeight - viewportPadding),
+    ),
+  }
+}
+
+function closeFolderContextMenu() {
+  folderContextMenu.value = null
+}
+
+function setFolderTreeOpen(node: DocItem, open: boolean) {
+  if (!isFolder(node)) return
+  expandedMap[node.id] = open
+  node.children?.forEach((child) => setFolderTreeOpen(child, open))
+}
+
+function expandContextFolder() {
+  if (folderContextMenu.value) setFolderTreeOpen(folderContextMenu.value.node, true)
+  closeFolderContextMenu()
+}
+
+function collapseContextFolder() {
+  if (folderContextMenu.value) setFolderTreeOpen(folderContextMenu.value.node, false)
+  closeFolderContextMenu()
+}
+
+function onWindowKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeFolderContextMenu()
+}
+
 // 当前 Tab 下所有文件夹 id（含 section 主文件夹与嵌套子目录）
 function allFolderIds(): string[] {
-  const ids: string[] = []
-  currentSections.value.forEach((s) => {
-    // section 自身成为可折叠主文件夹
-    ids.push(s.id)
-    const walk = (list: DocItem[]) =>
-      list.forEach((n) => {
-        if (n.children?.length) {
-          ids.push(n.id)
-          walk(n.children)
-        }
-      })
-    walk(s.items)
-  })
-  return ids
+  return folderIdsOfSections(currentSections.value)
 }
 // 仅打开「包含激活文档」的文件夹路径；不动其它文件夹的状态（修复：切文档时其它文件夹被收起）
 function ensureAncestorsOpen(active: string) {
@@ -51,10 +143,10 @@ function ensureAncestorsOpen(active: string) {
     walk(s.items)
   })
 }
-// 全量展开 / 收起。默认即全展开（undefined 视为展开），故「全开」=没有任何文件夹被显式收起（false）
+// 全量展开 / 收起。默认仅展开激活路径，用户主动打开的其它目录保持不变。
 const allFoldersOpen = computed(() => {
   const ids = allFolderIds()
-  return ids.length > 0 && ids.every((id) => expandedMap[id] !== false)
+  return ids.length > 0 && ids.every((id) => expandedMap[id] === true)
 })
 function toggleAllFolders() {
   const ids = allFolderIds()
@@ -86,22 +178,82 @@ function toggleAllFolders() {
 const tocOpen = ref(false)
 
 // ---- 顶部 Tab：帮助中心 / 知识库 ----
-type DocTab = 'help' | 'kb'
-const kbAllDocs = computed(() => flattenDocs(knowledgeSections.flatMap((s) => s.items)))
+const canAccessKnowledgeBase = computed(() => authStore.isAdmin)
+const knowledgeSections = shallowRef<DocSection[]>([])
+let knowledgeLoadPromise: Promise<DocSection[]> | null = null
+
+async function loadKnowledgeSections() {
+  if (!canAccessKnowledgeBase.value) return []
+  knowledgeLoadPromise ??= import('../docs/knowledge').then((module) => module.knowledgeSections)
+  knowledgeSections.value = await knowledgeLoadPromise
+  return knowledgeSections.value
+}
+
+const kbAllDocs = computed(() =>
+  flattenDocs(knowledgeSections.value.flatMap((section) => section.items)),
+)
 const activeTab = computed<DocTab>(() =>
-  route.query.doc && kbAllDocs.value.some((d) => d.id === route.query.doc) ? 'kb' : 'help',
+  canAccessKnowledgeBase.value &&
+  route.query.doc &&
+  kbAllDocs.value.some((d) => d.id === route.query.doc)
+    ? 'kb'
+    : 'help',
 )
 const currentSections = computed(() =>
-  activeTab.value === 'kb' ? knowledgeSections : helpSections,
+  activeTab.value === 'kb' ? knowledgeSections.value : helpSections,
 )
 const currentAllDocs = computed(() => flattenDocs(currentSections.value.flatMap((s) => s.items)))
+const initializedFolderDefaults = new Set<DocTab>()
+
+function folderDepthLimit(preference: FolderDepthPreference): number | 'all' {
+  if (preference === 'all') return 'all'
+  if (preference === 'active') return 0
+  return Number(preference)
+}
+
+function sectionsOf(tab: DocTab): DocSection[] {
+  return tab === 'kb' ? knowledgeSections.value : helpSections
+}
+
+function applyFolderDepth(tab: DocTab) {
+  const sections = sectionsOf(tab)
+  if (!sections.length) return false
+
+  folderIdsOfSections(sections).forEach((id) => (expandedMap[id] = false))
+  folderIdsOfSections(sections, folderDepthLimit(folderDepthSettings[tab])).forEach(
+    (id) => (expandedMap[id] = true),
+  )
+  if (activeTab.value === tab && activeDoc.value?.id) ensureAncestorsOpen(activeDoc.value.id)
+  return true
+}
+
+function initializeFolderDefaults(tab: DocTab) {
+  if (initializedFolderDefaults.has(tab)) return
+  if (applyFolderDepth(tab)) initializedFolderDefaults.add(tab)
+}
+
+function updateFolderDepth(tab: DocTab, value: string | number) {
+  const preference = String(value) as FolderDepthPreference
+  if (!validFolderDepths.has(preference)) return
+  folderDepthSettings[tab] = preference
+  setStorage(STORAGE_KEYS.DOCS_FOLDER_DEPTH, { ...folderDepthSettings })
+
+  if (activeTab.value === tab) {
+    applyFolderDepth(tab)
+    initializedFolderDefaults.add(tab)
+  } else {
+    initializedFolderDefaults.delete(tab)
+  }
+}
 
 function firstDocIdOf(tab: DocTab): string | undefined {
-  const sections = tab === 'kb' ? knowledgeSections : helpSections
+  const sections = tab === 'kb' ? knowledgeSections.value : helpSections
   return firstLeafIdOf(sections)
 }
 
-function selectTab(tab: DocTab) {
+async function selectTab(tab: DocTab) {
+  if (tab === 'kb' && !canAccessKnowledgeBase.value) return
+  if (tab === 'kb') await loadKnowledgeSections()
   const id = firstDocIdOf(tab)
   if (id) selectDoc(id)
 }
@@ -148,21 +300,45 @@ function onScroll() {
 watch(
   () => activeDoc.value?.id,
   (id) => {
+    closeFolderContextMenu()
     activeHeading.value = ''
     // 切换文档时只打开其所属路径的文件夹，不收起其它文件夹
     if (id) ensureAncestorsOpen(id)
     nextTick(collectHeadings)
   },
 )
+watch(activeTab, (tab) => {
+  initializeFolderDefaults(tab)
+  if (activeDoc.value?.id) ensureAncestorsOpen(activeDoc.value.id)
+})
+watch(
+  canAccessKnowledgeBase,
+  (canAccess) => {
+    if (canAccess) {
+      void loadKnowledgeSections()
+      return
+    }
+    const shouldLeaveKnowledgeRoute =
+      route.query.doc && kbAllDocs.value.some((doc) => doc.id === route.query.doc)
+    knowledgeSections.value = []
+    if (shouldLeaveKnowledgeRoute) router.replace('/docs')
+  },
+  { immediate: true },
+)
 onMounted(() => {
-  // 默认即全展开（undefined 视为展开），这里只需确保激活文档所在路径展开（已默认展开，保持幂等）
+  // 帮助中心默认全开；知识库默认只开一级分类，再补开当前文档所在路径。
+  initializeFolderDefaults(activeTab.value)
   ensureAncestorsOpen(activeDoc.value?.id ?? '')
   // 挂到真正的滚动容器 .app-main（而非 window）
   scroller.value = document.querySelector('.app-main')
   scroller.value?.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('keydown', onWindowKeydown)
   nextTick(collectHeadings)
 })
-onUnmounted(() => scroller.value?.removeEventListener('scroll', onScroll))
+onUnmounted(() => {
+  scroller.value?.removeEventListener('scroll', onScroll)
+  window.removeEventListener('keydown', onWindowKeydown)
+})
 
 function selectDoc(id: string) {
   router.push({ path: '/docs', query: { doc: id } })
@@ -235,7 +411,12 @@ function onContentClick(e: MouseEvent) {
         >
           帮助中心
         </button>
-        <button class="docs-tab" :class="{ active: activeTab === 'kb' }" @click="selectTab('kb')">
+        <button
+          v-if="canAccessKnowledgeBase"
+          class="docs-tab"
+          :class="{ active: activeTab === 'kb' }"
+          @click="selectTab('kb')"
+        >
           知识库
         </button>
       </nav>
@@ -247,10 +428,103 @@ function onContentClick(e: MouseEvent) {
         >
           {{ isDark ? '☀️' : '🌙' }}
         </button>
+        <button
+          class="docs-settings"
+          type="button"
+          title="目录设置"
+          aria-label="打开目录设置"
+          @click="settingsOpen = true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.97 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.52-1H3v-4h.08A1.7 1.7 0 0 0 4.6 8.97a1.7 1.7 0 0 0-.34-1.88l-.06-.06L7.03 4.2l.06.06a1.7 1.7 0 0 0 1.88.34H9A1.7 1.7 0 0 0 10 3.08V3h4v.08A1.7 1.7 0 0 0 15.03 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06a1.7 1.7 0 0 0-.34 1.88V9A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"
+            />
+          </svg>
+        </button>
       </div>
     </header>
 
+    <Modal v-model:open="settingsOpen" title="目录设置" width="min(440px, 92vw)">
+      <div class="docs-settings-panel">
+        <p class="docs-settings-intro">设置首次打开文档中心时，目录树自动展开到哪一级。</p>
+
+        <div class="docs-setting-row">
+          <div class="docs-setting-copy">
+            <strong>帮助中心</strong>
+            <small>推荐全部展开，便于快速找到使用说明。</small>
+          </div>
+          <CustomSelect
+            v-model="folderDepthSettings.help"
+            :options="folderDepthOptions"
+            size="sm"
+            width="170px"
+            @change="updateFolderDepth('help', $event)"
+          />
+        </div>
+
+        <div v-if="canAccessKnowledgeBase" class="docs-setting-row">
+          <div class="docs-setting-copy">
+            <strong>知识库</strong>
+            <small>推荐展开一级分类，内容较多时更清爽。</small>
+          </div>
+          <CustomSelect
+            v-model="folderDepthSettings.kb"
+            :options="folderDepthOptions"
+            size="sm"
+            width="170px"
+            @change="updateFolderDepth('kb', $event)"
+          />
+        </div>
+
+        <p class="docs-settings-note">
+          当前文档所在路径始终保持展开；右键目录仍可临时展开或收起全部层级。
+        </p>
+      </div>
+    </Modal>
+
     <div class="docs-drawer-backdrop" :class="{ open: tocOpen }" @click="tocOpen = false"></div>
+
+    <div
+      v-if="folderContextMenu"
+      class="docs-context-backdrop"
+      @pointerdown="closeFolderContextMenu"
+      @contextmenu.prevent="closeFolderContextMenu"
+    ></div>
+    <div
+      v-if="folderContextMenu"
+      class="docs-context-menu"
+      role="menu"
+      aria-label="目录操作"
+      :style="{ left: `${folderContextMenu.x}px`, top: `${folderContextMenu.y}px` }"
+      @pointerdown.stop
+      @contextmenu.prevent
+    >
+      <button type="button" role="menuitem" @click="expandContextFolder">
+        <span class="docs-context-icon" aria-hidden="true">⇊</span>
+        <span class="docs-context-copy">
+          <strong>展开全部层级</strong>
+          <small>当前目录及其所有子目录</small>
+        </span>
+      </button>
+      <button type="button" role="menuitem" @click="collapseContextFolder">
+        <span class="docs-context-icon" aria-hidden="true">⇈</span>
+        <span class="docs-context-copy">
+          <strong>收起全部层级</strong>
+          <small>当前目录及其所有子目录</small>
+        </span>
+      </button>
+    </div>
 
     <div class="docs-body">
       <aside class="docs-sidebar" :class="{ 'is-open': tocOpen }">
@@ -267,6 +541,7 @@ function onContentClick(e: MouseEvent) {
               :nodes="[{ id: section.id, title: section.title, children: section.items }]"
               :active-id="activeDoc?.id ?? ''"
               @select="selectDoc"
+              @folder-contextmenu="openFolderContextMenu"
             />
           </section>
         </nav>
@@ -419,13 +694,71 @@ function onContentClick(e: MouseEvent) {
   box-shadow: var(--shadow-sm);
 }
 
+.docs-context-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1099;
+}
+.docs-context-menu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 224px;
+  padding: var(--space-1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md, var(--shadow-sm));
+}
+.docs-context-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-body);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.docs-context-menu button:hover,
+.docs-context-menu button:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  outline: none;
+}
+.docs-context-icon {
+  width: 20px;
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1;
+  text-align: center;
+}
+.docs-context-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.docs-context-copy strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.docs-context-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .docs-header-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 .docs-back,
-.docs-theme {
+.docs-theme,
+.docs-settings {
   border: 1px solid var(--border);
   background: var(--bg-glass-soft);
   color: var(--text-body);
@@ -436,9 +769,58 @@ function onContentClick(e: MouseEvent) {
   transition: var(--transition);
 }
 .docs-back:hover,
-.docs-theme:hover {
+.docs-theme:hover,
+.docs-settings:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+.docs-settings {
+  width: 36px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.docs-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.docs-settings-intro,
+.docs-settings-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.docs-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border-light);
+}
+.docs-setting-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.docs-setting-copy strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.docs-setting-copy small {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.docs-settings-note {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
 }
 .docs-header-btn {
   width: 32px;
@@ -862,6 +1244,13 @@ function onContentClick(e: MouseEvent) {
 }
 
 @media (max-width: 480px) {
+  .docs-setting-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .docs-setting-row :deep(.custom-select) {
+    width: 100% !important;
+  }
   .docs-content {
     padding: var(--space-4);
     font-size: 14px;

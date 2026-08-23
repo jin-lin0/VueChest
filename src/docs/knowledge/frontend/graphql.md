@@ -15,18 +15,20 @@ GraphQL 是**查询语言 + 运行时**：客户端在单次请求里声明"要�
 query {
   user(id: 1) {
     name
-    posts { title }   # 嵌套按需取
+    posts {
+      title
+    } # 嵌套按需取
   }
 }
 ```
 
 ## 二、三大操作
 
-| 操作 | 语义 | 对应 REST |
-| --- | --- | --- |
-| **Query** | 读 | GET |
-| **Mutation** | 写（增删改） | POST/PUT/DELETE |
-| **Subscription** | 实时推送 | WebSocket |
+| 操作             | 语义         | 对应 REST       |
+| ---------------- | ------------ | --------------- |
+| **Query**        | 读           | GET             |
+| **Mutation**     | 写（增删改） | POST/PUT/DELETE |
+| **Subscription** | 实时推送     | WebSocket       |
 
 ## 三、Schema 与 Resolver
 
@@ -45,7 +47,7 @@ type Query {
 // resolver：每个字段对应一个函数取数
 const resolvers = {
   Query: { user: (_, { id }) => db.user.find(id) },
-  User:  { posts: (user) => db.post.findByUser(user.id) },
+  User: { posts: (user) => db.post.findByUser(user.id) },
 }
 ```
 
@@ -53,13 +55,13 @@ Schema 是"契约"，Resoler 是"实现"；类型系统让前后端对齐、自�
 
 ## 四、与 REST 对比
 
-| 维度 | REST | GraphQL |
-| --- | --- | --- |
-| 端点 | 多个资源端点 | 单一 `/graphql` |
-| 获取 | 服务端定结构，易过度/不足 | 客户端定字段，精准 |
-| 版本 | 常 `/v1` `/v2` | 靠 Schema 演进（弃用字段） |
-| 缓存 | 靠 HTTP 缓存（见 `browser-cache.md`） | 需客户端/边缓存，复杂 |
-| 错误 | HTTP 状态码 | 200 + `errors` 数组 |
+| 维度 | REST                                  | GraphQL                    |
+| ---- | ------------------------------------- | -------------------------- |
+| 端点 | 多个资源端点                          | 单一 `/graphql`            |
+| 获取 | 服务端定结构，易过度/不足             | 客户端定字段，精准         |
+| 版本 | 常 `/v1` `/v2`                        | 靠 Schema 演进（弃用字段） |
+| 缓存 | 靠 HTTP 缓存（见 `browser-cache.md`） | 需客户端/边缓存，复杂      |
+| 错误 | HTTP 状态码                           | 200 + `errors` 数组        |
 
 > 取舍：GraphQL 减少请求次数、前端灵活；但服务端实现复杂、N+1 查询、缓存与限流更难。不是 REST 的取代者，按场景选。
 
@@ -68,7 +70,14 @@ Schema 是"契约"，Resoler 是"实现"；类型系统让前后端对齐、自�
 ```ts
 // urql / Apollo 发起查询
 const { data } = useQuery(gql`
-  query { user(id: 1) { name posts { title } } }
+  query {
+    user(id: 1) {
+      name
+      posts {
+        title
+      }
+    }
+  }
 `)
 ```
 
@@ -80,8 +89,7 @@ const { data } = useQuery(gql`
 一个 `User.posts` 在列表里被调用 N 次 → N+1 查询。用 **DataLoader** 批处理 + 缓存：
 
 ```js
-const postLoader = new DataLoader((userIds) =>
-  db.post.batchByUsers(userIds)) // 一次 IN 查询
+const postLoader = new DataLoader((userIds) => db.post.batchByUsers(userIds)) // 一次 IN 查询
 ```
 
 ## 七、何时用 / 不用

@@ -22,8 +22,12 @@ class EventBus {
     ;(this.map.get(ev) ?? this.map.set(ev, new Set()).get(ev)!).add(fn)
     return () => this.off(ev, fn)
   }
-  off(ev: string, fn: Function) { this.map.get(ev)?.delete(fn) }
-  emit(ev: string, ...args: any[]) { this.map.get(ev)?.forEach((f) => f(...args)) }
+  off(ev: string, fn: Function) {
+    this.map.get(ev)?.delete(fn)
+  }
+  emit(ev: string, ...args: any[]) {
+    this.map.get(ev)?.forEach((f) => f(...args))
+  }
 }
 
 const bus = new EventBus()
@@ -97,7 +101,9 @@ function logTime(target: any, key: string, desc: PropertyDescriptor) {
     return r
   }
 }
-class Api { @logTime fetchUser() {} }
+class Api {
+  @logTime fetchUser() {}
+}
 ```
 
 > 注意：TS 装饰器语法仍在演进（Stage 3），Vue 3 用的是 `@vue/compiler-sfc` 下的写法。工程中更常见的是「高阶函数」实现装饰（包裹原函数返回新函数）。
@@ -107,11 +113,19 @@ class Api { @logTime fetchUser() {} }
 **问题**：树形结构（菜单、组件树），父子用同一套接口操作。
 
 ```ts
-interface Node { render(): string }
-class Item implements Node { render() { return '<li>' } }
+interface Node {
+  render(): string
+}
+class Item implements Node {
+  render() {
+    return '<li>'
+  }
+}
 class Menu implements Node {
   constructor(private children: Node[]) {}
-  render() { return '<ul>' + this.children.map((c) => c.render()).join('') + '</ul>' }
+  render() {
+    return '<ul>' + this.children.map((c) => c.render()).join('') + '</ul>'
+  }
 }
 ```
 
@@ -119,14 +133,14 @@ class Menu implements Node {
 
 ## 七、选型速记
 
-| 模式 | 关键词 | 典型场景 |
-|------|--------|----------|
-| 观察者/发布订阅 | 一对多通知 | 状态变化广播、EventBus |
-| 策略 | 可替换算法 | 折扣/校验/支付渠道 |
-| 单例 | 全局唯一 | 配置/连接/Pinia |
-| 工厂 | 封装创建 | 图表/组件生成 |
-| 装饰器 | 不改原物加功能 | 日志/缓存/鉴权 |
-| 组合 | 树形递归 | 菜单/组件树 |
+| 模式            | 关键词         | 典型场景               |
+| --------------- | -------------- | ---------------------- |
+| 观察者/发布订阅 | 一对多通知     | 状态变化广播、EventBus |
+| 策略            | 可替换算法     | 折扣/校验/支付渠道     |
+| 单例            | 全局唯一       | 配置/连接/Pinia        |
+| 工厂            | 封装创建       | 图表/组件生成          |
+| 装饰器          | 不改原物加功能 | 日志/缓存/鉴权         |
+| 组合            | 树形递归       | 菜单/组件树            |
 
 > 别为了用模式而用模式。大多数前端需求用「组合 + 观察者 + 策略」就够；`scenario` 场景题常考的就是这几样，能口述「为什么用、怎么写」即可。
 

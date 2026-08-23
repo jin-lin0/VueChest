@@ -9,24 +9,24 @@ order: 26
 
 ## 一、先分状态类型
 
-| 类型 | 例子 | 建议方案 |
-| --- | --- | --- |
-| **局部 UI 状态** | 弹窗开关、表单输入 | 组件内 `ref`/`useState` |
-| **跨组件共享** | 主题、登录用户 | 轻量 store / Context |
-| **服务端缓存** | 接口数据 | React Query / TanStack Query / Vue Query |
-| **全局复杂状态** | 购物车、权限 | Pinia / Redux / Zustand |
+| 类型             | 例子               | 建议方案                                 |
+| ---------------- | ------------------ | ---------------------------------------- |
+| **局部 UI 状态** | 弹窗开关、表单输入 | 组件内 `ref`/`useState`                  |
+| **跨组件共享**   | 主题、登录用户     | 轻量 store / Context                     |
+| **服务端缓存**   | 接口数据           | React Query / TanStack Query / Vue Query |
+| **全局复杂状态** | 购物车、权限       | Pinia / Redux / Zustand                  |
 
 > 黄金法则：**能局部就别全局**；服务端数据交给查询库缓存，别塞进 Redux/Pinia 当缓存。
 
 ## 二、主流方案对比
 
-| 方案 | 范式 | 心智负担 | 生态 | 适合 |
-| --- | --- | --- | --- | --- |
-| **Redux（Toolkit）** | 单一 store + reducer + 中间件 | 高 | 极大 | 大型 React、需时间旅行调试 |
-| **Zustand** | 极简 hook store | 低 | 中 | React 轻量全局状态 |
-| **Pinia** | Composition 风格 store | 低 | Vue | Vue 3 官方推荐 |
-| **Jotai** | 原子化（Atom） | 中 | React | 细粒度派生状态 |
-| **Signals** | 细粒度响应式原语 | 低 | 跨框架 | 精细更新、框架底层 |
+| 方案                 | 范式                          | 心智负担 | 生态   | 适合                       |
+| -------------------- | ----------------------------- | -------- | ------ | -------------------------- |
+| **Redux（Toolkit）** | 单一 store + reducer + 中间件 | 高       | 极大   | 大型 React、需时间旅行调试 |
+| **Zustand**          | 极简 hook store               | 低       | 中     | React 轻量全局状态         |
+| **Pinia**            | Composition 风格 store        | 低       | Vue    | Vue 3 官方推荐             |
+| **Jotai**            | 原子化（Atom）                | 中       | React  | 细粒度派生状态             |
+| **Signals**          | 细粒度响应式原语              | 低       | 跨框架 | 精细更新、框架底层         |
 
 ## 三、Redux Toolkit（现代 Redux）
 
@@ -36,7 +36,9 @@ const cart = createSlice({
   name: 'cart',
   initialState: [] as Item[],
   reducers: {
-    add: (s, a) => { s.push(a.payload) }, // 内置 Immer，可直接"改"
+    add: (s, a) => {
+      s.push(a.payload)
+    }, // 内置 Immer，可直接"改"
   },
 })
 ```
@@ -63,7 +65,9 @@ const n = useStore((s) => s.count) // 选择性订阅，精准更新
 export const useCart = defineStore('cart', () => {
   const items = ref<Item[]>([])
   const count = computed(() => items.value.length)
-  function add(i: Item) { items.value.push(i) }
+  function add(i: Item) {
+    items.value.push(i)
+  }
   return { items, count, add }
 })
 ```

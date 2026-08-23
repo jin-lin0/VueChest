@@ -104,6 +104,7 @@ async function safeExecute(call): Promise<string> {
 ```
 
 兜底清单：
+
 - **参数非法**：catch 后回填错误，让模型重试或改参（别直接崩溃）。
 - **tool 超时**：设超时（如 10s），超时返回「工具响应超时」，避免卡死整个对话。
 - **敏感/危险操作**：执行前加权限校验（见 `agent-security`），如「删库」类 tool 需用户二次确认。

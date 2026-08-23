@@ -51,7 +51,7 @@ console.log('2 同步')
 ```js
 async function f() {
   console.log('a')
-  await null          // 以下变微任务
+  await null // 以下变微任务
   console.log('c')
 }
 console.log('x')

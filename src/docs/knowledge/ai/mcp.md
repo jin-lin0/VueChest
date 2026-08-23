@@ -8,7 +8,7 @@ order: 43
 > 适用场景：让 LLM/Agent 安全、标准化地连接外部工具与数据源。本文讲协议结构、与 Agent 的关系、传输方式与生态。
 > 阅读前提：了解 Agent 与 Tool Use（见 `agent-patterns`、即将补的 Function Calling 文章）。
 
-MCP（Model Context Protocol，模型上下文协议）是 2024 年底由 Anthropic 提出、2025 年快速普及的**开放标准**，目标是把「LLM ↔ 工具/数据」的连接从「每家各写一套适配」变成「一套协议、处处复用」——类似 USB 之于外设。
+MCP（Model Context Protocol，模型上下文协议）是 2024 年底提出并持续演进的**开放标准**，目标是把「LLM ↔ 工具/数据」的连接从「每家各写一套适配」变成可复用协议——类似 USB 之于外设。
 
 ## 一、为什么需要 MCP
 
@@ -31,11 +31,11 @@ MCP（Model Context Protocol，模型上下文协议）是 2024 年底由 Anthro
 
 ## 二、Server 暴露的三类能力（Primitives）
 
-| 能力 | 方向 | 说明 | 类比 |
-|------|------|------|------|
-| **Tools** | Server → LLM（可调） | 可被执行的函数（带 schema），LLM 决定调用 | 函数调用 / Action |
-| **Resources** | Server → LLM（可读） | 类文件的数据（文档、记录），供上下文注入 | 只读数据源 |
-| **Prompts** | Server → 用户（可选） | 预置的提示词模板，用户主动触发 | 快捷指令 |
+| 能力          | 方向                  | 说明                                      | 类比              |
+| ------------- | --------------------- | ----------------------------------------- | ----------------- |
+| **Tools**     | Server → LLM（可调）  | 可被执行的函数（带 schema），LLM 决定调用 | 函数调用 / Action |
+| **Resources** | Server → LLM（可读）  | 类文件的数据（文档、记录），供上下文注入  | 只读数据源        |
+| **Prompts**   | Server → 用户（可选） | 预置的提示词模板，用户主动触发            | 快捷指令          |
 
 > 对 Agent 开发者：绝大多数场景用 **Tools**（让模型「做事」）；Resources 用于把知识「喂给」模型；Prompts 用于复用最佳实践。一个 Server 可同时暴露多类能力。
 
@@ -44,10 +44,19 @@ MCP（Model Context Protocol，模型上下文协议）是 2024 年底由 Anthro
 Client 与 Server 通过哪种通道通信：
 
 - **stdio（标准输入输出）**：Server 作为本地子进程，通过 stdin/stdout 通信。**本地工具（读文件、本地脚本）首选**，最简单、无需网络。
-- **Streamable HTTP**：Server 跑在远端，通过 HTTP 端点通信（2025 年推荐）。支持有状态/无状态两种模式，是当前主流远程方案。
-- **SSE（Server-Sent Events）**：早期 HTTP 方案，**已在 2025-03 规范中弃用**，新项目不要再用。
+- **Streamable HTTP**：Server 跑在远端，通过 HTTP POST 交换消息，并可选用 SSE 返回流式事件，是当前远程方案。
+- **旧 HTTP+SSE transport**：早期独立方案，已被 Streamable HTTP 取代；这不表示 SSE 作为 Streamable HTTP 的可选流式机制被禁用。
 
-> 注意版本漂移：2025-03 版规范把 SSE transport 标记为 deprecated，改推 Streamable HTTP。新接入 MCP 一律选 Streamable HTTP 或 stdio，别再照着旧教程写 SSE。
+> 注意版本漂移：新接入通常选择 Streamable HTTP 或 stdio。不要把旧版独立 SSE transport 与 Streamable HTTP 内可选的 SSE 响应混为一谈。
+
+### 2026-07-28 的发现与版本模型
+
+当前规范的核心协议是无状态的，不再依赖旧版“初始化后维持协议会话”的心智模型：
+
+- 每个请求通过 `_meta` 携带协议版本、客户端身份与 capabilities。
+- Server 必须实现 `server/discover`；Client 可调用它集中获取 Server 身份、支持版本与能力，也可以直接发业务请求后处理版本错误。
+- Tools / Resources / Prompts 仍通过 `*/list` 发现；工具通过 `tools/call` 执行。
+- 实现必须钉住协议版本，兼容旧 Server 时显式走适配层，不要混用不同版本消息。
 
 ## 四、与 Agent 的关系
 
@@ -92,7 +101,7 @@ if __name__ == "__main__":
 
 Host 侧只要「连上这个 server」，LLM 就能在推理中调用 `add`。把 `stdio` 换成 HTTP 部署，即变成远程可复用服务。
 
-## 七、生态现状（2025–2026）
+## 七、生态现状（2026）
 
 - 官方与社区 Server 快速增长：文件系统、GitHub、Slack、Postgres、浏览器自动化等均有现成 Server。
 - 主流 Agent 框架与 IDE（Claude、Cursor 等）已原生支持 MCP Client。
@@ -100,7 +109,7 @@ Host 侧只要「连上这个 server」，LLM 就能在推理中调用 `add`。�
 
 ## 参考来源
 
-- MCP 官方文档：<https://modelcontextprotocol.io/>
-- 规范（spec）：<https://spec.modelcontextprotocol.io/>
+- MCP 当前架构文档：<https://modelcontextprotocol.io/docs/learn/architecture>
+- 2026-07-28 规范：<https://modelcontextprotocol.io/specification/2026-07-28/architecture>
 - MCP 介绍博客（Anthropic）：<https://www.anthropic.com/news/model-context-protocol>
 - Python SDK：<https://github.com/modelcontextprotocol/python-sdk>

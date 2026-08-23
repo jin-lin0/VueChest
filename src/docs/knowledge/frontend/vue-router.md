@@ -18,9 +18,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL), // 干净 URL，需服务端兜底
-  routes: [
-    { path: '/', name: 'home', component: () => import('@/views/Home.vue') },
-  ],
+  routes: [{ path: '/', name: 'home', component: () => import('@/views/Home.vue') }],
   scrollBehavior(to, from, savedPosition) {
     return savedPosition ?? { top: 0 } // 浏览器前进/后退恢复位置，否则回顶
   },

@@ -9,22 +9,22 @@ order: 24
 
 ## 一、渲染基底对比
 
-| 基底 | 特点 | 适用 |
-| --- | --- | --- |
-| **SVG** | DOM 节点，易交互/可访问、元素多则卡 | 图表元素 < 1k、需 hover/点击 |
-| **Canvas 2D** | 像素绘制，万级点流畅、无 DOM | 大散点、实时折线、热力 |
-| **WebGL** | GPU，百万级、3D | 地理大屏、3D 可视化 |
+| 基底          | 特点                                | 适用                         |
+| ------------- | ----------------------------------- | ---------------------------- |
+| **SVG**       | DOM 节点，易交互/可访问、元素多则卡 | 图表元素 < 1k、需 hover/点击 |
+| **Canvas 2D** | 像素绘制，万级点流畅、无 DOM        | 大散点、实时折线、热力       |
+| **WebGL**     | GPU，百万级、3D                     | 地理大屏、3D 可视化          |
 
 > 经验：普通业务图表（折线/柱/饼）用 SVG 类库（ECharts 默认 SVG 或 Canvas 自动切）最省心；实时/海量数据上 Canvas；炫酷大屏上 WebGL/Three.js（见 `canvas-webgl.md`）。
 
 ## 二、库选型
 
-| 库 | 定位 | 特点 |
-| --- | --- | --- |
-| **ECharts** | 开箱即用图表 | 配置驱动、类型全、中文文档好、自带动画/交互 |
-| **D3** | 底层数据驱动 DOM/SVG | 灵活到能做任意定制图，学习曲线陡 |
-| **Chart.js** | 轻量图表 | 体积小、够用就好 |
-| **AntV (G2/G6)** | 蚂蚁系 | 统计图/关系图强 |
+| 库               | 定位                 | 特点                                        |
+| ---------------- | -------------------- | ------------------------------------------- |
+| **ECharts**      | 开箱即用图表         | 配置驱动、类型全、中文文档好、自带动画/交互 |
+| **D3**           | 底层数据驱动 DOM/SVG | 灵活到能做任意定制图，学习曲线陡            |
+| **Chart.js**     | 轻量图表             | 体积小、够用就好                            |
+| **AntV (G2/G6)** | 蚂蚁系               | 统计图/关系图强                             |
 
 ## 三、ECharts 与 Vue 集成
 
@@ -37,10 +37,14 @@ const el = ref(null)
 let chart
 onMounted(() => {
   chart = echarts.init(el.value)
-  chart.setOption({ /* 配置 */ })
+  chart.setOption({
+    /* 配置 */
+  })
   window.addEventListener('resize', resize)
 })
-function resize() { chart?.resize() } // 响应式
+function resize() {
+  chart?.resize()
+} // 响应式
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resize)
   chart?.dispose() // 必须销毁，防内存泄漏

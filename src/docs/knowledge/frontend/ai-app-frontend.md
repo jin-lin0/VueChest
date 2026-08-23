@@ -9,10 +9,10 @@ order: 34
 
 ## 一、两种流式协议
 
-| 方式 | 机制 | 前端消费 |
-| --- | --- | --- |
+| 方式                          | 机制                                                 | 前端消费                                    |
+| ----------------------------- | ---------------------------------------------------- | ------------------------------------------- |
 | **SSE**（Server-Sent Events） | 服务端 `Content-Type: text/event-stream`，单向长连接 | `EventSource` 或 `fetch` + `ReadableStream` |
-| **Fetch Stream** | 单次 POST，响应体是 chunked `ReadableStream` | `response.body.getReader()` 逐块读 |
+| **Fetch Stream**              | 单次 POST，响应体是 chunked `ReadableStream`         | `response.body.getReader()` 逐块读          |
 
 > OpenAI / Anthropic / 国内大模型多数用 fetch-stream；SSE 多用于纯文本推送。VueChest 服务端中转走 fetch-stream，前端用 `ReadableStream` 读。
 
@@ -61,12 +61,17 @@ export function useStreamingReply() {
     reply.value = ''
     streaming.value = true
     try {
-      await streamChat(messages, (t) => { reply.value += t }) // 直接拼接，响应式驱动
+      await streamChat(messages, (t) => {
+        reply.value += t
+      }) // 直接拼接，响应式驱动
     } finally {
       streaming.value = false
     }
   }
-  function stop() { controller.abort(); streaming.value = false }
+  function stop() {
+    controller.abort()
+    streaming.value = false
+  }
 
   return { reply, streaming, send, stop }
 }

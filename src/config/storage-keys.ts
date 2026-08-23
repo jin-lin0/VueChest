@@ -12,6 +12,8 @@ export const STORAGE_KEYS = {
   AI_CHAT_MODEL_PREFIX: 'ai-chat-model-',
   // interview
   INTERVIEW_PRACTICED: 'interview_practiced',
+  // docs
+  DOCS_FOLDER_DEPTH: 'docs:folder-depth',
   // rhythm
   RHYTHM_SETTINGS: 'rhythm:settings',
 } as const

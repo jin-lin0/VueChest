@@ -20,9 +20,9 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     environment: 'happy-dom', // 或 'jsdom'；happy-dom 更快、内存占用更小
-    globals: true,            // 直接用 describe/it/expect，不必 import
+    globals: true, // 直接用 describe/it/expect，不必 import
     coverage: {
-      provider: 'v8',         // 或 'istanbul'
+      provider: 'v8', // 或 'istanbul'
       include: ['src/**/*.{ts,vue}'],
       exclude: ['src/**/*.d.ts', 'src/main.ts'],
     },
@@ -45,9 +45,12 @@ import { useCounter } from '@/composables/useCounter'
 describe('useCounter', () => {
   it('increments and decrements within bounds', () => {
     const { count, inc, dec } = useCounter(0, { min: 0, max: 5 })
-    inc(); inc()
+    inc()
+    inc()
     expect(count.value).toBe(2)
-    dec(); dec(); dec()
+    dec()
+    dec()
+    dec()
     expect(count.value).toBe(0) // 触底不越界
   })
 
@@ -104,12 +107,12 @@ it('login sets token and user', async () => {
 
 ## 五、处理异步、定时器与网络
 
-| 场景 | 做法 |
-| --- | --- |
-| `await nextTick()` | 状态变更后等 DOM 刷新 |
-| 定时器 `setTimeout` | `vi.useFakeTimers()` + `vi.advanceTimersByTime` |
-| fetch / axios | `vi.mock` 接口层，或 `msw`（`mockServiceWorker`）模拟 HTTP |
-| 流式/SSE | 用 `vi.fn()` 替 `EventSource`/reader，手动 push 分片 |
+| 场景                | 做法                                                       |
+| ------------------- | ---------------------------------------------------------- |
+| `await nextTick()`  | 状态变更后等 DOM 刷新                                      |
+| 定时器 `setTimeout` | `vi.useFakeTimers()` + `vi.advanceTimersByTime`            |
+| fetch / axios       | `vi.mock` 接口层，或 `msw`（`mockServiceWorker`）模拟 HTTP |
+| 流式/SSE            | 用 `vi.fn()` 替 `EventSource`/reader，手动 push 分片       |
 
 ```ts
 import { vi } from 'vitest'

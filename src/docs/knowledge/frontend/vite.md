@@ -44,8 +44,8 @@ export default defineConfig({
 ```ts
 export default defineConfig({
   optimizeDeps: {
-    include: ['lodash-es', 'dayjs'],  // 强制预构建这些包
-    exclude: ['vue-demi'],           // 跳过某些包
+    include: ['lodash-es', 'dayjs'], // 强制预构建这些包
+    exclude: ['vue-demi'], // 跳过某些包
     esbuildOptions: { target: 'es2020' },
   },
 })
@@ -60,7 +60,7 @@ Vite 对资源有特殊的「后缀查询」导入方式，VueChest 大量使用
 
 ```ts
 // 1. ?raw —— 以字符串形式读取文件内容（不打成模块）
-import docMd from './doc.md?raw'        // docMd 是 markdown 字符串
+import docMd from './doc.md?raw' // docMd 是 markdown 字符串
 import tokensCss from '../public/tokens.css?raw' // 读取 CSS 文本
 
 // 2. ?url —— 返回资源 URL（适合图片/字体等）
@@ -116,12 +116,12 @@ const apiBase = import.meta.env.VITE_API_BASE_URL
 ```ts
 export default defineConfig({
   build: {
-    target: 'es2020',            // 产出目标语法
-    minify: 'esbuild',           // 压缩器，默认 esbuild（比 terser 快）
-    sourcemap: false,            // 生产关 sourcemap（安全+体积）
-    cssCodeSplit: true,          // CSS 也按 chunk 拆分
+    target: 'es2020', // 产出目标语法
+    minify: 'esbuild', // 压缩器，默认 esbuild（比 terser 快）
+    sourcemap: false, // 生产关 sourcemap（安全+体积）
+    cssCodeSplit: true, // CSS 也按 chunk 拆分
     chunkSizeWarningLimit: 1500, // 超过该体积才告警（默认 500KB）
-    assetsInlineLimit: 4096,     // <4KB 资源内联成 base64
+    assetsInlineLimit: 4096, // <4KB 资源内联成 base64
   },
 })
 ```

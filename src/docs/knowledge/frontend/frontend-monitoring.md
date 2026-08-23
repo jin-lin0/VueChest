@@ -14,14 +14,24 @@ order: 22
 
 ```ts
 // 1) 全局 JS 错误
-window.addEventListener('error', (e) => report({ type: 'js', msg: e.message, stack: e.error?.stack }))
+window.addEventListener('error', (e) =>
+  report({ type: 'js', msg: e.message, stack: e.error?.stack }),
+)
 // 2) 未捕获 Promise 拒绝
-window.addEventListener('unhandledrejection', (e) => report({ type: 'promise', msg: String(e.reason) }))
+window.addEventListener('unhandledrejection', (e) =>
+  report({ type: 'promise', msg: String(e.reason) }),
+)
 // 3) Vue 错误
 import { createApp } from 'vue'
 app.config.errorHandler = (err, instance, info) => report({ type: 'vue', msg: err.message, info })
 // 4) 资源加载失败（img/script 加载不出）
-window.addEventListener('error', (e) => { if (e.target !== window) report({ type: 'asset', src: e.target.src }) }, true)
+window.addEventListener(
+  'error',
+  (e) => {
+    if (e.target !== window) report({ type: 'asset', src: e.target.src })
+  },
+  true,
+)
 ```
 
 > 监控要**全量捕获**：全局 error + unhandledrejection + 框架 errorHandler + 资源错误（capture 阶段）。上报时带 `userId / 路由 / UA / 版本号`，便于复现。
@@ -29,6 +39,7 @@ window.addEventListener('error', (e) => { if (e.target !== window) report({ type
 ## 二、性能监控（Web Vitals）
 
 核心指标（Google 定义）：
+
 - **LCP**（最大内容绘制）：加载性能，<2.5s 优。
 - **CLS**（累积布局偏移）：视觉稳定，<0.1 优。
 - **INP**（交互到下次绘制，取代 FID）：交互响应，<200ms 优。
@@ -47,9 +58,11 @@ onINP((m) => report('inp', m.value))
 
 - **PV/UV**：页面访问量、独立访客。
 - **埋点事件**：按钮点击、功能使用、停留时长。
+
 ```ts
 track('click', { btn: 'publish', appId: 123 }) // 业务埋点
 ```
+
 - 上报方式：1x1 图片（`<img src>` 最稳，不受 CORS 限）、`navigator.sendBeacon`（页面卸载也能发）、`fetch`。
 - 注意：埋点别影响主流程；用 `sendBeacon` 或队列异步发，失败不阻塞用户。
 

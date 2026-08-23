@@ -1,6 +1,6 @@
 ---
-group: 后端与基础设施
-order: 51
+group: Node 与 API
+order: 1
 ---
 
 # Node / Express 后端面试
@@ -27,10 +27,12 @@ setImmediate(() => console.log('immediate'))
 中间件是「请求处理管道」，按 `app.use` 注册顺序执行，靠 `next()` 往下传：
 
 ```js
-app.use(express.json())              // 解析 body
-app.use('/api', authMiddleware)      // 鉴权（拦截未登录）
-app.use((req, res, next) => {        // 自定义日志
-  console.log(req.method, req.path); next()
+app.use(express.json()) // 解析 body
+app.use('/api', authMiddleware) // 鉴权（拦截未登录）
+app.use((req, res, next) => {
+  // 自定义日志
+  console.log(req.method, req.path)
+  next()
 })
 app.get('/api/user', (req, res) => res.json({ ok: true }))
 ```
@@ -57,10 +59,13 @@ app.get('/api/user', (req, res) => res.json({ ok: true }))
 // async 路由要包一层，把 reject 转给错误中间件
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
 
-app.get('/api/me', wrap(async (req, res) => {
-  const me = await db.user.findByPk(req.userId)
-  res.json({ success: true, data: me })
-}))
+app.get(
+  '/api/me',
+  wrap(async (req, res) => {
+    const me = await db.user.findByPk(req.userId)
+    res.json({ success: true, data: me })
+  }),
+)
 // 末尾统一兜底
 app.use((err, req, res, next) => {
   console.error(err)
@@ -85,14 +90,14 @@ app.use((err, req, res, next) => {
 
 ## 八、面试速记
 
-| 主题 | 必会 |
-|------|------|
-| 事件循环 | Node 多阶段 + nextTick 优先于微任务 |
-| 中间件 | 顺序、next()、错误中间件四参置底 |
-| 鉴权 | Session vs JWT 区别、JWT 无状态、Bearer |
-| REST | 方法语义、统一响应、版本化 |
-| 异步 | async 必须兜错、wrap 模式 |
-| ORM | 模型关联、N+1、预加载 |
+| 主题     | 必会                                    |
+| -------- | --------------------------------------- |
+| 事件循环 | Node 多阶段 + nextTick 优先于微任务     |
+| 中间件   | 顺序、next()、错误中间件四参置底        |
+| 鉴权     | Session vs JWT 区别、JWT 无状态、Bearer |
+| REST     | 方法语义、统一响应、版本化              |
+| 异步     | async 必须兜错、wrap 模式               |
+| ORM      | 模型关联、N+1、预加载                   |
 
 ## 参考来源
 

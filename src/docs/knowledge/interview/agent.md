@@ -1,6 +1,6 @@
 ---
-group: 八股
-order: 47
+group: 专题速查
+order: 2
 ---
 
 # AI Agent 面试知识文档
@@ -287,14 +287,15 @@ order: 47
 
 ### MCP 协议架构（Server/Client/Host）
 
-**高频问题**：MCP 的三角色职责？传输方式？
+**高频问题**：MCP 的三角色职责？传输方式？2026 版和旧版有什么差异？
 **答案要点**：
 
 - Host：承载 Agent 的应用（IDE、桌面客户端），管理连接与用户交互。
-- Client：Host 内与单个 Server 保持 1:1 连接的连接器。
+- Client：Host 内负责与单个 Server 交互的组件；一个 Host 可管理多个 Client。
 - Server：暴露能力（Tools / Resources / Prompts），声明 capabilities。
-- 协议消息：`tools/list`（发现工具）、`tools/call`（调用）、`notifications/tools/list_changed`（变更通知）。
-- 传输：stdio / Streamable HTTP（早期 SSE 传输已在 2025-03 弃用，WebSocket 非官方 transport）；基于 JSON-RPC 2.0。
+- 2026-07-28 核心协议是无状态的：请求在 `_meta` 携带协议版本与客户端能力；Client 可用 `server/discover` 获取 Server 支持的版本、身份和 capabilities。旧版基于初始化会话的回答已经过时。
+- 协议消息：`tools/list`（发现工具）、`tools/call`（调用）；更新通知通过订阅流按需接收。
+- 传输：stdio / Streamable HTTP（可选 SSE 用于服务端流）；底层消息基于 JSON-RPC 2.0。早期独立 HTTP+SSE transport 已弃用，不等于 Streamable HTTP 不能使用 SSE 流。
 - 安全：始终"human-in-the-loop"，明确提示哪些工具被暴露；非信任 Server 的工具注释视为不可信。
 
 ## RAG（检索增强生成）
@@ -611,23 +612,28 @@ order: 47
 ### 前沿补充（MCP / 评估 / 多模态）
 
 **Q：MCP 解决了什么？和 Function Calling 是什么关系？**
+
 - Function Calling 是"模型调一次工具"的能力；MCP 是"把工具/数据源以标准协议暴露给任意模型客户端"的开放协议（host/client/server + transport）。
 - 关系：MCP 让工具的"提供方"与"使用方"解耦——同一 server 可被不同 Agent 框架复用，不必每个 Agent 重写工具适配（见 `mcp.md`）。
 
 **Q：怎么评估一个 Agent 的好坏？只看回答质量够吗？**
+
 - 不够。需分层：任务成功率（goal completion）、工具调用准确率、步骤效率（是否绕路）、安全合规（有无越权/注入）、成本（token/步数）、用户满意度。
 - 用轨迹级评估（trace）而非只看最终结果；RAGAS 类指标（见 `rag-evaluation.md`）可复用其忠实度/相关性维度。
 
 **Q：多模态 Agent（能看图/图表）怎么设计？**
+
 - 感知：图片/表格经多模态模型或 VLM 抽取成结构化描述（见 `multimodal-rag.md`）。
 - 决策：把"视觉信息 + 文本"一起进多模态 LLM；工具调用可包含"取某图区域/查某表"。
 - 风险：VLM 对精细数字/小字易误读，关键数据需二次校验或要求引用原图坐标。
 
 **Q：Agent 面临哪些新安全威胁？**
+
 - 提示词注入（间接注入：从检索内容/网页带入恶意指令）、工具调用劫持（诱导调用危险工具）、数据外泄（把机密塞进对外请求）。
 - 防护见 `agent-security.md`：输入护栏、工具最小权限、高风险动作人工审批、不可变审计日志。
 
 **Q：RAG 和 Agent 怎么融合？**
+
 - RAG 是"检索增强的单轮生成"；Agent 可把 RAG 当作一个工具（retrieve 工具），在多次推理中按需检索、交叉验证、结合其他工具（计算/API）给出答案。
 - 趋势是"Agentic RAG"：用 Agent 规划检索策略（先搜什么、是否重搜、如何融合多源）。
 

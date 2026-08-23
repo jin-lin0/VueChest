@@ -12,13 +12,13 @@ order: 17
 
 ## 一、五种存储对比
 
-| 存储 | 容量 | 生命周期 | 能否跨标签页 | 类型 | 典型用途 |
-|------|------|----------|--------------|------|----------|
-| **Cookie** | ~4KB | 可设过期（或不超时=会话） | 是（同源） | 字符串，随请求发服务端 | 会话标识、CSRF token |
-| **LocalStorage** | ~5MB | 永久（手动清） | 是 | 字符串 | 主题偏好、非敏感设置 |
-| **SessionStorage** | ~5MB | 标签页关闭即清 | 否（仅本标签） | 字符串 | 表单草稿、单页临时态 |
-| **IndexedDB** | 数百 MB+ | 永久 | 是 | 结构化（对象/二进制） | 离线数据、缓存、大表 |
-| **Cache API** | 取决于磁盘 | 手动管理 | 是 | 请求/响应（HTTP 缓存） | PWA 离线、Service Worker |
+| 存储               | 容量       | 生命周期                  | 能否跨标签页   | 类型                   | 典型用途                 |
+| ------------------ | ---------- | ------------------------- | -------------- | ---------------------- | ------------------------ |
+| **Cookie**         | ~4KB       | 可设过期（或不超时=会话） | 是（同源）     | 字符串，随请求发服务端 | 会话标识、CSRF token     |
+| **LocalStorage**   | ~5MB       | 永久（手动清）            | 是             | 字符串                 | 主题偏好、非敏感设置     |
+| **SessionStorage** | ~5MB       | 标签页关闭即清            | 否（仅本标签） | 字符串                 | 表单草稿、单页临时态     |
+| **IndexedDB**      | 数百 MB+   | 永久                      | 是             | 结构化（对象/二进制）  | 离线数据、缓存、大表     |
+| **Cache API**      | 取决于磁盘 | 手动管理                  | 是             | 请求/响应（HTTP 缓存） | PWA 离线、Service Worker |
 
 ## 二、Cookie（与请求绑定）
 
@@ -28,6 +28,7 @@ document.cookie // "token=abc; theme=dark"
 // 写（注意属性）
 document.cookie = 'theme=dark; max-age=31536000; path=/; SameSite=Lax'
 ```
+
 > **HttpOnly** 的 Cookie 前端读不到（防 XSS 偷 token）；**SameSite** 防 CSRF（见 `web-security`）。VueChest 的会话若走 Cookie 必带这两个属性。
 
 ## 三、LocalStorage / SessionStorage

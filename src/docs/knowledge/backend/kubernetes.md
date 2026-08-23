@@ -1,6 +1,6 @@
 ---
-group: 后端与基础设施
-order: 56
+group: 部署与云原生
+order: 2
 ---
 
 # Kubernetes 入门
@@ -13,14 +13,14 @@ Docker 解决"单容器怎么跑"；K8s 解决"一堆容器怎么管"：自动�
 
 ## 二、核心对象
 
-| 对象 | 作用 |
-| --- | --- |
-| **Pod** | 最小调度单位，含一个或多个共享网络的容器 |
-| **Deployment** | 管理 Pod 副本数与版本，支撑滚动更新/回滚 |
-| **Service** | 稳定访问入口，负载均衡到后端 Pod（ClusterIP/NodePort/LoadBalancer） |
-| **Ingress** | 七层路由（域名/路径 → Service），替代 Nginx 反向代理 |
-| **ConfigMap / Secret** | 配置 / 密钥，与镜像解耦 |
-| **Namespace** | 逻辑隔离（dev/test/prod） |
+| 对象                   | 作用                                                                |
+| ---------------------- | ------------------------------------------------------------------- |
+| **Pod**                | 最小调度单位，含一个或多个共享网络的容器                            |
+| **Deployment**         | 管理 Pod 副本数与版本，支撑滚动更新/回滚                            |
+| **Service**            | 稳定访问入口，负载均衡到后端 Pod（ClusterIP/NodePort/LoadBalancer） |
+| **Ingress**            | 七层路由（域名/路径 → Service），替代 Nginx 反向代理                |
+| **ConfigMap / Secret** | 配置 / 密钥，与镜像解耦                                             |
+| **Namespace**          | 逻辑隔离（dev/test/prod）                                           |
 
 ## 三、与 Docker 的关系
 
@@ -44,7 +44,7 @@ spec:
           image: registry/vc-server:1.0.0
           ports: [{ containerPort: 3000 }]
           envFrom:
-            - secretRef: { name: vc-secrets }  # 密钥外部注入
+            - secretRef: { name: vc-secrets } # 密钥外部注入
 ```
 
 ```yaml

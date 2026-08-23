@@ -2,7 +2,7 @@
   <div class="interview-quiz">
     <header class="quiz-header">
       <button class="back-button" @click="goBack">← 返回</button>
-      <button class="docs-entry" @click="goDocs">📖 知识文档</button>
+      <button v-if="authStore.isAdmin" class="docs-entry" @click="goDocs">📖 知识文档</button>
       <h1>📚 面试题库</h1>
       <p class="subtitle">前端面试高频题目，支持随机抽题和分类练习</p>
     </header>
@@ -164,8 +164,10 @@ import { STORAGE_KEYS } from '@/config/storage-keys'
 import { debounce } from '@/utils'
 import { QUESTION_PAGE_SIZE } from './config'
 import { buildQuery } from './utils'
+import { useAuthStore } from '@/stores'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // 下拉选项
 const categoryOptions = ref<SelectOption[]>([])

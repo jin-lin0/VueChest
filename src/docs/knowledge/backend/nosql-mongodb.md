@@ -1,6 +1,6 @@
 ---
-group: 后端与基础设施
-order: 62
+group: 数据与缓存
+order: 3
 ---
 
 # NoSQL 与 MongoDB 实战
@@ -9,12 +9,12 @@ order: 62
 
 ## 一、NoSQL 四大类
 
-| 类型 | 代表 | 模型 | 适用 |
-| --- | --- | --- | --- |
-| **文档型** | MongoDB / CouchDB | JSON 文档 | 结构易变、嵌套对象 |
-| **KV** | Redis（见 `redis-cache.md`） | 键值 | 缓存、会话、计数 |
-| **列族** | Cassandra / HBase | 列簇 | 海量写入、宽表 |
-| **图** | Neo4j | 节点+边 | 社交关系、推荐 |
+| 类型       | 代表                         | 模型      | 适用               |
+| ---------- | ---------------------------- | --------- | ------------------ |
+| **文档型** | MongoDB / CouchDB            | JSON 文档 | 结构易变、嵌套对象 |
+| **KV**     | Redis（见 `redis-cache.md`） | 键值      | 缓存、会话、计数   |
+| **列族**   | Cassandra / HBase            | 列簇      | 海量写入、宽表     |
+| **图**     | Neo4j                        | 节点+边   | 社交关系、推荐     |
 
 ## 二、MongoDB 是什么
 
@@ -33,12 +33,12 @@ order: 62
 
 ## 三、与 MySQL 取舍
 
-| 维度 | MySQL（关系型） | MongoDB（文档型） |
-| --- | --- | --- |
-| 结构 | 强 schema，改结构需迁移 | 弱 schema，灵活 |
-| 关联 | JOIN 强 | 嵌套路子，少用 JOIN |
-| 事务 | ACID 完整 | 多文档事务支持但有成本 |
-| 查询 | SQL 强大 | 聚合管道、特定查询强 |
+| 维度 | MySQL（关系型）             | MongoDB（文档型）                |
+| ---- | --------------------------- | -------------------------------- |
+| 结构 | 强 schema，改结构需迁移     | 弱 schema，灵活                  |
+| 关联 | JOIN 强                     | 嵌套路子，少用 JOIN              |
+| 事务 | ACID 完整                   | 多文档事务支持但有成本           |
+| 查询 | SQL 强大                    | 聚合管道、特定查询强             |
 | 适用 | 强一致、关联多（订单/账务） | 结构多变、读多（内容/日志/配置） |
 
 > 取舍：核心交易/账务（强一致、复杂关联）用 MySQL；内容/配置/日志/画像（结构易变、读多）用 MongoDB。很多系统是"MySQL 主 + MongoDB 辅"。
@@ -46,9 +46,9 @@ order: 62
 ## 四、索引
 
 ```js
-db.posts.createIndex({ title: 1 })          // 单字段
+db.posts.createIndex({ title: 1 }) // 单字段
 db.posts.createIndex({ author: 1, createdAt: -1 }) // 复合
-db.posts.createIndex({ tags: 1 })           // 数组（多键）索引
+db.posts.createIndex({ tags: 1 }) // 数组（多键）索引
 ```
 
 - 复合索引遵循**最左前缀**（同 MySQL，见 `mysql-optimization.md`）。
@@ -58,8 +58,8 @@ db.posts.createIndex({ tags: 1 })           // 数组（多键）索引
 
 ```js
 db.orders.aggregate([
-  { $match: { status: "paid" } },
-  { $group: { _id: "$userId", total: { $sum: "$amount" } } },
+  { $match: { status: 'paid' } },
+  { $group: { _id: '$userId', total: { $sum: '$amount' } } },
   { $sort: { total: -1 } },
   { $limit: 10 },
 ])

@@ -9,14 +9,14 @@ order: 29
 
 ## 一、方案地图
 
-| 方案 | 技术 | 目标端 | 渲染 | 性能 | 适用 |
-| --- | --- | --- | --- | --- | --- |
-| **React Native** | JS/TS + React | iOS / Android | 原生组件 | 高 | 原生感强的 App |
-| **Flutter** | Dart | iOS / Android / Web / 桌面 | 自绘 Skia | 很高 | 高度一致 UI、动效 |
-| **小程序** | 各平台 DSL | 微信/支付宝等 | 平台 WebView | 中 | 国内流量入口 |
-| **Taro / uni-app** | React/Vue → 小程序+App | 小程序/H5/App | 多端编译 | 中 | 国内多端业务 |
-| **Electron / Tauri** | Web 技术 | 桌面（Win/Mac/Linux） | Chromium/系统 WebView | 中/高 | 桌面工具 |
-| **PWA** | Web | 所有（装到桌面） | 浏览器 | 中 | 轻量"安装感" |
+| 方案                 | 技术                   | 目标端                     | 渲染                  | 性能  | 适用              |
+| -------------------- | ---------------------- | -------------------------- | --------------------- | ----- | ----------------- |
+| **React Native**     | JS/TS + React          | iOS / Android              | 原生组件              | 高    | 原生感强的 App    |
+| **Flutter**          | Dart                   | iOS / Android / Web / 桌面 | 自绘 Skia             | 很高  | 高度一致 UI、动效 |
+| **小程序**           | 各平台 DSL             | 微信/支付宝等              | 平台 WebView          | 中    | 国内流量入口      |
+| **Taro / uni-app**   | React/Vue → 小程序+App | 小程序/H5/App              | 多端编译              | 中    | 国内多端业务      |
+| **Electron / Tauri** | Web 技术               | 桌面（Win/Mac/Linux）      | Chromium/系统 WebView | 中/高 | 桌面工具          |
+| **PWA**              | Web                    | 所有（装到桌面）           | 浏览器                | 中    | 轻量"安装感"      |
 
 ## 二、React Native（RN）
 
@@ -32,7 +32,7 @@ order: 29
 
 ## 四、小程序与多端框架（国内）
 
-- 国内业务常需微信/支付宝/抖音小程序 + H5 +  App 多端。
+- 国内业务常需微信/支付宝/抖音小程序 + H5 + App 多端。
 - **Taro**（React/Vue 语法编译到多端）、**uni-app**（Vue 语法）降低多端重复开发。
 - 代价：各平台能力不齐，需用条件编译（`process.env.TARO_ENV`）补差异；性能受 WebView 制约。
 

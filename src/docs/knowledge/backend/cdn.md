@@ -1,6 +1,6 @@
 ---
-group: 后端与基础设施
-order: 64
+group: 部署与云原生
+order: 4
 ---
 
 # CDN 原理与静态加速

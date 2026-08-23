@@ -1,15 +1,16 @@
 import type { DocSection, DocItem } from '../types'
+import { KNOWLEDGE_TAXONOMY } from './taxonomy'
 
 /**
  * 知识库文档注册表（自动扫描版）。
  *
  * 约定（取代手写 `import` + 手写分组树）：
  * - 在 `knowledge/<category>/` 下新增 `.md` 即自动注册，无需改动本文件。
- * - `<category>` 取一级目录名：`frontend` / `ai` / `interview`（决定顶层 Tab）。
+ * - `<category>` 取一级目录名：`frontend` / `ai` / `backend` / `interview`（决定顶层目录）。
  * - 每篇 md 顶部用 frontmatter 声明所属分组与排序：
  *     ---
  *     group: CSS 与样式   # 二级分组名（同 category 内唯一即可），决定左侧子菜单归属
- *     order: 1            # 可选，跨库全局排序，越小越靠前
+ *     order: 1            # 可选，仅控制同一分组内的顺序，越小越靠前
  *     ---
  *   标题自动取正文首个 `# H1`，因此内容里照常写 `# 标题` 即可。
  * - `_template.md` / `_backlog.md` 为元文件，不注册。
@@ -59,12 +60,6 @@ interface Parsed {
   content: string
 }
 
-const CATEGORY_TITLE: Record<string, string> = {
-  frontend: '前端开发',
-  ai: 'AI / Agent',
-  interview: '面试题库',
-}
-
 function parseAll(): Parsed[] {
   const out: Parsed[] = []
   for (const [path, content] of Object.entries(rawModules)) {
@@ -88,25 +83,30 @@ function parseAll(): Parsed[] {
 
 function buildSections(): DocSection[] {
   const all = parseAll()
-  const categories = ['frontend', 'ai', 'interview']
-  return categories
-    .filter((cat) => all.some((d) => d.category === cat))
-    .map((cat) => {
-      const docs = all.filter((d) => d.category === cat).sort((a, b) => a.order - b.order)
+  return KNOWLEDGE_TAXONOMY.filter((category) => all.some((d) => d.category === category.id)).map(
+    (category) => {
+      const docs = all.filter((d) => d.category === category.id)
       const groups: Record<string, Parsed[]> = {}
       for (const d of docs) (groups[d.group] ||= []).push(d)
+      const configuredGroupOrder = new Map(
+        category.groups.map((group, index) => [group, index] as const),
+      )
       const items: DocItem[] = Object.entries(groups)
-        .sort(
-          (a, b) =>
-            Math.min(...a[1].map((d) => d.order)) - Math.min(...b[1].map((d) => d.order)),
-        )
+        .sort(([groupA], [groupB]) => {
+          const orderA = configuredGroupOrder.get(groupA) ?? Number.MAX_SAFE_INTEGER
+          const orderB = configuredGroupOrder.get(groupB) ?? Number.MAX_SAFE_INTEGER
+          return orderA - orderB || groupA.localeCompare(groupB, 'zh-CN')
+        })
         .map(([groupTitle, list], i) => ({
-          id: `grp-${cat}-${i}`,
+          id: `grp-${category.id}-${i}`,
           title: groupTitle,
-          children: list.map(({ id, title, content }) => ({ id, title, content })),
+          children: list
+            .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, 'zh-CN'))
+            .map(({ id, title, content }) => ({ id, title, content })),
         }))
-      return { id: `kb-${cat}`, title: CATEGORY_TITLE[cat] || cat, items }
-    })
+      return { id: `kb-${category.id}`, title: category.title, items }
+    },
+  )
 }
 
 export const knowledgeSections: DocSection[] = buildSections()

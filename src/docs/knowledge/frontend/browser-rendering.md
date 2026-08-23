@@ -38,11 +38,11 @@ CSS  ──> CSSOM Tree
 
 ## 二、三大开销：reflow / repaint / composite
 
-| 操作 | 触发阶段 | 代价 |
-|------|----------|------|
+| 操作                                      | 触发阶段                   | 代价 |
+| ----------------------------------------- | -------------------------- | ---- |
 | 改几何（width/height/top/left、增删节点） | Layout → Paint → Composite | 最重 |
-| 改外观（color/background/visibility） | Paint → Composite | 中等 |
-| 改合成属性（transform/opacity） | Composite only | 最轻 |
+| 改外观（color/background/visibility）     | Paint → Composite          | 中等 |
+| 改合成属性（transform/opacity）           | Composite only             | 最轻 |
 
 > **黄金法则**：能用 `transform` / `opacity` 实现的动画，绝不用 `top/left/width` 去动——前者只走 Composite（GPU 加速、不触发 reflow/repaint），后者每次都重排重绘，肉眼可见卡顿。这正是 `css-effects` 里动画用 `transform` 而非改 `left` 的原因。
 
@@ -53,8 +53,8 @@ CSS  ──> CSSOM Tree
 ```css
 /* 以下属性会提升为独立合成层（常见触发条件） */
 .video-card {
-  transform: translateZ(0);   /* 经典「层提升」hack */
-  will-change: transform;     /* 提前告诉浏览器：我要动 transform */
+  transform: translateZ(0); /* 经典「层提升」hack */
+  will-change: transform; /* 提前告诉浏览器：我要动 transform */
 }
 ```
 
@@ -80,12 +80,12 @@ CSS  ──> CSSOM Tree
 
 ## 六、与性能优化的衔接
 
-| 现象 | 根因（本文） | 对策（perf-frontend） |
-|------|--------------|----------------------|
-| 动画掉帧 | 触发 reflow/repaint | 改 transform/opacity、提合成层 |
-| 首屏白屏久 | 关键路径阻塞 | 内联关键 CSS、JS defer、预加载 |
-| 交互卡顿 | 长任务 + 频繁重排 | 防抖节流、批量 DOM 更新、虚拟列表 |
-| 内存涨 | 合成层/监听器泄漏 | 合理用 will-change、卸载时清理 |
+| 现象       | 根因（本文）        | 对策（perf-frontend）             |
+| ---------- | ------------------- | --------------------------------- |
+| 动画掉帧   | 触发 reflow/repaint | 改 transform/opacity、提合成层    |
+| 首屏白屏久 | 关键路径阻塞        | 内联关键 CSS、JS defer、预加载    |
+| 交互卡顿   | 长任务 + 频繁重排   | 防抖节流、批量 DOM 更新、虚拟列表 |
+| 内存涨     | 合成层/监听器泄漏   | 合理用 will-change、卸载时清理    |
 
 ## 参考来源
 

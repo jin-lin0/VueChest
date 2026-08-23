@@ -22,13 +22,13 @@ order: 18
 
 由响应头控制，命中后**完全不请求**服务器：
 
-| 头 | 说明 |
-| --- | --- |
-| `Cache-Control: max-age=3600` | 相对时间（秒），优先级最高 |
-| `Cache-Control: no-cache` | 走协商缓存（每次问服务端） |
-| `Cache-Control: no-store` | 禁止任何缓存 |
-| `Cache-Control: public/private` | 是否允许代理缓存 |
-| `Expires: <GMT时间>` | 绝对时间，已被 `max-age` 取代（有时钟漂移问题） |
+| 头                              | 说明                                            |
+| ------------------------------- | ----------------------------------------------- |
+| `Cache-Control: max-age=3600`   | 相对时间（秒），优先级最高                      |
+| `Cache-Control: no-cache`       | 走协商缓存（每次问服务端）                      |
+| `Cache-Control: no-store`       | 禁止任何缓存                                    |
+| `Cache-Control: public/private` | 是否允许代理缓存                                |
+| `Expires: <GMT时间>`            | 绝对时间，已被 `max-age` 取代（有时钟漂移问题） |
 
 > 优先用 `Cache-Control: max-age`，别再依赖 `Expires`。
 
@@ -36,9 +36,9 @@ order: 18
 
 强缓存失效后，浏览器带条件头问服务端：资源变没变？
 
-| 请求头 | 响应头 | 机制 |
-| --- | --- | --- |
-| `If-None-Match: <etag>` | `ETag` | 资源指纹（哈希），精确 |
+| 请求头                      | 响应头          | 机制                           |
+| --------------------------- | --------------- | ------------------------------ |
+| `If-None-Match: <etag>`     | `ETag`          | 资源指纹（哈希），精确         |
 | `If-Modified-Since: <时间>` | `Last-Modified` | 最后修改时间，精度到秒，易误判 |
 
 - 没变 → 服务端返回 **304 Not Modified**，浏览器用缓存副本。
@@ -48,11 +48,11 @@ order: 18
 
 ## 四、缓存策略实践
 
-| 资源 | 推荐策略 |
-| --- | --- |
+| 资源                                      | 推荐策略                                                                   |
+| ----------------------------------------- | -------------------------------------------------------------------------- |
 | 带 hash 的静态资源（JS/CSS，`[hash].js`） | `Cache-Control: max-age=31536000, immutable`（永不过期，靠 hash 换文件名） |
-| HTML（入口） | `no-cache` 或很短 max-age（保证拿到最新引用） |
-| 接口数据 | `ETag` + 304，或前端自管（见 `browser-storage.md`） |
+| HTML（入口）                              | `no-cache` 或很短 max-age（保证拿到最新引用）                              |
+| 接口数据                                  | `ETag` + 304，或前端自管（见 `browser-storage.md`）                        |
 
 > Vite 构建产物默认带 content-hash（`main.a1b2c3.js`），正适合"长缓存 + 换名即新"。入口 `index.html` 要 `no-cache`，否则用户拿不到新 HTML、缓存旧 chunk。
 
@@ -61,9 +61,7 @@ order: 18
 ```js
 // sw.js
 self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request))
-  )
+  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)))
 })
 ```
 

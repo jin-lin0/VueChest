@@ -9,12 +9,12 @@ order: 6
 
 ## 一、为什么用组合式 API
 
-| 维度       | Options API            | 组合式 API（`<script setup>`）      |
-| ---------- | ---------------------- | ----------------------------------- |
-| 逻辑组织   | 按选项类型切分         | 按功能关注点聚拢                    |
-| 复用       | mixins（来源不明、冲突）| 组合式函数 composables（显式导入）  |
-| TS 支持    | 类型推导弱             | 类型推导好，与 TS 天然契合          |
-| 代码压缩   | 属性名需保留           | 可被 tree-shake，命名更自由         |
+| 维度     | Options API              | 组合式 API（`<script setup>`）     |
+| -------- | ------------------------ | ---------------------------------- |
+| 逻辑组织 | 按选项类型切分           | 按功能关注点聚拢                   |
+| 复用     | mixins（来源不明、冲突） | 组合式函数 composables（显式导入） |
+| TS 支持  | 类型推导弱               | 类型推导好，与 TS 天然契合         |
+| 代码压缩 | 属性名需保留             | 可被 tree-shake，命名更自由        |
 
 经验法则：新项目一律 `<script setup>`；旧组件维持 Options API 不动，逐步迁移即可。
 
@@ -229,14 +229,14 @@ store.inc() // 直接调用 action
 
 ## 九、高频坑速记
 
-| 坑                                  | 正确做法                                          |
-| ----------------------------------- | ------------------------------------------------- |
-| 解构 `reactive` 丢失响应            | 用 `toRefs` / `toRef`                             |
-| 在 `computed` 里写副作用            | 改用 `watch` / `watchEffect`                     |
-| `watch` 对象不生效                  | 加 `{ deep: true }` 或 watch getter              |
-| `v-for` 用 `ref` 数组拿 DOM        | 用函数 ref：`ref={(el) => (els[i] = el)}`        |
-| 异步 setup 没加载态                | 外层包 `<Suspense>`                               |
-| `reactive` 整体替换变普通对象      | 用 `Object.assign(state, newObj)` 而非 `state =` |
+| 坑                            | 正确做法                                         |
+| ----------------------------- | ------------------------------------------------ |
+| 解构 `reactive` 丢失响应      | 用 `toRefs` / `toRef`                            |
+| 在 `computed` 里写副作用      | 改用 `watch` / `watchEffect`                     |
+| `watch` 对象不生效            | 加 `{ deep: true }` 或 watch getter              |
+| `v-for` 用 `ref` 数组拿 DOM   | 用函数 ref：`ref={(el) => (els[i] = el)}`        |
+| 异步 setup 没加载态           | 外层包 `<Suspense>`                              |
+| `reactive` 整体替换变普通对象 | 用 `Object.assign(state, newObj)` 而非 `state =` |
 
 ## 参考来源
 

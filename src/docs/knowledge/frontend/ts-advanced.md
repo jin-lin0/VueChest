@@ -121,9 +121,7 @@ function f(x: string | { id: number }) {
 }
 
 // 3) 判别联合（discriminated union）
-type Shape =
-  | { kind: 'circle'; r: number }
-  | { kind: 'rect'; w: number; h: number }
+type Shape = { kind: 'circle'; r: number } | { kind: 'rect'; w: number; h: number }
 function area(s: Shape) {
   switch (s.kind) {
     case 'circle':
@@ -138,19 +136,19 @@ function area(s: Shape) {
 
 ## 七、内置实用工具类型
 
-| 工具类型            | 作用                         |
-| ------------------- | ---------------------------- |
-| `Partial<T>`        | 所有属性变可选               |
-| `Required<T>`       | 所有属性变必填               |
-| `Pick<T, K>`        | 挑选部分属性                 |
-| `Omit<T, K>`        | 排除部分属性                 |
-| `Record<K, V>`      | 构造键值映射类型             |
-| `Exclude<T, U>`     | 排除联合中的某些成员         |
-| `Extract<T, U>`     | 提取联合中的某些成员         |
-| `NonNullable<T>`    | 排除 `null` / `undefined`    |
-| `Parameters<T>`     | 提取函数参数元组             |
-| `ReturnType<T>`     | 提取函数返回值类型           |
-| `Awaited<T>`        | 解开 Promise 的值类型        |
+| 工具类型         | 作用                      |
+| ---------------- | ------------------------- |
+| `Partial<T>`     | 所有属性变可选            |
+| `Required<T>`    | 所有属性变必填            |
+| `Pick<T, K>`     | 挑选部分属性              |
+| `Omit<T, K>`     | 排除部分属性              |
+| `Record<K, V>`   | 构造键值映射类型          |
+| `Exclude<T, U>`  | 排除联合中的某些成员      |
+| `Extract<T, U>`  | 提取联合中的某些成员      |
+| `NonNullable<T>` | 排除 `null` / `undefined` |
+| `Parameters<T>`  | 提取函数参数元组          |
+| `ReturnType<T>`  | 提取函数返回值类型        |
+| `Awaited<T>`     | 解开 Promise 的值类型     |
 
 ```ts
 type User = { id: number; name: string; email?: string }

@@ -1,6 +1,6 @@
 ---
-group: 后端与基础设施
-order: 53
+group: 数据与缓存
+order: 2
 ---
 
 # Redis 缓存实战
@@ -13,14 +13,14 @@ Redis 是内存 KV 数据库，读写微秒级，比 MySQL 快几个数量级。
 
 ## 二、核心数据结构与选型
 
-| 结构 | 命令示例 | 场景 |
-| --- | --- | --- |
-| **String** | `SET/GET/INCR/EXPIRE` | 计数器、验证码、简单缓存 |
-| **Hash** | `HSET/HGET/HMGET` | 对象（用户资料）部分更新 |
-| **List** | `LPUSH/LRANGE` | 队列、最新列表 |
-| **Set** | `SADD/SISMEMBER` | 标签、去重、共同关注 |
-| **ZSet（有序集合）** | `ZADD/ZRANGE` | 排行榜、延迟队列 |
-| **Bitmap/HyperLogLog** | `SETBIT/PFADD` | 签到、UV 去重估算 |
+| 结构                   | 命令示例              | 场景                     |
+| ---------------------- | --------------------- | ------------------------ |
+| **String**             | `SET/GET/INCR/EXPIRE` | 计数器、验证码、简单缓存 |
+| **Hash**               | `HSET/HGET/HMGET`     | 对象（用户资料）部分更新 |
+| **List**               | `LPUSH/LRANGE`        | 队列、最新列表           |
+| **Set**                | `SADD/SISMEMBER`      | 标签、去重、共同关注     |
+| **ZSet（有序集合）**   | `ZADD/ZRANGE`         | 排行榜、延迟队列         |
+| **Bitmap/HyperLogLog** | `SETBIT/PFADD`        | 签到、UV 去重估算        |
 
 ## 三、缓存与 MySQL 的读写协作
 
@@ -36,12 +36,14 @@ Redis 是内存 KV 数据库，读写微秒级，比 MySQL 快几个数量级。
 ## 四、三大经典问题
 
 ### 1. 缓存穿透（查不存在的数据）
+
 恶意/误查永远不在 DB 的 key，绕过缓存直击 DB。
 
 - **布隆过滤器**：拦截不存在的 key。
 - **空值缓存**：查不到也缓存 `null`（短 TTL），防反复打 DB。
 
 ### 2. 缓存击穿（热点 key 失效瞬间）
+
 某热点 key 过期瞬间，大量并发同时击穿到 DB。
 
 - **互斥锁（mutex）**：只放一个请求重建缓存，其余等待。
@@ -49,6 +51,7 @@ Redis 是内存 KV 数据库，读写微秒级，比 MySQL 快几个数量级。
 - **热点 key 不过期**：后台刷新。
 
 ### 3. 缓存雪崩（大量 key 同时失效）
+
 同批次 key 集中过期 / Redis 宕机 → DB 被冲垮。
 
 - **过期时间加随机抖动**：避免同时失效。

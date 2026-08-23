@@ -18,12 +18,12 @@ Vue 3 的响应式不是「魔法」，而是 **Proxy + 依赖收集（track）/
 const obj = { count: 0 }
 const proxy = new Proxy(obj, {
   get(target, key, receiver) {
-    track(target, key)          // 读时：记录「谁在用我」
+    track(target, key) // 读时：记录「谁在用我」
     return Reflect.get(target, key, receiver)
   },
   set(target, key, value, receiver) {
     const r = Reflect.set(target, key, value, receiver)
-    trigger(target, key)         // 写时：通知「用我的人」重跑
+    trigger(target, key) // 写时：通知「用我的人」重跑
     return r
   },
 })
@@ -57,7 +57,7 @@ state.count = 1 ──set──trigger──> 找到依赖 count 的组件 ─�
 
 ```ts
 import { ref, reactive } from 'vue'
-const count = ref(0)        // { value: 0 }，模板里 {{ count }} 自动解包
+const count = ref(0) // { value: 0 }，模板里 {{ count }} 自动解包
 const state = reactive({ n: 0 }) // 直接 Proxy 对象，state.n
 ```
 
@@ -65,7 +65,7 @@ const state = reactive({ n: 0 }) // 直接 Proxy 对象，state.n
 
 ```js
 const state = reactive({ a: 1, b: 2 })
-const { a, b } = state   // ❌ a/b 是普通数字，脱离了 Proxy，不再被 track
+const { a, b } = state // ❌ a/b 是普通数字，脱离了 Proxy，不再被 track
 ```
 
 解构把「Proxy 上的属性」拷成普通变量，丢失了 get/set 拦截 → 不再是响应式。
@@ -93,13 +93,13 @@ const { a, b } = toRefs(state) // ✅ a/b 是 ref，.value 仍走 Proxy
 
 ## 八、速记
 
-| 现象 | 根因 |
-|------|------|
-| 改数据视图自动更新 | set 触发 trigger 通知 effect |
-| 解构对象属性不响应 | 脱离 Proxy，用 `toRefs` |
-| 原始值要用 ref | reactive 只接对象 |
-| 同轮多次改只刷一次 | 异步调度队列去重 |
-| 新增属性也响应 | Proxy 拦截动态 key（Vue2 不可） |
+| 现象               | 根因                            |
+| ------------------ | ------------------------------- |
+| 改数据视图自动更新 | set 触发 trigger 通知 effect    |
+| 解构对象属性不响应 | 脱离 Proxy，用 `toRefs`         |
+| 原始值要用 ref     | reactive 只接对象               |
+| 同轮多次改只刷一次 | 异步调度队列去重                |
+| 新增属性也响应     | Proxy 拦截动态 key（Vue2 不可） |
 
 ## 参考来源
 

@@ -88,12 +88,13 @@ const { count, double } = storeToRefs(store)
 // actions 可直接解构（它们是普通函数，不是响应式数据）
 const { increment } = store
 
-count.value++          // 直接改 state（Pinia 允许，无需 action）
-store.increment()      // 也可通过 action 改
+count.value++ // 直接改 state（Pinia 允许，无需 action）
+store.increment() // 也可通过 action 改
 </script>
 ```
 
 **高频坑：`storeToRefs` vs 直接解构**
+
 - `const { count } = store` → `count` 变成普通数字，**不会随 store 变化**。
 - 正确：`storeToRefs(store)` 只挑 state/getters 变 ref；actions 用普通解构。
 
@@ -127,16 +128,20 @@ pinia.use(piniaPluginPersistedstate)
 ```
 
 ```ts
-export const useUserStore = defineStore('user', () => {
-  const token = ref<string | null>(null)
-  return { token }
-}, {
-  persist: {
-    key: 'vc-user',          // localStorage key
-    pick: ['token'],         // 只持久化 token，不存 profile
-    storage: localStorage,   // 默认就是 localStorage
+export const useUserStore = defineStore(
+  'user',
+  () => {
+    const token = ref<string | null>(null)
+    return { token }
   },
-})
+  {
+    persist: {
+      key: 'vc-user', // localStorage key
+      pick: ['token'], // 只持久化 token，不存 profile
+      storage: localStorage, // 默认就是 localStorage
+    },
+  },
+)
 ```
 
 > 注意：只持久化「必要的、可重建的」字段（如 token、主题偏好），**不要把大对象/敏感信息整块写本地**。VueChest 的用户会话与主题开关就是这么落的。
@@ -173,22 +178,26 @@ Pinia 原生支持 Vue DevTools：可时间旅行、编辑 state、追踪 action
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-export const useUserStore = defineStore('user', () => {
-  const token = ref<string | null>(null)
-  const profile = ref<{ id: number; name: string } | null>(null)
-  const isLogin = computed(() => !!token.value)
+export const useUserStore = defineStore(
+  'user',
+  () => {
+    const token = ref<string | null>(null)
+    const profile = ref<{ id: number; name: string } | null>(null)
+    const isLogin = computed(() => !!token.value)
 
-  function setToken(t: string) {
-    token.value = t
-  }
-  function logout() {
-    token.value = null
-    profile.value = null
-  }
-  return { token, profile, isLogin, setToken, logout }
-}, {
-  persist: { key: 'vc-user', pick: ['token'] },
-})
+    function setToken(t: string) {
+      token.value = t
+    }
+    function logout() {
+      token.value = null
+      profile.value = null
+    }
+    return { token, profile, isLogin, setToken, logout }
+  },
+  {
+    persist: { key: 'vc-user', pick: ['token'] },
+  },
+)
 ```
 
 ## 参考来源

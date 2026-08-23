@@ -1,6 +1,6 @@
 ---
-group: 后端与基础设施
-order: 52
+group: 数据与缓存
+order: 1
 ---
 
 # 数据库与 MySQL 优化
@@ -54,6 +54,7 @@ EXPLAIN SELECT * FROM market_apps WHERE uploadedby = 5 ORDER BY id DESC LIMIT 20
 ```
 
 看 `EXPLAIN` 关键列：
+
 - `type`：从 `ALL`（全表扫描，最坏）到 `const`（最好），争取 `ref`/`range` 以上。
 - `key`：实际用了哪个索引（NULL = 没走索引）。
 - `rows`：估算扫描行数，越大越慢。
@@ -83,10 +84,15 @@ SELECT * FROM market_apps WHERE id < :lastId ORDER BY id DESC LIMIT 20;
 
 ```js
 // 模型定义里声明索引
-MarketApp.init({ /* ... */ }, {
-  sequelize,
-  indexes: [{ fields: ['uploadedby'] }, { fields: ['uploadedby', 'name'] }],
-})
+MarketApp.init(
+  {
+    /* ... */
+  },
+  {
+    sequelize,
+    indexes: [{ fields: ['uploadedby'] }, { fields: ['uploadedby', 'name'] }],
+  },
+)
 // 预加载避免 N+1
 await MarketApp.findAll({ include: [{ model: User, as: 'author' }] })
 ```
@@ -95,14 +101,14 @@ await MarketApp.findAll({ include: [{ model: User, as: 'author' }] })
 
 ## 八、面试速记
 
-| 主题 | 必会 |
-|------|------|
-| 索引 | B+树、聚簇/二级、回表 |
-| 最左前缀 | 联合索引从左用起、范围后失效 |
-| 事务 | ACID、隔离级别、长事务危害 |
-| 排查 | EXPLAIN、type/key/rows/Extra |
-| 分页 | 深 OFFSET 慢 → 游标分页 |
-| 设计 | 只查所需列、JOIN 索引、连接池 |
+| 主题     | 必会                          |
+| -------- | ----------------------------- |
+| 索引     | B+树、聚簇/二级、回表         |
+| 最左前缀 | 联合索引从左用起、范围后失效  |
+| 事务     | ACID、隔离级别、长事务危害    |
+| 排查     | EXPLAIN、type/key/rows/Extra  |
+| 分页     | 深 OFFSET 慢 → 游标分页       |
+| 设计     | 只查所需列、JOIN 索引、连接池 |
 
 ## 参考来源
 

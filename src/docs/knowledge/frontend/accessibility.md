@@ -18,7 +18,8 @@ order: 33
 
 ```html
 <button type="button" @click="submit">提交</button>
-<!-- 而非 --> <div @click="submit">提交</div>
+<!-- 而非 -->
+<div @click="submit">提交</div>
 ```
 
 ## 二、ARIA：语义化不够时的补充
@@ -43,7 +44,10 @@ ARIA 只"描述"不"改变行为"。能用原生语义就别用 ARIA。
 - VueChest 的 `Modal`/`Drawer`/`CustomSelect`（见 `component-library.md`）都应实现焦点陷阱。
 
 ```css
-.btn:focus-visible { outline: 2px solid #4f8cff; outline-offset: 2px; }
+.btn:focus-visible {
+  outline: 2px solid #4f8cff;
+  outline-offset: 2px;
+}
 ```
 
 ## 四、动态内容播报（aria-live）
@@ -51,8 +55,10 @@ ARIA 只"描述"不"改变行为"。能用原生语义就别用 ARIA。
 流式输出、Toast、加载状态要被读屏播报：
 
 ```html
-<div aria-live="polite">已保存</div>      <!-- 不打断当前朗读 -->
-<div aria-live="assertive">操作失败</div>  <!-- 立即播报 -->
+<div aria-live="polite">已保存</div>
+<!-- 不打断当前朗读 -->
+<div aria-live="assertive">操作失败</div>
+<!-- 立即播报 -->
 ```
 
 > VueChest AI 对话的"生成中/完成"状态、Toast（`useConfirm`/`addToast`）应挂 `aria-live`。
@@ -65,7 +71,10 @@ ARIA 只"描述"不"改变行为"。能用原生语义就别用 ARIA。
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 ```
 
