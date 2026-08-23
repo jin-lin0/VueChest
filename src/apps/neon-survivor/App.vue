@@ -709,6 +709,11 @@ onUnmounted(() => {
   mix-blend-mode: soft-light;
 }
 
+.phase-playing .scanlines {
+  opacity: 0.035;
+  mix-blend-mode: normal;
+}
+
 .top-glow {
   height: 180px;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent);
@@ -816,6 +821,11 @@ button {
     inset 0 1px rgba(255, 255, 255, 0.035),
     0 12px 40px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(16px);
+}
+
+.phase-playing .glass-chip,
+.phase-playing .icon-button {
+  backdrop-filter: none;
 }
 
 .vitals,

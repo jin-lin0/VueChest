@@ -148,6 +148,7 @@ export class CarShowroom {
   setSlots(count: 1 | 2): void {
     this.slotCount = count
     this.applyLayout()
+    this.resize()
   }
 
   /** 换车：触发放大登场/缩小退场动画；同 id 幂等。 */
@@ -367,8 +368,14 @@ export class CarShowroom {
     if (!w || !h) return
     this.renderer.setSize(w, h, false)
     this.camera.aspect = w / h
-    // 自适应取景：窄屏（竖屏手机）拉远相机，宽屏拉近，保证展台不被裁切
-    this.camera.position.z = THREE.MathUtils.clamp(16 / this.camera.aspect, 11, 30)
+    // 按实际展台数量取景：单车不再套用双车宽度，竖屏手机也不会被拉到最远只剩小车。
+    const horizontalFraming = this.slotCount === 2 ? 16.5 : 11.5
+    const minDistance = h < 300 ? 8.2 : 10.2
+    this.camera.position.z = THREE.MathUtils.clamp(
+      horizontalFraming / this.camera.aspect,
+      minDistance,
+      27,
+    )
     this.camera.updateProjectionMatrix()
   }
 }

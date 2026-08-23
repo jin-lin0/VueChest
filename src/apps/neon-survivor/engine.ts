@@ -23,9 +23,22 @@ const WORLD_HEIGHT = 2400
 const BOSS_TIMES = [120, 240, 360] as const
 const RUN_DURATION = BOSS_TIMES[BOSS_TIMES.length - 1]
 const ENEMY_GRID_SIZE = 160
-const ENEMY_GRID_COLUMNS = Math.ceil(WORLD_WIDTH / ENEMY_GRID_SIZE) + 2
-const MAX_BULLETS = 520
+const ENEMY_GRID_COLUMNS = Math.ceil(WORLD_WIDTH / ENEMY_GRID_SIZE)
+const ENEMY_GRID_ROWS = Math.ceil(WORLD_HEIGHT / ENEMY_GRID_SIZE)
+const MAX_ENEMIES = 96
+const MAX_PLAYER_BULLETS = 180
+const MAX_ENEMY_BULLETS = 180
+const MAX_PICKUPS = 80
+const BOSS_MINION_LIMIT = 24
 const TAU = Math.PI * 2
+
+const ENEMY_THREAT: Record<EnemyKind, number> = {
+  drone: 1,
+  brute: 3,
+  shooter: 3,
+  splitter: 4,
+  boss: 0,
+}
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
 const distanceSquared = (a: Vector, b: Vector) => {
@@ -104,7 +117,11 @@ export class NeonSurvivorEngine {
   private particles: Particle[] = []
   private texts: FloatingText[] = []
   private stars: Star[] = []
-  private readonly enemyGrid = new Map<number, Enemy[]>()
+  private readonly enemyGrid = Array.from(
+    { length: ENEMY_GRID_COLUMNS * ENEMY_GRID_ROWS },
+    () => [] as Enemy[],
+  )
+  private readonly occupiedEnemyCells: number[] = []
   private upgradeLevels = new Map<string, number>()
   private active = false
   private ended = false
@@ -112,7 +129,9 @@ export class NeonSurvivorEngine {
   private width = 1
   private height = 1
   private dpr = 1
-  private particleBudget = 720
+  private particleBudget = 320
+  private lowPowerMode = false
+  private reducedEffects = false
   private vignetteGradient: CanvasGradient | null = null
   private elapsed = 0
   private spawnTimer = 0
@@ -151,10 +170,11 @@ export class NeonSurvivorEngine {
     const rect = this.canvas.getBoundingClientRect()
     this.width = Math.max(1, rect.width)
     this.height = Math.max(1, rect.height)
-    const lowPowerViewport =
+    this.lowPowerMode =
       window.matchMedia('(pointer: coarse)').matches || this.width < 760 || this.height < 520
-    this.dpr = Math.min(lowPowerViewport ? 1.5 : 2, window.devicePixelRatio || 1)
-    this.particleBudget = lowPowerViewport ? 420 : 720
+    this.dpr = Math.min(this.lowPowerMode ? 1.25 : 1.5, window.devicePixelRatio || 1)
+    this.particleBudget = this.lowPowerMode ? 160 : 320
+    this.reducedEffects = this.lowPowerMode
     this.canvas.width = Math.round(this.width * this.dpr)
     this.canvas.height = Math.round(this.height * this.dpr)
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
@@ -199,6 +219,7 @@ export class NeonSurvivorEngine {
     this.screenShake = 0
     this.damageFlash = 0
     this.pendingLevelUp = false
+    this.reducedEffects = this.lowPowerMode
     this.ended = false
     this.active = true
     this.renderDirty = true
@@ -261,7 +282,8 @@ export class NeonSurvivorEngine {
     this.particles.length = 0
     this.texts.length = 0
     this.stars.length = 0
-    this.enemyGrid.clear()
+    for (const key of this.occupiedEnemyCells) this.enemyGrid[key].length = 0
+    this.occupiedEnemyCells.length = 0
     this.upgradeLevels.clear()
   }
 
@@ -305,6 +327,8 @@ export class NeonSurvivorEngine {
     this.updateParticles(dt)
     this.spawnEnemies(dt)
     this.updateBossProgression(dt)
+    this.enforceBulletBudgets()
+    this.updateEffectQuality()
 
     this.hudTimer -= dt
     if (this.hudTimer <= 0) {
@@ -435,15 +459,17 @@ export class NeonSurvivorEngine {
   }
 
   private rebuildEnemyGrid() {
-    this.enemyGrid.clear()
+    for (const key of this.occupiedEnemyCells) this.enemyGrid[key].length = 0
+    this.occupiedEnemyCells.length = 0
     for (const enemy of this.enemies) {
       if (enemy.hp <= 0) continue
       const cellX = Math.floor(enemy.x / ENEMY_GRID_SIZE)
       const cellY = Math.floor(enemy.y / ENEMY_GRID_SIZE)
       const key = cellX + cellY * ENEMY_GRID_COLUMNS
-      const bucket = this.enemyGrid.get(key)
-      if (bucket) bucket.push(enemy)
-      else this.enemyGrid.set(key, [enemy])
+      const bucket = this.enemyGrid[key]
+      if (!bucket) continue
+      if (bucket.length === 0) this.occupiedEnemyCells.push(key)
+      bucket.push(enemy)
     }
   }
 
@@ -452,6 +478,11 @@ export class NeonSurvivorEngine {
       bullet.life -= dt
       bullet.x += bullet.vx * dt
       bullet.y += bullet.vy * dt
+
+      if (bullet.life <= 0 || this.isOutsideCombatView(bullet, bullet.enemy ? 480 : 220)) {
+        bullet.life = 0
+        continue
+      }
 
       if (bullet.enemy) {
         if (
@@ -466,14 +497,18 @@ export class NeonSurvivorEngine {
 
       const cellX = Math.floor(bullet.x / ENEMY_GRID_SIZE)
       const cellY = Math.floor(bullet.y / ENEMY_GRID_SIZE)
-      const direction = normalize(bullet.vx, bullet.vy)
+      const speed = Math.hypot(bullet.vx, bullet.vy) || 1
+      const directionX = bullet.vx / speed
+      const directionY = bullet.vy / speed
 
       collisionCells: for (let offsetY = -1; offsetY <= 1; offsetY++) {
         for (let offsetX = -1; offsetX <= 1; offsetX++) {
-          const bucket = this.enemyGrid.get(
-            cellX + offsetX + (cellY + offsetY) * ENEMY_GRID_COLUMNS,
-          )
-          if (!bucket) continue
+          const gridX = cellX + offsetX
+          const gridY = cellY + offsetY
+          if (gridX < 0 || gridY < 0 || gridX >= ENEMY_GRID_COLUMNS || gridY >= ENEMY_GRID_ROWS)
+            continue
+          const bucket = this.enemyGrid[gridX + gridY * ENEMY_GRID_COLUMNS]
+          if (bucket.length === 0) continue
 
           for (const enemy of bucket) {
             if (enemy.hp <= 0 || bullet.life <= 0) continue
@@ -481,10 +516,10 @@ export class NeonSurvivorEngine {
 
             enemy.hp -= bullet.damage
             enemy.hitFlash = 0.1
-            enemy.x += direction.x * 7
-            enemy.y += direction.y * 7
+            enemy.x += directionX * 7
+            enemy.y += directionY * 7
             this.hitBurst(bullet.x, bullet.y, enemy.color)
-            if (Math.random() < 0.34) {
+            if (bullet.color === '#fff38a' || Math.random() < (this.reducedEffects ? 0.06 : 0.12)) {
               this.texts.push({
                 x: enemy.x,
                 y: enemy.y - enemy.radius,
@@ -513,9 +548,37 @@ export class NeonSurvivorEngine {
         bullet.x < WORLD_WIDTH + 80 &&
         bullet.y < WORLD_HEIGHT + 80,
     )
-    if (this.bullets.length > MAX_BULLETS) {
-      this.bullets.splice(0, this.bullets.length - MAX_BULLETS)
+  }
+
+  private isOutsideCombatView(point: Vector, margin: number) {
+    const x = point.x - this.camera.x
+    const y = point.y - this.camera.y
+    return x < -margin || y < -margin || x > this.width + margin || y > this.height + margin
+  }
+
+  private enforceBulletBudgets() {
+    let playerCount = 0
+    let enemyCount = 0
+    for (const bullet of this.bullets) {
+      if (bullet.enemy) enemyCount += 1
+      else playerCount += 1
     }
+
+    let playersToDrop = Math.max(0, playerCount - MAX_PLAYER_BULLETS)
+    let enemiesToDrop = Math.max(0, enemyCount - MAX_ENEMY_BULLETS)
+    if (playersToDrop === 0 && enemiesToDrop === 0) return
+
+    compactInPlace(this.bullets, (bullet) => {
+      if (bullet.enemy && enemiesToDrop > 0) {
+        enemiesToDrop -= 1
+        return false
+      }
+      if (!bullet.enemy && playersToDrop > 0) {
+        playersToDrop -= 1
+        return false
+      }
+      return true
+    })
   }
 
   private updateEnemies(dt: number) {
@@ -526,24 +589,22 @@ export class NeonSurvivorEngine {
       enemy.shootTimer -= dt
       enemy.angle = Math.atan2(this.player.y - enemy.y, this.player.x - enemy.x)
       const distance = Math.sqrt(distanceSquared(enemy, this.player)) || 1
-      const direction = {
-        x: (this.player.x - enemy.x) / distance,
-        y: (this.player.y - enemy.y) / distance,
-      }
+      const directionX = (this.player.x - enemy.x) / distance
+      const directionY = (this.player.y - enemy.y) / distance
 
       if (enemy.kind === 'shooter') {
         const desired = distance > 330 ? 1 : distance < 230 ? -0.75 : 0
         const strafe = Math.sin(this.elapsed * 1.8 + enemy.orbit) * 0.48
-        enemy.x += (direction.x * desired - direction.y * strafe) * enemy.speed * dt
-        enemy.y += (direction.y * desired + direction.x * strafe) * enemy.speed * dt
+        enemy.x += (directionX * desired - directionY * strafe) * enemy.speed * dt
+        enemy.y += (directionY * desired + directionX * strafe) * enemy.speed * dt
         if (enemy.shootTimer <= 0 && distance < 620) {
           this.fireEnemyBullet(enemy, 330, 9)
           enemy.shootTimer = randomBetween(1.25, 1.8)
         }
       } else if (enemy.kind === 'boss') {
         const desired = distance > 360 ? 1 : distance < 250 ? -0.38 : 0
-        enemy.x += direction.x * enemy.speed * desired * dt
-        enemy.y += direction.y * enemy.speed * desired * dt
+        enemy.x += directionX * enemy.speed * desired * dt
+        enemy.y += directionY * enemy.speed * desired * dt
         if (enemy.shootTimer <= 0) {
           this.fireBossPattern(enemy)
           const enraged = enemy.hp < enemy.maxHp * 0.45
@@ -552,8 +613,8 @@ export class NeonSurvivorEngine {
       } else {
         const wobble =
           enemy.kind === 'splitter' ? Math.sin(this.elapsed * 4 + enemy.orbit) * 0.42 : 0
-        enemy.x += (direction.x - direction.y * wobble) * enemy.speed * dt
-        enemy.y += (direction.y + direction.x * wobble) * enemy.speed * dt
+        enemy.x += (directionX - directionY * wobble) * enemy.speed * dt
+        enemy.y += (directionY + directionX * wobble) * enemy.speed * dt
       }
 
       enemy.x = clamp(enemy.x, enemy.radius, WORLD_WIDTH - enemy.radius)
@@ -565,8 +626,8 @@ export class NeonSurvivorEngine {
       ) {
         enemy.contactTimer = 0.68
         this.damagePlayer(enemy.damage)
-        enemy.x -= direction.x * 28
-        enemy.y -= direction.y * 28
+        enemy.x -= directionX * 28
+        enemy.y -= directionY * 28
       }
     }
     compactInPlace(this.enemies, (enemy) => enemy.hp > 0)
@@ -643,15 +704,39 @@ export class NeonSurvivorEngine {
   private spawnEnemies(dt: number) {
     if (this.hasActiveBoss()) return
     this.spawnTimer -= dt
-    if (this.spawnTimer > 0 || this.enemies.length > 130) return
+    if (this.spawnTimer > 0 || this.enemies.length >= MAX_ENEMIES) return
 
     const wave = this.currentWave()
+    const threatBudget = Math.min(78, 30 + wave * 4) * (this.difficulty === 'surge' ? 1.15 : 1)
+    let currentThreat = this.currentEnemyThreat()
+    if (currentThreat >= threatBudget) {
+      this.spawnTimer = 0.2
+      return
+    }
     const interval =
       Math.max(0.2, 0.88 - this.elapsed * 0.00225) / (this.difficulty === 'surge' ? 1.25 : 1)
     this.spawnTimer = interval * randomBetween(0.72, 1.18)
     const batchChance = Math.min(0.72, 0.16 + wave * 0.055)
     const batch = wave >= 4 && Math.random() < batchChance ? (wave >= 10 ? 3 : 2) : 1
-    for (let index = 0; index < batch; index++) this.spawnEnemy(this.pickEnemyKind())
+    for (let index = 0; index < batch; index++) {
+      const kind = this.pickEnemyKind()
+      if (currentThreat + ENEMY_THREAT[kind] > threatBudget) break
+      const enemy = this.spawnEnemy(kind)
+      if (!enemy) break
+      currentThreat += this.enemyThreat(enemy)
+    }
+  }
+
+  private currentEnemyThreat() {
+    let threat = 0
+    for (const enemy of this.enemies) {
+      if (enemy.hp > 0) threat += this.enemyThreat(enemy)
+    }
+    return threat
+  }
+
+  private enemyThreat(enemy: Enemy) {
+    return ENEMY_THREAT[enemy.kind] * (enemy.elite ? 1.75 : 1)
   }
 
   private pickEnemyKind(): EnemyKind {
@@ -663,6 +748,7 @@ export class NeonSurvivorEngine {
   }
 
   private spawnEnemy(kind: EnemyKind, position?: Vector, small = false, bossTier = 0) {
+    if (kind !== 'boss' && this.enemies.length >= MAX_ENEMIES) return null
     const spawn = position || this.randomSpawnPoint()
     const progress = 1 + this.elapsed * 0.0045
     const elite =
@@ -688,7 +774,7 @@ export class NeonSurvivorEngine {
     const healthScale =
       kind === 'boss' ? this.difficultyScale * bossHealthScale : progress * this.difficultyScale
     const eliteScale = elite ? 2.15 : 1
-    this.enemies.push({
+    const enemy: Enemy = {
       id: ++this.enemyId,
       kind,
       x: spawn.x,
@@ -706,7 +792,9 @@ export class NeonSurvivorEngine {
       orbit: Math.random() * TAU,
       elite,
       bossTier,
-    })
+    }
+    this.enemies.push(enemy)
+    return enemy
   }
 
   private randomSpawnPoint(): Vector {
@@ -749,11 +837,26 @@ export class NeonSurvivorEngine {
   private spawnBoss(tier: number) {
     this.nextBossIndex = tier
     this.bossReinforcementTimer = Math.max(4.2, 7.4 - tier * 0.9)
+    const collapsedEnemies = this.collapseEnemiesForBoss()
+    for (const bullet of this.bullets) {
+      if (bullet.enemy) bullet.life = 0
+    }
     const spawn = this.randomSpawnPoint()
-    this.spawnEnemy('boss', spawn, false, tier)
-    this.bossId = this.enemyId
+    const boss = this.spawnEnemy('boss', spawn, false, tier)
+    if (!boss) return
+    this.bossId = boss.id
     this.callbacks.onSound('boss')
     this.screenShake = 16
+    if (collapsedEnemies > 0) {
+      this.texts.push({
+        x: this.player.x,
+        y: this.player.y - 132,
+        text: `星渊坍缩 · 重构 ${collapsedEnemies} 个单位`,
+        color: '#8fffee',
+        life: 2.1,
+        size: 18,
+      })
+    }
     this.texts.push({
       x: this.player.x,
       y: this.player.y - 100,
@@ -762,6 +865,22 @@ export class NeonSurvivorEngine {
       life: 2.4,
       size: 25,
     })
+  }
+
+  private collapseEnemiesForBoss() {
+    const livingMinions = this.enemies.filter((enemy) => enemy.kind !== 'boss' && enemy.hp > 0)
+    if (livingMinions.length <= BOSS_MINION_LIMIT) return 0
+
+    livingMinions.sort(
+      (left, right) => distanceSquared(left, this.player) - distanceSquared(right, this.player),
+    )
+    const retainedIds = new Set(livingMinions.slice(0, BOSS_MINION_LIMIT).map((enemy) => enemy.id))
+    const previousCount = this.enemies.length
+    compactInPlace(
+      this.enemies,
+      (enemy) => enemy.kind === 'boss' || (enemy.hp > 0 && retainedIds.has(enemy.id)),
+    )
+    return previousCount - this.enemies.length
   }
 
   private killEnemy(enemy: Enemy) {
@@ -783,7 +902,7 @@ export class NeonSurvivorEngine {
       enemy.x,
       enemy.y,
       enemy.color,
-      enemy.kind === 'boss' ? 80 : enemy.elite ? 30 : 15,
+      enemy.kind === 'boss' ? 42 : enemy.elite ? 18 : 10,
       enemy.kind === 'boss' ? 360 : 185,
     )
 
@@ -797,9 +916,9 @@ export class NeonSurvivorEngine {
             : enemy.kind === 'shooter'
               ? 8
               : 6
-    const drops = enemy.kind === 'boss' ? 10 + enemy.bossTier * 4 : enemy.elite ? 3 : 1
+    const drops = enemy.kind === 'boss' ? 4 + enemy.bossTier * 2 : enemy.elite ? 2 : 1
     for (let index = 0; index < drops; index++) {
-      this.pickups.push({
+      this.addPickup({
         x: enemy.x + randomBetween(-enemy.radius, enemy.radius),
         y: enemy.y + randomBetween(-enemy.radius, enemy.radius),
         kind: 'xp',
@@ -810,7 +929,7 @@ export class NeonSurvivorEngine {
       })
     }
     if (enemy.kind !== 'boss' && Math.random() < 0.035) {
-      this.pickups.push({
+      this.addPickup({
         x: enemy.x,
         y: enemy.y,
         kind: 'heal',
@@ -821,8 +940,12 @@ export class NeonSurvivorEngine {
       })
     }
     if (enemy.kind === 'splitter') {
-      this.spawnEnemy('drone', { x: enemy.x - 10, y: enemy.y }, true)
-      this.spawnEnemy('drone', { x: enemy.x + 10, y: enemy.y }, true)
+      if (this.enemies.length < MAX_ENEMIES) {
+        this.spawnEnemy('drone', { x: enemy.x - 10, y: enemy.y }, true)
+      }
+      if (this.enemies.length < MAX_ENEMIES) {
+        this.spawnEnemy('drone', { x: enemy.x + 10, y: enemy.y }, true)
+      }
     }
     if (enemy.kind === 'boss') {
       this.bossId = 0
@@ -845,6 +968,33 @@ export class NeonSurvivorEngine {
         })
       }
     }
+  }
+
+  private addPickup(pickup: Pickup) {
+    if (this.pickups.length < MAX_PICKUPS) {
+      this.pickups.push(pickup)
+      return
+    }
+
+    let closest: Pickup | null = null
+    let closestDistance = Number.POSITIVE_INFINITY
+    for (const candidate of this.pickups) {
+      if (candidate.kind !== pickup.kind) continue
+      const distance = distanceSquared(candidate, pickup)
+      if (distance >= closestDistance) continue
+      closest = candidate
+      closestDistance = distance
+    }
+
+    if (closest) {
+      closest.value += pickup.value
+      closest.radius = Math.min(pickup.kind === 'xp' ? 10 : 12, closest.radius + 0.2)
+      closest.life = Math.max(closest.life, pickup.life)
+      return
+    }
+
+    const replaceableIndex = this.pickups.findIndex((candidate) => candidate.kind === 'xp')
+    if (replaceableIndex >= 0) this.pickups[replaceableIndex] = pickup
   }
 
   private updatePickups(dt: number) {
@@ -929,6 +1079,27 @@ export class NeonSurvivorEngine {
     compactInPlace(this.texts, (text) => text.life > 0)
   }
 
+  private updateEffectQuality() {
+    if (this.lowPowerMode) {
+      this.reducedEffects = true
+      return
+    }
+
+    const underHeavyLoad =
+      this.enemies.length > 56 ||
+      this.bullets.length > 150 ||
+      this.particles.length > 240 ||
+      this.pickups.length > 64
+    const safelyRecovered =
+      this.enemies.length < 44 &&
+      this.bullets.length < 110 &&
+      this.particles.length < 150 &&
+      this.pickups.length < 48
+
+    if (underHeavyLoad) this.reducedEffects = true
+    else if (safelyRecovered) this.reducedEffects = false
+  }
+
   private addParticle(
     x: number,
     y: number,
@@ -939,12 +1110,16 @@ export class NeonSurvivorEngine {
     life: number,
     drag = 0.94,
   ) {
-    if (this.particles.length >= this.particleBudget) return
+    const budget = this.reducedEffects ? Math.min(this.particleBudget, 220) : this.particleBudget
+    if (this.particles.length >= budget) return
     this.particles.push({ x, y, vx, vy, color, size, life, maxLife: life, drag })
   }
 
   private burst(x: number, y: number, color: string, count: number, speed: number) {
-    for (let index = 0; index < count; index++) {
+    const budget = this.reducedEffects ? Math.min(this.particleBudget, 220) : this.particleBudget
+    const available = Math.max(0, budget - this.particles.length)
+    const particleCount = Math.min(count, available)
+    for (let index = 0; index < particleCount; index++) {
       const angle = Math.random() * TAU
       const velocity = randomBetween(speed * 0.25, speed)
       this.addParticle(
@@ -961,7 +1136,8 @@ export class NeonSurvivorEngine {
   }
 
   private hitBurst(x: number, y: number, color: string) {
-    for (let index = 0; index < 4; index++) {
+    const count = this.reducedEffects ? 1 : 2
+    for (let index = 0; index < count; index++) {
       const angle = Math.random() * TAU
       const velocity = randomBetween(60, 150)
       this.addParticle(
@@ -1144,7 +1320,7 @@ export class NeonSurvivorEngine {
       ctx.translate(x, y)
       ctx.rotate(pickup.phase * 0.35)
       ctx.shadowColor = color
-      ctx.shadowBlur = 14
+      ctx.shadowBlur = this.reducedEffects ? 0 : 10
       ctx.fillStyle = color
       if (pickup.kind === 'xp') {
         ctx.beginPath()
@@ -1165,7 +1341,9 @@ export class NeonSurvivorEngine {
   private drawBullets() {
     const ctx = this.ctx
     ctx.lineCap = 'round'
+    ctx.shadowBlur = this.reducedEffects ? 0 : 8
     for (const bullet of this.bullets) {
+      if (bullet.life <= 0) continue
       const x = bullet.x - this.camera.x
       const y = bullet.y - this.camera.y
       if (x < -40 || y < -40 || x > this.width + 40 || y > this.height + 40) continue
@@ -1180,7 +1358,6 @@ export class NeonSurvivorEngine {
       ctx.stroke()
 
       ctx.shadowColor = bullet.color
-      ctx.shadowBlur = 11
       ctx.fillStyle = bullet.color
       ctx.beginPath()
       ctx.arc(x, y, bullet.radius, 0, TAU)
@@ -1205,7 +1382,14 @@ export class NeonSurvivorEngine {
     ctx.translate(x, y)
     ctx.rotate(enemy.angle)
     ctx.shadowColor = enemy.color
-    ctx.shadowBlur = enemy.elite ? 28 : 14
+    ctx.shadowBlur =
+      this.reducedEffects && !enemy.elite && enemy.kind !== 'boss'
+        ? 0
+        : enemy.elite
+          ? 20
+          : enemy.kind === 'boss'
+            ? 26
+            : 10
     ctx.lineWidth = enemy.elite ? 3 : 2
     ctx.strokeStyle = color
     ctx.fillStyle = `${enemy.color}26`
@@ -1397,7 +1581,7 @@ export class NeonSurvivorEngine {
       ctx.fillStyle = text.color
       ctx.font = `700 ${text.size}px Inter, system-ui, sans-serif`
       ctx.shadowColor = text.color
-      ctx.shadowBlur = 10
+      ctx.shadowBlur = this.reducedEffects ? 0 : 8
       ctx.fillText(text.text, text.x - this.camera.x, text.y - this.camera.y)
     }
     ctx.globalAlpha = 1

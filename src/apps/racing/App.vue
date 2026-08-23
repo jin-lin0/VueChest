@@ -4511,7 +4511,7 @@ canvas {
   .menu-topbar {
     flex-wrap: wrap;
     justify-content: center;
-    padding: 12px 14px;
+    padding: max(12px, env(safe-area-inset-top)) 14px 12px;
     gap: 10px;
   }
 
@@ -4534,7 +4534,7 @@ canvas {
     width: 42px;
     height: 42px;
     font-size: 1.3rem;
-    top: 38%;
+    top: 31%;
   }
 
   .edge-btn.prev {
@@ -4546,10 +4546,20 @@ canvas {
   }
 
   .menu-dock {
-    max-height: 58%;
+    max-height: 56%;
     overflow-y: auto;
-    padding: 14px 14px 12px;
+    padding: 14px 14px max(12px, env(safe-area-inset-bottom));
     gap: 10px;
+  }
+
+  .showroom-canvas {
+    top: clamp(86px, 13svh, 112px);
+    bottom: auto;
+    height: clamp(220px, 38svh, 330px);
+  }
+
+  .showroom-loading {
+    top: 31%;
   }
 
   .dock-grid {
@@ -4763,6 +4773,129 @@ canvas {
 
   .lap-time-last {
     display: none;
+  }
+}
+
+/* 手机横屏和其他低矮窗口：展示舞台与坞站严格分区，避免坞站覆盖车辆。 */
+@media (max-height: 600px) {
+  .menu-topbar {
+    flex-wrap: nowrap;
+    padding: max(6px, env(safe-area-inset-top)) 12px 6px;
+    gap: 8px;
+  }
+
+  .menu-title {
+    order: initial;
+    flex-basis: auto;
+  }
+
+  .menu-title h1 {
+    margin: 0;
+    font-size: 1.05rem;
+    letter-spacing: 2px;
+  }
+
+  .menu-title .subtitle,
+  .car-perk,
+  .car-dots,
+  .livery-strip,
+  .controls-hint {
+    display: none;
+  }
+
+  .back-btn {
+    padding: 6px 11px;
+    font-size: 0.78rem;
+  }
+
+  .mode-seg {
+    padding: 3px;
+  }
+
+  .seg-btn {
+    padding: 5px 11px;
+    font-size: 0.76rem;
+  }
+
+  .showroom-canvas {
+    top: 50px;
+    bottom: auto;
+    height: calc(100% - 184px);
+    min-height: 130px;
+  }
+
+  .showroom-loading {
+    top: 36%;
+  }
+
+  .edge-btn {
+    top: 38%;
+    width: 38px;
+    height: 38px;
+  }
+
+  .menu-dock {
+    height: 134px;
+    max-height: none;
+    flex-direction: row;
+    justify-content: center;
+    overflow: hidden;
+    gap: 14px;
+    padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .dock-grid,
+  .dock-grid.multi {
+    width: min(66vw, 560px);
+    max-width: 560px;
+    flex-direction: row;
+    gap: 14px;
+  }
+
+  .dock-car {
+    flex: 1;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .dock-car-head {
+    gap: 7px;
+  }
+
+  .car-big-name {
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+  }
+
+  .car-trait {
+    padding: 2px 7px;
+    font-size: 0.64rem;
+  }
+
+  .car-stats {
+    width: min(220px, 31vw);
+    gap: 3px;
+  }
+
+  .stat {
+    gap: 6px;
+  }
+
+  .stat span {
+    min-width: 28px;
+    font-size: 0.72rem;
+  }
+
+  .stat-bar {
+    height: 6px;
+  }
+
+  .start-btn {
+    width: auto;
+    flex-shrink: 0;
+    padding: 10px 24px;
+    font-size: 0.9rem;
   }
 }
 
