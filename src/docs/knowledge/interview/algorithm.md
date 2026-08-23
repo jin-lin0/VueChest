@@ -7,7 +7,7 @@ order: 3
 
 ## 概览与准备建议
 
-- **题型结构稳定、向"模板化"收敛**：数组/字符串、双指针、哈希表、链表、二叉树、DP 约占 70%+，LeetCode 热题 100 / 面试经典 150 命中率极高。
+- **题型结构相对稳定、可以按模式训练**：数组/字符串、双指针、哈希表、链表、二叉树、图与 DP 是常见主线，但公司、岗位和轮次差异很大，不把题单命中率包装成统计事实。
 - **前端更重"基础 + 手写实现 + 边界处理"**：链表反转、LRU、深拷贝、二叉树遍历、滑动窗口、接雨水这类既能考代码功底又贴合业务（缓存、虚拟列表）的题最常见。
 - **加分项 = "讲清楚"**：先口述暴力解再优化，主动分析时间/空间复杂度与边界（空数组、单元素、重复值、溢出），能给出两种解法（递归/迭代、双指针/单调栈）是高区分度信号。
 - **建议准备顺序**：哈希表 + 双指针 + 滑动窗口 → 链表 + 二叉树遍历 → 堆/TopK + 二分 → DP 经典母题 → 回溯 + 并查集 + 单调栈 + 排序手写。
@@ -24,7 +24,7 @@ order: 3
 
 ### 两数之和 `#1`
 
-- **频率**：高（阿里近 95% 出现）
+- **频率**：高（哈希表入门母题）
 - **核心思路**：哈希表存「值 → 下标」，边遍历边查 `target - nums[i]` 是否已出现。
 - **复杂度**：O(n)
 - 🔗 [LeetCode #1](https://leetcode.cn/problems/two-sum/)
@@ -200,7 +200,7 @@ function spiralOrder(matrix) {
 
 ### 三数之和 `#15`
 
-- **频率**：高（字节 95%、腾讯 90%）
+- **频率**：高（双指针经典题）
 - **复杂度**：O(n²)
 - **易错点**：去重逻辑是最易翻车点，用 `while` 跳过重复元素避免结果集重复。
 - 🔗 [LeetCode #15](https://leetcode.cn/problems/3sum/)
@@ -445,7 +445,7 @@ function longestConsecutive(nums) {
 
 ### 无重复字符的最长子串 `#3`
 
-- **频率**：高（字节/阿里 85%）
+- **频率**：高（滑动窗口母题）
 - **复杂度**：O(n)
 - **易错点**：左指针用 `max(left, map.get(c)+1)` 而非简单 +1，否则回退。
 - 🔗 [LeetCode #3](https://leetcode.cn/problems/longest-substring-without-repeating-characters/)
@@ -595,7 +595,7 @@ function minSubArrayLen(target, nums) {
 
 ### 有效的括号 `#20`
 
-- **频率**：高（腾讯 85%）
+- **频率**：高（栈的基础题）
 - **复杂度**：O(n)
 - **易错点**：栈空时遇右括号直接 false；用哈希表映射右→左更优雅。
 - 🔗 [LeetCode #20](https://leetcode.cn/problems/valid-parentheses/)
@@ -768,7 +768,7 @@ class MyQueue {
 
 ### 反转链表 `#206`
 
-- **频率**：高（阿里 90%、腾讯 95%，几乎必考）
+- **频率**：高（链表基础题）
 - **复杂度**：O(n)
 - **易错点**：递归法需在归的过程中接好 `head.next.next = head` 并断开防环。
 - 🔗 [LeetCode #206](https://leetcode.cn/problems/reverse-linked-list/)
@@ -807,7 +807,7 @@ function reverseListRec(head, prev = null) {
 
 ### 合并两个有序链表 `#21`
 
-- **频率**：高（阿里 85%）
+- **频率**：高（链表合并基础题）
 - **复杂度**：O(n+m)
 - 🔗 [LeetCode #21](https://leetcode.cn/problems/merge-two-sorted-lists/)
 
@@ -1100,7 +1100,7 @@ function levelOrder(root) {
 
 ### 二叉树的最大深度 `#104`
 
-- **频率**：高（腾讯 90%）
+- **频率**：高（二叉树基础题）
 - **复杂度**：O(n)
 - 🔗 [LeetCode #104](https://leetcode.cn/problems/maximum-depth-of-binary-tree/)
 
@@ -1122,7 +1122,7 @@ function maxDepth(root) {
 
 ### 验证二叉搜索树 `#98`
 
-- **频率**：高（阿里 75%）
+- **频率**：高（BST 经典题）
 - **复杂度**：O(n)
 - **易错点**：不能只比左右子节点，要满足整棵子树都在 (min,max) 区间。
 - 🔗 [LeetCode #98](https://leetcode.cn/problems/validate-binary-search-tree/)
@@ -1449,7 +1449,7 @@ class MedianFinder {
 
 ### 岛屿数量 `#200`
 
-- **频率**：高（阿里 55%、字节常考）
+- **频率**：高（DFS/BFS 经典题）
 - **复杂度**：O(mn)
 - **易错点**：访问后必须标记（置 '0' 或 visited），防重复计数。
 - 🔗 [LeetCode #200](https://leetcode.cn/problems/number-of-islands/)
@@ -1854,7 +1854,7 @@ function climbStairs(n) {
 
 ### 最大子数组和 `#53`
 
-- **频率**：高（阿里 85%）
+- **频率**：高（动态规划入门题）
 - **复杂度**：O(n)
 - 🔗 [LeetCode #53](https://leetcode.cn/problems/maximum-subarray/)
 
@@ -2104,7 +2104,7 @@ function uniquePaths(m, n) {
 
 ### 买卖股票系列 `#121/#122/#123`
 
-- **频率**：高（#121 阿里 75%）
+- **频率**：高（状态机/动态规划题组）
 - **复杂度**：O(n)
 - 🔗 [LeetCode #121](https://leetcode.cn/problems/best-time-to-buy-and-sell-stock/) / [#122](https://leetcode.cn/problems/best-time-to-buy-and-sell-stock-ii/) / [#123](https://leetcode.cn/problems/best-time-to-buy-and-sell-stock-iii/)
 
@@ -2346,7 +2346,7 @@ function searchRange(nums, target) {
 
 ### 搜索旋转排序数组 `#33`
 
-- **频率**：高（腾讯 75%、字节常考）
+- **频率**：高（二分变体经典题）
 - **复杂度**：O(log n)
 - 🔗 [LeetCode #33](https://leetcode.cn/problems/search-in-rotated-sorted-array/)
 
@@ -2896,7 +2896,7 @@ function heapSort(nums) {
 
 ### LRU 缓存 `#146`
 
-- **频率**：高（腾讯 85%、字节/阿里常考设计题）
+- **频率**：高（缓存设计经典题）
 - **复杂度**：O(1)
 - **易错点**：务必手写双向链表（或 Map 保序）；解释淘汰策略与线程安全扩展。
 - 🔗 [LeetCode #146](https://leetcode.cn/problems/lru-cache/)

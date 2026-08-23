@@ -71,7 +71,54 @@ const compMap = { Input, Button, Form }
 - **Schema 失控膨胀**：一个页面 JSON 上万行，难维护 → 拆分/模板化。
 - **出码质量差**：生成代码无类型/无规范 → 设代码规范与格式化。
 
-## 八、小结
+## 八、Schema 不是任意 JSON
+
+生产级 Schema 必须有稳定 ID、版本、组件白名单、属性 schema 和迁移协议。编辑器保存前做结构校验，渲染器仍要防御未知 type、无效 props、过深树和循环引用。组件版本升级时，通过逐版本 migration 把旧文档转换到当前结构，不能要求所有历史页面一起重做。
+
+```ts
+interface PageSchema {
+  schemaVersion: 2
+  id: string
+  root: SchemaNode
+}
+
+interface SchemaNode {
+  id: string
+  type: 'Form' | 'Input' | 'Button'
+  props: Record<string, unknown>
+  children?: SchemaNode[]
+}
+
+function migratePage(input: unknown): PageSchema {
+  const parsed = validateKnownSchema(input)
+  return parsed.schemaVersion === 1 ? migrateV1ToV2(parsed) : parsed
+}
+```
+
+节点 ID 用于选中、拖拽、评论和增量更新，不能依赖数组下标。Schema 中保存声明式意图，不保存组件实例、函数或 DOM；否则无法序列化、审计和跨端渲染。
+
+## 九、表达式与安全边界
+
+低代码常需要条件显示、字段联动和数据转换，但绝不能把配置字符串直接交给 `eval`/`new Function`。表达式语言应有受限语法树、变量作用域、函数 allowlist、执行超时和复杂度上限。远程 Schema、富文本、URL 和组件 props 都是不可信输入，渲染前要校验和清洗。
+
+数据源凭证不能进入页面 Schema。浏览器只请求宿主提供的受控连接器，后端执行鉴权、字段过滤、限流和审计。发布权限、预览权限与数据权限分开设计；“能编辑页面”不等于“能读取任意业务 API”。
+
+## 十、编辑器状态与发布链路
+
+拖拽过程适合命令模式：每个操作记录 apply/undo，支持撤销重做和批量事务。大 Schema 不要每次改动都深拷贝整棵树，可用规范化节点表、结构共享或 patch。自动保存带 revision，服务端用乐观锁检测多人覆盖。
+
+发布采用“草稿—校验—预览—不可变版本—上线指针”流程。线上运行固定版本，编辑器继续修改草稿不会影响用户；出现故障只需把指针切回上一版本。运行时监控应带 page/schema/component 版本，才能定位某个物料升级造成的批量问题。
+
+## 十一、平台选型清单
+
+1. 页面是否高度重复且能被有限物料描述？若主要是独特交互，保留 Pro-Code。
+2. 先定义 Schema、物料和事件契约，再做拖拽 UI；编辑器不能成为协议本身。
+3. 明确表达式、数据源、上传和自定义代码的信任边界，默认拒绝危险能力。
+4. 设计 schema/component 版本、迁移、预览、灰度和回滚链路。
+5. 验证大页面的编辑性能、运行性能、无障碍和移动端适配。
+6. “出码”要明确目标：可读源码、运行产物或平台锁定的 Schema，三者权衡不同。
+
+## 十二、小结
 
 - 低代码 = Schema（JSON）驱动渲染，配置即页面。
 - 渲染器递归映射 `type→组件`，属性面板改 Schema 即所见即所得。
@@ -82,3 +129,6 @@ const compMap = { Input, Button, Form }
 - 阿里低代码引擎（LowCode Engine）：<https://lowcode-engine.cn/>
 - 美团装修式搭建实践：<https://tech.meituan.com/>
 - Schema 驱动 UI 理念：<https://www.smashingmagazine.com/>
+- JSON Schema：<https://json-schema.org/specification>
+- Vue 动态组件：<https://vuejs.org/guide/essentials/component-basics.html#dynamic-components>
+- OWASP 输入验证：<https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>

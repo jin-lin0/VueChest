@@ -5,6 +5,8 @@ order: 1
 
 # 前端面试知识文档
 
+> 本文用于专题速查；需要练习第一人称口述时优先使用 `frontend-core-qa.md` 和 `mock-interviews.md`。所有“高频”只表示复习优先级，不代表某家公司固定出题概率。
+
 ## JavaScript 核心
 
 ### 闭包（Closure）
@@ -13,7 +15,7 @@ order: 1
 **答案要点**：
 
 - 定义：函数与其词法作用域（定义时所在作用域）的组合；内部函数引用了外部函数的变量，即使外部函数已执行完毕，这些变量仍被保留。
-- 本质：闭包让函数"记住"并访问其外部的变量，数据保存在堆中的 `closure(外部函数)` 对象里，不会随执行上下文出栈而销毁。
+- 本质：闭包让函数按词法作用域继续访问外部绑定。规范不规定这些绑定必须以某个名为 `closure` 的堆对象存储；只要闭包仍可达，相关环境就不能被回收。
 - 作用：① 数据私有化/封装（模块模式、IIFE）；② 函数柯里化与偏函数；③ 实现 React Hooks 等需要"记住状态"的场景。
 - 缺点：滥用会导致内存占用增加，若外部大对象长期被引用无法回收，易引发内存泄漏。
 
@@ -32,7 +34,7 @@ add5(3) // 8
 **高频问题**：说说原型链的理解？如何实现继承？
 **答案要点**：
 
-- 每个对象都有 `__proto__`（隐式原型），指向其构造函数的 `prototype`；`prototype` 上也有 `__proto__`，层层上溯直到 `Object.prototype.__proto__ === null`（链尾）。
+- 对象内部有 `[[Prototype]]` 链，可通过 `Object.getPrototypeOf` 读取；`__proto__` 是历史 accessor，并非每个对象都天然拥有的普通属性，`Object.create(null)` 甚至没有 `Object.prototype`。
 - 属性查找：自身 → 沿原型链向上查找，找不到返回 `undefined`。
 - 三者关系：`prototype`（函数原型对象）、`__proto__`（实例指向原型）、`constructor`（原型指回构造函数）。
 - `Function.__proto__ === Function.prototype`，`Object.prototype.__proto__ === null`。
@@ -46,7 +48,7 @@ add5(3) // 8
 - 优先级（高→低）：`new` 绑定 > 显式绑定（call/apply/bind）> 隐式绑定（obj.fn()，this 指向 obj）> 默认绑定（独立调用，非严格模式 `window`，严格模式 `undefined`）。
 - 箭头函数：没有自己的 this，继承定义时外层作用域的 this，且一旦绑定无法被 call/apply 改变。
 - new 绑定规则：构造函数里的 this 指向新创建的实例；若构造函数显式返回一个对象，则 `new` 表达式的整体返回值变为该对象，但**函数体内的 this 仍指向新实例**（并不会被返回对象改变）。
-- 常见坑：`setTimeout` 回调里的 this 默认是 `window`/`undefined`，需用箭头函数或 bind 固化。
+- 常见坑：定时器回调的 `this` 由宿主决定，浏览器与 Node 行为不同；业务不应依赖它，需接收外层实例时显式用箭头函数或 `bind`。
 
 ### 事件循环（Event Loop）
 
@@ -66,7 +68,7 @@ console.log(4)
 ```
 
 - Node 与浏览器差异：Node 分阶段（timers/poll/check…），`process.nextTick` 优先级高于微任务；浏览器每轮宏任务后清空微任务再渲染。
-- 补充：Node 11+ 起 timers/promises 阶段已与浏览器趋同（每个阶段后清空微任务），不再像旧版那样等到阶段结束才清空；差异主要体现在 `process.nextTick` 与 `setImmediate` 的相对顺序上。
+- 补充：Node 的微任务检查点、timers 行为会随运行时演进；面试回答先声明具体 Node 版本，不把浏览器 task 模型机械套到 libuv 阶段。
 
 ### Promise 与异步
 
@@ -330,7 +332,7 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 **答案要点**：
 
 - Redux：单向数据流 + Reducer，规范强，`@reduxjs/toolkit` 简化模板。
-- Zustand：基于 hooks 极简 store，中小项目首选。
+- Zustand：基于 hooks 的轻量 store，是否采用取决于团队、状态关系和调试需求。
 - MobX：响应式自动追踪依赖，代码量少。
 - 内置：`useState`/`useReducer`（局部）、`Context`（跨组件，高频更新需优化）。
 
@@ -457,7 +459,7 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 **答案要点**：
 
 - HTTP + TLS：非对称加密（交换密钥、身份认证）+ 对称加密（传数据）+ 数字证书（CA 防中间人）。
-- 握手：客户端发起 → 服务端返回证书 → 客户端验证 → 用公钥加密对称密钥 → 对称密钥通信。
+- 握手：客户端与服务端协商版本/套件，服务端提供证书证明身份，双方通常通过（EC）DHE 协商共享密钥，再派生会话密钥；不是现代 TLS 都由客户端直接用证书公钥加密一个对称密钥。
 - TLS 1.3 简化握手；HTTP/3 基于 QUIC。
 
 ### 跨域与 CORS
@@ -476,8 +478,8 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 **答案要点**：
 
 - HTTP/1.1 问题：队头阻塞、头部冗余、多连接开销。
-- HTTP/2：多路复用、头部压缩（HPACK）、服务器推送、二进制分帧；仍基于 TCP。
-- HTTP/3：基于 QUIC（UDP），解决 TCP 队头阻塞，0-RTT，连接迁移。
+- HTTP/2：多路复用、头部压缩（HPACK）、二进制分帧；仍基于 TCP。Server Push 已不应作为现代浏览器优化主线。
+- HTTP/3：基于 QUIC，流之间不会因某个流的数据丢失而共同等待该数据重传，并支持连接迁移等能力；0-RTT 有重放边界，不能概括成所有请求天然更快。
 
 ### Cookie 与 Storage
 
@@ -545,7 +547,7 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 
 - 回流：几何属性变化重算布局，开销大；重绘：仅视觉变化。回流必重绘。
 - 避免强制同步布局：先批量读再批量写。
-- 用 `transform`/`opacity` 做动画（走合成层、GPU 加速）。
+- `transform`/`opacity` 通常更容易只触发合成，但是否独立成层由浏览器决定；用 Performance/Layers 验证，避免滥用 `will-change`。
 - 批量 DOM 操作：`DocumentFragment`、一次性改 class。
 
 ## 工程化
@@ -555,10 +557,10 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 **高频问题**：Webpack 和 Vite 的核心区别？
 **答案要点**：
 
-- Webpack 是「打包器」，启动全量编译；Vite 开发环境「不打包」，基于原生 ESM 按需编译（esbuild 预构建），冷启动快。
-- HMR：Vite 仅热更单文件，毫秒级。
-- 生产：Vite 用 Rollup（Tree-shaking 强）；Webpack 生态成熟、兼容老浏览器。
-- 选型：大型/兼容老浏览器用 Webpack；现代/重视开发体验用 Vite。
+- Webpack 是高度可配置的 bundler；Vite 开发环境基于原生 ESM 按需转换，通常减少启动期工作。
+- HMR 性能取决于模块图、插件和更新边界，不能承诺所有项目“毫秒级”。
+- 当前 Vite 8 已转向 Rolldown/Oxc；VueChest 锁定 Vite 7.0.6，实际仍按 Rollup/esbuild 路径理解。
+- 选型看存量 loader/plugin、浏览器目标、SSR/库构建、CI/HMR 基准和迁移成本，不按项目大小一刀切。
 
 ### Tree Shaking
 
@@ -574,9 +576,9 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 **高频问题**：CommonJS 和 ES Module 的区别？
 **答案要点**：
 
-- 加载：CJS 运行时动态加载；ESM 编译期静态加载（利于 Tree Shaking）。
-- 导出值：CJS 输出值拷贝；ESM 输出引用（动态绑定）。
-- 循环依赖：ESM 活绑定更安全。
+- 结构：CJS 的 `require` 可动态调用；ESM 的静态 `import/export` 便于构建期分析，也提供动态 `import()`。
+- 导出：ESM import 是 live binding；CJS 暴露 `module.exports` 值，对象可共享，解构/重新赋值等行为不能简单概括成“值拷贝”。
+- 循环依赖：两者都可能出现未初始化/部分初始化问题，ESM live binding 不等于循环依赖自动安全。
 - 语法：CJS `module.exports/require`；ESM `export/import`。
 
 ### Babel
@@ -606,7 +608,7 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 
 - 流程：提交 → 检查（ESLint/Prettier）→ 测试（Jest/Vitest）→ 构建 → 部署（GitHub Actions/Docker）。
 - 工具：`Husky + lint-staged` 提交前校验。
-- 测试金字塔：单元（70%）> 集成（20%）> E2E（10%，Playwright）。
+- 测试组合按风险与反馈速度决定：纯函数多单测，组件/接口边界多集成，关键用户旅程用少量稳定 E2E；不套固定 70/20/10 比例。
 - 监控闭环：上线后 Sentry + Web Vitals 埋点。
 
 ### 包管理器（npm / yarn / pnpm）
@@ -614,16 +616,16 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 **高频问题**：npm、yarn、pnpm 有什么区别？
 **答案要点**：
 
-- npm：扁平 node_modules，有幽灵依赖、安装慢。
-- yarn：扁平 + 确定性锁、并行下载。
-- pnpm：硬链接 + 内容寻址，最快最省、严格隔离、无幽灵依赖。
+- npm：官方生态默认选择，现代版本也有 lockfile、cache 与 workspace。
+- Yarn：支持不同 linker/Plug'n'Play 与 workspace，行为取决于主版本和配置。
+- pnpm：内容寻址 store + 链接式 node_modules，默认更严格暴露依赖；速度和磁盘收益要在仓库/CI 实测，也可通过 hoist 配置改变隔离。
 - 锁文件固定依赖树，保证环境一致。
 
-### 2026 高频新题补充
+### 版本敏感专题补充
 
 **Q：Vue 3.5 的响应式有什么新东西？`reactive` 的深层响应要注意什么？**
 
-- 3.5 增强了 `reactive` 对 `Map`/`Set`/大对象的内存与追踪效率（底层重构 `proxy` 追踪）；`ref` 解包在模板与 `reactive` 中行为一致。
+- Vue 3.5 包含响应式系统的性能/内存优化，但面试时应按项目锁定版本与官方 release 说明表达，不把内部实现简化成“重构 proxy 追踪”。
 - 深层响应：`reactive` 默认深响应，但**替换整个对象丢失响应**（应改属性而非整体赋值）；大列表用 `shallowRef`/`shallowReactive` 减少追踪开销。
 
 **Q：React 19 与 Vue 3 的核心差异，怎么选型？**

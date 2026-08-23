@@ -32,7 +32,7 @@ export const useCounterStore = defineStore('counter', {
       return this.double + 1
     },
   },
-  // actions：同步/异步都行，是唯一改 state 的地方
+  // actions：同步/异步都行，集中表达业务操作
   actions: {
     increment() {
       this.count++
@@ -103,20 +103,21 @@ store.increment() // 也可通过 action 改
 在路由守卫、`axios` 拦截器、工具函数里用 store 时，必须先有「激活的 Pinia 实例」：
 
 ```ts
-// utils/request.ts
-import { useUserStore } from '@/stores/user'
+// stores/index.ts
 import { createPinia } from 'pinia'
+export const pinia = createPinia()
 
-// 若当前上下文尚未激活 pinia（如纯模块导入阶段），手动挂一个
-const pinia = createPinia()
-const user = useUserStore(pinia) // 传入 pinia 实例
+// router/guards.ts：复用应用安装的同一个实例
+import { pinia } from '@/stores'
+import { useUserStore } from '@/stores/user'
+const user = useUserStore(pinia)
 ```
 
-> 在 Vue 应用内（`app.use(pinia)` 之后）直接 `useXxxStore()` 即可，无需传参；**只有「在 setup 之外、pinia 未激活处」才需要手动传实例**。VueChest 的 `request.ts` 拦截器就踩过这个坑。
+> 在 Vue 应用内（`app.use(pinia)` 之后）直接 `useXxxStore()` 即可。setup 外如果执行时机早于安装，显式传入应用使用的同一个 Pinia 实例；不要在请求模块里另建 `createPinia()`，否则会得到与页面不一致的第二棵状态树。SSR 中更要为每次请求创建实例，不能用跨请求单例。
 
 ## 四、状态持久化
 
-用官方插件 `pinia-plugin-persistedstate`，把 store 落本地存储：
+可用社区插件 `pinia-plugin-persistedstate` 把 store 落本地存储，也可以用 `$subscribe` 自己实现白名单持久化：
 
 ```ts
 // main.ts
@@ -144,7 +145,7 @@ export const useUserStore = defineStore(
 )
 ```
 
-> 注意：只持久化「必要的、可重建的」字段（如 token、主题偏好），**不要把大对象/敏感信息整块写本地**。VueChest 的用户会话与主题开关就是这么落的。
+> 注意：只持久化必要字段并做版本迁移，不要把大对象或敏感信息整块写本地。高安全会话优先由服务端设置 HttpOnly Cookie；若产品架构确实使用可被 JS 读取的 token，必须正视 XSS 风险，而不能把持久化插件当成安全能力。
 
 ## 五、与组合式函数（Composables）协作
 
@@ -200,9 +201,53 @@ export const useUserStore = defineStore(
 )
 ```
 
+## 八、异步 action 与竞态
+
+Pinia 不替你管理请求生命周期。同一个 action 并发执行时，旧响应可能覆盖新状态；组件卸载也不会自动取消 store 中的请求。搜索、切换账号等场景要使用 AbortController 或请求序号，并把 pending/error 按操作或实体建模，避免一个全局 loading 互相覆盖。
+
+```ts
+let profileRequest = 0
+
+async function fetchProfile(userId: number) {
+  const requestId = ++profileRequest
+  status.value = 'pending'
+  try {
+    const next = await api.getProfile(userId)
+    if (requestId !== profileRequest) return
+    profile.value = next
+    status.value = 'success'
+  } catch (error) {
+    if (requestId !== profileRequest) return
+    status.value = 'error'
+    throw error
+  }
+}
+```
+
+乐观更新要先保存最小回滚快照，请求失败恢复；服务端还需幂等或版本校验。不要在 getter 中发请求或修改状态，getter 应保持纯派生，副作用统一进入 action 或 service。
+
+## 九、Store 组合、SSR 与测试
+
+Store 可以调用另一个 store，但要避免在 setup 顶层形成循环读取。公共依赖可放在 action 内按需获取，或抽成纯 service。跨 store 操作若有不变量，定义一个编排 action 统一提交，不让组件分别调用半套流程。
+
+SSR 每个请求创建新的 Pinia；服务端生成的状态要安全序列化并在客户端使用 store 前注入。持久化插件也必须检查是否处于浏览器环境。测试时 `setActivePinia(createPinia())` 为每个用例隔离实例；对组件可使用 `@pinia/testing`，但关键 action 应保留至少一组非 stub 行为测试。
+
+## 十、Pinia 设计检查清单
+
+1. 只把跨组件、跨路由的客户端事实放入 store，服务端缓存交给查询层。
+2. state 保存最小事实，getter 纯派生，action 表达业务意图和失败恢复。
+3. state/getter 解构使用 `storeToRefs`，action 可直接解构。
+4. 组件外复用应用的同一个 Pinia 实例；SSR 则每请求独立创建。
+5. 持久化使用字段白名单、账号命名空间、schema 版本和退出清理。
+6. 异步 action 测试乱序、取消、重试、乐观回滚和重复提交。
+7. store 过大时按业务能力拆分，限制跨 store 依赖方向。
+
 ## 参考来源
 
 - Pinia 官方文档：<https://pinia.vuejs.org/>
 - 对比 Vuex：<https://pinia.vuejs.org/introduction.html#comparison-with-vuex>
+- Pinia actions：<https://pinia.vuejs.org/core-concepts/actions.html>
+- Pinia SSR：<https://pinia.vuejs.org/ssr/>
+- Pinia 测试：<https://pinia.vuejs.org/cookbook/testing.html>
 - 持久化插件：<https://prazdevs.github.io/pinia-plugin-persistedstate/>
 - Vue 官方状态管理指南：<https://vuejs.org/guide/scaling-up/state-management.html>

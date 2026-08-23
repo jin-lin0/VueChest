@@ -97,7 +97,43 @@ ARIA 只"描述"不"改变行为"。能用原生语义就别用 ARIA。
 - 浏览器插件：axe DevTools、Lighthouse a11y 审计。
 - 对比度检查器：WebAIM Contrast Checker。
 
-## 九、小结
+自动化工具只能发现一部分问题：它能检查缺少 label、明显对比度和部分 ARIA 错误，却无法判断焦点顺序是否符合业务、替代文本是否准确、读屏播报是否重复。因此应把静态扫描、组件测试和人工键盘/读屏走查组合起来。
+
+## 九、复合组件与可访问名称
+
+自定义下拉、Tab、菜单、树和对话框必须遵循对应的 WAI-ARIA APG 键盘模型，不能只加一个 `role`。例如模态对话框打开后要把焦点移入，`Tab/Shift+Tab` 在内部循环，`Escape` 关闭，关闭后把焦点归还触发元素；同时页面其余区域对所有用户都不可交互，才能声明 `aria-modal="true"`。
+
+控件的可访问名称优先来自可见文本或 `<label>`。`aria-label` 会覆盖部分名称来源，错误使用可能让视觉文字与读屏名称不一致。图标按钮要提供准确名称；一组输入用 `fieldset/legend` 表达共同问题；错误信息通过 `aria-describedby` 关联，不要把冗长说明全部塞进 label。
+
+```html
+<button type="button" aria-label="关闭设置">
+  <svg aria-hidden="true" focusable="false"><!-- 装饰图标 --></svg>
+</button>
+
+<label for="email">邮箱</label>
+<input id="email" aria-describedby="email-error" aria-invalid="true" />
+<p id="email-error">请输入有效邮箱地址</p>
+```
+
+## 十、WCAG 2.2 中容易遗漏的场景
+
+- 固定头部、Cookie 横幅和 Toast 不应遮住当前键盘焦点。
+- 拖拽排序必须提供按钮或键盘等非拖拽替代操作。
+- 点击目标要有足够尺寸或间距，尤其是移动端密集图标。
+- 登录不能只依赖记忆或复杂认知测试；允许密码管理器、复制粘贴和无障碍认证方式。
+- 重复流程中已经提供过的信息不应强迫用户再次输入，除非确有安全或必要性理由。
+
+## 十一、上线检查清单
+
+1. HTML 结构和标题层级合理，页面有语言，交互使用原生元素优先。
+2. 仅用键盘完成主流程，无焦点丢失、陷阱或被遮挡，焦点样式清晰。
+3. 表单有名称、说明、错误关联和提交后焦点策略；状态不只靠颜色表达。
+4. 弹窗、下拉、Tab、树等按 APG 模式验证角色、状态和键盘行为。
+5. 200% 缩放和窄屏下内容不丢失；动效支持 reduced motion。
+6. 用 axe/Lighthouse 做自动扫描，再用 VoiceOver 或 NVDA 人工走一遍关键任务。
+7. 新组件把 a11y 行为写入测试和 Storybook 示例，避免业务页面重复修复。
+
+## 十二、小结
 
 - 语义化优先，ARIA 补位；键盘可达是底线。
 - 状态变化用 `aria-live` 播报；焦点陷阱进弹窗。
@@ -108,5 +144,7 @@ ARIA 只"描述"不"改变行为"。能用原生语义就别用 ARIA。
 
 - MDN 无障碍指南：<https://developer.mozilla.org/zh-CN/docs/Web/Accessibility>
 - WAI-ARIA 规范：<https://www.w3.org/TR/wai-aria/>
+- WCAG 2.2：<https://www.w3.org/TR/WCAG22/>
+- WAI-ARIA Authoring Practices：<https://www.w3.org/WAI/ARIA/apg/patterns/>
 - WebAIM 对比度检查器：<https://webaim.org/resources/contrastchecker/>
 - Vue a11y 指南：<https://vuejs.org/guide/best-practices/accessibility.html>

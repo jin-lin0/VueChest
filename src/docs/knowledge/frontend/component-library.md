@@ -56,6 +56,8 @@ model.value = false // 直接赋值即触发 update:modelValue
 
 > 多个 v-model：`v-model:title`、`v-model:visible`，对应 `defineModel('title')`。VueChest 的 Dialog/Drawer 就常用 `v-model:visible` 控制开关。
 
+`defineModel({ default })` 需要谨慎：父组件没有传值时，子组件可能已有默认值而父级 ref 仍是 `undefined`，形成初始不同步。公共组件更适合要求父级显式提供 model，或清楚定义受控/非受控模式，不能同时维护两份“当前值”。
+
 ## 三、插槽（Slot）
 
 ```vue
@@ -154,7 +156,55 @@ toastRef.value.addToast('success', '保存成功')
 5. **禁用原生弹窗**：alert/confirm 全部组件化。
 6. **统一出口**：对外 `import { X } from '@/components'`，内部文件结构对使用者透明。
 
-## 九、组件库发布思考
+## 九、透传属性与原生能力
+
+包装原生 `<button>`、`<input>` 时，应保留 `id`、`aria-*`、`data-*`、键盘和表单属性。单根组件会自动 fallthrough，多根或外层有装饰 wrapper 时则要 `inheritAttrs: false`，把 `$attrs` 绑定到真正交互元素，否则 label、disabled 或事件可能落错节点。
+
+```vue
+<script setup lang="ts">
+defineOptions({ inheritAttrs: false })
+defineProps<{ label: string; error?: string }>()
+</script>
+
+<template>
+  <label class="field">
+    <span>{{ label }}</span>
+    <input v-bind="$attrs" :aria-invalid="Boolean(error)" />
+    <span v-if="error" role="alert">{{ error }}</span>
+  </label>
+</template>
+```
+
+组件事件也属于公共 API。声明 `emits`、稳定 payload 类型，不把内部 DOM Event 无选择地泄漏给业务；需要原生语义时明确透传。方法调用优先用 props/events 表达，只有聚焦、滚动等命令式能力才通过模板 ref 和 `defineExpose` 暴露最小接口。
+
+## 十、无障碍、样式与测试
+
+组件库比页面更适合一次解决 a11y：按钮保留原生语义，Modal 管焦点进入/循环/归还，Select 实现对应键盘模型，表单统一 label/error 关联。颜色、间距、圆角和 z-index 消费语义 token；不要为了可配置暴露任意 class 让调用方依赖内部 DOM。
+
+测试按契约编写：props 边界、emits payload、v-model 同步、键盘路径、焦点、slot fallback、Teleport 清理和暗色主题。Storybook/演示页覆盖交互状态，视觉回归覆盖不同内容长度。不要只做快照，快照很难证明焦点和事件行为正确。
+
+## 十一、发布与兼容
+
+独立发包时 Vue 放 `peerDependencies`，输出 ESM、类型声明和样式入口，`exports` 明确公开子路径。组件、类型、CSS token、slot 名和事件都是版本化 API；删除前给弃用警告和迁移文档。构建产物验证 tree shaking，避免入口文件副作用导致使用一个按钮也打入整个库。
+
+## 十二、组件设计检查清单
+
+1. 能否用现有组件组合解决？抽象是否至少有两个稳定场景，而不是预想复用。
+2. props 描述数据，events 描述意图，slot 承担结构定制；避免几十个互斥布尔值。
+3. 明确受控状态、默认值、错误态、loading、disabled 和空内容行为。
+4. `$attrs` 是否落在正确原生元素，键盘、焦点和 ARIA 是否符合模式。
+5. 样式只消费 token 并允许必要的外部尺寸控制，不泄漏内部选择器。
+6. 单测、交互示例、类型声明、变更日志和迁移策略是否齐全。
+
+### 常见坑
+
+- 用十几个布尔 props 组合模式，产生互相冲突状态；改用明确 variant 或拆分组件。
+- 为了“灵活”透传任意对象并在内部展开，导致类型、DOM 与安全边界不可控。
+- 弹层只处理 z-index，不处理滚动锁、焦点归还、嵌套弹层和卸载清理。
+- 组件内部复制 prop 到本地后不再同步，形成两个事实来源。
+- 直接依赖业务 store、路由或全局单例，使通用组件无法独立测试和复用。
+
+## 十三、组件库发布思考
 
 若要把 `src/components` 抽成独立 npm 包：用 `vite build --lib` 模式构建、peerDependencies 声明 `vue`、`defineExpose` 暴露实例方法、配好类型声明（`.d.ts`）。VueChest 目前是站内复用，未独立发包，但遵循上面的「统一出口 + 单一职责」能让未来抽包成本最低。
 
@@ -166,3 +216,5 @@ toastRef.value.addToast('success', '保存成功')
 - Teleport：<https://vuejs.org/guide/built-ins/teleport.html>
 - provide/inject：<https://vuejs.org/guide/components/provide-inject.html>
 - defineModel：<https://vuejs.org/api/sfc-script-setup.html#definemodel>
+- 属性透传：<https://vuejs.org/guide/components/attrs.html>
+- Vue 无障碍最佳实践：<https://vuejs.org/guide/best-practices/accessibility.html>

@@ -379,11 +379,41 @@ new PerformanceObserver((list) => {
 
 > 提示：先量后优化。以 Lighthouse / 真实字段数据建立基线，优先修复影响第 75 百分位用户的高杠杆问题。
 
+## 八、常见坑与排障路径
+
+### 实验室跑分好，真实用户仍然慢
+
+Lighthouse 是受控环境的一次实验，不能代表所有设备、网络和交互。先按路由、设备、网络类型和版本查看 RUM 的 P75，再用 trace 定位慢样本。Lighthouse 没有真实交互，不能直接测 INP；实验室可用 TBT 发现主线程阻塞，但最终仍以真实用户 INP 为准。
+
+### 优化了资源体积，LCP 却没有变化
+
+先在 Performance 或 PageSpeed Insights 中确认真正的 LCP 元素，再把 LCP 拆成 TTFB、资源发现延迟、资源下载和元素渲染延迟。常见根因不是“图片还不够小”，而是图片由 JS 或 CSS 很晚才发现、服务端响应慢、字体阻塞文字，或主线程忙到无法绘制。对错误资源做 preload 只会争抢带宽。
+
+### 代码分割越多越好
+
+过细拆分会增加请求、模块解析和调度成本，还可能把共享依赖重复切入多个异步路径。拆分边界优先跟随路由、低频重功能和权限边界；对首屏必需的小模块保持同包。每次调整都比较初始 JS、请求瀑布、缓存复用和真实导航耗时。
+
+### 滥用 `will-change`、懒加载和缓存
+
+- `will-change` 可能创建额外合成层并占用显存，只在动画前短暂使用。
+- 首屏 LCP 图片不应懒加载，否则浏览器会延迟请求；非首屏图片才适合 `loading="lazy"`。
+- `immutable` 只适合文件名带内容哈希的资源；HTML 若长期强缓存，会让用户拿不到新入口。
+- Service Worker 更新具有独立生命周期，缓存策略错误可能造成“代码和接口版本错配”，必须提供版本清理与回退路径。
+
+### 一个可复用的排障顺序
+
+1. **确认指标**：是加载、交互还是视觉稳定问题，影响哪些用户和路由。
+2. **复现慢样本**：固定设备与网络，记录 Network、Performance 和 Coverage。
+3. **定位瓶颈归属**：服务端、资源发现、下载、主线程、布局/绘制或第三方脚本。
+4. **只改一个变量**：保存变更前后 trace，避免把自然波动当成收益。
+5. **建立预算**：将关键路由 JS、图片、长任务和 CWV 回归纳入 CI/RUM 告警。
+
 ## 参考来源
 
 - web.dev — [Core Web Vitals 总览](https://web.dev/articles/vitals)
 - web.dev — [INP 交互到下次绘制](https://web.dev/articles/inp)
 - web.dev — [LCP 最大内容绘制](https://web.dev/articles/lcp)
 - web.dev — [CLS 累计布局偏移](https://web.dev/articles/cls)
+- web.dev — [使用 Google 工具诊断 Core Web Vitals](https://web.dev/articles/vitals-tools)
 - Vue 官方 — [性能优化最佳实践](https://vuejs.org/guide/best-practices/performance.html)
 - Vite 官方 — [构建与产物优化](https://vite.dev/guide/build)

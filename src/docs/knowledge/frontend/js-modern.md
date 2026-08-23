@@ -312,11 +312,58 @@ export const config = await res.json() // 导入方拿到已就绪的配置
 - 异步错误用 `try/catch` + `allSettled` 隔离；交互用防抖/节流。
 - 体积优化靠动态 `import()` 与顶层 `await`。
 
+## 常见坑与边界条件
+
+### 新语法不等于运行环境已经支持
+
+语法能被构建工具解析，不代表目标浏览器拥有对应运行时 API。`?.` 可以被转译，而 `structuredClone`、`Promise.any`、`Object.groupBy` 等还要看运行环境；需要时用经过维护的 polyfill 或替代实现。发布库时不要偷偷污染全局原型，并在 `browserslist`、Node 版本和 CI 中明确支持矩阵。
+
+### `structuredClone` 不是不可变状态方案
+
+它会深复制许多结构化数据，但函数、DOM 节点不能克隆，自定义类实例通常不会保留业务原型语义。复制大对象也有时间和内存成本；`transfer` 会让原 `ArrayBuffer` 失效。状态更新只改一条路径时，优先结构共享，而不是每次克隆整棵树。
+
+### Promise 组合不会自动取消底层任务
+
+`Promise.all` 在一个任务拒绝后会立即拒绝，但其他 fetch 仍可能继续运行；`Promise.race` 的超时 Promise 也不会取消请求。需要真正释放资源时，把同一个 `AbortSignal` 传给任务，并在超时或页面卸载时调用 `abort()`。同时避免创建 Promise 后很晚才挂错误处理，以免出现未处理拒绝。
+
+```js
+async function fetchWithTimeout(url, timeoutMs = 5000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(url, { signal: controller.signal })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return await response.json()
+  } finally {
+    clearTimeout(timer)
+  }
+}
+```
+
+### 可选链不能替代数据校验
+
+`payload?.user?.age` 只能避免读取时报错，不能证明 `age` 是合法数字。接口边界仍应使用 schema 校验并处理错误；在本应存在的数据上到处加 `?.`，还可能把契约破坏隐藏成 `undefined`，让错误更晚、更难定位。
+
+### 微任务也可能制造卡顿
+
+微任务会在浏览器获得下一次渲染机会前清空。递归 `queueMicrotask` 或连续 Promise 链同样能长期占据主线程。大量计算应分片并主动让出调度权，真正的 CPU 密集任务则考虑 Web Worker。
+
+## API 选型清单
+
+1. 先确认目标运行环境和兼容性，不凭“ES 年份”猜测。
+2. 缺失值只有 `null/undefined` 才兜底用 `??`；业务上所有假值都等价时才用 `||`。
+3. 并发任务强依赖选 `all`，需要逐项结果选 `allSettled`，多源择一选 `any`，竞速选 `race`。
+4. 需要取消时显式设计 `AbortSignal`，不要把 Promise 状态误当成任务生命周期。
+5. 数组操作先确定是否允许修改原数组；共享状态优先 `toSorted` 等非破坏性方法。
+6. 动态导入放在低频或重功能边界，并为加载失败、重试和 loading 状态留出口。
+7. 新 API 上线前在真实支持矩阵测试，库代码同时说明最低运行时与 polyfill 责任。
+
 ## 参考来源
 
 - MDN — [可选链 `?.`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/Optional_chaining)
 - MDN — [空值合并 `??`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing)
 - MDN — [`structuredClone` 深拷贝](https://developer.mozilla.org/zh-CN/docs/Web/API/structuredClone)
 - MDN — [`Promise` 与并发组合](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+- MDN — [`AbortController`](https://developer.mozilla.org/zh-CN/docs/Web/API/AbortController)
 - MDN — [`Object.groupBy` / `Map.groupBy`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Object/groupBy)
 - TC39 — [已完成与活跃的提案](https://github.com/tc39/proposals)

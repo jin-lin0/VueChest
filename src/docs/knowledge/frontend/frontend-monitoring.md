@@ -84,7 +84,52 @@ track('click', { btn: 'publish', appId: 123 }) // 业务埋点
 - 不上报 PII（手机号/身份证/ token）；必要字段脱敏（见 `agent-security` 思路）。
 - 遵守合规（如 GDPR/个保法）：用户授权后再采集，提供退出机制。
 
-## 七、落地清单
+## 七、事件模型、关联与采样
+
+每条错误或性能事件至少包含：事件 ID、时间、应用版本、路由、环境、匿名会话 ID、设备/网络概况和 trace/request ID。版本号用于判断是否只影响新发布，trace ID 用于把前端错误与网关、后端和数据库链路关联。标签必须低基数；不要把完整 URL、用户输入或随机 ID 当成指标 label，否则会导致成本和查询性能失控。
+
+高流量站点通常要采样，但关键错误不能与普通性能样本使用同一比例。可对正常 trace 概率采样，对异常、关键交易和慢请求提高保留率；采样决策和采样率也要随事件上报，聚合时才能正确解释。浏览器端 OpenTelemetry 能生成 trace，但其浏览器 instrumentation 仍有实验性部分，选型前要确认兼容性和数据量。
+
+```ts
+interface TelemetryEvent {
+  eventId: string
+  release: string
+  route: string
+  traceId?: string
+  level: 'info' | 'warning' | 'error'
+  sampleRate: number
+  context: Record<string, string | number | boolean>
+}
+
+function scrub(event: TelemetryEvent): TelemetryEvent {
+  const { token: _token, password: _password, ...safe } = event.context
+  return { ...event, context: safe }
+}
+```
+
+## 八、常见坑与排障
+
+- **错误被重复上报**：框架 handler、window error 和请求拦截器可能捕获同一异常。用事件指纹、cause 链和短时间窗口去重。
+- **只收 message 不收上下文**：没有 release、路由、操作轨迹和 sourcemap，海量 `TypeError` 仍无法定位。
+- **公开 Source Map**：可以生成 hidden sourcemap 并只上传监控平台；上传成功后不把 `.map` 部署到公网。
+- **监控 SDK 影响主流程**：初始化失败、上报失败和队列爆满都必须降级；批量发送、限制 payload，并在低端设备测量 SDK 开销。
+- **把平均值当用户体验**：性能按 P50/P75/P95、设备和路由分组；错误同时看受影响用户数与事件数。
+- **记录敏感数据**：URL 查询、请求 body、DOM 录制和 breadcrumb 都要经过 allowlist 脱敏，不能依赖事后清洗。
+
+## 九、从告警到闭环
+
+告警要描述“谁受影响、从何时开始、相对基线变化、可能版本”，并链接到看板和 runbook。处理流程是确认影响面、关联发布、止血/回滚、定位根因、补测试和监控，最后记录恢复时间。每个告警都应有 owner，并通过静默窗口和聚合避免同一故障刷屏。
+
+## 十、上线检查清单
+
+- [ ] release、environment、route、trace ID 等上下文可关联
+- [ ] 错误去重、采样、批量、重试和离线队列有上限
+- [ ] Source Map 私有上传且与 release 精确匹配
+- [ ] PII 使用 allowlist 采集并支持用户同意/退出
+- [ ] Web Vitals 按页面、设备和 P75 聚合，关键操作有业务成功率
+- [ ] 告警有阈值、owner、runbook、恢复通知和复盘入口
+
+## 十一、落地清单
 
 - [ ] 全局 error / unhandledrejection / 资源错误 全捕获
 - [ ] Vue errorHandler 接入
@@ -102,3 +147,5 @@ track('click', { btn: 'publish', appId: 123 }) // 业务埋点
 - Sentry：<https://docs.sentry.io/>
 - MDN 错误事件：<https://developer.mozilla.org/zh-CN/docs/Web/API/Window/error_event>
 - sendBeacon：<https://developer.mozilla.org/zh-CN/docs/Web/API/Navigator/sendBeacon>
+- OpenTelemetry JavaScript：<https://opentelemetry.io/docs/languages/js/>
+- OpenTelemetry 采样：<https://opentelemetry.io/docs/languages/js/sampling/>

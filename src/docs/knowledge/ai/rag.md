@@ -5,7 +5,7 @@ order: 38
 
 # RAG 检索增强生成实战
 
-RAG（Retrieval-Augmented Generation，检索增强生成）是当前构建「懂私有知识」的大模型应用最核心的工程范式。本文从原理到流水线，再到可运行的 Python 代码，带你完整落地一个中文 RAG 系统。
+RAG（Retrieval-Augmented Generation，检索增强生成）把外部证据检索与生成结合，适合需要私有、可更新或可引用知识的应用。本文从摄取、检索、生成、治理到评估建立完整工程模型。
 
 ## 一、RAG 是什么
 
@@ -15,7 +15,7 @@ RAG（Retrieval-Augmented Generation，检索增强生成）是当前构建「�
 - **幻觉**：对不知道的内容会「自信地编造」。
 - **私有数据不可用**：企业内部文档、个人笔记无法进入模型权重。
 
-RAG 的解法很直接：**先检索、再生成**。在回答用户问题前，先从外部知识库里找出最相关的片段，把这些片段作为上下文拼进 prompt，让模型「带着资料答题」。模型从「凭记忆答」变成「凭资料答」， hallucination 大幅降低。
+RAG 的基本路径是**先检索、再生成**。在回答前从授权知识库找出相关片段，把证据和来源交给模型。检索正确、上下文充分且生成受约束时可以降低无依据回答；检索错误也可能让答案更自信地错，因此评估不可省。
 
 ```
 用户问题 ──▶ 检索相关文档 ──▶ 拼装 Prompt(上下文+问题) ──▶ LLM 生成答案
@@ -35,7 +35,7 @@ RAG 的解法很直接：**先检索、再生成**。在回答用户问题前，
 | 拼装 Prompt      | 上下文 + 问题 + 约束          | prompt     |
 | 生成             | LLM 基于上下文作答            | 最终答案   |
 
-> 离线阶段（加载→入库）只做一次；在线阶段（查询→生成）每次请求执行。
+> 摄取/索引是持续流水线，而非只做一次：文档新增、更新、删除、权限变化和 embedding 升级都要触发可重放的增量或全量重建。
 
 ## 三、文档切分策略
 
@@ -50,8 +50,10 @@ RAG 的解法很直接：**先检索、再生成**。在回答用户问题前，
 
 ### 2. chunk size / overlap 权衡
 
-- `chunk_size`：通用问答 800–1200 字符较稳；中文建议 256–512 token。
-- `chunk_overlap`：设成 `chunk_size` 的 10%–20%，防止关键词被「腰斩」。
+- `chunk_size` 应从标题/段落等自然边界起步，并受 embedding 上限、问题粒度和生成预算约束。
+- `chunk_overlap` 只在跨边界语义确有收益时使用；重叠过多会制造重复召回、膨胀索引和上下文。
+
+不存在通用最佳数值。用同一标注集对不同切分策略测 Recall@k、重复率、上下文 token 与最终答案质量，再按文档类型分别配置。
 
 ### 3. 标题/Markdown 感知切分（推荐用于技术文档）
 
@@ -82,14 +84,14 @@ for d in docs:
 
 embedding 把文本映射为定长向量，是「语义」的数学表示。中文场景优先选中文优化模型。
 
-| 模型                   | 维度 | 最大 Token | 语言   | 说明                                   |
-| ---------------------- | ---- | ---------- | ------ | -------------------------------------- |
-| BAAI/bge-m3            | 1024 | 8192       | 多语言 | 开源最强，支持稠密+稀疏+多向量混合检索 |
-| BAAI/bge-large-zh      | 1024 | 512        | 中文   | 中文表现优秀，轻量                     |
-| moka-ai/m3e-base       | 768  | 512        | 中文   | 专为中文优化，CPU 可跑                 |
-| text-embedding-3-small | 1536 | 8191       | 多语言 | OpenAI，性价比高，需 API               |
+| 模型                   | 维度 | 最大 Token | 语言   | 说明                               |
+| ---------------------- | ---- | ---------- | ------ | ---------------------------------- |
+| BAAI/bge-m3            | 1024 | 8192       | 多语言 | 文本稠密、稀疏与多向量能力         |
+| BAAI/bge-large-zh      | 1024 | 512        | 中文   | 中文文本 embedding 候选            |
+| moka-ai/m3e-base       | 768  | 512        | 中文   | 中文文本 embedding 候选            |
+| text-embedding-3-small | 1536 | 8191       | 多语言 | 托管 API，版本与价格按官方文档核对 |
 
-> 注意：BGE/M3E 最大仅 512 token，切分超过会截断；BGE-M3 支持 8K。务必让 `chunk_size` 落在模型上限内。
+> 模型卡参数会随具体 checkpoint 变化。应读取实际 tokenizer 后测截断率，不能仅凭模型家族名推断上限；BGE-M3 文档标注最长 8192 token。
 
 ```python
 from sentence_transformers import SentenceTransformer
@@ -119,7 +121,7 @@ print(len(vecs[0]))  # 1024
 ### 1. top-k 与相似度度量
 
 - 用**余弦相似度**（向量归一化后等价点积）。Chroma 建集合时设 `metadata={"hnsw:space": "cosine"}`。
-- `top_k` 先粗召回 10–20 条，再精排取 3–5 条喂给 LLM。
+- `top_k` 由数据规模、问题类型、过滤选择性、reranker 与上下文预算共同决定，必须通过召回-延迟曲线选择。
 
 ### 2. 混合检索（BM25 + 向量）
 
@@ -140,7 +142,7 @@ def rrf_fuse(dense_ranks, bm25_ranks, k=60):
 
 ### 3. 重排 Rerank（Cross-Encoder）
 
-粗召回后，用 cross-encoder 把「query + doc」拼在一起打分，精度远高于双塔向量。中文首选 `BAAI/bge-reranker-v2-m3`。
+粗召回后，可用 cross-encoder 联合编码 query 与 doc 重新排序。它通常计算更贵，是否提升质量取决于领域和候选集；`BAAI/bge-reranker-v2-m3` 是可评估的多语言文本候选，不是所有中文场景的固定首选。
 
 ```python
 from sentence_transformers import CrossEncoder
@@ -172,7 +174,7 @@ def rerank(query: str, docs: list, top_k: int = 3) -> list:
 请引用所用资料的编号（如 [1]）来支持你的回答。
 ```
 
-**防注入**：用户问题可能含「忽略以上指令」。缓解手段：把检索内容放在独立隔离区、对用户输入做转义/长度限制、用系统提示明确优先级、必要时对召回文本做敏感词过滤。
+**防注入**：用户问题和召回文档都可能包含“忽略以上指令”。独立内容块、长度限制和高优先级规则只能降低风险；真正的安全边界是检索 ACL、最小工具权限、服务端授权和高风险动作审批。敏感词过滤不能可靠识别语义注入（见 `agent-security.md`）。
 
 ## 八、评估与优化
 
@@ -184,8 +186,8 @@ def rerank(query: str, docs: list, top_k: int = 3) -> list:
 
 常见问题与对策：
 
-- **检索不到**：chunk 太大稀释主题 → 减小 size；embedding 不匹配中文 → 换 BGE/M3E；关键词被切坏 → 加 BM25 混合检索。
-- **噪声多**：召回 top-k 过大 → 用 rerank 压到 3–5 条；overlap 过高 → 降到 10%–15%。
+- **检索不到**：检查权限过滤、索引新鲜度、query 表达、切分和 embedding，再通过混合检索或 query rewrite 做对照实验。
+- **噪声多**：测不同 top-k 与 reranker，检查重复 chunk、错误元数据和高重叠，而不是直接套固定数值。
 - **上下文超窗口**：父子索引——小块检索、大块入模；或对超长块再做摘要。
 
 ## 九、最小可运行示例（Chroma + sentence-transformers）
@@ -198,6 +200,7 @@ pip install chromadb sentence-transformers rank_bm25 openai
 
 ```python
 import chromadb
+import numpy as np
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from rank_bm25 import BM25Okapi
 
@@ -205,9 +208,9 @@ from rank_bm25 import BM25Okapi
 raw_docs = [
     "RAG 是检索增强生成，先检索再生成以降低幻觉。",
     "Chroma 是开源向量数据库，适合快速构建 RAG。",
-    "BGE-M3 是开源中文友好的 embedding 与 rerank 模型。",
+    "BGE-M3 是支持多语言文本的 embedding 模型。",
     "混合检索结合 BM25 与向量，提升关键词召回。",
-    "chunk_size 建议 256-512 token，overlap 取 10%-20%。",
+    "chunk 大小与 overlap 应在真实评估集上调优。",
 ]
 
 # ---------- 2. 切分（这里按句子简单切，生产用第三节策略）----------
@@ -229,6 +232,13 @@ collection.add(
 # ---------- 4. 混合检索（向量 + BM25）----------
 bm25 = BM25Okapi([c.split() for c in chunks])
 
+def rrf_fuse(*rankings, k=60):
+    scores = {}
+    for ranking in rankings:
+        for rank, idx in enumerate(ranking, start=1):
+            scores[idx] = scores.get(idx, 0.0) + 1.0 / (k + rank)
+    return sorted(scores.items(), key=lambda item: item[1], reverse=True)
+
 def retrieve(query: str, top_k: int = 5):
     q_vec = embed_model.encode([query], normalize_embeddings=True).tolist()[0]
     v_res = collection.query(query_embeddings=[q_vec], n_results=top_k)
@@ -241,6 +251,11 @@ def retrieve(query: str, top_k: int = 5):
 # ---------- 5. Rerank 精排 ----------
 reranker = CrossEncoder("BAAI/bge-reranker-v2-m3")
 
+def rerank(query: str, docs: list[str], top_k: int = 3) -> list[str]:
+    scores = reranker.predict([[query, doc] for doc in docs])
+    ranked = sorted(zip(docs, scores), key=lambda item: item[1], reverse=True)
+    return [doc for doc, _ in ranked[:top_k]]
+
 def answer(query: str, client):
     cands = retrieve(query, top_k=5)
     final = rerank(query, cands, top_k=3)  # 见第六节 rerank
@@ -248,7 +263,7 @@ def answer(query: str, client):
     prompt = f"参考资料:\n{context}\n\n问题: {query}\n请基于资料作答，并标注引用编号。"
     # 接 LLM（此处以 OpenAI 为例）
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=MODEL_ID,
         messages=[{"role": "user", "content": prompt}],
     )
     return resp.choices[0].message.content
@@ -257,11 +272,40 @@ def answer(query: str, client):
 # print(answer(query, openai_client))
 ```
 
-把 `rrf_fuse` 与 `rerank` 直接贴上即可运行。若要彻底离线，可把生成环节换成本地模型（如 Ollama），检索与 rerank 部分已完全本地化。
+示例为了聚焦链路，中文 BM25 仍使用了最简单的空格切词；真实中文数据要选合适 tokenizer。运行还需要由调用方提供 `client` 与 `MODEL_ID`，并在生产补上稳定 ID、元数据、ACL、批处理、持久化和错误处理。
 
-## 小结
+## 十、索引治理与新鲜度
 
-RAG = **切分 → 向量化 → 入库 → 混合检索 → 重排 → 带上下文生成**。中文场景优先 `BGE-M3` + `Chroma` + `bge-reranker-v2-m3`，chunk 控制在 256–512 token、overlap 10%–20%，并用 BM25 补关键词召回、cross-encoder 精排，可显著提升召回率与答案忠实度。
+每个 chunk 保存稳定 ID、document/version、标题路径、来源位置、内容哈希、tenant/ACL、embedding model/version 和索引时间。摄取流程按内容哈希幂等，文档删除和权限撤销要同步清理向量、全文索引、缓存与对象引用。
+
+升级 embedding 时建立新索引并行回填，用影子查询比较召回，切流后延迟删除旧索引。不要在同一 collection 混用不同维度、归一化或语义空间。线上回答记录知识快照与引用 ID，才能解释“当时为什么这样答”。
+
+## 十一、常见坑
+
+- **把 RAG 当事实保证**：错误或被投毒的检索内容会放大错误。
+- **用固定字符切所有文档**：代码、表格、FAQ 和长报告需要不同结构策略。
+- **只新增不更新/删除**：旧版本重复召回，权限撤销后内容仍可见。
+- **先全库召回再过滤租户**：向量、reranker 和缓存阶段都可能泄露数据。
+- **引用是模型自己生成的**：文件名和页码可能幻觉，必须从检索元数据确定性附加。
+- **只调 prompt 不看检索 trace**：召回错了，生成端很难补救。
+- **离线 Demo 直接上线**：缺少持久化、并发、超时、恢复、监控与成本边界。
+
+## 十二、架构决策清单与上线门禁
+
+先问是否真的需要 RAG：少量稳定规则可以直接结构化查询或写业务代码；需要全文证据、持续更新和来源引用时再引入检索生成。SQL/指标问题通常应由受控查询工具回答，而不是把整库转成向量。
+
+- [ ] 是否有非 RAG 基线，并证明检索确实提升真实任务？
+- [ ] chunk 策略是否按文档类型评估，而不是套固定数值？
+- [ ] 模型、维度、距离、索引和知识版本是否可重放？
+- [ ] ACL 是否贯穿检索、rerank、缓存、引用与对象下载？
+- [ ] 是否支持新增、更新、删除、重建、切流和回滚？
+- [ ] 是否分别测 Recall@k、忠实度、正确性、P95 和成本？
+- [ ] 无答案、冲突来源、时间敏感和注入样本是否进入回归集？
+- [ ] 回答引用是否来自确定性元数据，用户能否打开原证据？
+
+## 十三、小结
+
+RAG = **摄取治理 → 切分 → 多路索引 → 授权检索 → 可选重排 → 基于证据生成 → 评估反馈**。模型、数据库、chunk 和 top-k 都是待验证变量；真正可上线的系统还必须解决权限、新鲜度、引用、删除、可观测和回滚。
 
 ## 参考来源
 

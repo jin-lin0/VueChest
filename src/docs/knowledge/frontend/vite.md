@@ -8,7 +8,7 @@ order: 11
 > 适用场景：Vue 3 项目的构建工具链（开发服务器 + 生产打包）。本文讲配置、预构建、资源导入、分包、插件与构建优化，并结合 VueChest 实际用法。
 > 阅读前提：了解 ES Module 与 npm 脚本。
 
-Vite 的核心思路：**开发期用原生 ESM + 浏览器按需请求，不打包**（启动秒级）；**生产期用 Rollup 打包**（产物优化）。这就解释了为什么 `npm run dev` 极快而 `npm run build` 要等——两者走的完全不同的管线。
+Vite 的核心思路：**开发期按需转换模块并通过原生 ESM 提供给浏览器**；**生产期再做整体打包与产物优化**。VueChest 当前锁定 Vite 7.0.6，该版本的生产构建依赖 Rollup、依赖预构建使用 esbuild；Vite 的底层引擎会随大版本演进，面试和升级时应以项目锁文件与对应版本文档为准，而不要把某个引擎名称当成永久 API。
 
 ## 一、基础配置
 
@@ -39,7 +39,7 @@ export default defineConfig({
 
 ## 二、预构建（optimizeDeps）
 
-开发期 Vite 会用 esbuild **把 `node_modules` 里的 CommonJS/大依赖先打包成 ESM**，避免浏览器逐个请求上千个小文件：
+在 VueChest 使用的 Vite 7 中，开发期会用 esbuild **把 `node_modules` 里的 CommonJS/大依赖先打包成 ESM**，避免浏览器逐个请求上千个小文件：
 
 ```ts
 export default defineConfig({
@@ -143,10 +143,39 @@ Vite 插件在 `plugins` 数组顺序执行，常见：
 
 Vite dev 不打包，而是：浏览器请求 `main.ts` → Vite 即时编译该文件并改写 import 指向 → 浏览器再请求下一层 → 按需编译。所以**改哪个文件只编译哪个**，启动与热更新都极快。代价是首屏（尤其依赖多时）会有较多请求，生产构建用 Rollup 解决了这点。
 
+## 九、常见坑与排障
+
+### `optimizeDeps` 不是生产分包配置
+
+依赖预构建只服务开发体验，不能用它判断线上 chunk。首次扫描漏掉动态发现的依赖时，Vite 可能重新预构建并整页刷新；此时才考虑 `optimizeDeps.include`。不要把所有依赖机械加入 include，配置越多，升级和缓存失效越难判断。
+
+### 环境变量都是字符串且不是秘密
+
+`import.meta.env` 暴露的自定义变量默认是字符串，`"false"` 在条件判断中仍是真值，应在入口处解析并校验。任何进入客户端 bundle 的值都能被查看；改前缀只能改变暴露规则，不能把前端密钥变安全。
+
+### 手动分包可能产生新的加载问题
+
+把所有 vendor 塞进一个巨包会让低频页面共享下载成本；拆得过细又增加请求和模块执行开销。分包应根据路由使用关系、依赖体积、更新频率和缓存命中设计，并用构建分析器验证。提高 `chunkSizeWarningLimit` 只会隐藏告警，不是优化。
+
+### 开发正常、生产失败
+
+常见原因包括路径大小写只在 Linux 暴露、动态 import 路径无法静态分析、代码依赖开发期全局变量、base 配置错误，以及 CommonJS/ESM 互操作差异。排查时必须本地执行生产构建并预览产物，检查 Network 中的资源 URL 和控制台堆栈。
+
+## 十、配置变更检查清单
+
+1. 先确认当前 Vite 大版本、Node 要求和框架插件兼容范围。
+2. 环境变量集中解析，校验类型，确保客户端变量不含凭证。
+3. 新插件确认执行阶段、顺序、SSR/构建兼容和维护状态。
+4. 动态导入、别名和 glob 同时在开发、build、preview 中验证。
+5. 保存构建产物大小和 chunk 关系基线，避免用调大告警阈值掩盖回归。
+6. 升级时阅读 migration guide，清理临时兼容配置，并在目标部署环境做一次冷启动验证。
+
 ## 参考来源
 
-- Vite 官方文档：<https://vitejs.dev/>
-- 配置参考：<https://vitejs.dev/config/>
-- 静态资源处理：<https://vitejs.dev/guide/assets.html>
-- 构建优化：<https://vitejs.dev/guide/build.html>
-- 依赖预构建：<https://vitejs.dev/guide/dep-pre-bundling.html>
+- Vite 官方文档：<https://vite.dev/>
+- 配置参考：<https://vite.dev/config/>
+- 环境变量与模式：<https://vite.dev/guide/env-and-mode>
+- 静态资源处理：<https://vite.dev/guide/assets.html>
+- 构建优化：<https://vite.dev/guide/build.html>
+- 依赖预构建：<https://vite.dev/guide/dep-pre-bundling.html>
+- 排障指南：<https://vite.dev/guide/troubleshooting>

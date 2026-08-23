@@ -85,6 +85,8 @@ const { a, b } = toRefs(state) // ✅ a/b 是 ref，.value 仍走 Proxy
   - 用 `markRaw` 标记「永远不代理」的对象（如第三方实例、大配置），避免无谓开销。
   - 与 `perf-frontend` / `browser-rendering` 协同：减少不必要的响应式开销 = 减少重渲染 = 更顺滑。
 
+`reactive(raw) !== raw`，但对同一个 raw 重复调用会返回同一个代理。不要同时把 raw 与 proxy 当作 Map key 或用 `===` 混合比较，否则会出现 identity hazard。`toRaw()` 只适合临时读取或与第三方库交互，不要长期持有后继续修改；`markRaw()` 也只跳过被标记对象本身，嵌套值仍可能被代理。
+
 ## 七、与组合式 API 的衔接
 
 - `<script setup>` 里 `ref`/`reactive` 声明的状态，模板自动追踪依赖（effect 包裹渲染）。
@@ -101,9 +103,53 @@ const { a, b } = toRefs(state) // ✅ a/b 是 ref，.value 仍走 Proxy
 | 同轮多次改只刷一次 | 异步调度队列去重                |
 | 新增属性也响应     | Proxy 拦截动态 key（Vue2 不可） |
 
+## 九、watch 的调度与清理
+
+默认 watcher 在父组件更新后、当前组件 DOM 更新前执行；需要读取更新后的 DOM 时用 `flush: 'post'`，必须同步响应时才考虑 `flush: 'sync'`。同步 watcher 不会批量去重，对高频数组修改非常危险。
+
+异步副作用要在 watcher 失效时清理，避免旧请求覆盖新结果：
+
+```ts
+watch(
+  userId,
+  async (id, _oldId, onCleanup) => {
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+
+    const response = await fetch(`/api/users/${id}`, {
+      signal: controller.signal,
+    })
+    profile.value = await response.json()
+  },
+  { immediate: true, flush: 'post' },
+)
+```
+
+组件同步创建的 watcher 会随组件卸载自动停止；异步回调里后来创建的 watcher 可能脱离组件作用域，应保留 stop handle，或用 `effectScope()` 把一组 computed/watch 统一回收。
+
+## 十、常见坑与排障
+
+- **computed 内修改其他状态**：会制造隐式循环和难预测顺序。computed 保持纯函数，副作用放 action/watch。
+- **深度 watch 大对象**：遍历成本随数据增长，且嵌套修改时 new/old 可能是同一对象。优先监听具体 getter 或不可变版本号。
+- **把整个第三方实例 reactive**：图表、编辑器、SDK 实例通常不需要代理，用 `shallowRef` 或 `markRaw`。
+- **只改 shallowRef 内部属性却期待更新**：浅 ref 只追踪 `.value` 替换；选择整体替换或明确 `triggerRef()`。
+- **模板反复调用重函数**：渲染 effect 每次都会执行它；稳定派生值用 computed，并检查依赖是否过宽。
+- **响应式丢失却盲目加 deep**：先确认是否解构、替换了 reactive 变量或拿到了 raw 对象，再决定 watcher 深度。
+
+调试时使用 Vue DevTools 和开发期的 `onRenderTracked/onRenderTriggered`，查看组件到底读取了哪个 key、哪次 set 触发了更新。性能优化应缩小依赖和更新范围，而不是把所有状态换成 shallow API。
+
+## 十一、API 选型清单
+
+1. 原始值、整体替换和 composable 返回值优先 `ref`；固定对象可用 `reactive`。
+2. 大型不可变数据或外部实例用 `shallowRef/markRaw`，并明确更新方式。
+3. 纯派生用 computed；外部副作用用 watch，并设计 cleanup 与 flush 时机。
+4. 解构 reactive 使用 `toRefs/toRef`；store 解构使用 `storeToRefs`。
+5. 遇到重复渲染先用调试钩子定位依赖，再做浅响应、拆组件或状态归一化。
+
 ## 参考来源
 
 - Vue 响应式原理：<https://vuejs.org/guide/extras/reactivity-in-depth.html>
 - 响应式基础：<https://vuejs.org/guide/essentials/reactivity-fundamentals.html>
 - ref / reactive API：<https://vuejs.org/api/reactivity-core.html>
+- 高级响应式 API：<https://vuejs.org/api/reactivity-advanced.html>
 - MDN Proxy：<https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Proxy>

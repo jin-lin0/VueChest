@@ -42,9 +42,9 @@ CSS  ──> CSSOM Tree
 | ----------------------------------------- | -------------------------- | ---- |
 | 改几何（width/height/top/left、增删节点） | Layout → Paint → Composite | 最重 |
 | 改外观（color/background/visibility）     | Paint → Composite          | 中等 |
-| 改合成属性（transform/opacity）           | Composite only             | 最轻 |
+| 改合成友好属性（transform/opacity）       | 通常可只 Composite         | 较轻 |
 
-> **黄金法则**：能用 `transform` / `opacity` 实现的动画，绝不用 `top/left/width` 去动——前者只走 Composite（GPU 加速、不触发 reflow/repaint），后者每次都重排重绘，肉眼可见卡顿。这正是 `css-effects` 里动画用 `transform` 而非改 `left` 的原因。
+> **经验法则**：位移、缩放和透明度动画优先考虑 `transform` / `opacity`，它们在合适的分层条件下可只走合成；`top/left/width` 通常需要重新布局。是否真正进入独立层由浏览器决定，仍应以 Performance/Layers 面板验证，不能把“GPU 加速”当成无条件保证。
 
 ## 三、什么是「合成层（Compositing Layer）」
 
@@ -87,9 +87,48 @@ CSS  ──> CSSOM Tree
 | 交互卡顿   | 长任务 + 频繁重排   | 防抖节流、批量 DOM 更新、虚拟列表 |
 | 内存涨     | 合成层/监听器泄漏   | 合理用 will-change、卸载时清理    |
 
+## 七、常见坑与排障路径
+
+### 布局抖动（layout thrashing）
+
+浏览器通常会批量延迟布局，但读取 `offsetWidth`、`getBoundingClientRect()` 等几何信息时，可能被迫先完成此前的样式和布局。如果循环中交替“写样式—读尺寸”，就会反复触发同步布局。应先批量读取所需尺寸，再统一写入；连续视觉更新放入 `requestAnimationFrame`。
+
+```js
+// 差：每轮写入后立刻读取，可能反复强制布局
+items.forEach((item) => {
+  item.style.width = '200px'
+  console.log(item.offsetWidth)
+})
+
+// 好：分离读写阶段
+const widths = items.map((item) => item.offsetWidth)
+requestAnimationFrame(() => {
+  items.forEach((item, index) => {
+    item.style.transform = `translateX(${widths[index] / 10}px)`
+  })
+})
+```
+
+### 图层越多并不越快
+
+独立图层要占用纹理内存，还会增加栅格化和合成管理成本。`translateZ(0)` 只是历史经验技巧，不应作为通用优化。动画卡顿时依次确认：是否有主线程长任务、是否触发布局、绘制区域是否过大、图层数量和纹理尺寸是否异常。
+
+### `display: none` 与不可见优化不是一回事
+
+`display: none` 的子树不进入布局，但频繁切换仍会重新计算；`visibility: hidden` 保留布局；`content-visibility: auto` 可跳过离屏子树的渲染工作，但需要配合固有尺寸减少滚动条跳动。选择取决于是否占位、是否参与可访问性树以及切换频率。
+
+### 渲染问题检查清单
+
+1. 录制真实交互，不只盯 FPS 数字；先区分 Scripting、Layout、Paint 和 Composite。
+2. 用 Layout Shift Regions、Paint Flashing 和 Layers 缩小范围。
+3. 检查是否交替读写 DOM、单帧内是否修改大量节点、是否存在超大阴影/滤镜。
+4. 只对已证实的热点做分层，优化后同时复查帧时间与内存。
+5. 在低端设备、页面缩放、长列表和动画叠加场景复测。
+
 ## 参考来源
 
 - MDN 渲染原理：<https://developer.mozilla.org/zh-CN/docs/Web/Performance/How_browsers_work>
 - web.dev 关键渲染路径：<https://web.dev/articles/critical-rendering-path>
 - web.dev 渲染性能：<https://web.dev/articles/rendering-performance>
 - Google 开发者「Preventing layout thrashing」：<https://web.dev/articles/avoid-large-complex-layouts-and-layout-thrashing>
+- MDN `content-visibility`：<https://developer.mozilla.org/docs/Web/CSS/content-visibility>

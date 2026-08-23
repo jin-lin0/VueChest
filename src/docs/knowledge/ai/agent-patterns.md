@@ -81,14 +81,14 @@ Input → Planner ──► [Step1, Step2, Step3]
 
 ### 与 ReAct 的核心区别
 
-| 维度     | ReAct              | Plan-and-Execute                |
-| -------- | ------------------ | ------------------------------- |
-| 决策方式 | 逐步推理，边走边看 | 先整体规划，再执行              |
-| LLM 调用 | 每步一次           | Planner 仅一次（或按需 replan） |
-| 全局视野 | 易"推理漂移"       | 计划贯穿全程，目标不丢          |
-| 成本     | 中等               | 多工具任务可省 30–60% token     |
-| 可控性   | 低，难干预         | 高，执行前可审核/修改计划       |
-| 适用     | 探索性、不确定任务 | 长链路、流程清晰任务            |
+| 维度     | ReAct              | Plan-and-Execute                 |
+| -------- | ------------------ | -------------------------------- |
+| 决策方式 | 逐步推理，边走边看 | 先整体规划，再执行               |
+| LLM 调用 | 每步一次           | Planner 仅一次（或按需 replan）  |
+| 全局视野 | 易"推理漂移"       | 计划贯穿全程，目标不丢           |
+| 成本     | 随步骤增长         | 规划有额外成本，执行可按任务优化 |
+| 可控性   | 低，难干预         | 高，执行前可审核/修改计划        |
+| 适用     | 探索性、不确定任务 | 长链路、流程清晰任务             |
 
 **实践建议**：最常用的是**混合架构**——外层 Plan-and-Execute 做顶层编排，内层每个子任务用 ReAct 执行，再加 Replanner 纠偏。
 
@@ -136,7 +136,7 @@ def reflect_loop(llm, task, rounds=2):
    Primary ──► output ──► Critic ──► 通过? 交付 : 打回重做
 ```
 
-> 注意：Supervisor 超过约 5 个并发委派会成为串行瓶颈；Pipeline 存在"错误级联"，首步幻觉会污染后续。务必加步数上限与 Critic 兜底。
+> 注意：Supervisor 的路由、汇总会随 worker 数量与上下文增长而成为瓶颈；Pipeline 存在错误级联，早期错误会污染后续。并发上限必须依据模型限流、工具资源和真实基准设置，不能套一个固定 Agent 数量。
 
 ## 六、Tool / Function Calling 设计
 
@@ -166,9 +166,12 @@ def reflect_loop(llm, task, rounds=2):
 ```python
 def call_tool(name, args):
     try:
-        return TOOLS[name](**args)
+        tool = TOOL_REGISTRY[name]
+        validated = tool.schema.model_validate(args)
+        authorize(current_principal, tool, validated)
+        return {"ok": True, "data": tool.run(validated)}
     except Exception as e:
-        return f"[工具错误] {type(e).__name__}: {e}"  # 可读信息回灌
+        return {"ok": False, "code": safe_error_code(e)}
 ```
 
 ## 七、记忆管理
@@ -195,7 +198,7 @@ def remember(memory, turn):
 
 - **最大步数限制**：防止无限循环（ReAct/多 Agent 都需）。
 - **兜底策略**：超时、工具失败、解析失败时的默认回复或人工接管。
-- **可观测性**：记录每步 Thought / Action / Observation，用 LangSmith 等追踪。
+- **可观测性**：记录状态变化、模型/工具事件、策略决策、耗时与错误。不要依赖或持久化模型隐藏思维链，把可审计依据设计成简短结构化字段。
 - **评估**：任务完成率、工具选择准确率、步数效率、LLM-as-judge 打分。
 
 ```python
@@ -205,8 +208,9 @@ def safe_agent(agent, task, max_steps=10, timeout=30):
             return agent.run(task, max_steps=max_steps)
     except TimeoutError:
         return "执行超时，请简化任务或稍后重试"
-    except Exception as e:
-        return f"执行异常: {e}"
+    except Exception:
+        logger.exception("agent run failed")
+        return "执行异常，已记录追踪编号"
 ```
 
 ## 九、选型建议
@@ -223,12 +227,53 @@ def safe_agent(agent, task, max_steps=10, timeout=30):
 
 **权衡原则**：
 
-1. 先单 Agent 后多 Agent——多 Agent 带来 2–4 倍成本与延迟，复杂度陡增。
+1. 先单 Agent 后多 Agent——多 Agent 通常增加模型调用、协调与上下文成本，增幅要用真实任务评测。
 2. 不确定、需探索用 ReAct；长链路、可预见用 Plan-and-Execute。
 3. 多 Agent 优先选 Pipeline（固定流程最快最省），仅在路径动态时才用 Supervisor。
 4. 无论哪种架构，都加步数上限、错误处理与可观测性——这是可靠性的底线。
 
 > 总结：Agent 没有"银弹"。理解各模式的取舍，按任务确定性、成本与质量需求组合使用，才是工程落地的关键。
+
+## 十、状态机、终止与恢复
+
+无论采用哪种模式，都应显式定义运行状态，而不是只保存消息数组：
+
+```ts
+type RunState = {
+  runId: string
+  status: 'running' | 'waiting_approval' | 'succeeded' | 'failed' | 'cancelled'
+  planVersion: number
+  currentStep: number
+  completedStepIds: string[]
+  budget: { maxSteps: number; deadline: number; maxCostUsd: number }
+  pendingApproval?: { actionDigest: string; expiresAt: number }
+}
+```
+
+终止条件至少包括：目标完成、无法继续需要澄清、等待审批、步数/时间/成本耗尽、用户取消和不可恢复错误。暂停后恢复必须依赖持久化状态与幂等副作用，不能从整段自然语言历史“猜上次做到哪”。
+
+## 十一、常见坑
+
+- **把固定工作流包装成 Agent**：增加随机性、延迟和排障难度，却没有动态决策收益。
+- **让反思循环自己决定何时完美**：Critic 与生成模型共享盲点，容易反复改写不收敛。
+- **把所有工具给一个超级 Agent**：路由更难，提示注入后的爆炸半径更大。
+- **只保存对话不保存状态**：崩溃恢复后重复发邮件、创建任务或扣费。
+- **多 Agent 共享无限历史**：token 成本上升，不同角色的敏感上下文相互泄露。
+- **把模型文本解析成 Action**：自由格式易破损，优先用结构化 tool calling 并服务端校验。
+- **记录隐藏思维链当审计日志**：不可稳定依赖，也可能泄露敏感上下文；应记录输入证据、动作和策略依据。
+
+## 十二、模式决策清单与上线门禁
+
+决策顺序建议是：先确定性代码/工作流，再单 Agent 工具循环，最后才是多 Agent。每增加一层自主性，都要求能在评估集上证明任务成功率或人工效率收益。
+
+- [ ] 哪些节点必须确定性，哪些节点确实需要模型判断？
+- [ ] 输入、状态 schema、终止条件、预算和取消语义是否明确？
+- [ ] 外部副作用是否有幂等键、审批、版本检查和补偿？
+- [ ] Planner 的计划是否可验证，replan 是否有次数上限？
+- [ ] 多 Agent 是否因为上下文隔离/并行专业化而存在，而非角色命名？
+- [ ] 是否有单 Agent 或普通工作流基线，并比较成功率、P95、成本？
+- [ ] trace 是否能还原状态、工具与证据，同时避免保存密钥和隐藏思维链？
+- [ ] 故障注入是否覆盖超时、部分成功、恢复、取消和 provider 限流？
 
 ## 参考来源
 

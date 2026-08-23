@@ -86,9 +86,69 @@ if (hit) return hit // 离线也能返回
 
 > 黄金法则：**敏感信息别落前端存储**；大对象别塞 LocalStorage（同步卡顿）；需要查询/大容量用 IndexedDB。VueChest 的 token 持久化走 Pinia + 可选 localStorage（见 `pinia`），并受同源/XSS 防护约束。
 
+## 七、容量、持久性与清理
+
+表格中的容量只能作为数量级直觉，真实配额由浏览器、设备空间、站点活跃度和隐私模式决定。写入随时可能因配额、权限或磁盘失败；用 `navigator.storage.estimate()` 观察 usage/quota，需要重要离线数据时请求 persistent storage，但用户代理仍保留最终决定权。
+
+缓存必须有预算和淘汰策略。记录 schema 版本、更新时间和近似体积，优先删除可重新下载的旧缓存；用户原创草稿与可重建接口缓存不能使用同一清理优先级。退出账号时清理或切换用户命名空间，防止共享设备串数据。
+
+```ts
+async function storageStatus() {
+  const estimate = await navigator.storage?.estimate()
+  const persisted = await navigator.storage?.persisted?.()
+  return {
+    usage: estimate?.usage ?? 0,
+    quota: estimate?.quota ?? 0,
+    persisted: persisted ?? false,
+  }
+}
+```
+
+## 八、IndexedDB 事务与迁移
+
+对象仓库和索引只能在版本升级事务中修改。升级函数应是确定、短小的结构迁移；大批数据转换可在打开数据库后分批完成并记录迁移状态，避免阻塞其他标签。事务在事件循环控制权返回后可能自动提交，因此不要在事务中等待无关网络请求。
+
+数据库被其他标签页占用时会触发 `blocked`，旧连接则收到 `versionchange`。应用要关闭旧连接并提示刷新，否则新版本可能永久卡住。业务写入把相关 store 操作放在同一 readwrite transaction，只有 `transaction.oncomplete` 后才向 UI 宣布成功。
+
+## 九、多标签页一致性
+
+LocalStorage 的 `storage` 事件只通知其他文档，不通知发起写入的当前页面；IndexedDB 也不会自动让内存状态更新。轻量状态可用 `BroadcastChannel` 广播“数据已变化”，接收方重新读取权威存储。消息只做通知，不要同时维护另一份完整数据副本。
+
+```ts
+const channel = new BroadcastChannel('workspace')
+channel.addEventListener('message', (event) => {
+  if (event.data?.type === 'changed') void reloadWorkspace()
+})
+
+async function saveWorkspace(value: Workspace) {
+  await db.workspaces.put(value)
+  channel.postMessage({ type: 'changed', id: value.id })
+}
+```
+
+## 十、常见坑与安全边界
+
+- **把 Cookie 容量和策略写死**：浏览器限制会变化，Cookie 还会增加请求体；只保存必要会话标识。
+- **认为 HttpOnly 防所有攻击**：它降低 token 被 JS 读取的风险，但恶意脚本仍可能以用户身份发请求；还需 CSP、输出编码和 CSRF 防护。
+- **缓存当数据库真源**：Cache API 命中不保证业务数据新鲜，必须设计版本和失效。
+- **忽略序列化失败**：循环引用、BigInt、类实例和 schema 变化都可能破坏 JSON 恢复；读取后验证并迁移。
+- **无界离线队列**：网络长期失败会持续占空间；设置条数、体积、重试次数和过期时间。
+- **在 render 热路径读 LocalStorage**：同步 IO 会阻塞主线程；启动时一次读取到内存，后续批量落盘。
+
+## 十一、上线检查清单
+
+1. 按数据敏感性、容量、查询方式、生命周期和是否随请求发送选择存储。
+2. 所有读取视为不可信输入，做 schema 校验、默认值和版本迁移。
+3. 写入处理配额与权限失败；重要本地数据提供导出、恢复或云同步。
+4. 多账号与多标签页有明确隔离和同步协议。
+5. Cache/IndexedDB 有容量预算、淘汰和旧版本清理。
+6. Cookie 明确 Secure、HttpOnly、SameSite、Path/Domain 和过期策略。
+
 ## 参考来源
 
 - MDN Web Storage：<https://developer.mozilla.org/zh-CN/docs/Web/API/Web_Storage_API>
 - MDN IndexedDB：<https://developer.mozilla.org/zh-CN/docs/Web/API/IndexedDB_API>
 - MDN Cookie：<https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Cookies>
 - Cache API：<https://developer.mozilla.org/zh-CN/docs/Web/API/Cache>
+- Storage API：<https://developer.mozilla.org/docs/Web/API/Storage_API>
+- BroadcastChannel：<https://developer.mozilla.org/docs/Web/API/BroadcastChannel>

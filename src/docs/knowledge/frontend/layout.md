@@ -430,6 +430,35 @@ grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 - 流体尺寸：用 `clamp()` 替代多重断点。
 - 二维跨区对齐：用 `subgrid`。
 
+## 八、常见坑与排障
+
+### `min-width: auto` 导致内容把布局撑破
+
+Flex/Grid 子项默认最小尺寸可能来自内容。长 URL、代码或单行文本会让 `1fr` 看似失效。先给可收缩子项加 `min-width: 0`，文本再配 `overflow-wrap: anywhere`；纵向滚动容器常对应 `min-height: 0`。
+
+```css
+.main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+```
+
+### `100vw` 带来横向滚动条
+
+桌面浏览器中 `100vw` 可能把垂直滚动条宽度算进去。普通满宽容器优先 `width: 100%`；需要视口单位时检查窄屏和出现滚动条后的结果。移动端全高界面优先评估 `dvh`，并保留合理回退。
+
+### 只靠视觉顺序改变 DOM 顺序
+
+Flex `order` 和 Grid 显式定位只改变视觉位置，键盘焦点与屏幕阅读器通常仍按 DOM 顺序移动。不要用布局属性修复错误的语义顺序；先保证 DOM 顺序合理，再用 CSS 布局。
+
+### 布局选型检查清单
+
+1. 内容主要沿一条轴排列用 Flex，需要同时控制行列用 Grid。
+2. 组件按自身容器变化用 container query，整页断点用 media query。
+3. 为可收缩区域验证 `min-width/min-height: 0`，为图片声明宽高比。
+4. 在长文本、空内容、缩放 200%、键盘操作和 RTL 方向下测试。
+5. 先用 intrinsic sizing、`minmax()` 和 `clamp()`，再增加大量固定断点。
+
 ## 参考来源
 
 - MDN — [Flexbox 布局指南](https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_flexible_box_layout)

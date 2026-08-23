@@ -101,11 +101,65 @@ if __name__ == "__main__":
 
 Host 侧只要「连上这个 server」，LLM 就能在推理中调用 `add`。把 `stdio` 换成 HTTP 部署，即变成远程可复用服务。
 
-## 七、生态现状（2026）
+## 七、协议版本与状态边界
+
+2026-07-28 规范把核心请求设计为自包含：版本与 client capabilities 随请求携带，Server 用 `server/discover` 暴露支持版本和能力。这里的“stateless”不等于应用不能有状态：订阅流、外部 OAuth、任务进度、业务数据库和 Host 会话仍可能持续存在，只是不能依赖旧版初始化会话里的隐式协商信息。
+
+Client 应：
+
+1. 钉住支持的协议版本，解析明确的版本不兼容错误。
+2. 只调用 Server 已声明的 capability，并处理 capability 在升级后变化。
+3. 为 list 结果做分页/变化订阅，不假设启动时发现的工具永久不变。
+4. 对超时、取消、`InputRequiredResult` 和部分失败建立明确状态机。
+5. 把 Server 返回的文本、资源和 tool result 视为不可信外部内容。
+
+## 八、工具契约与 Host 责任
+
+MCP 解决互操作，不替业务做权限判断。Server 的 tool schema 只描述参数形状，Host/Server 仍需共同负责：
+
+- Host 根据用户、任务和风险决定哪些 Server/tool 可见，并展示高风险调用预览。
+- Server 在每次调用时验证身份、tenant、scope、资源所有权与业务约束。
+- 破坏性操作使用幂等键、资源版本、审批摘要和审计，不把模型意图当用户授权。
+- Tool result 返回稳定错误码与限长结构，不回显密钥、内部堆栈和整库数据。
+- Resources 的 URI 是定位符，不天然等于公开 URL；读取时仍需授权与大小限制。
+
+stdio Server 的 stdout 是协议通道，调试日志应写 stderr；任何随意 `print()` 都可能破坏消息帧。远程 Server 则需验证 Origin、鉴权、重定向和网络边界，防止 token 转发、SSRF 与 confused deputy。
+
+## 九、测试与可观测性
+
+契约测试至少覆盖 discovery、tools/resources/prompts 分页、schema 校验、未知方法、版本不兼容、超时、取消、输入请求和 capability 缺失。安全测试覆盖越权资源、恶意 tool result、注入文档、超大响应和 Server 断连。
+
+Host 记录 server identity、协议版本、tool 名称/版本、调用 ID、参数摘要、用户同意、耗时、结果状态和取消链路；敏感内容按字段脱敏。不要把完整提示、OAuth token 或私有资源内容无差别写进 trace。
+
+可用性指标包括连接/请求错误率、发现耗时、tool P95/P99、取消成功率、输入等待时间和 schema 不匹配率。协议 trace 与业务副作用日志要能用 request ID 串起来。
+
+## 十、常见坑
+
+- **把 MCP 当 Agent 框架**：它不负责规划、记忆、循环与任务成功判定。
+- **看到 schema 合法就直接执行**：参数仍可能越权或危险。
+- **stdio 往 stdout 打日志**：协议流被污染，出现难定位的 JSON 解析错误。
+- **把 core stateless 理解为系统无状态**：订阅、外部任务和业务副作用仍需持久化与恢复。
+- **混用规范版本**：旧初始化/SSE 教程与新 discovery/request metadata 拼在一起。
+- **信任第三方 Server 描述**：工具名、描述和结果都可能恶意诱导模型或用户。
+- **给所有 Server 共享万能 token**：一个 Server 被攻破即可横向访问全部资源。
+- **只测 list/call happy path**：升级后分页、capability、取消和输入请求最容易出兼容问题。
+
+## 十一、接入决策清单
+
+- [ ] 是否真的需要跨 Host 复用；单应用内部函数是否已经足够？
+- [ ] 当前协议版本、SDK 版本和 Server identity 是否钉住并可升级？
+- [ ] stdio 与 Streamable HTTP 的部署、鉴权、隔离和运维成本是否明确？
+- [ ] 每个 tool/resource 是否最小权限，并在执行/读取时重新鉴权？
+- [ ] 写操作是否有幂等、审批绑定、资源版本和补偿路径？
+- [ ] 第三方 Server 是否经过代码/供应链审查，凭据是否独立最小化？
+- [ ] 是否覆盖发现、分页、变更、版本错误、取消、超时与断连测试？
+- [ ] trace 是否可审计又不会泄露 token、提示和私有数据？
+
+## 十二、生态与演进
 
 - 官方与社区 Server 快速增长：文件系统、GitHub、Slack、Postgres、浏览器自动化等均有现成 Server。
 - 主流 Agent 框架与 IDE（Claude、Cursor 等）已原生支持 MCP Client。
-- 规范仍在演进，关注 `modelcontextprotocol` 官方仓库的版本说明，避免照抄过时的 SSE 教程。
+- 规范仍在演进，关注官方 changelog、deprecated features 与 SDK release，避免照抄不同协议版本的教程。
 
 ## 参考来源
 
@@ -113,3 +167,4 @@ Host 侧只要「连上这个 server」，LLM 就能在推理中调用 `add`。�
 - 2026-07-28 规范：<https://modelcontextprotocol.io/specification/2026-07-28/architecture>
 - MCP 介绍博客（Anthropic）：<https://www.anthropic.com/news/model-context-protocol>
 - Python SDK：<https://github.com/modelcontextprotocol/python-sdk>
+- MCP Security Best Practices：<https://modelcontextprotocol.io/specification/2026-07-28/basic/security_best_practices>

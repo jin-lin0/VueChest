@@ -129,6 +129,8 @@ npm run test -- --coverage
 
 CI 里设门禁（如 `v8` 的 `100% lines` 太严，建议分支覆盖 ≥70%），只对"易错分支"要求高覆盖。不要为覆盖率而写无意义的测试。
 
+覆盖率只能说明哪些语句被执行过，不能证明断言有效。门禁阈值应基于当前基线逐步提高，并单独关注权限、金额、数据迁移、竞态与错误恢复等高风险分支。Vitest 的 V8 与 Istanbul provider 都可用；具体选择要根据运行环境、性能和 source map 准确性实测，而不是默认认为二者结果完全相同。
+
 ## 七、常见误区
 
 - **测实现细节**：断言 `wrapper.vm.xxx` 私有状态，重构即碎。改测用户可见行为。
@@ -136,7 +138,55 @@ CI 里设门禁（如 `v8` 的 `100% lines` 太严，建议分支覆盖 ≥70%�
 - **一个用例多断言混在一起**：拆小，失败信息才清晰。
 - **忽略快照滥用**：`toMatchSnapshot()` 适合稳定 UI，对频繁变动的结构会制造噪声，谨慎用。
 
-## 八、小结
+## 八、测试分层与边界
+
+单元测试适合纯函数、composable、store 状态转移；组件测试验证用户能看到和操作的行为；E2E 覆盖登录、支付、发布等跨页面关键路径。不要试图用一种测试解决全部问题：单元测试无法发现路由、CSS 和真实浏览器集成问题，E2E 又不适合穷举算法边界。
+
+对第三方组件可以浅替换，但自己的业务子组件不要无条件 stub，否则父子事件契约坏了也会通过。网络层测试按目标选择：只关心 action 分支时 mock API 模块；要验证请求路径、方法和序列化时用 MSW 在协议层拦截；真正的 CORS、Cookie 和流式传输仍需浏览器集成测试。
+
+### 异步断言怎么选
+
+- 状态已经同步变化，只等 Vue 刷新 DOM：`await nextTick()`。
+- 元素会在请求后出现：使用 `findByRole` 等异步查询。
+- 等待无法直接查询的副作用：`waitFor`，回调里必须有会失败的断言。
+- 断言元素消失：`waitForElementToBeRemoved`。
+
+不要用固定 `setTimeout` “等一下”，它会让测试又慢又抖。使用 fake timer 后在 `afterEach` 恢复 real timer，并清理 mock；微任务、Vue 更新队列和 timer 是不同队列，必要时分别推进。
+
+```ts
+import { afterEach, it, expect, vi } from 'vitest'
+import { screen, waitFor } from '@testing-library/vue'
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
+
+it('debounce 后只搜索最后一次输入', async () => {
+  vi.useFakeTimers()
+  const search = vi.fn()
+  searchDebounced('v')
+  searchDebounced('vue')
+
+  await vi.advanceTimersByTimeAsync(300)
+  await waitFor(() => expect(search).toHaveBeenCalledWith('vue'))
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+```
+
+> 示例中的 `searchDebounced` 应在测试夹具中注入 `search`；关键点是展示 timer 推进、异步断言与清理顺序，而不是依赖真实时间。
+
+## 九、提交前检查清单
+
+1. 测试名称是否描述“条件—行为—结果”，失败时能否直接看懂？
+2. 查询是否优先使用 role/name/label，而不是 CSS 类和组件私有字段？
+3. 成功、空数据、权限拒绝、超时、异常和重试是否覆盖关键分支？
+4. mock 是否停在系统边界，还是把被测逻辑本身也 mock 掉了？
+5. timer、全局对象、localStorage、Pinia 和 DOM 是否在用例间隔离？
+6. 竞态用例是否能控制响应顺序，而不是依赖偶然的执行时机？
+7. CI 是否固定时区、locale、随机种子或系统时间，失败时是否保留报告？
+
+## 十、小结
 
 - 组合式函数直接测 `.value`；组件用 Testing Library 测行为；store 用 `setActivePinia` 裸测。
 - 网络/定时器一律 mock，单测要快、要 deterministic。
@@ -145,6 +195,8 @@ CI 里设门禁（如 `v8` 的 `100% lines` 太严，建议分支覆盖 ≥70%�
 ## 参考来源
 
 - Vitest 官方文档：<https://vitest.dev/>
+- Vitest 覆盖率指南：<https://vitest.dev/guide/coverage.html>
+- Vitest `vi` API：<https://vitest.dev/api/vi>
 - Vue Test Utils：<https://test-utils.vuejs.org/>
 - Testing Library 查询优先级：<https://testing-library.com/docs/queries/about/>
 - Vue 官方"测试"指南：<https://vuejs.org/guide/scaling-up/testing.html>

@@ -8,7 +8,7 @@ order: 9
 > 适用场景：Vue 3 单页应用的路由管理。本文聚焦工程落地高频点：懒加载、路由守卫、动态路由、嵌套路由、过渡动画坑。
 > 阅读前提：Vue 3 组合式 API（见 `vue3-composition`）。
 
-Vue Router 4（对应 Vue 3）把路由拆成「创建 Router → 定义 routes → `app.use(router)` → 模板 `<router-view>`/`<router-link>`」四步。下面跳过 hello-world，直接讲实战坑位。
+VueChest 当前使用 Vue Router 4.5.1。它把路由拆成「创建 Router → 定义 routes → `app.use(router)` → 模板 `<router-view>`/`<router-link>`」四步；官方已发布向后兼容的 v5 过渡版本，升级时要关注后续移除的 deprecated API。下面直接讲工程实战。
 
 ## 一、创建 Router 与 History 模式
 
@@ -61,7 +61,7 @@ router.beforeEach((to) => {
 })
 ```
 
-> **Vue Router 4 已弃用 `next` 回调**，改为「返回值控制」：`return false` 取消导航、`return { name }` 重定向、不返回或 `return true` 放行。新代码不要再写 `next()`。
+> `next` 第三个参数仍被兼容支持，但 API 已标记 deprecated，且分支中多调/漏调容易让导航挂起。新代码用返回值控制：`return false` 取消、`return { name }` 重定向、不返回或 `return true` 放行。
 
 ### 2. 路由级与组件级守卫
 
@@ -115,12 +115,12 @@ watch(() => route.params.id, (id) => { /* 重新拉数据 */ })
 
 > 父路由组件必须包含 `<router-view>` 才能渲染 children。`.vue` 文件里的 `RouterView` 组件就是它。
 
-## 六、过渡动画坑（VueChest 实测）
+## 六、过渡动画与异步路由（VueChest 实测）
 
 给 `<router-view>` 包 `<transition>` 做切页动画是常规操作，但有一个**致命坑**：
 
 ```vue
-<!-- ❌ 错误：mode="out-in" + 异步懒加载路由 = 返回白屏 -->
+<!-- VueChest 曾在该组合下出现返回白屏 -->
 <router-view v-slot="{ Component }">
   <transition name="fade" mode="out-in">
     <component :is="Component" />
@@ -128,7 +128,7 @@ watch(() => route.params.id, (id) => { /* 重新拉数据 */ })
 </router-view>
 ```
 
-原因：`mode="out-in"` 要求「旧组件完全离场后再挂载新组件」，但路由组件是 `() => import()` 异步加载的，离场动画期间新组件还没 ready，调度会卡死 → **返回时整页白屏**。
+`mode="out-in"` 会先等待旧视图离场，再挂载新视图；如果异步组件加载、key、KeepAlive 或嵌套 Transition 的处理不完整，中间可能出现空白。它不是 Vue Router 对所有异步路由的通用禁令，但 VueChest 在当前外壳组合中曾复现白屏，因此项目选择默认同时进出模式，并通过路由 loading/error 状态处理 chunk 加载。
 
 ```vue
 <!-- ✅ 正确：用默认模式（同时进出），不加 mode="out-in" -->
@@ -139,7 +139,7 @@ watch(() => route.params.id, (id) => { /* 重新拉数据 */ })
 </router-view>
 ```
 
-> 这是 VueChest 在文档中心切页时踩过的真实坑，已记录进项目约定。结论：**RouterView 过渡严禁 `mode="out-in"`**，用默认模式即可。
+> 通用排查要检查 `<component :is>` 的 key、异步组件错误、KeepAlive 顺序和 CSS 动画是否确实结束；项目约定可以比框架规则更严格，但面试时应区分“项目决策”和“框架必然行为”。
 
 ## 七、滚动容器与滚动监听
 
@@ -153,9 +153,35 @@ main.addEventListener('scroll', onScroll)
 
 > 路由级 `scrollBehavior` 只管 `window` 滚动；当主滚动发生在内部容器时，需自己监听该容器并 `scrollTo`。
 
+## 八、数据加载、失败与权限边界
+
+守卫适合判断能否进入和准备全局前置条件，不应塞入所有页面请求。关键数据可在 `beforeResolve` 阻塞导航，普通数据进入页面后加载并显示骨架；任何异步加载都要处理新导航取消旧导航。`router.push()` 返回 Promise，菜单关闭、埋点等后续动作需要检查 navigation failure。
+
+前端 meta/守卫只控制界面入口，不能替代后端授权。用户能直接调用 API，也能修改客户端状态；服务端必须检查身份与对象级权限。重定向参数只允许站内安全路径，避免登录后跳转成为开放重定向。
+
+## 九、常见坑与排障
+
+- 守卫无条件重定向到当前目标，造成无限循环；重定向前排除登录页并检查目标是否已满足。
+- 监听整个 reactive route，任何 query/hash 变化都重复请求；只 watch 需要的 param/query。
+- 动态添加路由后忘记重新导航或移除旧路由，权限切换后残留入口。
+- chunk 新版本部署后旧页面加载异步文件 404；捕获 `router.onError`，提示刷新并保证部署/CDN 原子性。
+- 组件内用原生 `confirm` 阻塞且不可主题化；复用项目 ConfirmDialog，并把确认结果转换为 guard 返回值。
+- 内部滚动容器仍依赖 `scrollBehavior`，导致返回位置无法恢复；按 route key 自己保存容器 scrollTop。
+
+## 十、路由设计检查清单
+
+1. history base 与服务器 fallback 匹配，真实深链接和刷新能打开。
+2. 路由名、params/query 类型和编码明确，不用字符串手拼 URL。
+3. 守卫返回路径无循环，异步失败、取消和 navigation failure 有处理。
+4. 前端只做入口控制，API 继续做服务端认证和授权。
+5. 懒加载有 loading/error/重试，部署保留旧 chunk 或提供刷新恢复。
+6. 参数复用、滚动恢复、标题/焦点播报和 404 页面都有测试。
+
 ## 参考来源
 
 - Vue Router 官方文档：<https://router.vuejs.org/>
 - 路由懒加载：<https://router.vuejs.org/guide/advanced/lazy-loading.html>
 - 导航守卫：<https://router.vuejs.org/guide/advanced/navigation-guards.html>
 - 过渡动效：<https://router.vuejs.org/guide/advanced/transitions.html>
+- 导航失败：<https://router.vuejs.org/guide/advanced/navigation-failures.html>
+- Vue Router 5 迁移：<https://router.vuejs.org/guide/migration/v4-to-v5>

@@ -4,9 +4,10 @@ import ts from 'typescript'
 
 const ROOT = resolve(import.meta.dirname, '../..')
 const DOCS = resolve(ROOT, 'src/docs/knowledge/interview')
-const files = readdirSync(DOCS).filter((name) => /^niuke-.*\.md$/.test(name))
+const files = readdirSync(DOCS).filter((name) => name.endsWith('.md'))
 const errors = []
 let snippets = 0
+const snippetsByFile = new Map()
 
 for (const filename of files) {
   const markdown = readFileSync(resolve(DOCS, filename), 'utf8')
@@ -15,6 +16,7 @@ for (const filename of files) {
 
   while ((match = pattern.exec(markdown))) {
     snippets++
+    snippetsByFile.set(filename, (snippetsByFile.get(filename) ?? 0) + 1)
     const code = match[2]
     const markdownLine = markdown.slice(0, match.index).split('\n').length + 1
     const source = ts.createSourceFile(
@@ -35,7 +37,8 @@ for (const filename of files) {
   }
 }
 
-console.log(`JavaScript 代码块：${snippets}`)
+console.log(`面试文档 JavaScript 代码块：${snippets}`)
+for (const [filename, count] of snippetsByFile) console.log(`- ${filename}: ${count}`)
 
 if (errors.length) {
   console.error(`代码语法校验失败：${errors.length} 项`)

@@ -91,22 +91,22 @@ function createChart(type: 'bar' | 'line', data: number[]) {
 **问题**：不改动原对象，动态加功能（日志、缓存、权限）。
 
 ```ts
-// TS 装饰器：给方法加执行耗时日志
-function logTime(target: any, key: string, desc: PropertyDescriptor) {
-  const fn = desc.value
-  desc.value = function (...args: any[]) {
-    const t = performance.now()
-    const r = fn.apply(this, args)
-    console.log(`${key} 耗时`, performance.now() - t)
-    return r
+// 高阶函数装饰：与 TS 装饰器配置无关，类型关系清晰
+function withTiming<A extends unknown[], R>(name: string, fn: (...args: A) => Promise<R>) {
+  return async (...args: A): Promise<R> => {
+    const startedAt = performance.now()
+    try {
+      return await fn(...args)
+    } finally {
+      console.log(`${name} 耗时`, performance.now() - startedAt)
+    }
   }
 }
-class Api {
-  @logTime fetchUser() {}
-}
+
+const fetchUserWithTiming = withTiming('fetchUser', fetchUser)
 ```
 
-> 注意：TS 装饰器语法仍在演进（Stage 3），Vue 3 用的是 `@vue/compiler-sfc` 下的写法。工程中更常见的是「高阶函数」实现装饰（包裹原函数返回新函数）。
+> TypeScript 同时存在旧版 experimental decorators 与标准装饰器语义，签名和配置不同。业务工程若不需要元数据/类声明语法，高阶函数通常更直观，也更容易测试与组合。
 
 ## 六、模块/组合模式（Composite）
 
@@ -144,8 +144,47 @@ class Menu implements Node {
 
 > 别为了用模式而用模式。大多数前端需求用「组合 + 观察者 + 策略」就够；`scenario` 场景题常考的就是这几样，能口述「为什么用、怎么写」即可。
 
+## 八、适配器与命令模式
+
+适配器把第三方或多供应商接口转换成内部稳定协议，特别适合支付、地图、模型流式事件。业务层只依赖 `PaymentAdapter`，供应商字段变化被限制在边界层；这比在每个组件写 `if (provider === ...)` 更可测试。
+
+命令模式把一次操作表示成带 execute/undo 的对象，适合编辑器、低代码画布和批量任务。命令保存最小变更与回滚信息，历史栈只关心统一接口；不可逆网络副作用则需要补偿命令和幂等，而不是假装能本地 undo。
+
+```ts
+interface Command {
+  execute(): void
+  undo(): void
+}
+
+function createRenameCommand(item: Item, nextName: string): Command {
+  const previousName = item.name
+  return {
+    execute: () => (item.name = nextName),
+    undo: () => (item.name = previousName),
+  }
+}
+```
+
+## 九、常见坑与判断方法
+
+- **观察者无生命周期**：订阅不返回 unsubscribe，组件卸载后泄漏或重复执行。
+- **全局单例隐藏依赖**：测试互相污染、SSR 串用户；优先依赖注入，确需单例时提供 reset/替换点。
+- **策略对象只有一个分支**：为未来假设制造间接层；出现第二个稳定算法再抽象。
+- **工厂返回巨大联合却无统一接口**：调用方仍写类型判断，说明创建与行为边界没抽好。
+- **装饰链顺序不透明**：缓存、重试、超时、日志的包裹顺序会改变语义，应固定组合入口并测试失败路径。
+- **模式名替代问题描述**：代码评审先说明变化点、约束和代价，再决定是否套用模式。
+
+## 十、模式选型清单
+
+1. 变化的是算法 → 策略；变化的是外部接口 → 适配器；变化的是创建过程 → 工厂。
+2. 一次操作需要排队、记录或撤销 → 命令；一对多通知且发送方不关心接收方 → 发布订阅。
+3. 横切日志、缓存、权限需要组合 → 高阶函数/装饰器，但明确顺序和异常语义。
+4. 树节点需要统一操作 → 组合；只有全局唯一资源且生命周期可控时才考虑单例。
+5. 抽象前至少确认两个真实变体；抽象后比较测试、调试和认知成本是否下降。
+
 ## 参考来源
 
 - Refactoring.Guru 设计模式：<https://refactoring.guru/design-patterns>
 - Addy Osmani《JavaScript 设计模式》：<https://www.patterns.dev/posts/>
 - 发布订阅与前端：<https://developer.mozilla.org/zh-CN/docs/Web/API/EventTarget>
+- TypeScript Decorators：<https://www.typescriptlang.org/docs/handbook/decorators.html>

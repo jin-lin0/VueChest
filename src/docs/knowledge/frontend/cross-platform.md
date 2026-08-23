@@ -5,67 +5,147 @@ order: 29
 
 # 跨端开发选型
 
-> "一套代码多端运行"是长期诉求。但跨端方案各有代价：性能、体验、生态、团队技能不可兼得。本文横向对比主流方案，帮你按团队与目标选，而不是盲目追"大一统"。
+> 跨端的价值是复用业务能力和工程体系，不是承诺 100% 共用 UI。选型时应同时衡量目标端、体验上限、原生能力、团队技能、发布治理和长期维护成本。
 
-## 一、方案地图
+## 一、先定义“复用什么”
 
-| 方案                 | 技术                   | 目标端                     | 渲染                  | 性能  | 适用              |
-| -------------------- | ---------------------- | -------------------------- | --------------------- | ----- | ----------------- |
-| **React Native**     | JS/TS + React          | iOS / Android              | 原生组件              | 高    | 原生感强的 App    |
-| **Flutter**          | Dart                   | iOS / Android / Web / 桌面 | 自绘 Skia             | 很高  | 高度一致 UI、动效 |
-| **小程序**           | 各平台 DSL             | 微信/支付宝等              | 平台 WebView          | 中    | 国内流量入口      |
-| **Taro / uni-app**   | React/Vue → 小程序+App | 小程序/H5/App              | 多端编译              | 中    | 国内多端业务      |
-| **Electron / Tauri** | Web 技术               | 桌面（Win/Mac/Linux）      | Chromium/系统 WebView | 中/高 | 桌面工具          |
-| **PWA**              | Web                    | 所有（装到桌面）           | 浏览器                | 中    | 轻量"安装感"      |
+跨端项目通常可以复用四层内容：
 
-## 二、React Native（RN）
+1. **领域核心**：类型、校验、计算规则、API client、状态机，最值得复用。
+2. **设计系统**：token 和交互规范可以共享，具体组件实现未必共享。
+3. **页面与组件**：取决于渲染模型和平台差异，复用率不应预先当 KPI。
+4. **平台外壳**：权限、通知、文件、支付、后台任务、窗口与发布必须保留适配层。
 
-- 用 React 写 UI，映射到**原生组件**（非 WebView），体验接近原生。
-- 生态成熟（Meta 背书），热更新（CodePush）方便；新架构（Fabric/JSI）打通 JS↔原生直接通信，性能更好。
-- 代价：原生模块桥接成本高，复杂动效/平台差异仍需 native 补。
+合理架构通常是“共享核心 + 薄平台壳”，而不是在业务代码里散落大量 `if (ios)`。
 
-## 三、Flutter
+## 二、主流方案地图
 
-- Dart + 自绘引擎（Skia/Impeller），**一套渲染跨端像素级一致**，动效强、性能好。
-- 不依赖平台组件，UI 完全可控；Hot Reload 极佳。
-- 代价：Dart 学习成本；包体偏大；平台原生能力靠 plugin，深度集成不如 RN 顺。
+| 方案           | 主要语言/范式   | 目标端                  | UI 路径                 | 更匹配的场景                         |
+| -------------- | --------------- | ----------------------- | ----------------------- | ------------------------------------ |
+| React Native   | JS/TS + React   | iOS / Android           | 框架组件映射到平台视图  | React 团队、需要原生交互与原生模块   |
+| Flutter        | Dart            | 移动 / Web / 桌面       | Flutter 引擎绘制        | 强品牌一致性、复杂自定义 UI 与动效   |
+| Taro / uni-app | React/Vue 风格  | 多类小程序 / H5 / App   | 编译或运行到各平台能力  | 国内多小程序渠道、已有前端团队       |
+| Electron       | Web + Node.js   | Windows / macOS / Linux | 自带 Chromium           | Web 生态依赖重、要求版本一致的桌面端 |
+| Tauri          | Web + Rust 后端 | 桌面及其支持的平台      | 系统 WebView + 原生命令 | 重视安装体积与最小权限的桌面应用     |
+| PWA            | Web 标准        | 支持现代浏览器的平台    | 浏览器 / 可安装 Web     | 链接分发、离线增强、迭代速度优先     |
 
-## 四、小程序与多端框架（国内）
+表中的“更匹配”不是绝对性能排名。同一方案的列表实现、桥接频率、图片处理、设备能力与团队经验，往往比框架标签更影响真实体验。
 
-- 国内业务常需微信/支付宝/抖音小程序 + H5 + App 多端。
-- **Taro**（React/Vue 语法编译到多端）、**uni-app**（Vue 语法）降低多端重复开发。
-- 代价：各平台能力不齐，需用条件编译（`process.env.TARO_ENV`）补差异；性能受 WebView 制约。
+## 三、移动端：React Native 与 Flutter
 
-## 五、桌面：Electron vs Tauri
+React Native 使用 React 声明 UI，并通过其新架构中的 Fabric、Turbo Native Modules 等机制与平台能力协作。它的优势是 JS/TS 和 React 生态可复用；代价是团队仍需理解 iOS/Android 生命周期、构建系统和原生调试。
 
-- **Electron**：Chromium + Node，Web 技术直接搬，生态大；代价是包体大（~100MB+）、内存高。
-- **Tauri**：Rust + 系统 WebView，包体小（~10MB）、安全好；代价是需 Rust、WebView 行为随系统略有差异。
+Flutter 由框架和引擎控制大部分渲染，适合需要高度一致视觉和自绘能力的产品。Impeller 等渲染能力的实际启用范围应以目标平台和当前 Flutter 版本为准。它的代价不仅是学习 Dart，还包括插件质量、原生 SDK 集成和平台无障碍行为的验证成本。
 
-## 六、选型决策
+二者都不是“无需原生工程师”。涉及支付、地图、蓝牙、推送、后台定位或复杂音视频时，应提前做最小原型，验证权限、生命周期和商店政策。
 
-- 要做**强原生感 App** → RN（团队会 React）或 Flutter（要极致一致/动效）。
-- **国内多端业务**（小程序为主）→ Taro / uni-app。
-- **桌面工具** → Electron（快）或 Tauri（轻/安全）。
-- **轻量可安装** → PWA，零额外打包。
-- 团队是 Vue 栈 → Taro/uni-app/Electron 比 RN 更顺手。
+## 四、小程序与国内多端框架
 
-## 七、通用坑
+Taro、uni-app 可以复用 Vue/React 心智，把应用编译或适配到多类小程序和 H5。主要挑战是各平台的组件、分包、隐私授权、登录、支付和审核规则不一致。
 
-- **平台差异**：权限、字体、状态栏、刘海屏，多端都要单独适配。
-- **性能误判**：WebView 类方案复杂列表易卡，需虚拟列表/原生组件兜底。
-- **"一套代码"幻觉**：业务越复杂，条件编译与平台补丁越多，维护成本上升。
-- **热更新合规**：应用商店对热更新有限制（尤其 iOS），需注意审核政策。
+建议用能力矩阵管理差异：行是业务能力，列是微信、支付宝、H5、App；每格记录“原生支持、适配实现、降级方案、不可用”。条件编译只放在平台适配层，避免同一页面被宏判断切得难以测试。
 
-## 八、小结
+## 五、桌面：Electron、Tauri 与 PWA
 
-- 没有"完美大一统"：体验/性能/生态/团队技能要权衡。
-- RN（原生感）/ Flutter（一致动效）/ Taro·uni（国内多端）/ Electron·Tauri（桌面）。
-- 跨端省的是"重复 UI 代码"，平台能力与体验差异仍需各自打磨。
+Electron 自带 Chromium 与 Node.js，渲染一致、Web/Node 生态丰富，但资源占用和更新包成本需要实际测量。安全设计必须保持 `contextIsolation`，通过受限 preload API 暴露能力，不能让远程内容直接获得 Node 权限。
+
+Tauri 使用系统 WebView，并通过 command/capability 等边界调用 Rust 或原生能力。它通常能减少随应用分发的浏览器运行时，但不同系统 WebView 版本仍需要兼容测试；“用了 Rust”也不自动等于安全。
+
+PWA 的分发成本最低，可提供安装、离线和推送等渐进增强能力，但可用 API、后台行为和商店入口受浏览器与操作系统限制。若核心需求依赖稳定的系统级能力，应先验证目标平台，而不是只看规范列表。
+
+## 六、共享核心与能力适配器
+
+业务层只依赖稳定接口，平台工程提供实现：
+
+```ts
+export interface FilePort {
+  pickTextFile(): Promise<{ name: string; content: string } | null>
+  saveTextFile(name: string, content: string): Promise<void>
+}
+
+export function createDocumentService(filePort: FilePort) {
+  return {
+    async importDocument() {
+      const file = await filePort.pickTextFile()
+      if (!file) return null
+      return { title: file.name, body: file.content.trim() }
+    },
+    exportDocument(title: string, body: string) {
+      return filePort.saveTextFile(`${title}.md`, body)
+    },
+  }
+}
+```
+
+Web 实现可以使用 File System Access API 或 `<input type="file">` 降级；Electron 实现通过 preload 桥接；移动端实现调用平台插件。这样领域测试不需要启动真机，权限差异也集中在一处。
+
+```ts
+export const webFilePort: FilePort = {
+  async pickTextFile() {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ accept: { 'text/plain': ['.txt', '.md'] } }],
+    })
+    const file = await handle.getFile()
+    return { name: file.name, content: await file.text() }
+  },
+  async saveTextFile(name, content) {
+    const handle = await window.showSaveFilePicker({ suggestedName: name })
+    const writable = await handle.createWritable()
+    await writable.write(content)
+    await writable.close()
+  },
+}
+```
+
+上例 API 并非所有浏览器都支持，生产代码必须做特性检测并提供下载兜底。这正是能力适配器存在的意义。
+
+## 七、选型检查清单
+
+在比较框架前先回答：
+
+- [ ] 首发和两年内必须支持哪些系统、设备和商店？
+- [ ] 哪些体验是核心壁垒：启动、滚动、动效、离线、后台还是系统集成？
+- [ ] 必须接入哪些原生 SDK，它们是否有维护可靠的插件？
+- [ ] 团队能否调试原生构建、签名、崩溃和性能问题？
+- [ ] 是否允许热更新，审核政策和安全策略如何限制它？
+- [ ] 设计系统需要视觉一致，还是更需要遵循各平台习惯？
+- [ ] CI 是否覆盖多系统构建，真机和可访问性测试预算是否足够？
+- [ ] 退出成本如何：共享核心能否脱离当前框架继续使用？
+
+先为最高风险能力做 1～2 周技术验证，使用接近生产的数据量、最低支持设备和真实插件。不要用 Todo Demo 的流畅度做几年架构决策。
+
+## 八、发布、更新与安全
+
+跨端工程至少要管理以下边界：
+
+- **版本协议**：客户端版本、服务端 API、数据迁移和灰度开关需兼容。
+- **签名密钥**：证书和商店凭据只进入受控 CI，不写入仓库或前端包。
+- **更新回滚**：桌面自动更新、移动商店版本和 Web 发布的节奏不同，要能暂停和回滚。
+- **最小权限**：相机、文件、剪贴板、位置等只在使用时申请，并解释用途。
+- **桥接安全**：Web 内容不能获得任意文件系统或 shell 能力；平台调用要校验参数和来源。
+- **隐私合规**：SDK 清单、采集目的、用户同意和删除路径在每个平台逐项验证。
+
+测试应形成金字塔：共享核心做单元测试，适配器做契约测试，关键平台流程做真机 E2E，性能在最低支持设备上建立基线。
+
+## 九、常见坑与应对
+
+- **追求虚假的 100% 复用率**：条件分支侵入业务，最终每个平台都难维护。
+- **只比较包体或跑分**：忽略插件成熟度、招聘、构建稳定性和审核成本。
+- **把 Web UI 原样搬到所有端**：桌面键盘、移动返回手势和小程序导航习惯不同。
+- **平台 API 直接散落页面**：难以 mock、降级和替换，应收敛到 capability adapter。
+- **只在旗舰机测试**：低端 Android、旧 WebView、弱网和大字体更容易暴露问题。
+- **热更新越过审核边界**：能动态下发不等于平台政策允许，必须核对当前商店规则。
+- **忽略无障碍**：自绘或跨端组件仍要验证语义、焦点、读屏和动态字体。
+
+## 十、小结
+
+跨端选型不是“哪个框架最快”，而是“哪个方案能以可控成本达到关键平台体验”。优先复用领域核心和设计约束，用适配器隔离平台能力；再通过风险原型、真机指标、发布治理和退出成本做决策。
 
 ## 参考来源
 
-- React Native 文档：<https://reactnative.dev/>
-- Flutter 文档：<https://docs.flutter.dev/>
-- Taro 文档：<https://taro-docs.jd.com/>
-- Tauri 文档：<https://tauri.app/>
-- Electron 文档：<https://www.electronjs.org/docs>
+- React Native Architecture：<https://reactnative.dev/architecture/landing-page>
+- Flutter Architecture：<https://docs.flutter.dev/resources/architectural-overview>
+- Taro 官方文档：<https://docs.taro.zone/docs/>
+- Electron Security：<https://www.electronjs.org/docs/latest/tutorial/security>
+- Tauri Architecture：<https://v2.tauri.app/concept/architecture/>
+- web.dev Progressive Web Apps：<https://web.dev/explore/progressive-web-apps>

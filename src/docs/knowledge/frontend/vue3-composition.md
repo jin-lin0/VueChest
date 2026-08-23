@@ -16,7 +16,7 @@ order: 6
 | TS 支持  | 类型推导弱               | 类型推导好，与 TS 天然契合         |
 | 代码压缩 | 属性名需保留             | 可被 tree-shake，命名更自由        |
 
-经验法则：新项目一律 `<script setup>`；旧组件维持 Options API 不动，逐步迁移即可。
+经验法则：团队熟悉 Composition API 时，新功能优先 `<script setup>`；稳定的 Options API 旧组件不必为“统一风格”一次性重写，可在真实需求驱动下逐步迁移。
 
 ## 二、`<script setup>` 极简起步
 
@@ -238,10 +238,54 @@ store.inc() // 直接调用 action
 | 异步 setup 没加载态           | 外层包 `<Suspense>`                              |
 | `reactive` 整体替换变普通对象 | 用 `Object.assign(state, newObj)` 而非 `state =` |
 
+## 十、组合式函数的边界与清理
+
+可复用 composable 应把输入统一为普通值、ref 或 getter，并用 `toValue()` 在响应式 effect 内读取；返回“普通对象 + 多个 ref”便于解构后继续保持响应式。每个组件调用 composable 默认会创建独立状态，如果要跨组件共享，应明确提升到 store 或模块级状态，不能无意中把局部数据变成全局单例。
+
+监听器、定时器、订阅和请求都是副作用。创建它们时同时设计清理：组件卸载移除事件，watch 重跑前取消旧请求，SSR 中只在 `onMounted` 访问 DOM。composable 通常应同步调用，以便 Vue 将 watcher 和生命周期绑定到当前组件实例。
+
+```ts
+import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
+
+export function useProfile(id: MaybeRefOrGetter<string>) {
+  const data = ref<Profile | null>(null)
+  const error = ref<unknown>(null)
+
+  watch(
+    () => toValue(id),
+    async (nextId, _oldId, onCleanup) => {
+      const controller = new AbortController()
+      onCleanup(() => controller.abort())
+      try {
+        data.value = await fetch(`/api/profiles/${nextId}`, {
+          signal: controller.signal,
+        }).then((response) => response.json())
+      } catch (reason) {
+        if (!controller.signal.aborted) error.value = reason
+      }
+    },
+    { immediate: true },
+  )
+
+  return { data, error }
+}
+```
+
+## 十一、API 选型清单
+
+1. 单一值、需要整体替换或 composable 返回值优先 `ref`；固定对象可用 `reactive`。
+2. 纯派生值用 `computed`，明确来源和新旧值用 `watch`，依赖较多且可自动收集时用 `watchEffect`。
+3. watcher 发异步请求时注册 cleanup，防止旧响应覆盖新状态。
+4. 逻辑复用用 composable，视图结构复用用组件，跨页面共享再使用 Pinia。
+5. DOM、副作用和浏览器 API 放在可清理的生命周期中，并验证 SSR 环境。
+6. `<Suspense>` 使用前确认框架版本、错误边界和 SSR 行为；简单页面也可以显式维护 loading/error 状态。
+
 ## 参考来源
 
 - Vue 官方文档（组合式 API）：[vuejs.org/guide/extras/composition-api-faq](https://vuejs.org/guide/extras/composition-api-faq.html)
 - Vue `<script setup>`：[vuejs.org/api/sfc-sfc-script-setup](https://vuejs.org/api/sfc-sfc-script-setup.html)
 - Vue 响应式基础：[vuejs.org/guide/essentials/reactivity-fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html)
+- Vue 组合式函数最佳实践：[vuejs.org/guide/reusability/composables](https://vuejs.org/guide/reusability/composables.html)
+- Vue 响应式工具 `toValue`：[vuejs.org/api/reactivity-utilities](https://vuejs.org/api/reactivity-utilities.html)
 - Pinia 官方文档：[pinia.vuejs.org](https://pinia.vuejs.org/)
 - Vue 中文文档：[cn.vuejs.org](https://cn.vuejs.org/)

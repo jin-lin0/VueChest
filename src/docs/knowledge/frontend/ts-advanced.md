@@ -200,7 +200,46 @@ function parseUser(data: unknown): User {
 
 **经验法则**：边界处（API 响应、表单、localStorage）一律做运行时校验（`zod` / `valibot`）；内部逻辑信任 TS 类型即可。
 
-## 十、工程实践清单
+## 十、`unknown`、`any` 与穷尽检查
+
+外部输入先用 `unknown`，它要求在使用前收窄；`any` 会同时关闭调用方和实现方的检查，应该只出现在迁移边界并记录清理计划。异常捕获值、JSON 解析和消息事件都属于典型 `unknown` 边界。
+
+判别联合新增成员后，`never` 穷尽检查能让遗漏在编译期暴露：
+
+```ts
+type Result =
+  | { status: 'success'; data: string }
+  | { status: 'error'; error: Error }
+  | { status: 'cancelled' }
+
+function render(result: Result): string {
+  switch (result.status) {
+    case 'success':
+      return result.data
+    case 'error':
+      return result.error.message
+    case 'cancelled':
+      return '已取消'
+    default: {
+      const unreachable: never = result
+      return unreachable
+    }
+  }
+}
+```
+
+## 十一、常见坑与类型设计边界
+
+- **滥用 `as` 和非空断言**：断言只让编译器闭嘴，不产生校验。先修正控制流或在边界验证。
+- **用 `Partial<T>` 表示补丁却不定义规则**：字段可选不代表 `undefined`、删除和不更新含义相同；为 Patch 单独建类型和 schema。
+- **索引签名过宽**：`Record<string, X>` 会暗示任意 key 都存在。开启 `noUncheckedIndexedAccess` 后显式处理缺失。
+- **包装类型写成 `String/Number`**：业务数据使用小写原始类型 `string/number/boolean`。
+- **复杂类型体操泄漏到公共 API**：递归条件类型可能拖慢编辑器并产生难读错误。公共边界优先清晰的命名类型，复杂推导藏在内部。
+- **声明合并范围失控**：第三方模块增强必须与真实模块名一致，并用专门的 `.d.ts` 和类型测试约束；不要为了绕错覆盖官方声明。
+
+泛型的目标是保持输入输出关系，不是消灭所有重复。如果函数只接受一种类型，就不需要泛型；如果类型参数只出现一次，调用者往往得不到额外安全性。API 设计先追求可读的业务约束，再考虑抽象复用。
+
+## 十二、工程实践清单
 
 1. `tsconfig` 开 `strict: true`（含 `noUncheckedIndexedAccess`、`exactOptionalPropertyTypes` 按需）；
 2. 优先 `interface` 描述对象形状、用 `type` 做联合 / 工具类型；
@@ -216,10 +255,16 @@ const routes = {
 // routes.home 仍是字面量 '/'，而非宽泛的 string
 ```
 
+6. 对关键联合做 `never` 穷尽检查，对类型工具写编译期用例；
+7. 区分 `type` import 和运行时 import，发布库时检查声明产物与 `exports`；
+8. 升级 TypeScript 先在 CI 试跑，审查新增错误，避免长期锁死 `skipLibCheck` 掩盖依赖冲突。
+
 ## 参考来源
 
 - TypeScript 官方手册：[www.typescriptlang.org/docs](https://www.typescriptlang.org/docs/)
 - TypeScript 内置工具类型参考：[utility-types](https://www.typescriptlang.org/docs/handbook/utility-types.html)
+- TypeScript 类型收窄：[narrowing](https://www.typescriptlang.org/docs/handbook/2/narrowing.html)
+- TypeScript `noUncheckedIndexedAccess`：[tsconfig/noUncheckedIndexedAccess](https://www.typescriptlang.org/tsconfig/noUncheckedIndexedAccess.html)
 - TypeScript 中文文档：[www.typescriptlang.org/zh](https://www.typescriptlang.org/zh/docs/)
 - Zod 校验库：[zod.dev](https://zod.dev/)
 - 类型体操练习（理解进阶类型）：[type-challenges](https://github.com/type-challenges/type-challenges)

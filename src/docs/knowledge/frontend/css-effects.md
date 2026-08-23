@@ -406,6 +406,35 @@ CSS 渐变本质是 `background-image`，可作背景使用且天然响应式（
 - 性能上避免过渡 `width/top/left` 等触发布局的属性；
 - 现代特性 `:has()` `:is()` `clamp()` `@property` 让特效更简洁可控。
 
+## 常见坑与验收清单
+
+- **只在 hover 才能触发**：触屏和键盘用户可能无法使用。交互反馈同时覆盖 `:focus-visible`，核心信息不能只藏在 hover 中。
+- **忽略减少动态效果偏好**：对位移、闪烁和自动循环动画使用 `prefers-reduced-motion` 降级，不能只把时长缩短一点。
+- **阴影和滤镜范围过大**：多层 `box-shadow`、`filter: blur()` 与 `backdrop-filter` 可能扩大绘制区域；在低端设备用 Performance/Paint Flashing 验证。
+- **动画 `height: auto`**：传统 transition 不能直接在数值与 `auto` 间稳定插值。可用 Grid 行轨道、测量后的明确高度或 View Transitions，并保留无动画状态。
+- **无限声明合成层**：`will-change` 只在动画临近时用于已测热点，结束后移除，不能对卡片列表全量开启。
+- **对比度被特效破坏**：毛玻璃背景会随底图变化，文字必须在最差背景下仍满足对比度，并提供实色回退。
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.effect-button:focus-visible {
+  outline: 3px solid CanvasText;
+  outline-offset: 3px;
+}
+```
+
+上线前在键盘、触屏、深浅主题、200% 缩放、低性能设备和 reduced-motion 模式下检查；特效应强化层级与状态反馈，不能成为理解内容的前置条件。
+
 ## 参考来源
 
 - MDN — [`:has()` 父选择器](https://developer.mozilla.org/zh-CN/docs/Web/CSS/:has)
