@@ -10,13 +10,18 @@ export interface ApiItem {
   id: string | number
   name: string
   url: string
-  method: 'GET' | 'POST'
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   category: string
   description: string
   params: ApiParam[]
   createdAt?: string
   pinned?: boolean
   userCreated?: boolean
+  docsUrl?: string
+  auth?: 'none' | 'optional' | 'api-key'
+  cors?: 'supported' | 'unknown'
+  featured?: boolean
+  tags?: string[]
 }
 
 export const defaultApis: ApiItem[] = [
@@ -3598,6 +3603,188 @@ export const defaultApis: ApiItem[] = [
         description: '待解码的Base64字符串',
       },
     ],
+    pinned: false,
+  },
+  {
+    id: 215,
+    name: '北京实时空气质量',
+    url: 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude={latitude}&longitude={longitude}&current={current}',
+    method: 'GET',
+    category: '数据',
+    description: '查询指定坐标的 PM2.5、PM10、AQI 等当前空气质量指标，适合天气看板与健康提醒。',
+    params: [
+      {
+        name: 'latitude',
+        type: 'number',
+        defaultValue: '39.9042',
+        required: true,
+        description: 'WGS84 纬度，例如北京 39.9042',
+      },
+      {
+        name: 'longitude',
+        type: 'number',
+        defaultValue: '116.4074',
+        required: true,
+        description: 'WGS84 经度，例如北京 116.4074',
+      },
+      {
+        name: 'current',
+        type: 'string',
+        defaultValue: 'pm10,pm2_5,us_aqi',
+        required: false,
+        description: '当前指标，多个变量用逗号分隔',
+      },
+    ],
+    docsUrl: 'https://open-meteo.com/en/docs/air-quality-api',
+    auth: 'none',
+    cors: 'supported',
+    featured: true,
+    tags: ['空气质量', 'AQI', '实时数据'],
+    pinned: false,
+  },
+  {
+    id: 216,
+    name: 'USGS 近一周地震',
+    url: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/{level}_week.geojson',
+    method: 'GET',
+    category: '数据',
+    description: '获取 USGS 最近 7 天的地震 GeoJSON 数据，可直接用于地图标注与灾害数据展示。',
+    params: [
+      {
+        name: 'level',
+        type: 'string',
+        defaultValue: '4.5',
+        required: true,
+        description: '震级筛选：significant、4.5、2.5、1.0 或 all',
+      },
+    ],
+    docsUrl: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php',
+    auth: 'none',
+    cors: 'supported',
+    featured: true,
+    tags: ['GeoJSON', '地图', '实时数据'],
+    pinned: false,
+  },
+  {
+    id: 217,
+    name: '世界银行发展指标',
+    url: 'https://api.worldbank.org/v2/country/{country}/indicator/{indicator}?format=json&date={date}&per_page={per_page}',
+    method: 'GET',
+    category: '金融',
+    description: '按国家与指标代码查询世界银行开放数据，适合人口、GDP 与宏观趋势分析。',
+    params: [
+      {
+        name: 'country',
+        type: 'string',
+        defaultValue: 'CHN',
+        required: true,
+        description: 'ISO 国家代码，例如 CHN、USA、JPN',
+      },
+      {
+        name: 'indicator',
+        type: 'string',
+        defaultValue: 'SP.POP.TOTL',
+        required: true,
+        description: '指标代码，例如人口 SP.POP.TOTL、GDP NY.GDP.MKTP.CD',
+      },
+      {
+        name: 'date',
+        type: 'string',
+        defaultValue: '2020:2024',
+        required: false,
+        description: '年份或范围，例如 2024、2020:2024',
+      },
+      {
+        name: 'per_page',
+        type: 'number',
+        defaultValue: '20',
+        required: false,
+        description: '单页返回数量',
+      },
+    ],
+    docsUrl:
+      'https://datahelpdesk.worldbank.org/knowledgebase/articles/898581-api-basic-call-structures',
+    auth: 'none',
+    cors: 'supported',
+    featured: true,
+    tags: ['开放数据', '人口', 'GDP'],
+    pinned: false,
+  },
+  {
+    id: 218,
+    name: 'Hacker News 条目详情',
+    url: 'https://hacker-news.firebaseio.com/v0/item/{id}.json',
+    method: 'GET',
+    category: '开发',
+    description:
+      '按 ID 获取 Hacker News 故事、评论、招聘或投票详情，可与热门故事 ID 列表组合使用。',
+    params: [
+      {
+        name: 'id',
+        type: 'number',
+        defaultValue: '8863',
+        required: true,
+        description: 'Hacker News 条目 ID',
+      },
+    ],
+    docsUrl: 'https://github.com/HackerNews/API',
+    auth: 'none',
+    cors: 'supported',
+    featured: true,
+    tags: ['技术资讯', 'Firebase', '实时数据'],
+    pinned: false,
+  },
+  {
+    id: 219,
+    name: 'GitHub 最新 Release',
+    url: 'https://api.github.com/repos/{owner}/{repo}/releases/latest',
+    method: 'GET',
+    category: '开发',
+    description: '查询公开仓库最近一次正式发布，返回版本号、变更说明与下载资源。',
+    params: [
+      {
+        name: 'owner',
+        type: 'string',
+        defaultValue: 'vuejs',
+        required: true,
+        description: '仓库所有者或组织名',
+      },
+      {
+        name: 'repo',
+        type: 'string',
+        defaultValue: 'core',
+        required: true,
+        description: '仓库名称',
+      },
+    ],
+    docsUrl: 'https://docs.github.com/en/rest/releases/releases#get-the-latest-release',
+    auth: 'optional',
+    cors: 'supported',
+    featured: true,
+    tags: ['版本发布', '开源项目', 'GitHub'],
+    pinned: false,
+  },
+  {
+    id: 220,
+    name: 'npm 包最新版本',
+    url: 'https://registry.npmjs.org/{package}/latest',
+    method: 'GET',
+    category: '前端',
+    description: '只获取 npm 包最新版本的元数据，比完整 packument 更轻量，适合版本检查与依赖看板。',
+    params: [
+      {
+        name: 'package',
+        type: 'string',
+        defaultValue: 'vue',
+        required: true,
+        description: 'npm 包名，例如 vue、vite、typescript',
+      },
+    ],
+    docsUrl: 'https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md',
+    auth: 'none',
+    cors: 'supported',
+    featured: true,
+    tags: ['npm', '依赖版本', '包管理'],
     pinned: false,
   },
 ]

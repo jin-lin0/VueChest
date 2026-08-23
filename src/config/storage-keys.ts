@@ -13,6 +13,11 @@ export const STORAGE_KEYS = {
   // interview
   INTERVIEW_PRACTICED: 'interview_practiced',
   INTERVIEW_LEARNING: 'interview_learning',
+  // api manager
+  API_MANAGER_USER_APIS: 'api-manager:user-apis',
+  API_MANAGER_PINNED_IDS: 'api-manager:pinned-ids',
+  API_MANAGER_RECENT_IDS: 'api-manager:recent-ids',
+  API_MANAGER_HISTORY: 'api-manager:history',
   // docs
   DOCS_FOLDER_DEPTH: 'docs:folder-depth',
   // rhythm

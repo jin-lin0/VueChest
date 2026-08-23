@@ -53,6 +53,7 @@ export interface Enemy extends Vector {
   shootTimer: number
   orbit: number
   elite: boolean
+  bossTier: number
 }
 
 export interface Bullet extends Vector {
@@ -64,7 +65,6 @@ export interface Bullet extends Vector {
   pierce: number
   color: string
   enemy: boolean
-  trail: Vector[]
 }
 
 export interface Pickup extends Vector {
@@ -131,6 +131,8 @@ export interface GameHud {
   dashRatio: number
   bossHp: number
   bossMaxHp: number
+  bossStage: number
+  bossTotal: number
   combo: number
   comboTimer: number
 }

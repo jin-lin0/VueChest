@@ -1,40 +1,86 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import CopyButton from '@/components/common/CopyButton.vue'
+import CustomSelect, { type SelectOption } from '@/components/common/CustomSelect.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import Toast from '@/components/common/Toast.vue'
+import { useConfirm } from '@/composables/useConfirm'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { getStorage, setStorage } from '@/lib/storage'
-import { CustomSelect, EmptyState, type SelectOption } from '@/components'
 import type { ApiItem } from './defaults'
+import {
+  buildCurlCommand,
+  buildRequestUrl,
+  formatBytes,
+  getEnabledHeaders,
+  inferApiAccess,
+  type RequestHeader,
+} from './request-utils'
 
 interface ApiResponse {
   status: number
   statusText: string
   data: unknown
   time: number
-  contentType?: string
+  contentType: string
+  headers: Record<string, string>
   imageUrl?: string
-  truncated?: boolean
-  size?: number
+  truncated: boolean
+  size: number
 }
+
+interface RequestHistoryItem {
+  id: string
+  apiId: string | number
+  apiName: string
+  method: ApiItem['method']
+  createdAt: string
+  time: number
+  status?: number
+  ok: boolean
+  error?: string
+}
+
+type CatalogScope = 'all' | 'featured' | 'pinned' | 'recent'
+type RequestTab = 'params' | 'headers' | 'body'
+type ResponseTab = 'preview' | 'headers'
+
+const LEGACY_USER_APIS_KEY = 'userApis'
+const LEGACY_PINNED_IDS_KEY = 'pinnedSystemIds'
+const MAX_PREVIEW_BYTES = 512 * 1024
+const REQUEST_TIMEOUT_MS = 20_000
 
 const router = useRouter()
+const { confirm } = useConfirm()
+const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
-const goBack = () => {
-  router.push('/')
-}
-
+const defaultApis = ref<ApiItem[]>([])
 const userApis = ref<ApiItem[]>([])
 const pinnedSystemIds = ref<(string | number)[]>([])
-const defaultApis = ref<ApiItem[]>([])
+const recentIds = ref<(string | number)[]>([])
+const requestHistory = ref<RequestHistoryItem[]>([])
+const isCatalogLoading = ref(true)
+
 const searchQuery = ref('')
-const selectedCategory = ref<string | null>(null)
-const selectedApi = ref<ApiItem | null>(null)
+const catalogScope = ref<CatalogScope>('all')
+const selectedCategory = ref<string | number>('all')
+const selectedId = ref<string | number | null>(null)
+
 const paramValues = ref<Record<string, string>>({})
+const requestHeaders = ref<RequestHeader[]>([])
+const requestBody = ref('')
+const requestTab = ref<RequestTab>('params')
+const responseTab = ref<ResponseTab>('preview')
 const response = ref<ApiResponse | null>(null)
-const isLoading = ref(false)
 const error = ref<string | null>(null)
+const validationMessage = ref<string | null>(null)
+const isLoading = ref(false)
+const activeController = ref<AbortController | null>(null)
 
 const showAddForm = ref(false)
 const editingId = ref<string | number | null>(null)
+const formErrors = ref<Record<string, string>>({})
 const blankForm = (): Partial<ApiItem> => ({
   name: '',
   url: '',
@@ -42,268 +88,453 @@ const blankForm = (): Partial<ApiItem> => ({
   category: '',
   description: '',
   params: [],
+  docsUrl: '',
+  auth: 'none',
+  cors: 'unknown',
 })
 const formData = ref<Partial<ApiItem>>(blankForm())
 
-const methodOptions: SelectOption[] = [
-  { value: 'GET', label: 'GET' },
-  { value: 'POST', label: 'POST' },
-]
+const methodOptions: SelectOption[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((value) => ({
+  value,
+  label: value,
+}))
 const typeOptions: SelectOption[] = [
   { value: 'string', label: '字符串' },
   { value: 'number', label: '数字' },
   { value: 'boolean', label: '布尔值' },
 ]
+const authOptions: SelectOption[] = [
+  { value: 'none', label: '无需 Key' },
+  { value: 'optional', label: '可选鉴权' },
+  { value: 'api-key', label: '需要 Key' },
+]
+const corsOptions: SelectOption[] = [
+  { value: 'supported', label: '支持 CORS' },
+  { value: 'unknown', label: '未知 / 待验证' },
+]
 
 onMounted(async () => {
-  userApis.value = getStorage<ApiItem[]>('userApis', []) ?? []
-  pinnedSystemIds.value = getStorage<number[]>('pinnedSystemIds', []) ?? []
-  // 系统 API 种子数据体积较大（数千行静态定义），懒加载避免进入首屏 bundle
+  const legacyUserApis = getStorage<ApiItem[]>(LEGACY_USER_APIS_KEY, []) ?? []
+  const legacyPinnedIds = getStorage<(string | number)[]>(LEGACY_PINNED_IDS_KEY, []) ?? []
+  userApis.value =
+    getStorage<ApiItem[]>(STORAGE_KEYS.API_MANAGER_USER_APIS, legacyUserApis) ?? legacyUserApis
+  pinnedSystemIds.value =
+    getStorage<(string | number)[]>(STORAGE_KEYS.API_MANAGER_PINNED_IDS, legacyPinnedIds) ??
+    legacyPinnedIds
+  recentIds.value = getStorage<(string | number)[]>(STORAGE_KEYS.API_MANAGER_RECENT_IDS, []) ?? []
+  requestHistory.value =
+    getStorage<RequestHistoryItem[]>(STORAGE_KEYS.API_MANAGER_HISTORY, []) ?? []
+
   defaultApis.value = (await import('./defaults')).defaultApis
+  isCatalogLoading.value = false
 })
 
-watch(userApis, () => setStorage('userApis', userApis.value), { deep: true })
-watch(pinnedSystemIds, () => setStorage('pinnedSystemIds', pinnedSystemIds.value), { deep: true })
+watch(userApis, (value) => setStorage(STORAGE_KEYS.API_MANAGER_USER_APIS, value), { deep: true })
+watch(pinnedSystemIds, (value) => setStorage(STORAGE_KEYS.API_MANAGER_PINNED_IDS, value), {
+  deep: true,
+})
+watch(recentIds, (value) => setStorage(STORAGE_KEYS.API_MANAGER_RECENT_IDS, value), { deep: true })
+watch(requestHistory, (value) => setStorage(STORAGE_KEYS.API_MANAGER_HISTORY, value), {
+  deep: true,
+})
 
-// 系统 API 始终来源于源码 defaults.ts，并叠加用户的置顶偏好
 const systemApis = computed(() =>
-  defaultApis.value.map((a) => ({
-    ...a,
-    createdAt: a.createdAt ?? '2000-01-01T00:00:00.000Z',
-    pinned: pinnedSystemIds.value.includes(a.id),
+  defaultApis.value.map((api) => ({
+    ...api,
+    createdAt: api.createdAt ?? '2000-01-01T00:00:00.000Z',
+    pinned: pinnedSystemIds.value.includes(api.id),
   })),
 )
-
-// 合并列表 = 系统定义 + 用户自定义（IndexedDB 只存用户自定义）
 const apis = computed<ApiItem[]>(() => [...systemApis.value, ...userApis.value])
+const selectedApi = computed(() => apis.value.find((api) => api.id === selectedId.value) ?? null)
+const featuredApis = computed(() => apis.value.filter((api) => api.featured).slice(0, 6))
+const pinnedCount = computed(() => apis.value.filter((api) => api.pinned).length)
 
-const categories = computed(() => {
-  const cats = new Set(apis.value.map((a) => a.category).filter(Boolean))
-  return Array.from(cats).sort()
+const categoryCounts = computed(() => {
+  const counts = new Map<string, number>()
+  for (const api of apis.value) counts.set(api.category, (counts.get(api.category) ?? 0) + 1)
+  return counts
 })
+const categories = computed(() =>
+  [...categoryCounts.value.keys()].sort((a, b) => a.localeCompare(b)),
+)
+const categoryOptions = computed<SelectOption[]>(() => [
+  { value: 'all', label: `全部分类 · ${apis.value.length}` },
+  ...categories.value.map((category) => ({
+    value: category,
+    label: `${category} · ${categoryCounts.value.get(category) ?? 0}`,
+  })),
+])
 
 const filteredApis = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
+  const query = searchQuery.value.trim().toLowerCase()
+  const recentOrder = new Map(recentIds.value.map((id, index) => [id, index]))
+
   return apis.value
-    .filter((a) => {
-      if (selectedCategory.value && a.category !== selectedCategory.value) return false
-      if (!q) return true
-      return [a.name, a.url, a.category, a.description].some((f) => f.toLowerCase().includes(q))
+    .filter((api) => {
+      if (selectedCategory.value !== 'all' && api.category !== selectedCategory.value) return false
+      if (catalogScope.value === 'featured' && !api.featured) return false
+      if (catalogScope.value === 'pinned' && !api.pinned) return false
+      if (catalogScope.value === 'recent' && !recentIds.value.includes(api.id)) return false
+      if (!query) return true
+      return [api.name, api.url, api.category, api.description, ...(api.tags ?? [])]
+        .join(' ')
+        .toLowerCase()
+        .includes(query)
     })
     .sort((a, b) => {
-      const pa = a.pinned ? 1 : 0
-      const pb = b.pinned ? 1 : 0
-      if (pa !== pb) return pb - pa
-      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
-      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
-      return tb - ta
+      if (catalogScope.value === 'recent') {
+        return (recentOrder.get(a.id) ?? 99) - (recentOrder.get(b.id) ?? 99)
+      }
+      if (Boolean(a.pinned) !== Boolean(b.pinned))
+        return Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
+      if (Boolean(a.featured) !== Boolean(b.featured))
+        return Number(Boolean(b.featured)) - Number(Boolean(a.featured))
+      return a.name.localeCompare(b.name, 'zh-CN')
     })
 })
 
-const selectApi = (api: ApiItem) => {
-  selectedApi.value = api
-  paramValues.value = Object.fromEntries(api.params.map((p) => [p.name, p.defaultValue]))
+const currentUrl = computed(() =>
+  selectedApi.value ? buildRequestUrl(selectedApi.value, paramValues.value) : '',
+)
+const curlCommand = computed(() =>
+  selectedApi.value
+    ? buildCurlCommand(selectedApi.value, currentUrl.value, requestHeaders.value, requestBody.value)
+    : '',
+)
+const responseText = computed(() => {
+  if (!response.value || response.value.imageUrl) return ''
+  if (typeof response.value.data === 'string') return response.value.data
+  try {
+    return JSON.stringify(response.value.data, null, 2)
+  } catch {
+    return String(response.value.data)
+  }
+})
+const canHaveBody = computed(() => Boolean(selectedApi.value && selectedApi.value.method !== 'GET'))
+
+function notify(type: 'success' | 'error' | 'warning' | 'info', message: string) {
+  toastRef.value?.addToast(type, message)
+}
+
+function createHeader(name = '', value = ''): RequestHeader {
+  return { id: crypto.randomUUID(), name, value, enabled: true }
+}
+
+function resetRequest(api: ApiItem) {
+  if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
+  paramValues.value = Object.fromEntries(
+    api.params.map((param) => [param.name, param.defaultValue]),
+  )
+  requestHeaders.value = [createHeader('Accept', '*/*')]
+  requestBody.value = api.method === 'GET' ? '' : '{\n  \n}'
+  requestTab.value = api.params.length ? 'params' : 'headers'
+  responseTab.value = 'preview'
+  response.value = null
+  error.value = null
+  validationMessage.value = null
+}
+
+function selectApi(api: ApiItem) {
+  showAddForm.value = false
+  selectedId.value = api.id
+  recentIds.value = [api.id, ...recentIds.value.filter((id) => id !== api.id)].slice(0, 12)
+  resetRequest(api)
+}
+
+function closeApi() {
+  abortRequest()
+  if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
+  selectedId.value = null
   response.value = null
   error.value = null
 }
 
-const buildUrl = (api: ApiItem): string => {
-  const getVal = (p: ApiItem['params'][number]): string | null | undefined => {
-    const raw = paramValues.value[p.name]
-    return raw !== undefined && raw !== '' ? raw : p.defaultValue
-  }
-  // 1) 替换 URL 中的 {placeholder}
-  let url = api.params.reduce((u, p) => {
-    const v = getVal(p)
-    return u.replace(`{${p.name}}`, v == null ? '' : encodeURIComponent(String(v)))
-  }, api.url)
-  // 2) 剔除因占位符为空产生的 &key= / ?key=，避免把无效空参数发给接口
-  url = url
-    .replace(/[?&][^=&?#]+=(?=&|$|#)/g, (seg) => (seg.startsWith('?') ? '?' : ''))
-    .replace(/\?&/, '?')
-    .replace(/[?&]$/, '')
-  // 3) URL 中无占位符、但用户已填值的参数，自动以 ?key=value 形式追加
-  const extras = api.params
-    .filter((p) => !api.url.includes(`{${p.name}}`))
-    .map((p) => {
-      const v = getVal(p)
-      return v == null || v === ''
-        ? null
-        : `${encodeURIComponent(p.name)}=${encodeURIComponent(String(v))}`
-    })
-    .filter((s): s is string => s !== null)
-  if (extras.length) {
-    url += (url.includes('?') ? '&' : '?') + extras.join('&')
-  }
-  return url
+function missingRequiredParams(api: ApiItem): string[] {
+  return api.params
+    .filter(
+      (param) => param.required && !(paramValues.value[param.name] || param.defaultValue).trim(),
+    )
+    .map((param) => param.name)
 }
 
-// 渲染安全上限：超过该体积的响应会被截断显示，避免超大 JSON 把页面卡死
-const MAX_PREVIEW_BYTES = 512 * 1024
-const maxPreviewLabel = '512 KB'
-
-const formatSize = (bytes?: number): string => {
-  if (bytes === undefined) return '-'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
-}
-
-const parseBody = async (
-  res: Response,
+async function parseBody(
+  result: Response,
   contentType: string,
-): Promise<{ data: unknown; imageUrl?: string; truncated: boolean; size: number }> => {
+): Promise<{ data: unknown; imageUrl?: string; truncated: boolean; size: number }> {
   if (contentType.startsWith('image/')) {
-    const blob = await res.blob()
+    const blob = await result.blob()
     return { data: null, imageUrl: URL.createObjectURL(blob), truncated: false, size: blob.size }
   }
 
-  // 文本 / JSON：流式读取并在达到上限时取消，防止超大响应卡死页面
-  const reader = res.body?.getReader()
+  const reader = result.body?.getReader()
   const decoder = new TextDecoder()
   let received = 0
   let truncated = false
   let text = ''
+
   if (reader) {
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
-      if (value) {
-        received += value.length
-        text += decoder.decode(value, { stream: true })
-        if (received >= MAX_PREVIEW_BYTES) {
-          truncated = true
-          await reader.cancel()
-          break
-        }
+      if (!value) continue
+      received += value.length
+      const remaining = MAX_PREVIEW_BYTES - (received - value.length)
+      text += decoder.decode(value.slice(0, Math.max(0, remaining)), { stream: true })
+      if (received >= MAX_PREVIEW_BYTES) {
+        truncated = true
+        await reader.cancel()
+        break
       }
     }
     text += decoder.decode()
   } else {
-    text = await res.text()
-    received = text.length
+    text = await result.text()
+    received = new TextEncoder().encode(text).length
+    if (received > MAX_PREVIEW_BYTES) {
+      text = text.slice(0, MAX_PREVIEW_BYTES)
+      truncated = true
+    }
   }
 
   let data: unknown = text
   try {
     data = JSON.parse(text)
-  } catch {}
+  } catch {
+    // 非 JSON 响应按原始文本展示。
+  }
   return { data, truncated, size: received }
 }
 
-const executeApi = async () => {
-  if (!selectedApi.value) return
-  if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
+function addHistory(item: Omit<RequestHistoryItem, 'id' | 'createdAt'>) {
+  requestHistory.value = [
+    { ...item, id: crypto.randomUUID(), createdAt: new Date().toISOString() },
+    ...requestHistory.value,
+  ].slice(0, 25)
+}
 
-  isLoading.value = true
+async function executeApi() {
+  const api = selectedApi.value
+  if (!api || isLoading.value) return
+
+  const missing = missingRequiredParams(api)
+  if (missing.length) {
+    validationMessage.value = `请先填写必填参数：${missing.join('、')}`
+    requestTab.value = 'params'
+    return
+  }
+
+  if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
+  validationMessage.value = null
   error.value = null
   response.value = null
+  responseTab.value = 'preview'
+  isLoading.value = true
 
-  const startTime = Date.now()
-  const url = buildUrl(selectedApi.value)
+  const controller = new AbortController()
+  activeController.value = controller
+  let timedOut = false
+  const timeoutId = window.setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, REQUEST_TIMEOUT_MS)
+  const startedAt = performance.now()
 
   try {
-    const res = await fetch(url, { method: selectedApi.value.method, headers: { Accept: '*/*' } })
-    const endTime = Date.now()
-    const contentType = res.headers.get('content-type') ?? ''
-    const { data, imageUrl, truncated, size } = await parseBody(res, contentType)
+    const headers = getEnabledHeaders(requestHeaders.value)
+    const hasContentType = Object.keys(headers).some(
+      (name) => name.toLowerCase() === 'content-type',
+    )
+    const hasBody = api.method !== 'GET' && requestBody.value.trim() !== ''
+    if (hasBody && !hasContentType) headers['Content-Type'] = 'application/json'
+
+    const result = await fetch(currentUrl.value, {
+      method: api.method,
+      headers,
+      body: hasBody ? requestBody.value : undefined,
+      signal: controller.signal,
+    })
+    const contentType = result.headers.get('content-type') ?? ''
+    const parsed = await parseBody(result, contentType)
+    const time = Math.round(performance.now() - startedAt)
+    const responseHeaders: Record<string, string> = {}
+    result.headers.forEach((value, name) => {
+      responseHeaders[name] = value
+    })
     response.value = {
-      status: res.status,
-      statusText: res.statusText,
-      data,
-      time: endTime - startTime,
+      status: result.status,
+      statusText: result.statusText,
+      time,
       contentType,
-      imageUrl,
-      truncated,
-      size,
+      headers: responseHeaders,
+      ...parsed,
     }
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '请求失败，请检查网络或API地址'
+    addHistory({
+      apiId: api.id,
+      apiName: api.name,
+      method: api.method,
+      status: result.status,
+      time,
+      ok: result.ok,
+    })
+  } catch (reason) {
+    const time = Math.round(performance.now() - startedAt)
+    const message = timedOut
+      ? `请求超过 ${REQUEST_TIMEOUT_MS / 1000} 秒，已自动取消`
+      : reason instanceof DOMException && reason.name === 'AbortError'
+        ? '请求已取消'
+        : reason instanceof TypeError
+          ? '浏览器未能完成请求。请检查网络、URL 与目标服务的 CORS 配置。'
+          : reason instanceof Error
+            ? reason.message
+            : '请求失败，请检查网络或 API 地址'
+    error.value = message
+    addHistory({
+      apiId: api.id,
+      apiName: api.name,
+      method: api.method,
+      time,
+      ok: false,
+      error: message,
+    })
   } finally {
+    window.clearTimeout(timeoutId)
+    if (activeController.value === controller) activeController.value = null
     isLoading.value = false
   }
 }
 
-const formatJson = (data: unknown): string => {
-  if (typeof data === 'string') return data
-  try {
-    return JSON.stringify(data, null, 2)
-  } catch {
-    return String(data)
-  }
+function abortRequest() {
+  activeController.value?.abort()
 }
 
-const STATUS_CLASS: Record<number, string> = {
-  2: 'success',
-  4: 'client-error',
-  5: 'server-error',
+function getStatusTone(status: number): string {
+  if (status >= 200 && status < 300) return 'success'
+  if (status >= 400 && status < 500) return 'warning'
+  if (status >= 500) return 'danger'
+  return 'info'
 }
-const getStatusClass = (status: number): string => STATUS_CLASS[Math.floor(status / 100)] ?? 'info'
 
-const showAddFormPanel = () => {
+function accessFor(api: ApiItem) {
+  return inferApiAccess(api)
+}
+
+function setScope(scope: CatalogScope) {
+  catalogScope.value = scope
+}
+
+function addRequestHeader() {
+  requestHeaders.value.push(createHeader())
+}
+
+function removeRequestHeader(id: string) {
+  requestHeaders.value = requestHeaders.value.filter((header) => header.id !== id)
+}
+
+function showAddFormPanel() {
+  closeApi()
   showAddForm.value = true
   editingId.value = null
   formData.value = blankForm()
+  formErrors.value = {}
 }
 
-const editApi = (api: ApiItem) => {
+function editApi(api: ApiItem) {
+  closeApi()
   showAddForm.value = true
   editingId.value = api.id
-  formData.value = { ...api, params: [...api.params] }
+  formData.value = {
+    ...api,
+    params: api.params.map((param) => ({ ...param })),
+  }
+  formErrors.value = {}
 }
 
-const saveApi = () => {
-  const f = formData.value
-  const name = f.name?.trim()
-  const url = f.url?.trim()
-  if (!name || !url) return
-
-  const payload = {
-    name,
-    url,
-    method: f.method || 'GET',
-    category: f.category || '未分类',
-    description: f.description || '',
-    params: f.params || [],
-  }
-
-  if (editingId.value !== null) {
-    const index = userApis.value.findIndex((a) => a.id === editingId.value)
-    if (index !== -1)
-      userApis.value[index] = { ...userApis.value[index], ...payload, userCreated: true }
-  } else {
-    userApis.value.push({
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      userCreated: true,
-      ...payload,
-    })
-  }
-
+function cancelForm() {
   showAddForm.value = false
   editingId.value = null
+  formErrors.value = {}
 }
 
-const deleteApi = (id: string | number) => {
-  userApis.value = userApis.value.filter((a) => a.id !== id)
-  if (selectedApi.value?.id === id) {
-    selectedApi.value = null
+function validateForm(): boolean {
+  const errors: Record<string, string> = {}
+  const name = formData.value.name?.trim() ?? ''
+  const url = formData.value.url?.trim() ?? ''
+  if (!name) errors.name = '请填写 API 名称'
+  if (!url) errors.url = '请填写请求地址'
+  else if (!/^https?:\/\//i.test(url)) errors.url = '请求地址需以 http:// 或 https:// 开头'
+
+  const params = formData.value.params ?? []
+  const names = params.map((param) => param.name.trim()).filter(Boolean)
+  if (params.some((param) => !param.name.trim())) errors.params = '参数名不能为空'
+  else if (new Set(names).size !== names.length) errors.params = '参数名不能重复'
+
+  formErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
+function saveApi() {
+  if (!validateForm()) return
+  const isEditing = editingId.value !== null
+  const payload: Omit<ApiItem, 'id'> = {
+    name: formData.value.name!.trim(),
+    url: formData.value.url!.trim(),
+    method: formData.value.method ?? 'GET',
+    category: formData.value.category?.trim() || '未分类',
+    description: formData.value.description?.trim() || '用户自定义 API',
+    params: (formData.value.params ?? []).map((param) => ({
+      ...param,
+      name: param.name.trim(),
+      description: param.description.trim(),
+    })),
+    docsUrl: formData.value.docsUrl?.trim() || undefined,
+    auth: formData.value.auth ?? 'none',
+    cors: formData.value.cors ?? 'unknown',
+    userCreated: true,
+    createdAt: new Date().toISOString(),
+    pinned: false,
   }
-}
 
-const togglePin = (id: string | number) => {
-  const isUser = userApis.value.some((a) => a.id === id)
-  if (isUser) {
-    const u = userApis.value.find((a) => a.id === id)
-    if (u) u.pinned = !u.pinned
+  let saved: ApiItem
+  if (editingId.value !== null) {
+    const index = userApis.value.findIndex((api) => api.id === editingId.value)
+    if (index === -1) return
+    saved = {
+      ...userApis.value[index],
+      ...payload,
+      id: editingId.value,
+      createdAt: userApis.value[index].createdAt,
+      pinned: userApis.value[index].pinned,
+    }
+    userApis.value[index] = saved
   } else {
-    const i = pinnedSystemIds.value.indexOf(id)
-    if (i === -1) pinnedSystemIds.value.push(id)
-    else pinnedSystemIds.value.splice(i, 1)
+    saved = { ...payload, id: crypto.randomUUID() }
+    userApis.value.push(saved)
   }
+
+  cancelForm()
+  selectApi(saved)
+  notify('success', isEditing ? 'API 已更新' : 'API 已添加')
 }
 
-const addParam = () => {
+async function deleteApi(api: ApiItem) {
+  const ok = await confirm(`确定删除自定义 API「${api.name}」吗？`)
+  if (!ok) return
+  userApis.value = userApis.value.filter((item) => item.id !== api.id)
+  recentIds.value = recentIds.value.filter((id) => id !== api.id)
+  if (selectedId.value === api.id) closeApi()
+  notify('success', 'API 已删除')
+}
+
+function togglePin(api: ApiItem) {
+  const userApi = userApis.value.find((item) => item.id === api.id)
+  if (userApi) userApi.pinned = !userApi.pinned
+  else if (pinnedSystemIds.value.includes(api.id)) {
+    pinnedSystemIds.value = pinnedSystemIds.value.filter((id) => id !== api.id)
+  } else pinnedSystemIds.value = [...pinnedSystemIds.value, api.id]
+}
+
+function addParam() {
   if (!formData.value.params) formData.value.params = []
   formData.value.params.push({
     name: '',
@@ -314,1137 +545,715 @@ const addParam = () => {
   })
 }
 
-const removeParam = (index: number) => {
-  if (formData.value.params) {
-    formData.value.params.splice(index, 1)
-  }
+function removeParam(index: number) {
+  formData.value.params?.splice(index, 1)
 }
 
-const selectCategory = (cat: string) => {
-  selectedCategory.value = selectedCategory.value === cat ? null : cat
+async function clearHistory() {
+  if (!requestHistory.value.length) return
+  const ok = await confirm('确定清空全部请求历史吗？')
+  if (ok) requestHistory.value = []
 }
+
+function openHistoryItem(item: RequestHistoryItem) {
+  const api = apis.value.find((candidate) => candidate.id === item.apiId)
+  if (api) selectApi(api)
+}
+
+function formatHistoryTime(value: string): string {
+  const date = new Date(value)
+  const diffMinutes = Math.round((date.getTime() - Date.now()) / 60_000)
+  if (Math.abs(diffMinutes) < 1) return '刚刚'
+  if (Math.abs(diffMinutes) < 60)
+    return new Intl.RelativeTimeFormat('zh-CN', { numeric: 'auto' }).format(diffMinutes, 'minute')
+  return date.toLocaleString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+onBeforeUnmount(() => {
+  activeController.value?.abort()
+  if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
+})
 </script>
 
 <template>
-  <div class="app-container">
-    <header class="app-header">
-      <button class="back-button" @click="goBack">返回</button>
-      <h1>API管理器</h1>
-      <button class="add-api-btn" @click="showAddFormPanel">+ 添加API</button>
+  <div class="api-workbench">
+    <header class="topbar">
+      <button
+        class="icon-button back-button"
+        type="button"
+        aria-label="返回首页"
+        @click="router.push('/')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+      </button>
+
+      <div class="brand-lockup" role="banner">
+        <span class="brand-mark">A</span>
+        <span><strong>API LAB</strong><small>发现 · 调试 · 复用</small></span>
+      </div>
+
+      <div class="topbar-actions">
+        <span class="catalog-health"><i></i>{{ apis.length }} 个接口已载入</span>
+        <button class="primary-button compact" type="button" @click="showAddFormPanel">
+          <span aria-hidden="true">＋</span> 添加 API
+        </button>
+      </div>
     </header>
 
-    <main class="api-content">
-      <div class="sidebar">
-        <div class="search-section">
-          <input v-model="searchQuery" type="text" placeholder="搜索API..." class="search-input" />
+    <main class="api-shell">
+      <aside class="catalog-panel" aria-label="API 目录">
+        <div class="catalog-heading">
+          <div>
+            <span class="section-kicker">API CATALOG</span>
+            <h2>接口目录</h2>
+          </div>
+          <span class="catalog-count">{{ filteredApis.length }}</span>
         </div>
 
-        <div class="category-tags">
+        <label class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-4-4" />
+          </svg>
+          <input v-model="searchQuery" type="search" placeholder="搜索名称、用途或 URL" />
+          <kbd>⌘ K</kbd>
+        </label>
+
+        <div class="scope-tabs" role="tablist" aria-label="目录筛选">
           <button
-            v-for="cat in categories"
-            :key="cat"
-            class="tag-btn"
-            :class="{ active: selectedCategory === cat }"
-            @click="selectCategory(cat)"
+            :class="{ active: catalogScope === 'all' }"
+            type="button"
+            @click="setScope('all')"
           >
-            {{ cat }}
+            全部
+          </button>
+          <button
+            :class="{ active: catalogScope === 'featured' }"
+            type="button"
+            @click="setScope('featured')"
+          >
+            推荐
+          </button>
+          <button
+            :class="{ active: catalogScope === 'pinned' }"
+            type="button"
+            @click="setScope('pinned')"
+          >
+            置顶
+          </button>
+          <button
+            :class="{ active: catalogScope === 'recent' }"
+            type="button"
+            @click="setScope('recent')"
+          >
+            最近
           </button>
         </div>
 
-        <div class="api-list">
-          <div
+        <div class="category-filter">
+          <CustomSelect
+            v-model="selectedCategory"
+            :options="categoryOptions"
+            searchable
+            size="sm"
+            block
+          />
+        </div>
+
+        <div class="catalog-list vc-scrollbar vc-scrollbar--thin">
+          <div v-if="isCatalogLoading" class="catalog-loading" aria-label="正在载入 API">
+            <span v-for="index in 6" :key="index"></span>
+          </div>
+
+          <button
             v-for="api in filteredApis"
+            v-else
             :key="api.id"
-            class="api-item"
-            :class="{ active: selectedApi?.id === api.id, pinned: api.pinned }"
+            class="catalog-item"
+            :class="{ active: selectedApi?.id === api.id }"
+            type="button"
             @click="selectApi(api)"
           >
-            <div class="api-item-header">
-              <span v-if="api.pinned" class="api-pin-icon" title="已置顶">📌</span>
-              <span class="api-method" :class="api.method.toLowerCase()">{{ api.method }}</span>
-              <span class="api-name">{{ api.name }}</span>
-            </div>
-            <div class="api-item-meta">
-              <span class="api-category">{{ api.category }}</span>
-              <div class="api-actions">
+            <span class="method-dot" :class="api.method.toLowerCase()">{{ api.method }}</span>
+            <span class="catalog-item-copy">
+              <span class="catalog-item-title"
+                ><strong>{{ api.name }}</strong
+                ><i v-if="api.featured" title="精选并核验">✦</i></span
+              >
+              <small>{{ api.category }} · {{ api.params.length }} 个参数</small>
+            </span>
+            <span v-if="api.pinned" class="pin-indicator" title="已置顶">●</span>
+            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+
+          <EmptyState
+            v-if="!isCatalogLoading && filteredApis.length === 0"
+            title="没有匹配的 API"
+            description="换个关键词、分类或筛选条件试试"
+          />
+        </div>
+
+        <div class="catalog-footer">
+          <span><i></i> {{ featuredApis.length }} 个精选接口已核验</span>
+          <button type="button" @click="showAddFormPanel">管理自定义 API</button>
+        </div>
+      </aside>
+
+      <section class="workspace-panel">
+        <div v-if="!selectedApi && !showAddForm" class="overview-screen">
+          <section class="overview-hero">
+            <div class="hero-copy">
+              <span class="hero-kicker"><i></i> API EXPLORATION WORKSPACE</span>
+              <h1>把一个接口，<br /><em>真正跑明白。</em></h1>
+              <p>从可信目录发现 API，配置参数与请求头，直接查看格式化响应并复制为 cURL。</p>
+              <div class="hero-actions">
                 <button
-                  class="action-btn pin"
-                  :class="{ active: api.pinned }"
-                  @click.stop="togglePin(api.id)"
+                  class="primary-button"
+                  type="button"
+                  @click="featuredApis[0] && selectApi(featuredApis[0])"
                 >
-                  {{ api.pinned ? '取消置顶' : '置顶' }}
+                  <span class="play-symbol">▶</span> 运行精选接口
                 </button>
-                <button v-if="api.userCreated" class="action-btn edit" @click.stop="editApi(api)">
-                  编辑
-                </button>
-                <button
-                  v-if="api.userCreated"
-                  class="action-btn delete"
-                  @click.stop="deleteApi(api.id)"
-                >
-                  删除
+                <button class="secondary-button" type="button" @click="showAddFormPanel">
+                  ＋ 添加自己的 API
                 </button>
               </div>
             </div>
+            <div class="hero-console" aria-hidden="true">
+              <div class="console-bar">
+                <span></span><span></span><span></span><small>response.json</small>
+              </div>
+              <pre><span class="code-muted">{</span>
+  <span class="code-key">"workspace"</span>: <span class="code-string">"API Lab"</span>,
+  <span class="code-key">"ready"</span>: <span class="code-value">true</span>,
+  <span class="code-key">"catalog"</span>: <span class="code-number">{{ apis.length }}</span>,
+  <span class="code-key">"features"</span>: [
+    <span class="code-string">"CORS checked"</span>,
+    <span class="code-string">"cURL export"</span>,
+    <span class="code-string">"request history"</span>
+  ]
+<span class="code-muted">}</span></pre>
+            </div>
+          </section>
+
+          <section class="stats-strip" aria-label="API 目录统计">
+            <div>
+              <span>接口总数</span><strong>{{ apis.length }}</strong
+              ><small>系统 + 自定义</small>
+            </div>
+            <div>
+              <span>覆盖分类</span><strong>{{ categories.length }}</strong
+              ><small>按使用场景整理</small>
+            </div>
+            <div>
+              <span>我的置顶</span><strong>{{ pinnedCount }}</strong
+              ><small>常用接口快捷访问</small>
+            </div>
+            <div>
+              <span>请求记录</span><strong>{{ requestHistory.length }}</strong
+              ><small>本机保存最近 25 条</small>
+            </div>
+          </section>
+
+          <section class="overview-section featured-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-kicker">CURATED & VERIFIED</span>
+                <h2>本周实用 API</h2>
+              </div>
+              <p>来自官方文档，并实测 HTTPS、响应状态与浏览器 CORS。</p>
+            </div>
+            <div class="featured-grid">
+              <button
+                v-for="api in featuredApis"
+                :key="api.id"
+                class="featured-card"
+                type="button"
+                @click="selectApi(api)"
+              >
+                <span class="featured-topline"
+                  ><span class="method-chip" :class="api.method.toLowerCase()">{{
+                    api.method
+                  }}</span
+                  ><span class="verified-chip">✓ 已核验</span></span
+                >
+                <strong>{{ api.name }}</strong>
+                <p>{{ api.description }}</p>
+                <span class="featured-meta"
+                  ><span>{{ api.category }}</span
+                  ><span>{{ accessFor(api).authLabel }}</span
+                  ><b>打开 →</b></span
+                >
+              </button>
+            </div>
+          </section>
+
+          <section class="overview-section history-section">
+            <div class="section-heading inline-heading">
+              <div>
+                <span class="section-kicker">LOCAL HISTORY</span>
+                <h2>最近请求</h2>
+              </div>
+              <button v-if="requestHistory.length" type="button" @click="clearHistory">
+                清空记录
+              </button>
+            </div>
+            <div v-if="requestHistory.length" class="history-list">
+              <button
+                v-for="item in requestHistory.slice(0, 6)"
+                :key="item.id"
+                type="button"
+                @click="openHistoryItem(item)"
+              >
+                <span class="history-status" :class="item.ok ? 'success' : 'danger'"
+                  ><i></i>{{ item.status ?? 'ERR' }}</span
+                >
+                <span
+                  ><strong>{{ item.apiName }}</strong
+                  ><small>{{ item.method }} · {{ formatHistoryTime(item.createdAt) }}</small></span
+                >
+                <b>{{ item.time }} ms</b
+                ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+            </div>
+            <div v-else class="history-empty">
+              <span>↗</span>
+              <div>
+                <strong>还没有请求记录</strong>
+                <p>运行一次 API 后，状态与耗时会保存在这里。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div v-else-if="showAddForm" class="editor-screen">
+          <div class="editor-heading">
+            <div>
+              <button type="button" @click="cancelForm">← 返回工作台</button
+              ><span class="section-kicker">CUSTOM ENDPOINT</span>
+              <h1>{{ editingId === null ? '添加自定义 API' : '编辑自定义 API' }}</h1>
+              <p>
+                把常用接口保存到本机目录。参数既可以放进 URL
+                占位符，也可以在运行时自动追加为查询参数。
+              </p>
+            </div>
+            <span class="editor-mark">{ }</span>
           </div>
 
-          <EmptyState v-if="filteredApis.length === 0" :title="apis.length === 0 ? '还没有API，添加一个吧！' : '没有匹配的API'" />
-        </div>
-      </div>
-
-      <div class="main-panel">
-        <template v-if="showAddForm">
-          <div class="form-panel">
-            <h2>{{ editingId !== null ? '编辑API' : '添加新API' }}</h2>
-            <div class="form-group">
-              <label>名称</label>
-              <input v-model="formData.name" type="text" placeholder="API名称" />
-            </div>
-            <div class="form-group">
-              <label>URL</label>
-              <input
-                v-model="formData.url"
-                type="text"
-                placeholder="https://api.example.com/endpoint"
-              />
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>方法</label>
-                <div class="cs-wrap">
+          <div class="editor-grid">
+            <section class="editor-card">
+              <div class="card-heading">
+                <span>01</span>
+                <div>
+                  <h2>基础信息</h2>
+                  <p>定义接口的请求方式与用途</p>
+                </div>
+              </div>
+              <div class="field-grid two-columns">
+                <label class="field"
+                  ><span>API 名称 <b>*</b></span
+                  ><input
+                    v-model="formData.name"
+                    type="text"
+                    placeholder="例如：项目版本查询"
+                  /><small v-if="formErrors.name" class="field-error">{{
+                    formErrors.name
+                  }}</small></label
+                >
+                <label class="field"
+                  ><span>分类</span
+                  ><input v-model="formData.category" type="text" placeholder="例如：开发"
+                /></label>
+              </div>
+              <div class="field method-url-field">
+                <span>请求地址 <b>*</b></span>
+                <div>
                   <CustomSelect
                     v-model="formData.method"
                     :options="methodOptions"
                     size="sm"
-                    block
-                  />
-                </div>
-              </div>
-              <div class="form-group">
-                <label>分类</label>
-                <input
-                  v-model="formData.category"
-                  type="text"
-                  placeholder="分类（如：工具、娱乐）"
-                />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>描述</label>
-              <textarea v-model="formData.description" placeholder="API描述" rows="2"></textarea>
-            </div>
-
-            <div class="params-section">
-              <div class="params-header">
-                <label>参数配置</label>
-                <button class="add-param-btn" @click="addParam">+ 添加参数</button>
-              </div>
-              <div v-for="(param, index) in formData.params" :key="index" class="param-item">
-                <div class="param-row">
-                  <input v-model="param.name" type="text" placeholder="参数名" class="param-name" />
-                  <div class="param-type cs-wrap">
-                    <CustomSelect v-model="param.type" :options="typeOptions" size="sm" block />
-                  </div>
-                  <input
-                    v-model="param.defaultValue"
+                  /><input
+                    v-model="formData.url"
                     type="text"
-                    placeholder="默认值"
-                    class="param-default"
+                    placeholder="https://api.example.com/users/{id}"
                   />
-                  <label class="param-required">
-                    <input v-model="param.required" type="checkbox" />
-                    <span>必填</span>
-                  </label>
-                  <button class="remove-param-btn" @click="removeParam(index)">×</button>
                 </div>
-                <input
-                  v-model="param.description"
-                  type="text"
-                  placeholder="参数描述"
-                  class="param-desc"
-                />
+                <small v-if="formErrors.url" class="field-error">{{ formErrors.url }}</small>
               </div>
-            </div>
+              <label class="field"
+                ><span>用途说明</span
+                ><textarea
+                  v-model="formData.description"
+                  rows="3"
+                  placeholder="这个接口解决什么问题，会返回什么数据？"
+                ></textarea>
+              </label>
+              <label class="field"
+                ><span>官方文档</span
+                ><input
+                  v-model="formData.docsUrl"
+                  type="url"
+                  placeholder="https://docs.example.com/api"
+              /></label>
+              <div class="field-grid two-columns">
+                <label class="field"
+                  ><span>鉴权方式</span
+                  ><CustomSelect v-model="formData.auth" :options="authOptions" size="sm" block
+                /></label>
+                <label class="field"
+                  ><span>浏览器跨域</span
+                  ><CustomSelect v-model="formData.cors" :options="corsOptions" size="sm" block
+                /></label>
+              </div>
+            </section>
 
-            <div class="form-actions">
-              <button class="save-btn" @click="saveApi">保存</button>
-              <button class="cancel-btn" @click="showAddForm = false">取消</button>
-            </div>
+            <section class="editor-card params-editor-card">
+              <div class="card-heading with-action">
+                <span>02</span>
+                <div>
+                  <h2>参数定义</h2>
+                  <p>使用 {name} 可把参数嵌入 URL</p>
+                </div>
+                <button type="button" @click="addParam">＋ 添加参数</button>
+              </div>
+              <p v-if="formErrors.params" class="form-banner error">{{ formErrors.params }}</p>
+              <div v-if="formData.params?.length" class="form-params-list">
+                <div v-for="(param, index) in formData.params" :key="index" class="form-param-row">
+                  <div class="param-index">{{ String(index + 1).padStart(2, '0') }}</div>
+                  <div class="param-fields">
+                    <input v-model="param.name" type="text" placeholder="参数名" /><CustomSelect
+                      v-model="param.type"
+                      :options="typeOptions"
+                      size="sm"
+                      block
+                    /><input v-model="param.defaultValue" type="text" placeholder="默认值" /><input
+                      v-model="param.description"
+                      type="text"
+                      placeholder="参数说明"
+                    />
+                  </div>
+                  <label class="required-toggle"
+                    ><input v-model="param.required" type="checkbox" /><span></span>必填</label
+                  >
+                  <button
+                    class="remove-row"
+                    type="button"
+                    aria-label="删除参数"
+                    @click="removeParam(index)"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div v-else class="params-empty">
+                <span>＋</span><strong>暂无参数</strong>
+                <p>没有参数的接口可以直接保存；需要动态配置时再添加。</p>
+                <button type="button" @click="addParam">添加第一个参数</button>
+              </div>
+            </section>
           </div>
-        </template>
 
-        <template v-else-if="selectedApi">
-          <div class="detail-panel">
-            <div class="detail-header">
-              <h2>{{ selectedApi.name }}</h2>
-              <span class="detail-method" :class="selectedApi.method.toLowerCase()">{{
-                selectedApi.method
-              }}</span>
-            </div>
-            <p class="detail-description">{{ selectedApi.description }}</p>
-            <div class="detail-url">
-              <label>请求地址</label>
-              <code>{{ buildUrl(selectedApi) }}</code>
-            </div>
-
-            <div v-if="selectedApi.params.length > 0" class="params-config">
-              <h3>参数配置</h3>
-              <div v-for="param in selectedApi.params" :key="param.name" class="param-config-item">
-                <div class="param-config-header">
-                  <span class="param-config-name">{{ param.name }}</span>
-                  <span class="param-config-type">{{ param.type }}</span>
-                  <span v-if="param.required" class="param-config-required">必填</span>
-                </div>
-                <div class="param-config-desc">{{ param.description }}</div>
-                <input
-                  v-model="paramValues[param.name]"
-                  :type="param.type === 'number' ? 'number' : 'text'"
-                  :placeholder="param.defaultValue || param.description"
-                  class="param-config-input"
-                />
-              </div>
-            </div>
-
-            <button class="execute-btn" :disabled="isLoading" @click="executeApi">
-              {{ isLoading ? '执行中...' : '执行请求' }}
+          <div class="editor-actions">
+            <button class="secondary-button" type="button" @click="cancelForm">取消</button
+            ><button class="primary-button" type="button" @click="saveApi">
+              {{ editingId === null ? '保存并开始调试' : '保存修改' }}
             </button>
+          </div>
+        </div>
 
-            <div v-if="error" class="error-panel">
-              <h3>请求失败</h3>
-              <pre>{{ error }}</pre>
+        <div v-else-if="selectedApi" class="request-screen">
+          <header class="endpoint-header">
+            <div class="endpoint-heading">
+              <button type="button" class="back-to-overview" @click="closeApi">← API 概览</button>
+              <div class="endpoint-title-line">
+                <span class="method-chip large" :class="selectedApi.method.toLowerCase()">{{
+                  selectedApi.method
+                }}</span>
+                <h1>{{ selectedApi.name }}</h1>
+                <button
+                  type="button"
+                  class="pin-button"
+                  :class="{ active: selectedApi.pinned }"
+                  :aria-label="selectedApi.pinned ? '取消置顶' : '置顶'"
+                  @click="togglePin(selectedApi)"
+                >
+                  ●
+                </button>
+              </div>
+              <p>{{ selectedApi.description }}</p>
+              <div class="endpoint-tags">
+                <span>{{ selectedApi.category }}</span
+                ><span :class="{ positive: accessFor(selectedApi).authLabel === '无需 Key' }">{{
+                  accessFor(selectedApi).authLabel
+                }}</span
+                ><span :class="{ positive: accessFor(selectedApi).corsLabel === '支持 CORS' }">{{
+                  accessFor(selectedApi).corsLabel
+                }}</span
+                ><span v-if="accessFor(selectedApi).verified" class="verified"
+                  >✓ 官方来源已核验</span
+                >
+              </div>
             </div>
+            <div class="endpoint-actions">
+              <a
+                v-if="selectedApi.docsUrl"
+                :href="selectedApi.docsUrl"
+                target="_blank"
+                rel="noreferrer"
+                >官方文档 ↗</a
+              ><button v-if="selectedApi.userCreated" type="button" @click="editApi(selectedApi)">
+                编辑</button
+              ><button
+                v-if="selectedApi.userCreated"
+                class="danger-text"
+                type="button"
+                @click="deleteApi(selectedApi)"
+              >
+                删除
+              </button>
+            </div>
+          </header>
 
-            <div v-if="response" class="response-panel">
-              <div class="response-header">
-                <h3>响应结果</h3>
-                <div class="response-meta">
-                  <span class="response-status" :class="getStatusClass(response.status)">
-                    {{ response.status }} {{ response.statusText }}
-                  </span>
-                  <span class="response-time">{{ response.time }}ms</span>
-                  <span class="response-size">{{ formatSize(response.size) }}</span>
+          <div class="request-url-bar">
+            <span class="method-label" :class="selectedApi.method.toLowerCase()">{{
+              selectedApi.method
+            }}</span
+            ><code>{{ currentUrl }}</code
+            ><CopyButton :text="currentUrl" label="复制 URL" :icon="false" variant="ghost" />
+          </div>
+
+          <div class="runner-grid">
+            <section class="runner-card request-card">
+              <div class="runner-card-heading">
+                <div>
+                  <span class="step-number">01</span>
+                  <div>
+                    <h2>构建请求</h2>
+                    <p>配置运行时参数、Header 与 Body</p>
+                  </div>
+                </div>
+                <CopyButton :text="curlCommand" label="复制 cURL" :icon="false" variant="mini" />
+              </div>
+
+              <div class="runner-tabs" role="tablist">
+                <button
+                  :class="{ active: requestTab === 'params' }"
+                  type="button"
+                  @click="requestTab = 'params'"
+                >
+                  Params <span>{{ selectedApi.params.length }}</span>
+                </button>
+                <button
+                  :class="{ active: requestTab === 'headers' }"
+                  type="button"
+                  @click="requestTab = 'headers'"
+                >
+                  Headers <span>{{ requestHeaders.length }}</span>
+                </button>
+                <button
+                  v-if="canHaveBody"
+                  :class="{ active: requestTab === 'body' }"
+                  type="button"
+                  @click="requestTab = 'body'"
+                >
+                  Body
+                </button>
+              </div>
+
+              <div class="request-config vc-scrollbar vc-scrollbar--thin">
+                <div v-if="requestTab === 'params'" class="runtime-params">
+                  <div v-if="selectedApi.params.length" class="param-table-head">
+                    <span>参数</span><span>值</span>
+                  </div>
+                  <label v-for="param in selectedApi.params" :key="param.name" class="runtime-param"
+                    ><span class="runtime-param-info"
+                      ><strong>{{ param.name }} <b v-if="param.required">*</b></strong
+                      ><small>{{ param.description || `${param.type} 参数` }}</small></span
+                    ><input
+                      v-model="paramValues[param.name]"
+                      :type="param.type === 'number' ? 'number' : 'text'"
+                      :placeholder="param.defaultValue || '输入参数值'"
+                  /></label>
+                  <div v-if="!selectedApi.params.length" class="config-empty">
+                    <span>✓</span><strong>这个接口没有动态参数</strong>
+                    <p>请求地址已经可以直接运行。需要自定义 Header 时切换到 Headers。</p>
+                  </div>
+                </div>
+
+                <div v-else-if="requestTab === 'headers'" class="headers-editor">
+                  <div class="header-table-head">
+                    <span>启用</span><span>Header</span><span>Value</span><span></span>
+                  </div>
+                  <div v-for="header in requestHeaders" :key="header.id" class="header-row">
+                    <label class="row-check"
+                      ><input v-model="header.enabled" type="checkbox" /><span></span></label
+                    ><input v-model="header.name" type="text" placeholder="Authorization" /><input
+                      v-model="header.value"
+                      type="text"
+                      placeholder="Bearer …"
+                    /><button
+                      type="button"
+                      aria-label="删除请求头"
+                      @click="removeRequestHeader(header.id)"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <button class="add-table-row" type="button" @click="addRequestHeader">
+                    ＋ 添加 Header
+                  </button>
+                  <p class="security-note">敏感 Header 只用于本次页面会话，不会写入请求历史。</p>
+                </div>
+
+                <div v-else class="body-editor">
+                  <div class="code-editor-bar">
+                    <span>JSON / TEXT</span
+                    ><small>Content-Type 未填写时默认 application/json</small>
+                  </div>
+                  <textarea
+                    v-model="requestBody"
+                    spellcheck="false"
+                    aria-label="请求 Body"
+                  ></textarea>
                 </div>
               </div>
 
-              <div v-if="response.truncated" class="truncate-warning">
-                ⚠️ 响应约 {{ formatSize(response.size) }}，已超过
-                {{ maxPreviewLabel }} 上限。为避免页面卡顿，已截断显示前 {{ maxPreviewLabel }}。
+              <p v-if="validationMessage" class="form-banner error">{{ validationMessage }}</p>
+              <div class="request-actions">
+                <button v-if="!isLoading" class="send-button" type="button" @click="executeApi">
+                  <span>▶</span> 发送请求</button
+                ><button v-else class="cancel-request-button" type="button" @click="abortRequest">
+                  <span>■</span> 取消请求</button
+                ><span
+                  ><i :class="{ running: isLoading }"></i
+                  >{{
+                    isLoading ? '正在等待目标服务响应…' : `超时限制 ${REQUEST_TIMEOUT_MS / 1000}s`
+                  }}</span
+                >
+              </div>
+            </section>
+
+            <section class="runner-card response-card">
+              <div class="runner-card-heading response-heading">
+                <div>
+                  <span class="step-number">02</span>
+                  <div>
+                    <h2>读取响应</h2>
+                    <p>预览 Body 与响应 Header</p>
+                  </div>
+                </div>
+                <CopyButton
+                  v-if="responseText"
+                  :text="responseText"
+                  label="复制响应"
+                  :icon="false"
+                  variant="mini"
+                />
               </div>
 
-              <pre v-if="!response.imageUrl" class="response-data">{{
-                formatJson(response.data)
-              }}</pre>
-              <img
-                v-else
-                :src="response.imageUrl"
-                :alt="response.contentType"
-                class="response-image"
-              />
-            </div>
-          </div>
-        </template>
+              <div class="runner-tabs response-tabs" role="tablist">
+                <button
+                  :class="{ active: responseTab === 'preview' }"
+                  type="button"
+                  @click="responseTab = 'preview'"
+                >
+                  Preview</button
+                ><button
+                  :class="{ active: responseTab === 'headers' }"
+                  :disabled="!response"
+                  type="button"
+                  @click="responseTab = 'headers'"
+                >
+                  Headers <span>{{ response ? Object.keys(response.headers).length : 0 }}</span>
+                </button>
+                <div v-if="response" class="response-metrics">
+                  <span class="status-pill" :class="getStatusTone(response.status)"
+                    ><i></i>{{ response.status }} {{ response.statusText }}</span
+                  ><span>{{ response.time }} ms</span><span>{{ formatBytes(response.size) }}</span>
+                </div>
+              </div>
 
-        <template v-else>
-          <div class="welcome-panel">
-            <div class="welcome-icon">🔗</div>
-            <h2>欢迎使用API管理器</h2>
-            <p>从左侧选择一个API开始测试，或点击"添加API"创建新的API</p>
-            <div class="features">
-              <div class="feature-item">
-                <span class="feature-icon">📋</span>
-                <span>管理常用免费API</span>
+              <div class="response-viewport vc-scrollbar vc-scrollbar--thin">
+                <div v-if="isLoading" class="response-loading">
+                  <span class="pulse-ring"></span><strong>请求已发出</strong>
+                  <p>正在等待响应并读取数据流…</p>
+                  <div><i></i><i></i><i></i></div>
+                </div>
+                <div v-else-if="error" class="response-error">
+                  <span>!</span><strong>请求没有完成</strong>
+                  <p>{{ error }}</p>
+                  <button type="button" @click="executeApi">重新发送</button>
+                </div>
+                <template v-else-if="response">
+                  <div v-if="response.truncated" class="truncate-banner">
+                    响应超过 512 KB，已停止读取并只展示安全范围内的内容。
+                  </div>
+                  <div v-if="responseTab === 'preview'" class="response-body">
+                    <img
+                      v-if="response.imageUrl"
+                      :src="response.imageUrl"
+                      :alt="response.contentType"
+                    />
+                    <pre v-else><code>{{ responseText }}</code></pre>
+                  </div>
+                  <div v-else class="response-headers-table">
+                    <div v-for="(value, name) in response.headers" :key="name">
+                      <strong>{{ name }}</strong
+                      ><code>{{ value }}</code>
+                    </div>
+                  </div>
+                </template>
+                <div v-else class="response-placeholder">
+                  <div class="response-orbit"><span>{ }</span><i></i><i></i></div>
+                  <strong>等待一次真实响应</strong>
+                  <p>配置左侧请求并点击“发送请求”，状态、耗时、大小和响应内容会显示在这里。</p>
+                  <div class="placeholder-hints">
+                    <span>JSON 格式化</span><span>图片预览</span><span>响应头</span>
+                  </div>
+                </div>
               </div>
-              <div class="feature-item">
-                <span class="feature-icon">⚙️</span>
-                <span>灵活配置请求参数</span>
-              </div>
-              <div class="feature-item">
-                <span class="feature-icon">🚀</span>
-                <span>在线执行查看结果</span>
-              </div>
-            </div>
+            </section>
           </div>
-        </template>
-      </div>
+
+          <section class="request-history-drawer">
+            <div class="history-drawer-heading">
+              <div>
+                <span class="section-kicker">REQUEST HISTORY</span>
+                <h2>本地请求记录</h2>
+              </div>
+              <button v-if="requestHistory.length" type="button" @click="clearHistory">清空</button>
+            </div>
+            <div v-if="requestHistory.length" class="compact-history">
+              <button
+                v-for="item in requestHistory.slice(0, 8)"
+                :key="item.id"
+                type="button"
+                @click="openHistoryItem(item)"
+              >
+                <span class="history-status" :class="item.ok ? 'success' : 'danger'"
+                  ><i></i>{{ item.status ?? 'ERR' }}</span
+                ><strong>{{ item.apiName }}</strong
+                ><small>{{ item.method }}</small
+                ><span>{{ item.time }} ms</span><time>{{ formatHistoryTime(item.createdAt) }}</time>
+              </button>
+            </div>
+            <p v-else class="compact-history-empty">
+              运行结果会自动记录在本机，且不会保存 Header 或 Body 中的敏感内容。
+            </p>
+          </section>
+        </div>
+      </section>
     </main>
+
+    <Toast ref="toastRef" />
   </div>
 </template>
 
-<style scoped>
-.app-container {
-  /* 业务色直接用全局 token（success/danger 深浅同值，已对齐主题） */
-  --api-success: var(--success);
-  --api-danger: var(--danger);
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--text-body);
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  margin-bottom: 1.5rem;
-}
-
-.back-button {
-  background-color: var(--info);
-  color: var(--text-inverse);
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.back-button:hover {
-  background-color: #2980b9;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  color: var(--text-primary);
-  flex: 1;
-}
-
-.add-api-btn {
-  background-color: var(--api-success);
-  color: var(--text-inverse);
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.add-api-btn:hover {
-  background-color: #27ae60;
-}
-
-/* CustomSelect 包裹层：让下拉组件撑满表单宽度 */
-.cs-wrap {
-  width: 100%;
-}
-
-/* 参数行里的包裹层复用 .param-type 的弹性宽度，去掉原生 select 的边框/内边距 */
-.param-type.cs-wrap {
-  border: none;
-  padding: 0;
-}
-
-.api-content {
-  display: flex;
-  gap: 1.5rem;
-  flex: 1;
-  min-height: 0;
-}
-
-.sidebar {
-  width: 320px;
-  background-color: var(--bg-card);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.search-section {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  font-size: 0.95rem;
-  box-sizing: border-box;
-  background-color: var(--bg-input);
-  color: var(--text-body);
-}
-
-.category-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  padding: 0.8rem 1rem;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.tag-btn {
-  background-color: var(--tag-bg);
-  border: none;
-  padding: 0.3rem 0.7rem;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  transition: all 0.2s;
-}
-
-.tag-btn:hover {
-  background-color: var(--bg-hover);
-}
-
-.tag-btn.active {
-  background-color: var(--info);
-  color: var(--text-inverse);
-}
-
-.api-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem;
-}
-
-.api-item {
-  padding: 0.8rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  margin-bottom: 0.3rem;
-}
-
-.api-item:hover {
-  background-color: var(--bg-hover);
-}
-
-.api-item.active {
-  background-color: var(--accent-bg);
-  border: 1px solid var(--info);
-}
-
-.api-item-header {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.4rem;
-}
-
-.api-method {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.15rem 0.4rem;
-  border-radius: 3px;
-  font-family: monospace;
-}
-
-.api-method.get {
-  background-color: var(--success-bg);
-  color: var(--success);
-}
-
-.api-method.post {
-  background-color: var(--warning-bg);
-  color: var(--warning);
-}
-
-.api-name {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.api-item-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.api-category {
-  font-size: 0.75rem;
-  color: var(--info);
-  background-color: var(--accent-bg);
-  padding: 0.15rem 0.5rem;
-  border-radius: 10px;
-}
-
-.api-actions {
-  display: flex;
-  gap: 0.3rem;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.api-item:hover .api-actions {
-  opacity: 1;
-}
-
-.action-btn {
-  border: none;
-  padding: 0.2rem 0.5rem;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  color: var(--text-inverse);
-}
-
-.action-btn.edit {
-  background-color: var(--info);
-}
-
-.action-btn.edit:hover {
-  background-color: #2980b9;
-}
-
-.action-btn.delete {
-  background-color: var(--api-danger);
-}
-
-.action-btn.delete:hover {
-  background-color: #c0392b;
-}
-
-.action-btn.pin {
-  background-color: var(--warning);
-}
-
-.action-btn.pin:hover {
-  background-color: #e67e22;
-}
-
-.action-btn.pin.active {
-  background-color: #d68910;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
-}
-
-.api-pin-icon {
-  font-size: 0.85rem;
-  line-height: 1;
-}
-
-.api-item.pinned {
-  background-color: var(--warning-bg);
-  border-left: 3px solid var(--warning);
-}
-
-.main-panel {
-  flex: 1;
-  background-color: var(--bg-card);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  overflow-y: auto;
-}
-
-.form-panel {
-  padding: 1.5rem;
-}
-
-.form-panel h2 {
-  margin: 0 0 1.5rem;
-  color: var(--text-primary);
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  font-size: 0.95rem;
-  box-sizing: border-box;
-  background-color: var(--bg-input);
-  color: var(--text-body);
-}
-
-.form-group textarea {
-  resize: vertical;
-}
-
-.form-row {
-  display: flex;
-  gap: 1rem;
-}
-
-.form-row .form-group {
-  flex: 1;
-}
-
-.params-section {
-  margin: 1.5rem 0;
-  padding: 1rem;
-  background-color: var(--bg-subtle);
-  border-radius: 6px;
-}
-
-.params-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.params-header label {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.add-param-btn {
-  background-color: var(--info);
-  color: var(--text-inverse);
-  border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.add-param-btn:hover {
-  background-color: #2980b9;
-}
-
-.param-item {
-  background-color: var(--bg-card);
-  padding: 0.8rem;
-  border-radius: var(--radius-xs);
-  margin-bottom: 0.6rem;
-  border: 1px solid var(--border-light);
-}
-
-.param-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.param-name {
-  flex: 2;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  font-size: 0.9rem;
-  background-color: var(--bg-input);
-  color: var(--text-body);
-}
-
-.param-type {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  font-size: 0.9rem;
-  background-color: var(--bg-input);
-  color: var(--text-body);
-}
-
-.param-default {
-  flex: 2;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  font-size: 0.9rem;
-  background-color: var(--bg-input);
-  color: var(--text-body);
-}
-
-.param-required {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.param-required input {
-  width: auto;
-}
-
-.remove-param-btn {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  color: var(--api-danger);
-  cursor: pointer;
-  padding: 0 0.3rem;
-}
-
-.remove-param-btn:hover {
-  color: #c0392b;
-}
-
-.param-desc {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  font-size: 0.85rem;
-  box-sizing: border-box;
-  background-color: var(--bg-input);
-  color: var(--text-body);
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.8rem;
-  margin-top: 1.5rem;
-}
-
-.save-btn {
-  background-color: var(--api-success);
-  color: var(--text-inverse);
-  border: none;
-  padding: 0.7rem 1.5rem;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.save-btn:hover {
-  background-color: #27ae60;
-}
-
-.cancel-btn {
-  background-color: #95a5a6;
-  color: var(--text-inverse);
-  border: none;
-  padding: 0.7rem 1.5rem;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.cancel-btn:hover {
-  background-color: #7f8c8d;
-}
-
-.detail-panel {
-  padding: 1.5rem;
-}
-
-.detail-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.8rem;
-}
-
-.detail-header h2 {
-  margin: 0;
-  color: var(--text-primary);
-}
-
-.detail-method {
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--radius-xs);
-  font-family: monospace;
-}
-
-.detail-method.get {
-  background-color: var(--success-bg);
-  color: var(--success);
-}
-
-.detail-method.post {
-  background-color: var(--warning-bg);
-  color: var(--warning);
-}
-
-.detail-description {
-  color: var(--text-dim);
-  margin-bottom: 1.5rem;
-}
-
-.detail-url {
-  margin-bottom: 1.5rem;
-}
-
-.detail-url label {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-}
-
-.detail-url code {
-  display: block;
-  padding: 0.8rem;
-  background-color: var(--bg-subtle);
-  border-radius: var(--radius-xs);
-  font-family: monospace;
-  word-break: break-all;
-  color: var(--api-danger);
-}
-
-.params-config {
-  margin-bottom: 1.5rem;
-}
-
-.params-config h3 {
-  margin: 0 0 1rem;
-  color: var(--text-primary);
-}
-
-.param-config-item {
-  background-color: var(--bg-subtle);
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 0.8rem;
-}
-
-.param-config-header {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.4rem;
-}
-
-.param-config-name {
-  font-weight: 600;
-  color: var(--text-primary);
-  font-family: monospace;
-}
-
-.param-config-type {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  background-color: var(--tag-bg);
-  padding: 0.15rem 0.4rem;
-  border-radius: 3px;
-}
-
-.param-config-required {
-  font-size: 0.75rem;
-  color: var(--api-danger);
-}
-
-.param-config-desc {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  margin-bottom: 0.6rem;
-}
-
-.param-config-input {
-  width: 100%;
-  padding: 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  font-size: 0.95rem;
-  box-sizing: border-box;
-  background-color: var(--bg-input);
-  color: var(--text-body);
-}
-
-.execute-btn {
-  background-color: var(--info);
-  color: var(--text-inverse);
-  border: none;
-  padding: 0.8rem 2rem;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  width: 100%;
-  transition: background-color 0.2s;
-}
-
-.execute-btn:hover:not(:disabled) {
-  background-color: #2980b9;
-}
-
-.execute-btn:disabled {
-  background-color: #95a5a6;
-  cursor: not-allowed;
-}
-
-.error-panel {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background-color: var(--danger-bg);
-  border-radius: 6px;
-  border: 1px solid var(--danger);
-}
-
-.error-panel h3 {
-  margin: 0 0 0.8rem;
-  color: var(--api-danger);
-}
-
-.error-panel pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--danger);
-  font-size: 0.9rem;
-}
-
-.response-panel {
-  margin-top: 1.5rem;
-  background-color: var(--bg-subtle);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.response-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background-color: var(--bg-subtle);
-}
-
-.response-header h3 {
-  margin: 0;
-  color: var(--text-primary);
-}
-
-.response-meta {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.response-status {
-  font-weight: 600;
-  font-size: 0.9rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--radius-xs);
-}
-
-.response-status.success {
-  background-color: var(--success-bg);
-  color: var(--success);
-}
-
-.response-status.client-error {
-  background-color: var(--warning-bg);
-  color: var(--warning);
-}
-
-.response-status.server-error {
-  background-color: var(--danger-bg);
-  color: var(--danger);
-}
-
-.response-status.info {
-  background-color: var(--accent-bg);
-  color: var(--info);
-}
-
-.response-time {
-  font-size: 0.9rem;
-  color: var(--text-dim);
-}
-
-.response-size {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  font-family: monospace;
-}
-
-.truncate-warning {
-  margin: 1rem 1rem 0;
-  padding: 0.7rem 1rem;
-  background-color: var(--warning-bg);
-  border: 1px solid var(--warning);
-  border-radius: 6px;
-  color: var(--warning);
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-
-.response-data {
-  padding: 1rem;
-  margin: 0;
-  max-height: 400px;
-  overflow: auto;
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-  background-color: #263238;
-  color: #eeffff;
-}
-
-.response-image {
-  max-width: 100%;
-  max-height: 420px;
-  object-fit: contain;
-  border-radius: var(--radius-sm);
-  display: block;
-  margin: 0 auto;
-}
-
-.welcome-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 2rem;
-  text-align: center;
-}
-
-.welcome-icon {
-  font-size: 4rem;
-  margin-bottom: 1.5rem;
-}
-
-.welcome-panel h2 {
-  margin: 0 0 0.8rem;
-  color: var(--text-primary);
-}
-
-.welcome-panel > p {
-  color: var(--text-dim);
-  margin-bottom: 2rem;
-}
-
-.features {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-}
-
-.feature-icon {
-  font-size: 1.5rem;
-}
-
-@media (max-width: 768px) {
-  .app-container {
-    padding: 1rem;
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .app-header {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .app-header h1 {
-    font-size: 1.4rem;
-    order: 1;
-    flex: 1;
-  }
-
-  .back-button {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.9rem;
-    order: 0;
-  }
-
-  .add-api-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    order: 3;
-    margin-left: 0;
-  }
-
-  .api-content {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .sidebar {
-    width: 100%;
-    max-height: 300px;
-  }
-
-  .api-actions {
-    opacity: 1;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .api-item-meta {
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .form-row {
-    flex-direction: column;
-    gap: 0;
-  }
-
-  .param-row {
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .param-name {
-    flex: 1 1 100%;
-  }
-
-  .param-type {
-    flex: 1;
-  }
-
-  .param-default {
-    flex: 1;
-  }
-
-  .param-required {
-    flex-shrink: 0;
-  }
-
-  .detail-header {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .detail-url code {
-    font-size: 0.8rem;
-  }
-
-  .response-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .response-meta {
-    gap: 0.5rem;
-  }
-
-  .welcome-panel {
-    padding: 1.5rem 1rem;
-  }
-
-  .welcome-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-
-  .welcome-panel h2 {
-    font-size: 1.2rem;
-  }
-
-  .feature-item {
-    font-size: 1rem;
-  }
-}
-</style>
+<style scoped src="./api-manager.css"></style>

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStorage, setStorage } from '@/lib/storage'
-import { BOSS_TIME, NeonSurvivorEngine } from './engine'
+import { BOSS_TIMES, NeonSurvivorEngine } from './engine'
 import type {
   Difficulty,
   EngineCallbacks,
@@ -31,7 +31,7 @@ const aimKnob = ref({ x: 0, y: 0 })
 
 const hud = ref<GameHud>({
   elapsed: 0,
-  remaining: BOSS_TIME,
+  remaining: BOSS_TIMES[0],
   wave: 1,
   kills: 0,
   score: 0,
@@ -43,6 +43,8 @@ const hud = ref<GameHud>({
   dashRatio: 1,
   bossHp: 0,
   bossMaxHp: 0,
+  bossStage: 1,
+  bossTotal: BOSS_TIMES.length,
   combo: 0,
   comboTimer: 0,
 })
@@ -51,6 +53,8 @@ let engine: NeonSurvivorEngine | null = null
 let resizeObserver: ResizeObserver | null = null
 let audioContext: AudioContext | null = null
 let masterGain: GainNode | null = null
+type SoundName = Parameters<EngineCallbacks['onSound']>[0]
+const lastSoundAt: Partial<Record<SoundName, number>> = {}
 
 const hpRatio = computed(() => `${Math.max(0, (hud.value.hp / hud.value.maxHp) * 100)}%`)
 const xpRatio = computed(() => `${Math.min(100, (hud.value.xp / hud.value.nextXp) * 100)}%`)
@@ -65,7 +69,7 @@ const formatTime = (seconds: number) => {
 }
 
 const phaseLabel = computed(() => {
-  if (hud.value.bossMaxHp > 0) return '终局威胁'
+  if (hud.value.bossMaxHp > 0) return `核心威胁 ${hud.value.bossStage}/${hud.value.bossTotal}`
   return `裂隙波次 ${hud.value.wave}`
 })
 
@@ -102,8 +106,12 @@ function playTone(
   oscillator.stop(now + duration)
 }
 
-function playSound(name: Parameters<EngineCallbacks['onSound']>[0]) {
+function playSound(name: SoundName) {
   if (!soundEnabled.value) return
+  const now = performance.now()
+  const throttle = name === 'pickup' ? 48 : name === 'hit' ? 32 : name === 'kill' ? 28 : 0
+  if (throttle && now - (lastSoundAt[name] || 0) < throttle) return
+  lastSoundAt[name] = now
   if (name === 'shoot') playTone(620, 240, 0.055, 0.09, 'square')
   else if (name === 'hit') playTone(145, 85, 0.045, 0.045, 'square')
   else if (name === 'kill') playTone(180, 520, 0.09, 0.08, 'triangle')
@@ -323,8 +331,8 @@ onUnmounted(() => {
       <button class="icon-button back-button" aria-label="返回菜单" @click="quitToMenu">←</button>
       <div class="mission-block">
         <span class="eyebrow">{{ phaseLabel }}</span>
-        <strong v-if="!hud.bossMaxHp">距离核心降临 {{ formatTime(hud.remaining) }}</strong>
-        <strong v-else>击破异常核心</strong>
+        <strong v-if="!hud.bossMaxHp">距离下一核心 {{ formatTime(hud.remaining) }}</strong>
+        <strong v-else>击破第 {{ hud.bossStage }} 阶段核心</strong>
       </div>
       <div class="score-block">
         <span>得分</span>
@@ -373,7 +381,9 @@ onUnmounted(() => {
       </div>
 
       <div v-if="hud.bossMaxHp" class="boss-hud">
-        <div class="boss-title"><span>◈</span> THE ANOMALY <span>◈</span></div>
+        <div class="boss-title">
+          <span>◈</span> ANOMALY CORE · {{ hud.bossStage }}/{{ hud.bossTotal }} <span>◈</span>
+        </div>
         <div class="boss-bar"><span :style="{ width: bossRatio }"></span></div>
       </div>
 
@@ -455,7 +465,7 @@ onUnmounted(() => {
           <h1><span>星渊</span>幸存者</h1>
           <p class="english-title">NEON RIFT · SURVIVOR PROTOCOL</p>
           <p class="hero-description">
-            驾驶最后的棱镜战机，在失控的裂隙中生存三分钟。搜集能量、构筑火力，击破最终异常核心。
+            驾驶最后的棱镜战机，在失控的裂隙中完成六分钟远征。搜集能量、构筑火力，连续击破三阶段异常核心。
           </p>
 
           <div class="feature-row">
@@ -463,7 +473,7 @@ onUnmounted(() => {
             <i></i>
             <div><span>5</span><small>敌对单位</small></div>
             <i></i>
-            <div><span>∞</span><small>构筑组合</small></div>
+            <div><span>3</span><small>核心阶段</small></div>
           </div>
 
           <div class="difficulty-select">
@@ -2419,7 +2429,7 @@ kbd {
   }
 }
 
-@media (max-height: 520px) and (min-width: 681px) {
+@media (max-height: 520px) and (min-width: 480px) {
   .survivor-app {
     min-height: 100%;
   }
@@ -2429,13 +2439,27 @@ kbd {
   }
 
   .menu-content {
+    display: grid;
     grid-template-columns: minmax(360px, 0.9fr) minmax(320px, 1.1fr);
     width: calc(100% - 48px);
+    padding: 0;
   }
 
   .hero-copy {
     padding: 0;
+    text-align: left;
     transform: none;
+  }
+
+  .hero-description,
+  .feature-row,
+  .segmented,
+  .launch-button {
+    margin-left: 0;
+  }
+
+  .feature-row {
+    justify-content: flex-start;
   }
 
   .status-pill {
@@ -2504,7 +2528,11 @@ kbd {
   }
 
   .hero-visual {
+    position: relative;
+    top: auto;
+    right: auto;
     width: min(44vw, 350px);
+    opacity: 1;
   }
 
   .menu-ship {

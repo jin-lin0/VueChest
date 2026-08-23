@@ -20,7 +20,11 @@ import type {
 
 const WORLD_WIDTH = 3600
 const WORLD_HEIGHT = 2400
-const BOSS_TIME = 180
+const BOSS_TIMES = [120, 240, 360] as const
+const RUN_DURATION = BOSS_TIMES[BOSS_TIMES.length - 1]
+const ENEMY_GRID_SIZE = 160
+const ENEMY_GRID_COLUMNS = Math.ceil(WORLD_WIDTH / ENEMY_GRID_SIZE) + 2
+const MAX_BULLETS = 520
 const TAU = Math.PI * 2
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
@@ -36,6 +40,16 @@ const normalize = (x: number, y: number): Vector => {
 }
 
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
+
+function compactInPlace<T>(items: T[], keep: (item: T) => boolean) {
+  let writeIndex = 0
+  for (let readIndex = 0; readIndex < items.length; readIndex++) {
+    const item = items[readIndex]
+    if (!keep(item)) continue
+    items[writeIndex++] = item
+  }
+  items.length = writeIndex
+}
 
 function createPlayer(): Player {
   return {
@@ -90,12 +104,16 @@ export class NeonSurvivorEngine {
   private particles: Particle[] = []
   private texts: FloatingText[] = []
   private stars: Star[] = []
+  private readonly enemyGrid = new Map<number, Enemy[]>()
   private upgradeLevels = new Map<string, number>()
   private active = false
   private ended = false
+  private renderDirty = true
   private width = 1
   private height = 1
   private dpr = 1
+  private particleBudget = 720
+  private vignetteGradient: CanvasGradient | null = null
   private elapsed = 0
   private spawnTimer = 0
   private hudTimer = 0
@@ -108,7 +126,8 @@ export class NeonSurvivorEngine {
   private comboTimer = 0
   private difficulty: Difficulty = 'normal'
   private difficultyScale = 1
-  private bossSpawned = false
+  private nextBossIndex = 0
+  private bossReinforcementTimer = 0
   private bossId = 0
   private screenShake = 0
   private damageFlash = 0
@@ -124,7 +143,6 @@ export class NeonSurvivorEngine {
     this.callbacks = callbacks
     this.generateStars()
     this.resize()
-    this.draw()
     this.rafId = requestAnimationFrame(this.frame)
   }
 
@@ -132,13 +150,27 @@ export class NeonSurvivorEngine {
     const rect = this.canvas.getBoundingClientRect()
     this.width = Math.max(1, rect.width)
     this.height = Math.max(1, rect.height)
-    this.dpr = Math.min(2, window.devicePixelRatio || 1)
+    const lowPowerViewport =
+      window.matchMedia('(pointer: coarse)').matches || this.width < 760 || this.height < 520
+    this.dpr = Math.min(lowPowerViewport ? 1.5 : 2, window.devicePixelRatio || 1)
+    this.particleBudget = lowPowerViewport ? 420 : 720
     this.canvas.width = Math.round(this.width * this.dpr)
     this.canvas.height = Math.round(this.height * this.dpr)
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+    this.vignetteGradient = this.ctx.createRadialGradient(
+      this.width / 2,
+      this.height / 2,
+      Math.min(this.width, this.height) * 0.18,
+      this.width / 2,
+      this.height / 2,
+      Math.max(this.width, this.height) * 0.72,
+    )
+    this.vignetteGradient.addColorStop(0, 'rgba(3, 5, 15, 0)')
+    this.vignetteGradient.addColorStop(1, 'rgba(1, 2, 8, 0.62)')
     this.input.pointer = { x: this.width * 0.7, y: this.height * 0.5 }
     this.updateCamera()
     this.draw()
+    this.renderDirty = false
   }
 
   start(difficulty: Difficulty) {
@@ -159,13 +191,15 @@ export class NeonSurvivorEngine {
     this.comboTimer = 0
     this.difficulty = difficulty
     this.difficultyScale = difficulty === 'surge' ? 1.32 : 1
-    this.bossSpawned = false
+    this.nextBossIndex = 0
+    this.bossReinforcementTimer = 0
     this.bossId = 0
     this.screenShake = 0
     this.damageFlash = 0
     this.pendingLevelUp = false
     this.ended = false
     this.active = true
+    this.renderDirty = true
     this.previousTime = performance.now()
     this.emitHud()
   }
@@ -173,6 +207,7 @@ export class NeonSurvivorEngine {
   pause() {
     if (!this.ended) this.active = false
     this.input.firing = false
+    this.renderDirty = true
   }
 
   resume() {
@@ -217,8 +252,14 @@ export class NeonSurvivorEngine {
   private frame = (time: number) => {
     const rawDelta = this.previousTime ? (time - this.previousTime) / 1000 : 0
     this.previousTime = time
-    if (this.active) this.update(Math.min(rawDelta, 0.034))
-    this.draw()
+    if (this.active) {
+      this.update(Math.min(rawDelta, 0.034))
+      this.draw()
+      this.renderDirty = false
+    } else if (this.renderDirty) {
+      this.draw()
+      this.renderDirty = false
+    }
     this.rafId = requestAnimationFrame(this.frame)
   }
 
@@ -230,13 +271,13 @@ export class NeonSurvivorEngine {
     if (this.comboTimer <= 0) this.combo = 0
 
     this.updatePlayer(dt)
+    this.rebuildEnemyGrid()
     this.updateBullets(dt)
     this.updateEnemies(dt)
     this.updatePickups(dt)
     this.updateParticles(dt)
     this.spawnEnemies(dt)
-
-    if (!this.bossSpawned && this.elapsed >= BOSS_TIME) this.spawnBoss()
+    this.updateBossProgression(dt)
 
     this.hudTimer -= dt
     if (this.hudTimer <= 0) {
@@ -352,7 +393,6 @@ export class NeonSurvivorEngine {
         pierce: player.pierce,
         color: critical ? '#fff38a' : '#7afcff',
         enemy: false,
-        trail: [],
       })
     }
     this.callbacks.onSound('shoot')
@@ -367,11 +407,22 @@ export class NeonSurvivorEngine {
     )
   }
 
+  private rebuildEnemyGrid() {
+    this.enemyGrid.clear()
+    for (const enemy of this.enemies) {
+      if (enemy.hp <= 0) continue
+      const cellX = Math.floor(enemy.x / ENEMY_GRID_SIZE)
+      const cellY = Math.floor(enemy.y / ENEMY_GRID_SIZE)
+      const key = cellX + cellY * ENEMY_GRID_COLUMNS
+      const bucket = this.enemyGrid.get(key)
+      if (bucket) bucket.push(enemy)
+      else this.enemyGrid.set(key, [enemy])
+    }
+  }
+
   private updateBullets(dt: number) {
     for (const bullet of this.bullets) {
       bullet.life -= dt
-      bullet.trail.unshift({ x: bullet.x, y: bullet.y })
-      if (bullet.trail.length > 5) bullet.trail.pop()
       bullet.x += bullet.vx * dt
       bullet.y += bullet.vy * dt
 
@@ -386,34 +437,48 @@ export class NeonSurvivorEngine {
         continue
       }
 
-      for (const enemy of this.enemies) {
-        if (enemy.hp <= 0 || bullet.life <= 0) continue
-        if (distanceSquared(bullet, enemy) > (bullet.radius + enemy.radius) ** 2) continue
+      const cellX = Math.floor(bullet.x / ENEMY_GRID_SIZE)
+      const cellY = Math.floor(bullet.y / ENEMY_GRID_SIZE)
+      const direction = normalize(bullet.vx, bullet.vy)
 
-        enemy.hp -= bullet.damage
-        enemy.hitFlash = 0.1
-        const direction = normalize(bullet.vx, bullet.vy)
-        enemy.x += direction.x * 7
-        enemy.y += direction.y * 7
-        this.hitBurst(bullet.x, bullet.y, enemy.color)
-        if (Math.random() < 0.34) {
-          this.texts.push({
-            x: enemy.x,
-            y: enemy.y - enemy.radius,
-            text: `${Math.round(bullet.damage)}`,
-            color: bullet.color,
-            life: 0.45,
-            size: bullet.color === '#fff38a' ? 18 : 13,
-          })
+      collisionCells: for (let offsetY = -1; offsetY <= 1; offsetY++) {
+        for (let offsetX = -1; offsetX <= 1; offsetX++) {
+          const bucket = this.enemyGrid.get(
+            cellX + offsetX + (cellY + offsetY) * ENEMY_GRID_COLUMNS,
+          )
+          if (!bucket) continue
+
+          for (const enemy of bucket) {
+            if (enemy.hp <= 0 || bullet.life <= 0) continue
+            if (distanceSquared(bullet, enemy) > (bullet.radius + enemy.radius) ** 2) continue
+
+            enemy.hp -= bullet.damage
+            enemy.hitFlash = 0.1
+            enemy.x += direction.x * 7
+            enemy.y += direction.y * 7
+            this.hitBurst(bullet.x, bullet.y, enemy.color)
+            if (Math.random() < 0.34) {
+              this.texts.push({
+                x: enemy.x,
+                y: enemy.y - enemy.radius,
+                text: `${Math.round(bullet.damage)}`,
+                color: bullet.color,
+                life: 0.45,
+                size: bullet.color === '#fff38a' ? 18 : 13,
+              })
+            }
+            this.callbacks.onSound('hit')
+            bullet.pierce -= 1
+            if (bullet.pierce < 0) bullet.life = 0
+            if (enemy.hp <= 0) this.killEnemy(enemy)
+            if (bullet.life <= 0) break collisionCells
+          }
         }
-        this.callbacks.onSound('hit')
-        bullet.pierce -= 1
-        if (bullet.pierce < 0) bullet.life = 0
-        if (enemy.hp <= 0) this.killEnemy(enemy)
       }
     }
 
-    this.bullets = this.bullets.filter(
+    compactInPlace(
+      this.bullets,
       (bullet) =>
         bullet.life > 0 &&
         bullet.x > -80 &&
@@ -421,6 +486,9 @@ export class NeonSurvivorEngine {
         bullet.x < WORLD_WIDTH + 80 &&
         bullet.y < WORLD_HEIGHT + 80,
     )
+    if (this.bullets.length > MAX_BULLETS) {
+      this.bullets.splice(0, this.bullets.length - MAX_BULLETS)
+    }
   }
 
   private updateEnemies(dt: number) {
@@ -451,7 +519,8 @@ export class NeonSurvivorEngine {
         enemy.y += direction.y * enemy.speed * desired * dt
         if (enemy.shootTimer <= 0) {
           this.fireBossPattern(enemy)
-          enemy.shootTimer = enemy.hp < enemy.maxHp * 0.5 ? 0.78 : 1.08
+          const enraged = enemy.hp < enemy.maxHp * 0.45
+          enemy.shootTimer = Math.max(0.52, 1.18 - enemy.bossTier * 0.12 - (enraged ? 0.18 : 0))
         }
       } else {
         const wobble =
@@ -473,7 +542,7 @@ export class NeonSurvivorEngine {
         enemy.y -= direction.y * 28
       }
     }
-    this.enemies = this.enemies.filter((enemy) => enemy.hp > 0)
+    compactInPlace(this.enemies, (enemy) => enemy.hp > 0)
   }
 
   private fireEnemyBullet(enemy: Enemy, speed: number, damage: number) {
@@ -489,31 +558,33 @@ export class NeonSurvivorEngine {
       pierce: 0,
       color: '#ff6d9e',
       enemy: true,
-      trail: [],
     })
   }
 
   private fireBossPattern(enemy: Enemy) {
     const baseAngle = Math.atan2(this.player.y - enemy.y, this.player.x - enemy.x)
-    const phase = Math.floor(this.elapsed) % 2
-    const count = enemy.hp < enemy.maxHp * 0.5 ? 9 : 7
+    const phase = Math.floor(this.elapsed * 1.25) % 3
+    const enraged = enemy.hp < enemy.maxHp * 0.45
+    const count = 5 + enemy.bossTier * 2 + (enraged ? 2 : 0)
+    const speed = 260 + enemy.bossTier * 28
     for (let index = 0; index < count; index++) {
       const angle =
         phase === 0
           ? baseAngle + (index - (count - 1) / 2) * 0.16
-          : (index / count) * TAU + this.elapsed * 0.4
+          : phase === 1
+            ? (index / count) * TAU + this.elapsed * 0.55
+            : baseAngle + Math.sin(index * 2.4 + this.elapsed) * 0.5
       this.bullets.push({
         x: enemy.x + Math.cos(angle) * enemy.radius,
         y: enemy.y + Math.sin(angle) * enemy.radius,
-        vx: Math.cos(angle) * 285,
-        vy: Math.sin(angle) * 285,
-        radius: 7,
-        damage: 11 * this.difficultyScale,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 6 + enemy.bossTier * 0.7,
+        damage: (8 + enemy.bossTier * 2.2) * this.difficultyScale,
         life: 4.2,
         pierce: 0,
         color: '#ff4fd8',
         enemy: true,
-        trail: [],
       })
     }
     this.screenShake = Math.max(this.screenShake, 2)
@@ -543,15 +614,16 @@ export class NeonSurvivorEngine {
   }
 
   private spawnEnemies(dt: number) {
-    if (this.bossSpawned && this.enemies.some((enemy) => enemy.kind === 'boss')) return
+    if (this.hasActiveBoss()) return
     this.spawnTimer -= dt
     if (this.spawnTimer > 0 || this.enemies.length > 130) return
 
     const wave = this.currentWave()
     const interval =
-      Math.max(0.22, 0.88 - this.elapsed * 0.0027) / (this.difficulty === 'surge' ? 1.25 : 1)
+      Math.max(0.2, 0.88 - this.elapsed * 0.00225) / (this.difficulty === 'surge' ? 1.25 : 1)
     this.spawnTimer = interval * randomBetween(0.72, 1.18)
-    const batch = wave >= 4 && Math.random() < 0.26 ? 2 : 1
+    const batchChance = Math.min(0.72, 0.16 + wave * 0.055)
+    const batch = wave >= 4 && Math.random() < batchChance ? (wave >= 10 ? 3 : 2) : 1
     for (let index = 0; index < batch; index++) this.spawnEnemy(this.pickEnemyKind())
   }
 
@@ -563,11 +635,11 @@ export class NeonSurvivorEngine {
     return 'drone'
   }
 
-  private spawnEnemy(kind: EnemyKind, position?: Vector, small = false) {
+  private spawnEnemy(kind: EnemyKind, position?: Vector, small = false, bossTier = 0) {
     const spawn = position || this.randomSpawnPoint()
     const progress = 1 + this.elapsed * 0.0045
     const elite =
-      kind !== 'boss' && this.elapsed > 80 && Math.random() < Math.min(0.16, this.elapsed / 1500)
+      kind !== 'boss' && this.elapsed > 80 && Math.random() < Math.min(0.24, this.elapsed / 1300)
     const stats: Record<
       EnemyKind,
       { radius: number; hp: number; speed: number; damage: number; color: string }
@@ -582,10 +654,12 @@ export class NeonSurvivorEngine {
       brute: { radius: 24, hp: 138, speed: 67, damage: 18, color: '#ff9f43' },
       shooter: { radius: 17, hp: 72, speed: 82, damage: 10, color: '#bd6cff' },
       splitter: { radius: 19, hp: 92, speed: 102, damage: 13, color: '#48e5c2' },
-      boss: { radius: 62, hp: 3200, speed: 58, damage: 26, color: '#ff3bd5' },
+      boss: { radius: 62, hp: 4200, speed: 58, damage: 26, color: '#ff3bd5' },
     }
     const base = stats[kind]
-    const healthScale = kind === 'boss' ? this.difficultyScale : progress * this.difficultyScale
+    const bossHealthScale = [1, 1, 2.15, 4.2][bossTier] || 1
+    const healthScale =
+      kind === 'boss' ? this.difficultyScale * bossHealthScale : progress * this.difficultyScale
     const eliteScale = elite ? 2.15 : 1
     this.enemies.push({
       id: ++this.enemyId,
@@ -595,7 +669,7 @@ export class NeonSurvivorEngine {
       radius: base.radius * (elite ? 1.18 : 1),
       hp: base.hp * healthScale * eliteScale,
       maxHp: base.hp * healthScale * eliteScale,
-      speed: base.speed * (elite ? 1.08 : 1),
+      speed: (base.speed + (kind === 'boss' ? bossTier * 4 : 0)) * (elite ? 1.08 : 1),
       damage: base.damage * this.difficultyScale * (elite ? 1.35 : 1),
       color: base.color,
       angle: 0,
@@ -604,6 +678,7 @@ export class NeonSurvivorEngine {
       shootTimer: randomBetween(0.4, 1.4),
       orbit: Math.random() * TAU,
       elite,
+      bossTier,
     })
   }
 
@@ -616,17 +691,46 @@ export class NeonSurvivorEngine {
     }
   }
 
-  private spawnBoss() {
-    this.bossSpawned = true
+  private hasActiveBoss() {
+    return this.enemies.some((enemy) => enemy.kind === 'boss' && enemy.hp > 0)
+  }
+
+  private updateBossProgression(dt: number) {
+    const boss = this.enemies.find((enemy) => enemy.kind === 'boss' && enemy.hp > 0)
+    if (boss) {
+      this.bossReinforcementTimer -= dt
+      if (this.bossReinforcementTimer <= 0) {
+        const minionCount = this.enemies.length - 1
+        if (minionCount < 26) {
+          const count = boss.bossTier + 1
+          for (let index = 0; index < count; index++) {
+            const kind: EnemyKind = boss.bossTier >= 2 && index === count - 1 ? 'shooter' : 'drone'
+            this.spawnEnemy(kind)
+          }
+        }
+        this.bossReinforcementTimer = Math.max(4.2, 7.4 - boss.bossTier * 0.9)
+      }
+      return
+    }
+
+    const nextBossTime = BOSS_TIMES[this.nextBossIndex]
+    if (nextBossTime !== undefined && this.elapsed >= nextBossTime) {
+      this.spawnBoss(this.nextBossIndex + 1)
+    }
+  }
+
+  private spawnBoss(tier: number) {
+    this.nextBossIndex = tier
+    this.bossReinforcementTimer = Math.max(4.2, 7.4 - tier * 0.9)
     const spawn = this.randomSpawnPoint()
-    this.spawnEnemy('boss', spawn)
+    this.spawnEnemy('boss', spawn, false, tier)
     this.bossId = this.enemyId
     this.callbacks.onSound('boss')
     this.screenShake = 16
     this.texts.push({
       x: this.player.x,
       y: this.player.y - 100,
-      text: '异常核心已降临',
+      text: tier === BOSS_TIMES.length ? '终局异常核心已降临' : `第 ${tier} 阶段核心已降临`,
       color: '#ff76e4',
       life: 2.4,
       size: 25,
@@ -639,7 +743,13 @@ export class NeonSurvivorEngine {
     this.combo = this.comboTimer > 0 ? this.combo + 1 : 1
     this.comboTimer = 2.2
     const baseScore =
-      enemy.kind === 'boss' ? 5000 : enemy.elite ? 240 : enemy.kind === 'brute' ? 85 : 45
+      enemy.kind === 'boss'
+        ? 3500 * enemy.bossTier
+        : enemy.elite
+          ? 240
+          : enemy.kind === 'brute'
+            ? 85
+            : 45
     this.score += Math.round(baseScore * (1 + Math.min(this.combo, 20) * 0.045))
     this.callbacks.onSound(enemy.kind === 'boss' ? 'boss' : 'kill')
     this.burst(
@@ -652,7 +762,7 @@ export class NeonSurvivorEngine {
 
     const xpValue =
       enemy.kind === 'boss'
-        ? 150
+        ? 100 + enemy.bossTier * 55
         : enemy.elite
           ? 24
           : enemy.kind === 'brute'
@@ -660,7 +770,7 @@ export class NeonSurvivorEngine {
             : enemy.kind === 'shooter'
               ? 8
               : 6
-    const drops = enemy.kind === 'boss' ? 18 : enemy.elite ? 3 : 1
+    const drops = enemy.kind === 'boss' ? 10 + enemy.bossTier * 4 : enemy.elite ? 3 : 1
     for (let index = 0; index < drops; index++) {
       this.pickups.push({
         x: enemy.x + randomBetween(-enemy.radius, enemy.radius),
@@ -687,7 +797,27 @@ export class NeonSurvivorEngine {
       this.spawnEnemy('drone', { x: enemy.x - 10, y: enemy.y }, true)
       this.spawnEnemy('drone', { x: enemy.x + 10, y: enemy.y }, true)
     }
-    if (enemy.kind === 'boss') this.finish(true)
+    if (enemy.kind === 'boss') {
+      this.bossId = 0
+      this.bossReinforcementTimer = 0
+      for (const bullet of this.bullets) {
+        if (bullet.enemy) bullet.life = 0
+      }
+
+      if (enemy.bossTier >= BOSS_TIMES.length) {
+        this.finish(true)
+      } else {
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.28)
+        this.texts.push({
+          x: this.player.x,
+          y: this.player.y - 86,
+          text: `阶段核心 ${enemy.bossTier}/${BOSS_TIMES.length} 已清除`,
+          color: '#8fffee',
+          life: 2.2,
+          size: 23,
+        })
+      }
+    }
   }
 
   private updatePickups(dt: number) {
@@ -708,7 +838,7 @@ export class NeonSurvivorEngine {
         this.burst(pickup.x, pickup.y, pickup.kind === 'xp' ? '#80ffea' : '#7dff92', 6, 95)
       }
     }
-    this.pickups = this.pickups.filter((pickup) => pickup.life > 0)
+    compactInPlace(this.pickups, (pickup) => pickup.life > 0)
   }
 
   private gainXp(amount: number) {
@@ -768,8 +898,8 @@ export class NeonSurvivorEngine {
       text.life -= dt
       text.y -= 34 * dt
     }
-    this.particles = this.particles.filter((particle) => particle.life > 0).slice(-900)
-    this.texts = this.texts.filter((text) => text.life > 0)
+    compactInPlace(this.particles, (particle) => particle.life > 0)
+    compactInPlace(this.texts, (text) => text.life > 0)
   }
 
   private addParticle(
@@ -782,6 +912,7 @@ export class NeonSurvivorEngine {
     life: number,
     drag = 0.94,
   ) {
+    if (this.particles.length >= this.particleBudget) return
     this.particles.push({ x, y, vx, vy, color, size, life, maxLife: life, drag })
   }
 
@@ -836,14 +967,16 @@ export class NeonSurvivorEngine {
   }
 
   private currentWave() {
-    return Math.min(6, Math.floor(this.elapsed / 36) + 1)
+    return Math.min(12, Math.floor(this.elapsed / 30) + 1)
   }
 
   private emitHud() {
     const boss = this.enemies.find((enemy) => enemy.id === this.bossId && enemy.hp > 0)
+    const nextBossTime = BOSS_TIMES[this.nextBossIndex] ?? RUN_DURATION
+    const bossStage = boss?.bossTier || Math.min(this.nextBossIndex + 1, BOSS_TIMES.length)
     const hud: GameHud = {
       elapsed: this.elapsed,
-      remaining: Math.max(0, BOSS_TIME - this.elapsed),
+      remaining: boss ? 0 : Math.max(0, nextBossTime - this.elapsed),
       wave: this.currentWave(),
       kills: this.kills,
       score: this.score,
@@ -855,6 +988,8 @@ export class NeonSurvivorEngine {
       dashRatio: 1 - clamp(this.player.dashTimer / this.player.dashCooldown, 0, 1),
       bossHp: boss?.hp || 0,
       bossMaxHp: boss?.maxHp || 0,
+      bossStage,
+      bossTotal: BOSS_TIMES.length,
       combo: this.combo,
       comboTimer: this.comboTimer,
     }
@@ -899,18 +1034,10 @@ export class NeonSurvivorEngine {
     this.drawParticles()
     ctx.restore()
 
-    const vignette = ctx.createRadialGradient(
-      this.width / 2,
-      this.height / 2,
-      Math.min(this.width, this.height) * 0.18,
-      this.width / 2,
-      this.height / 2,
-      Math.max(this.width, this.height) * 0.72,
-    )
-    vignette.addColorStop(0, 'rgba(3, 5, 15, 0)')
-    vignette.addColorStop(1, 'rgba(1, 2, 8, 0.62)')
-    ctx.fillStyle = vignette
-    ctx.fillRect(0, 0, this.width, this.height)
+    if (this.vignetteGradient) {
+      ctx.fillStyle = this.vignetteGradient
+      ctx.fillRect(0, 0, this.width, this.height)
+    }
     if (this.damageFlash > 0) {
       ctx.fillStyle = `rgba(255, 40, 93, ${this.damageFlash * 0.2})`
       ctx.fillRect(0, 0, this.width, this.height)
@@ -978,6 +1105,7 @@ export class NeonSurvivorEngine {
     for (const pickup of this.pickups) {
       const x = pickup.x - this.camera.x
       const y = pickup.y - this.camera.y + Math.sin(pickup.phase) * 3
+      if (x < -24 || y < -24 || x > this.width + 24 || y > this.height + 24) continue
       const color = pickup.kind === 'xp' ? '#5fffe0' : '#78ff8f'
       ctx.save()
       ctx.translate(x, y)
@@ -1007,27 +1135,25 @@ export class NeonSurvivorEngine {
     for (const bullet of this.bullets) {
       const x = bullet.x - this.camera.x
       const y = bullet.y - this.camera.y
-      if (bullet.trail.length > 1) {
-        ctx.beginPath()
-        bullet.trail.forEach((point, index) => {
-          const px = point.x - this.camera.x
-          const py = point.y - this.camera.y
-          if (index === 0) ctx.moveTo(px, py)
-          else ctx.lineTo(px, py)
-        })
-        ctx.strokeStyle = bullet.enemy ? 'rgba(255, 66, 151, .34)' : 'rgba(90, 245, 255, .36)'
-        ctx.lineWidth = bullet.radius * 1.1
-        ctx.stroke()
-      }
-      ctx.save()
+      if (x < -40 || y < -40 || x > this.width + 40 || y > this.height + 40) continue
+
+      const velocity = Math.hypot(bullet.vx, bullet.vy) || 1
+      const trailLength = bullet.enemy ? 17 : 24
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x - (bullet.vx / velocity) * trailLength, y - (bullet.vy / velocity) * trailLength)
+      ctx.strokeStyle = bullet.enemy ? 'rgba(255, 66, 151, .34)' : 'rgba(90, 245, 255, .36)'
+      ctx.lineWidth = bullet.radius * 1.05
+      ctx.stroke()
+
       ctx.shadowColor = bullet.color
-      ctx.shadowBlur = 18
+      ctx.shadowBlur = 11
       ctx.fillStyle = bullet.color
       ctx.beginPath()
       ctx.arc(x, y, bullet.radius, 0, TAU)
       ctx.fill()
-      ctx.restore()
     }
+    ctx.shadowBlur = 0
   }
 
   private drawEnemies() {
@@ -1217,24 +1343,20 @@ export class NeonSurvivorEngine {
 
   private drawParticles() {
     const ctx = this.ctx
+    ctx.globalCompositeOperation = 'lighter'
     for (const particle of this.particles) {
+      const x = particle.x - this.camera.x
+      const y = particle.y - this.camera.y
+      if (x < -20 || y < -20 || x > this.width + 20 || y > this.height + 20) continue
       const alpha = clamp(particle.life / particle.maxLife, 0, 1)
       ctx.globalAlpha = alpha
       ctx.fillStyle = particle.color
-      ctx.shadowColor = particle.color
-      ctx.shadowBlur = particle.size * 2
       ctx.beginPath()
-      ctx.arc(
-        particle.x - this.camera.x,
-        particle.y - this.camera.y,
-        particle.size * (0.4 + alpha * 0.6),
-        0,
-        TAU,
-      )
+      ctx.arc(x, y, particle.size * (0.4 + alpha * 0.6), 0, TAU)
       ctx.fill()
     }
-    ctx.shadowBlur = 0
     ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     for (const text of this.texts) {
@@ -1278,4 +1400,4 @@ export class NeonSurvivorEngine {
   }
 }
 
-export { BOSS_TIME }
+export { BOSS_TIMES, RUN_DURATION }

@@ -4,8 +4,8 @@ export default {
   component: App,
   route: '/api-manager',
   meta: {
-    name: 'API管理器',
+    name: 'API 工作台',
     icon: '🔗',
-    description: '管理免费API，配置参数，在线执行',
+    description: '发现实用 API，配置请求并在线调试响应',
   },
 }
