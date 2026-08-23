@@ -1,0 +1,10 @@
+{
+  "source": "https://kenney.nl/assets/car-kit",
+  "license": "CC0",
+  "cars": {
+    "1": "/assets/racing/cars/lightning.glb",
+    "2": "/assets/racing/cars/storm.glb",
+    "3": "/assets/racing/cars/blaze.glb",
+    "4": "/assets/racing/cars/phantom.glb"
+  }
+}

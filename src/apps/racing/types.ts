@@ -17,6 +17,20 @@ export interface PlayerData {
   bestLapTime: number
   /** 是否已完赛 */
   finished: boolean
+  /** 淘汰赛中被淘汰后不再参与碰撞与排名 */
+  eliminated: boolean
+  /** 漂移蓄力 0~100 */
+  driftCharge: number
+  /** 当前氮气能量 */
+  nitro: number
+  /** 道具乱斗单道具槽 */
+  heldItem: ItemId | null
+  /** 护盾可抵挡的攻击次数 */
+  shieldHits: number
+  /** HUD 干扰结束时刻 */
+  jammedUntil: number
+  /** 手动重置等产生的时间惩罚 */
+  penaltyTime: number
 }
 
 export function createPlayerData(): PlayerData {
@@ -32,6 +46,13 @@ export function createPlayerData(): PlayerData {
     lastLapTime: 0,
     bestLapTime: 0,
     finished: false,
+    eliminated: false,
+    driftCharge: 0,
+    nitro: 40,
+    heldItem: null,
+    shieldHits: 0,
+    jammedUntil: 0,
+    penaltyTime: 0,
   }
 }
 
@@ -48,4 +69,12 @@ export function resetPlayerData(data: PlayerData, x: number, z: number, rotation
   data.lastLapTime = 0
   data.bestLapTime = 0
   data.finished = false
+  data.eliminated = false
+  data.driftCharge = 0
+  data.nitro = 40
+  data.heldItem = null
+  data.shieldHits = 0
+  data.jammedUntil = 0
+  data.penaltyTime = 0
 }
+import type { ItemId } from './rules'

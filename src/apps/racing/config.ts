@@ -6,14 +6,68 @@ export interface RacingCar {
   color: string
   speed: number
   handling: number
+  acceleration: number
+  nitroCapacity: number
+  nitroDrain: number
+  driftGain: number
+  perfectStartWindow: number
+  perk: string
 }
 
 /** 4 辆赛车：速度(speed)/操控(handling) 与颜色。 */
 export const RACING_CARS: RacingCar[] = [
-  { id: 1, name: '闪电', color: '#ff4444', speed: 180, handling: 70 },
-  { id: 2, name: '风暴', color: '#4444ff', speed: 160, handling: 90 },
-  { id: 3, name: '烈焰', color: '#ffaa00', speed: 200, handling: 60 },
-  { id: 4, name: '幻影', color: '#44ff44', speed: 170, handling: 85 },
+  {
+    id: 1,
+    name: '闪电',
+    color: '#ff5b5b',
+    speed: 180,
+    handling: 74,
+    acceleration: 26,
+    nitroCapacity: 100,
+    nitroDrain: 1,
+    driftGain: 1,
+    perfectStartWindow: 0.19,
+    perk: '均衡稳定，完美起步窗口更宽',
+  },
+  {
+    id: 2,
+    name: '风暴',
+    color: '#5b7cff',
+    speed: 166,
+    handling: 92,
+    acceleration: 27,
+    nitroCapacity: 95,
+    nitroDrain: 1,
+    driftGain: 1.24,
+    perfectStartWindow: 0.15,
+    perk: '连续弯漂移蓄力提升 24%',
+  },
+  {
+    id: 3,
+    name: '烈焰',
+    color: '#ffad32',
+    speed: 200,
+    handling: 62,
+    acceleration: 22,
+    nitroCapacity: 100,
+    nitroDrain: 1.05,
+    driftGain: 0.94,
+    perfectStartWindow: 0.15,
+    perk: '直线极速最高，起步与急弯更难控制',
+  },
+  {
+    id: 4,
+    name: '幻影',
+    color: '#52e39b',
+    speed: 175,
+    handling: 84,
+    acceleration: 25,
+    nitroCapacity: 125,
+    nitroDrain: 0.82,
+    driftGain: 1.06,
+    perfectStartWindow: 0.15,
+    perk: '氮气容量更大，持续时间更长',
+  },
 ]
 
 /**

@@ -4,6 +4,8 @@
 class RacingAudio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
+  private engineBus: GainNode | null = null
+  private effectsBus: GainNode | null = null
   private engineOsc1: OscillatorNode | null = null
   private engineOsc2: OscillatorNode | null = null
   private engineGain: GainNode | null = null
@@ -21,6 +23,10 @@ class RacingAudio {
     this.master = this.ctx.createGain()
     this.master.gain.value = 0.5
     this.master.connect(this.ctx.destination)
+    this.engineBus = this.ctx.createGain()
+    this.effectsBus = this.ctx.createGain()
+    this.engineBus.connect(this.master)
+    this.effectsBus.connect(this.master)
 
     // 预生成 1 秒白噪声，供撞车/氮气等音效裁剪使用
     const len = this.ctx.sampleRate
@@ -29,9 +35,17 @@ class RacingAudio {
     for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1
   }
 
+  /** 设置三路音量，输入范围 0~1。初始化前调用也安全。 */
+  setVolumes(master: number, engine: number, effects: number): void {
+    const clamp = (value: number) => Math.min(1, Math.max(0, value))
+    if (this.master) this.master.gain.value = clamp(master)
+    if (this.engineBus) this.engineBus.gain.value = clamp(engine)
+    if (this.effectsBus) this.effectsBus.gain.value = clamp(effects)
+  }
+
   /** 启动引擎嗡鸣（双锯齿波 + 低通）。 */
   startEngine(): void {
-    if (!this.ctx || !this.master || this.engineOsc1) return
+    if (!this.ctx || !this.engineBus || this.engineOsc1) return
     const ctx = this.ctx
     this.engineGain = ctx.createGain()
     this.engineGain.gain.value = 0.0
@@ -49,7 +63,7 @@ class RacingAudio {
     this.engineOsc1.connect(filter)
     this.engineOsc2.connect(filter)
     filter.connect(this.engineGain)
-    this.engineGain.connect(this.master)
+    this.engineGain.connect(this.engineBus)
     this.engineOsc1.start()
     this.engineOsc2.start()
   }
@@ -82,7 +96,7 @@ class RacingAudio {
 
   /** 播放一个短促蜂鸣。 */
   private tone(freq: number, duration: number, type: OscillatorType, volume: number, when = 0): void {
-    if (!this.ctx || !this.master) return
+    if (!this.ctx || !this.effectsBus) return
     const t = this.ctx.currentTime + when
     const osc = this.ctx.createOscillator()
     const gain = this.ctx.createGain()
@@ -91,7 +105,7 @@ class RacingAudio {
     gain.gain.setValueAtTime(volume, t)
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration)
     osc.connect(gain)
-    gain.connect(this.master)
+    gain.connect(this.effectsBus)
     osc.start(t)
     osc.stop(t + duration + 0.02)
   }
@@ -122,7 +136,7 @@ class RacingAudio {
 
   /** 撞墙 / 撞车：低通噪声 + 低频砰。 */
   crash(intensity = 1): void {
-    if (!this.ctx || !this.master || !this.noiseBuffer) return
+    if (!this.ctx || !this.effectsBus || !this.noiseBuffer) return
     const t = this.ctx.currentTime
     const src = this.ctx.createBufferSource()
     src.buffer = this.noiseBuffer
@@ -135,7 +149,7 @@ class RacingAudio {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25)
     src.connect(filter)
     filter.connect(gain)
-    gain.connect(this.master)
+    gain.connect(this.effectsBus)
     src.start(t)
     src.stop(t + 0.3)
     this.tone(70, 0.2, 'sine', 0.25 * Math.min(intensity, 1.2))
@@ -143,7 +157,7 @@ class RacingAudio {
 
   /** 氮气：上升扫频噪声。 */
   nitro(): void {
-    if (!this.ctx || !this.master || !this.noiseBuffer) return
+    if (!this.ctx || !this.effectsBus || !this.noiseBuffer) return
     const t = this.ctx.currentTime
     const src = this.ctx.createBufferSource()
     src.buffer = this.noiseBuffer
@@ -158,14 +172,14 @@ class RacingAudio {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6)
     src.connect(filter)
     filter.connect(gain)
-    gain.connect(this.master)
+    gain.connect(this.effectsBus)
     src.start(t)
     src.stop(t + 0.65)
   }
 
   /** 导弹发射。 */
   missile(): void {
-    if (!this.ctx || !this.master) return
+    if (!this.ctx || !this.effectsBus) return
     const t = this.ctx.currentTime
     const osc = this.ctx.createOscillator()
     const gain = this.ctx.createGain()
@@ -175,7 +189,7 @@ class RacingAudio {
     gain.gain.setValueAtTime(0.16, t)
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4)
     osc.connect(gain)
-    gain.connect(this.master)
+    gain.connect(this.effectsBus)
     osc.start(t)
     osc.stop(t + 0.45)
   }
@@ -193,6 +207,8 @@ class RacingAudio {
       void this.ctx.close().catch(() => undefined)
       this.ctx = null
       this.master = null
+      this.engineBus = null
+      this.effectsBus = null
       this.noiseBuffer = null
     }
   }

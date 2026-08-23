@@ -2,11 +2,14 @@
 // 全部程序化几何，无外部贴图资源。
 import * as THREE from 'three'
 import { RACING_TRACK } from './config'
+import { seededRandom, type QualityPreset, type TrackDefinition } from './game'
 
 export interface Collectible {
   mesh: THREE.Mesh
   collected: boolean
   baseY: number
+  kind: 'coin' | 'item'
+  respawnAt: number
 }
 
 export interface CheckpointGate {
@@ -25,28 +28,36 @@ export interface TrackBuild {
 }
 
 /** 生成带随机扰动的环形赛道中心线（与原有一致的正弦叠加，限制弯密度）。 */
-export function generateTrackPoints(): THREE.Vector3[] {
+export function generateTrackPoints(definition?: TrackDefinition): THREE.Vector3[] {
   const points: THREE.Vector3[] = []
   const segments = RACING_TRACK.SEGMENTS
   const radius = RACING_TRACK.RADIUS
-  const wave1 = 10 + Math.random() * 10
-  const wave2 = 8 + Math.random() * 10
-  const freq1 = 2
-  const freq2 = 3
-  const phase1 = Math.random() * Math.PI * 2
-  const phase2 = Math.random() * Math.PI * 2
+  const random = definition ? seededRandom(definition.seed) : Math.random
+  const profile =
+    definition?.id === 'desert'
+      ? { wave1: 18, wave2: 14, freq1: 3, freq2: 5 }
+      : definition?.id === 'snow'
+        ? { wave1: 8, wave2: 12, freq1: 2, freq2: 4 }
+        : definition?.id === 'forest'
+          ? { wave1: 12, wave2: 9, freq1: 2, freq2: 3 }
+          : { wave1: 10 + random() * 10, wave2: 8 + random() * 10, freq1: 2, freq2: 3 }
+  const phase1 = random() * Math.PI * 2
+  const phase2 = random() * Math.PI * 2
 
   for (let i = 0; i < segments; i++) {
     const angle = (i / segments) * Math.PI * 2
-    const x = Math.cos(angle) * radius + Math.sin(angle * freq1 + phase1) * wave1
-    const z = Math.sin(angle) * radius + Math.cos(angle * freq2 + phase2) * wave2
+    const x = Math.cos(angle) * radius + Math.sin(angle * profile.freq1 + phase1) * profile.wave1
+    const z = Math.sin(angle) * radius + Math.cos(angle * profile.freq2 + phase2) * profile.wave2
     points.push(new THREE.Vector3(x, 0, z))
   }
   return points
 }
 
 /** 点 i 处的赛道切向与法向（指向左侧）。 */
-export function trackFrameAt(points: THREE.Vector3[], i: number): { dir: THREE.Vector3; perp: THREE.Vector3 } {
+export function trackFrameAt(
+  points: THREE.Vector3[],
+  i: number,
+): { dir: THREE.Vector3; perp: THREE.Vector3 } {
   const n = points.length
   const dir = new THREE.Vector3().subVectors(points[(i + 1) % n], points[i]).normalize()
   const perp = new THREE.Vector3(-dir.z, 0, dir.x)
@@ -121,17 +132,17 @@ function buildStrip(
   for (let i = 0; i < n; i++) {
     const { perp } = trackFrameAt(points, i)
     const p = points[i]
-    positions[(i * 2) * 3 + 0] = p.x + perp.x * offsetA
-    positions[(i * 2) * 3 + 1] = y
-    positions[(i * 2) * 3 + 2] = p.z + perp.z * offsetA
+    positions[i * 2 * 3 + 0] = p.x + perp.x * offsetA
+    positions[i * 2 * 3 + 1] = y
+    positions[i * 2 * 3 + 2] = p.z + perp.z * offsetA
     positions[(i * 2 + 1) * 3 + 0] = p.x + perp.x * offsetB
     positions[(i * 2 + 1) * 3 + 1] = y
     positions[(i * 2 + 1) * 3 + 2] = p.z + perp.z * offsetB
 
     const c = colorAt ? colorAt(i) : white
-    colors[(i * 2) * 3 + 0] = c.r
-    colors[(i * 2) * 3 + 1] = c.g
-    colors[(i * 2) * 3 + 2] = c.b
+    colors[i * 2 * 3 + 0] = c.r
+    colors[i * 2 * 3 + 1] = c.g
+    colors[i * 2 * 3 + 2] = c.b
     colors[(i * 2 + 1) * 3 + 0] = c.r
     colors[(i * 2 + 1) * 3 + 1] = c.g
     colors[(i * 2 + 1) * 3 + 2] = c.b
@@ -170,22 +181,61 @@ function createCheckerTexture(): THREE.CanvasTexture {
 }
 
 /** 搭建整条赛道，返回游戏逻辑所需的全部引用。 */
-export function buildTrack(scene: THREE.Scene): TrackBuild {
-  const trackPoints = generateTrackPoints()
-  const halfWidth = RACING_TRACK.WIDTH / 2
+export function buildTrack(
+  scene: THREE.Scene,
+  definition?: TrackDefinition,
+  options: { itemMode?: boolean } = {},
+): TrackBuild {
+  const random = definition ? seededRandom(definition.seed + 91) : Math.random
+  const trackPoints = generateTrackPoints(definition)
+  const trackWidth = definition?.width ?? RACING_TRACK.WIDTH
+  const checkpointCount = definition?.checkpoints ?? RACING_TRACK.CHECKPOINTS
+  const halfWidth = trackWidth / 2
+  const theme = definition?.id ?? 'forest'
+  const trackStyle = {
+    forest: {
+      road: 0x303b38,
+      curbA: 0xe9f7ed,
+      curbB: 0x24a85a,
+      center: 0xcff6dc,
+      wall: 0x526761,
+      gate: 0x45e38a,
+    },
+    desert: {
+      road: 0x58443c,
+      curbA: 0xffd37a,
+      curbB: 0x2b2421,
+      center: 0xffd68a,
+      wall: 0xa65c39,
+      gate: 0xff9f43,
+    },
+    snow: {
+      road: 0x53657b,
+      curbA: 0xf4fbff,
+      curbB: 0x4fc9ed,
+      center: 0xcdf7ff,
+      wall: 0x91b5d4,
+      gate: 0x71ebff,
+    },
+  }[theme]
 
   // 沥青路面（比地面略高，避免 z-fighting）
   const roadGeo = buildStrip(trackPoints, -halfWidth, halfWidth, 0.02)
-  const roadMat = new THREE.MeshStandardMaterial({ color: 0x3b3f47, roughness: 0.95, vertexColors: false })
+  const roadMat = new THREE.MeshStandardMaterial({
+    color: trackStyle.road,
+    roughness: theme === 'snow' ? 0.72 : 0.95,
+    metalness: theme === 'snow' ? 0.08 : 0,
+    vertexColors: false,
+  })
   const road = new THREE.Mesh(roadGeo, roadMat)
   road.receiveShadow = true
   scene.add(road)
 
   // 红白相间路缘石（左右各一条，略抬高）
   const curbW = 1.4
-  const red = new THREE.Color(0xd23c3c)
-  const white = new THREE.Color(0xe8e8e8)
-  const curbColor = (i: number) => (i % 2 === 0 ? red : white)
+  const curbA = new THREE.Color(trackStyle.curbA)
+  const curbB = new THREE.Color(trackStyle.curbB)
+  const curbColor = (i: number) => (i % 2 === 0 ? curbA : curbB)
   const curbLeft = new THREE.Mesh(
     buildStrip(trackPoints, halfWidth - curbW, halfWidth, 0.06, curbColor),
     new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }),
@@ -206,14 +256,20 @@ export function buildTrack(scene: THREE.Scene): TrackBuild {
     dashPoints.push(new THREE.Vector3(p.x, 0.05, p.z))
   }
   const dashGeo = new THREE.BufferGeometry().setFromPoints(dashPoints)
-  const dashMat = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 2, gapSize: 2.5, transparent: true, opacity: 0.7 })
+  const dashMat = new THREE.LineDashedMaterial({
+    color: trackStyle.center,
+    dashSize: theme === 'snow' ? 3.2 : 2,
+    gapSize: theme === 'snow' ? 2 : 2.5,
+    transparent: true,
+    opacity: 0.82,
+  })
   const dashLine = new THREE.Line(dashGeo, dashMat)
   dashLine.computeLineDistances()
   scene.add(dashLine)
 
   // 起跑格线
   const { dir: startDir, perp: startPerp } = trackFrameAt(trackPoints, 0)
-  const startGeo = new THREE.PlaneGeometry(RACING_TRACK.WIDTH, 3)
+  const startGeo = new THREE.PlaneGeometry(trackWidth, 3)
   startGeo.rotateX(-Math.PI / 2)
   const startLine = new THREE.Mesh(
     startGeo,
@@ -226,7 +282,7 @@ export function buildTrack(scene: THREE.Scene): TrackBuild {
   // 围墙：长度跟随真实分段，不再有缺口
   const wallMeshes: THREE.Mesh[] = []
   const wallHeight = RACING_TRACK.WALL_HEIGHT
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.85 })
+  const wallMat = new THREE.MeshStandardMaterial({ color: trackStyle.wall, roughness: 0.85 })
   for (let i = 0; i < trackPoints.length; i++) {
     const p = trackPoints[i]
     const { dir, perp } = trackFrameAt(trackPoints, i)
@@ -234,7 +290,11 @@ export function buildTrack(scene: THREE.Scene): TrackBuild {
     for (const side of [1, -1]) {
       const geo = new THREE.BoxGeometry(0.6, wallHeight, segLen)
       const wall = new THREE.Mesh(geo, wallMat)
-      wall.position.set(p.x + perp.x * (halfWidth + 0.5) * side, wallHeight / 2, p.z + perp.z * (halfWidth + 0.5) * side)
+      wall.position.set(
+        p.x + perp.x * (halfWidth + 0.5) * side,
+        wallHeight / 2,
+        p.z + perp.z * (halfWidth + 0.5) * side,
+      )
       wall.lookAt(wall.position.clone().add(dir))
       // 不投影：120 段围墙进阴影 pass 太贵，只接收阴影
       wall.receiveShadow = true
@@ -248,22 +308,22 @@ export function buildTrack(scene: THREE.Scene): TrackBuild {
   const checkpoints: THREE.Vector3[] = []
   const gates: CheckpointGate[] = []
   const pillarGeo = new THREE.BoxGeometry(0.5, 6, 0.5)
-  const barGeo = new THREE.BoxGeometry(RACING_TRACK.WIDTH - 1, 0.6, 0.6)
-  for (let i = 0; i < RACING_TRACK.CHECKPOINTS; i++) {
-    const index = Math.floor((i / RACING_TRACK.CHECKPOINTS) * trackPoints.length)
+  const barGeo = new THREE.BoxGeometry(trackWidth - 1, 0.6, 0.6)
+  for (let i = 0; i < checkpointCount; i++) {
+    const index = Math.floor((i / checkpointCount) * trackPoints.length)
     const point = trackPoints[index]
     checkpoints.push(point.clone())
 
     const { perp } = trackFrameAt(trackPoints, index)
     const pillarMaterial = new THREE.MeshStandardMaterial({
-      color: 0x00d5ff,
-      emissive: 0x00d5ff,
+      color: trackStyle.gate,
+      emissive: trackStyle.gate,
       emissiveIntensity: 0.25,
       roughness: 0.4,
     })
     const barMaterial = new THREE.MeshStandardMaterial({
-      color: 0x00d5ff,
-      emissive: 0x00d5ff,
+      color: trackStyle.gate,
+      emissive: trackStyle.gate,
       emissiveIntensity: 0.25,
       roughness: 0.4,
     })
@@ -295,26 +355,44 @@ export function buildTrack(scene: THREE.Scene): TrackBuild {
     metalness: 0.6,
     roughness: 0.3,
   })
+  const itemMat = new THREE.MeshStandardMaterial({
+    color: 0xff5e9c,
+    emissive: 0x8f2fff,
+    emissiveIntensity: 0.9,
+    metalness: 0.35,
+    roughness: 0.25,
+  })
   for (let i = 0; i < 20; i++) {
-    const mesh = new THREE.Mesh(coinGeo, coinMat)
-    const pointIndex = Math.floor(Math.random() * trackPoints.length)
+    const kind = options.itemMode ? 'item' : 'coin'
+    const mesh = new THREE.Mesh(
+      kind === 'item' ? new THREE.DodecahedronGeometry(0.9) : coinGeo,
+      kind === 'item' ? itemMat : coinMat,
+    )
+    const pointIndex = Math.floor(random() * trackPoints.length)
     const point = trackPoints[pointIndex]
     const { perp } = trackFrameAt(trackPoints, pointIndex)
-    const offset = (Math.random() - 0.5) * (RACING_TRACK.WIDTH - 6)
+    const offset = (random() - 0.5) * (trackWidth - 6)
     mesh.position.set(point.x + perp.x * offset, 1.5, point.z + perp.z * offset)
     scene.add(mesh)
-    collectibles.push({ mesh, collected: false, baseY: 1.5 })
+    collectibles.push({ mesh, collected: false, baseY: 1.5, kind, respawnAt: 0 })
   }
 
   return { trackPoints, checkpoints, gates, wallMeshes, collectibles }
 }
 
 /** 环境装饰：地面、树、楼、云、远山。 */
-export function buildEnvironment(scene: THREE.Scene): void {
+export function buildEnvironment(
+  scene: THREE.Scene,
+  definition?: TrackDefinition,
+  quality: QualityPreset = 'high',
+): void {
+  const random = definition ? seededRandom(definition.seed + 311) : Math.random
+  const theme = definition?.id ?? 'forest'
+  const density = quality === 'low' ? 0.45 : quality === 'medium' ? 0.72 : 1
   const groundGeo = new THREE.PlaneGeometry(800, 800)
   const ground = new THREE.Mesh(
     groundGeo,
-    new THREE.MeshStandardMaterial({ color: 0x4a7c3f, roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: definition?.ground ?? 0x4a7c3f, roughness: 1 }),
   )
   ground.rotation.x = -Math.PI / 2
   ground.position.y = -0.05
@@ -323,12 +401,22 @@ export function buildEnvironment(scene: THREE.Scene): void {
 
   // 树
   const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 3)
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.9 })
+  const trunkMat = new THREE.MeshStandardMaterial({
+    color: theme === 'snow' ? 0x6b5b52 : 0x8b4513,
+    roughness: 0.9,
+  })
   const leavesGeo = new THREE.ConeGeometry(2, 4, 8)
-  const leafMats = [0x228b22, 0x2e9e2e, 0x1e7d32].map(
+  const leafColors =
+    theme === 'desert'
+      ? [0x7f8b3a, 0xa6883a, 0x6f7930]
+      : theme === 'snow'
+        ? [0xe9f4ff, 0xb8d3e6, 0xf7fbff]
+        : [0x228b22, 0x2e9e2e, 0x1e7d32]
+  const leafMats = leafColors.map(
     (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 }),
   )
-  for (let i = 0; i < 90; i++) {
+  const treeCount = theme === 'desert' ? 10 : theme === 'snow' ? 74 : 96
+  for (let i = 0; i < Math.round(treeCount * density); i++) {
     const tree = new THREE.Group()
     const trunk = new THREE.Mesh(trunkGeo, trunkMat)
     trunk.position.y = 1.5
@@ -336,59 +424,73 @@ export function buildEnvironment(scene: THREE.Scene): void {
     leaves.position.y = 4
     tree.add(trunk)
     tree.add(leaves)
-    const angle = Math.random() * Math.PI * 2
-    const distance = 125 + Math.random() * 110
-    const scale = 0.8 + Math.random() * 0.8
+    const angle = random() * Math.PI * 2
+    const distance = 125 + random() * 110
+    const scale = 0.8 + random() * 0.8
     tree.scale.set(scale, scale, scale)
     tree.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance)
     scene.add(tree)
   }
 
   // 楼
-  for (let i = 0; i < 16; i++) {
-    const width = 5 + Math.random() * 10
-    const height = 10 + Math.random() * 22
-    const depth = 5 + Math.random() * 10
+  for (let i = 0; i < Math.round(16 * density); i++) {
+    const width = 5 + random() * 10
+    const height = 10 + random() * 22
+    const depth = 5 + random() * 10
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(width, height, depth),
       new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setHSL(0.55 + Math.random() * 0.1, 0.15, 0.45 + Math.random() * 0.2),
+        color:
+          theme === 'desert'
+            ? new THREE.Color().setHSL(0.06 + random() * 0.04, 0.45, 0.42 + random() * 0.18)
+            : theme === 'snow'
+              ? new THREE.Color().setHSL(0.58 + random() * 0.08, 0.2, 0.65 + random() * 0.18)
+              : new THREE.Color().setHSL(0.55 + random() * 0.1, 0.15, 0.45 + random() * 0.2),
         roughness: 0.7,
       }),
     )
     mesh.position.y = height / 2
-    const angle = Math.random() * Math.PI * 2
-    const distance = 170 + Math.random() * 110
+    const angle = random() * Math.PI * 2
+    const distance = 170 + random() * 110
     mesh.position.set(Math.cos(angle) * distance, height / 2, Math.sin(angle) * distance)
     scene.add(mesh)
   }
 
   // 云（几坨压扁的白色球）
-  const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.9 })
-  for (let i = 0; i < 12; i++) {
+  const cloudMat = new THREE.MeshStandardMaterial({
+    color: theme === 'desert' ? 0xffd5a3 : theme === 'snow' ? 0xe6f5ff : 0xffffff,
+    roughness: 1,
+    transparent: true,
+    opacity: theme === 'desert' ? 0.58 : 0.9,
+  })
+  const cloudCount = theme === 'desert' ? 5 : 12
+  for (let i = 0; i < Math.round(cloudCount * density); i++) {
     const cloud = new THREE.Group()
-    const puffs = 2 + Math.floor(Math.random() * 3)
+    const puffs = 2 + Math.floor(random() * 3)
     for (let j = 0; j < puffs; j++) {
-      const r = 4 + Math.random() * 5
+      const r = 4 + random() * 5
       const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), cloudMat)
-      puff.position.set(j * r * 1.1 - (puffs * r) / 2, Math.random() * 2, Math.random() * 4)
+      puff.position.set(j * r * 1.1 - (puffs * r) / 2, random() * 2, random() * 4)
       puff.scale.y = 0.55
       cloud.add(puff)
     }
-    const angle = Math.random() * Math.PI * 2
-    const distance = 60 + Math.random() * 240
-    cloud.position.set(Math.cos(angle) * distance, 48 + Math.random() * 24, Math.sin(angle) * distance)
+    const angle = random() * Math.PI * 2
+    const distance = 60 + random() * 240
+    cloud.position.set(Math.cos(angle) * distance, 48 + random() * 24, Math.sin(angle) * distance)
     scene.add(cloud)
   }
 
   // 远山剪影
-  const mountainMat = new THREE.MeshStandardMaterial({ color: 0x6b7f94, roughness: 1 })
-  for (let i = 0; i < 14; i++) {
-    const r = 30 + Math.random() * 35
-    const h = 40 + Math.random() * 45
+  const mountainMat = new THREE.MeshStandardMaterial({
+    color: theme === 'desert' ? 0x9d4f32 : theme === 'snow' ? 0xa9c9e5 : 0x526d62,
+    roughness: 1,
+  })
+  for (let i = 0; i < Math.round(14 * density); i++) {
+    const r = 30 + random() * 35
+    const h = 40 + random() * 45
     const mountain = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), mountainMat)
-    const angle = (i / 14) * Math.PI * 2 + Math.random() * 0.3
-    const distance = 310 + Math.random() * 60
+    const angle = (i / 14) * Math.PI * 2 + random() * 0.3
+    const distance = 310 + random() * 60
     mountain.position.set(Math.cos(angle) * distance, h / 2 - 2, Math.sin(angle) * distance)
     scene.add(mountain)
   }

@@ -11,6 +11,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // 音频 DSP 端到端用例会执行完整合成谱面；在并行测试或低功耗环境下
+    // 偶尔超过 Vitest 默认 5 秒，给计算型测试留出稳定的回归窗口。
+    testTimeout: 15_000,
     // 测试统一放在同层 __tests__/ 下：tsconfig.app.json 已排除该目录，
     // 避免 vitest 的类型被拉进应用类型检查（npm run build 会跑 type-check）。
     include: ['src/**/__tests__/**/*.spec.ts'],

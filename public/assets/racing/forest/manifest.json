@@ -1,0 +1,13 @@
+{
+  "id": "forest",
+  "name": "翠影森林",
+  "environment": "/assets/racing/forest/tief_etz_1k.hdr",
+  "props": [
+    "/assets/racing/props/forest/tree-oak.glb",
+    "/assets/racing/props/forest/rock-large.glb",
+    "/assets/racing/props/common/bannerTowerRed.glb",
+    "/assets/racing/props/common/grandStandCovered.glb"
+  ],
+  "source": "https://polyhaven.com/a/tief_etz",
+  "license": "CC0"
+}

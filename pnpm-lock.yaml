@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@lucide/vue':
+        specifier: 1.33.0
+        version: 1.33.0(vue@3.5.18(typescript@5.8.3))
       '@vuepic/vue-datepicker':
         specifier: ^13.0.0
         version: 13.0.0(vue@3.5.18(typescript@5.8.3))
@@ -1504,8 +1507,8 @@ packages:
   '@lezer/yaml@1.0.4':
     resolution: {integrity: sha512-2lrrHqxalACEbxIbsjhqGpSW8kWpUKuY6RHgnSAFZa6qK62wvnPxA8hGOwOoDbwHcOFs5M4o27mjGu+P7TvBmw==}
 
-  '@lucide/vue@1.21.0':
-    resolution: {integrity: sha512-eoFn3tppjKAc12ZqdnRSMFdtwQ1ZMRQFb6SV1Eub6Y8kU28ccnqKeSFdnur9hMg8gIbosU2Y3WFJr/J/xS/IlQ==}
+  '@lucide/vue@1.33.0':
+    resolution: {integrity: sha512-8d3HnIIglHnosvsnm+IWNy8XhYYJvkf4YEgQqb74HnY3ihzdz+7XX4MxMZoyKdw7pbKOGno2HoaHTq7DH/v5AA==}
     peerDependencies:
       vue: '>=3.0.1'
 
@@ -7628,7 +7631,7 @@ snapshots:
       '@lezer/highlight': 1.2.3
       '@lezer/lr': 1.4.10
 
-  '@lucide/vue@1.21.0(vue@3.5.18(typescript@5.8.3))':
+  '@lucide/vue@1.33.0(vue@3.5.18(typescript@5.8.3))':
     dependencies:
       vue: 3.5.18(typescript@5.8.3)
 
@@ -11016,7 +11019,7 @@ snapshots:
       '@codemirror/state': 6.7.0
       '@codemirror/view': 6.43.3
       '@lezer/highlight': 1.2.3
-      '@lucide/vue': 1.21.0(vue@3.5.18(typescript@5.8.3))
+      '@lucide/vue': 1.33.0(vue@3.5.18(typescript@5.8.3))
       '@types/markdown-it': 14.1.2
       '@vavt/copy2clipboard': 1.0.3
       '@vavt/markdown-theme': 5.0.2

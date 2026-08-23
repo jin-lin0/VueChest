@@ -4,6 +4,10 @@ import { RACING_AI } from './config'
 import type { RacingCar } from './config'
 import { queryTrack } from './track'
 import type { PlayerData } from './types'
+import type { Difficulty } from './game'
+import { AI_DIFFICULTY } from './rules'
+
+export type AIPersonality = 'aggressive' | 'steady' | 'drifter' | 'sprinter'
 
 export interface AICarState {
   data: PlayerData
@@ -13,6 +17,9 @@ export interface AICarState {
   laneOffset: number
   /** 0.85~1.0 的个体差异，避免 AI 扎堆 */
   paceFactor: number
+  personality: AIPersonality
+  mistakeTimer: number
+  itemCooldown: number
 }
 
 export interface AIContext {
@@ -23,6 +30,8 @@ export interface AIContext {
   gameTime: number
   /** 玩家总进度（圈 * 分段数 + 分段内位置），用于橡皮筋 */
   playerProgress: number
+  difficulty: Difficulty
+  random?: () => number
 }
 
 /** 比赛进度（分段为单位）：圈数 * 分段数 + 当前分段 + 分段内参数。 */
@@ -45,7 +54,7 @@ function wrapAngle(a: number): number {
 /** 更新单个 AI：转向追踪前瞻点、按弯道缓急调速、检查点/圈数推进。 */
 export function updateAI(ai: AICarState, ctx: AIContext): void {
   const d = ai.data
-  if (d.finished) {
+  if (d.finished || d.eliminated) {
     // 完赛后缓慢滑行
     d.speed = Math.max(d.speed - 20 * ctx.delta, 0)
     d.position.x += Math.sin(d.rotation) * d.speed * ctx.delta
@@ -70,20 +79,31 @@ export function updateAI(ai: AICarState, ctx: AIContext): void {
   // 转向：朝目标点修正 heading
   const desired = Math.atan2(aimX - d.position.x, aimZ - d.position.z)
   const diff = wrapAngle(desired - d.rotation)
-  const handling = ai.car.handling / 100
+  const profile = AI_DIFFICULTY[ctx.difficulty]
+  const personalityHandling = ai.personality === 'drifter' ? 1.12 : ai.personality === 'sprinter' ? 0.94 : 1
+  const handling = (ai.car.handling / 100) * personalityHandling
   const maxTurn = RACING_AI.TURN_RATE * handling
   d.rotation += THREE.MathUtils.clamp(diff, -maxTurn * ctx.delta, maxTurn * ctx.delta)
 
   // 目标速度：弯道越急（diff 越大）越慢；橡皮筋按与玩家的进度差微调
   const maxSpeed = ai.car.speed / 5
   const curveRatio = THREE.MathUtils.clamp(1 - Math.abs(diff) * RACING_AI.CURVE_SLOWDOWN, RACING_AI.MIN_SPEED_RATIO, 1)
-  let targetSpeed = maxSpeed * curveRatio * ai.paceFactor
+  const personalityPace = ai.personality === 'sprinter' ? 1.04 : ai.personality === 'steady' ? 0.99 : 1
+  let targetSpeed = maxSpeed * curveRatio * ai.paceFactor * profile.pace * personalityPace
   const gap = ctx.playerProgress - ((d.currentLap - 1) * n + q.segIndex + q.segParam)
-  if (gap > RACING_AI.RUBBER_BAND_GAP) {
-    targetSpeed *= RACING_AI.RUBBER_BAND_UP
-  } else if (gap < -RACING_AI.RUBBER_BAND_GAP) {
-    targetSpeed *= RACING_AI.RUBBER_BAND_DOWN
+  const inFinalSegment = d.currentLap >= ctx.totalLaps && q.segIndex >= n - RACING_AI.LOOKAHEAD * 2
+  if (!inFinalSegment && gap > profile.rubberGap) {
+    targetSpeed *= profile.catchUp
+  } else if (!inFinalSegment && gap < -profile.rubberGap) {
+    targetSpeed *= profile.leadSlowdown
   }
+  targetSpeed = Math.min(targetSpeed, maxSpeed * 1.08)
+
+  ai.mistakeTimer = Math.max(0, ai.mistakeTimer - ctx.delta)
+  if (ai.mistakeTimer <= 0 && Math.abs(diff) > 0.35 && (ctx.random?.() ?? Math.random()) < profile.mistakeChance * ctx.delta) {
+    ai.mistakeTimer = 0.45
+  }
+  if (ai.mistakeTimer > 0) targetSpeed *= 0.72
 
   if (d.speed < targetSpeed) {
     d.speed = Math.min(d.speed + 22 * ctx.delta, targetSpeed)
@@ -105,14 +125,17 @@ export function updateAI(ai: AICarState, ctx: AIContext): void {
   ai.mesh.rotation.y = d.rotation
 
   // 检查点 & 圈数
-  ctx.checkpoints.forEach((checkpoint, index) => {
-    if (!d.checkpointsPassed[index]) {
-      const dist = Math.hypot(d.position.x - checkpoint.x, d.position.z - checkpoint.z)
-      if (dist < 15) d.checkpointsPassed[index] = true
+  const checkpoint = ctx.checkpoints[d.checkpointIndex]
+  if (checkpoint) {
+    const dist = Math.hypot(d.position.x - checkpoint.x, d.position.z - checkpoint.z)
+    if (dist < 15) {
+      d.checkpointsPassed[d.checkpointIndex] = true
+      d.checkpointIndex++
     }
-  })
-  if (d.checkpointsPassed.every((cp) => cp)) {
+  }
+  if (d.checkpointIndex >= ctx.checkpoints.length) {
     d.checkpointsPassed = new Array(ctx.checkpoints.length).fill(false)
+    d.checkpointIndex = 0
     d.currentLap++
     if (d.currentLap > ctx.totalLaps) {
       d.finished = true

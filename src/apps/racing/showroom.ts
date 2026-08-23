@@ -1,9 +1,10 @@
-// racing 选车 3D 展厅：独立小场景 + 独立 renderer，把 buildCarMesh 的真车模搬上旋转展台。
+// racing 选车 3D 展厅：独立小场景 + 独立 renderer，把缓存中的真实车模搬上旋转展台。
 // 只服务菜单界面：start()/stop() 由 App.vue 按 gameState 控制，组件卸载时 dispose()。
 import * as THREE from 'three'
-import { buildCarMesh } from './car'
+import { buildCarMesh, buildLoadedCarMesh, hasCarModelFailed, preloadCarModels } from './car'
 import { disposeObject } from './track'
-import type { RacingCar } from './config'
+import { RACING_CARS, type RacingCar } from './config'
+import type { LiveryId } from './game'
 
 /** 展台槽位：转盘 + 车 + 发光环 + 车底光晕 + 交换动画状态机。 */
 interface ShowroomSlot {
@@ -29,6 +30,7 @@ const ROT_SPEED = 0.55 // 展台基础转速（rad/s）
 const SWAP_DURATION = 0.55 // 换车动画时长（秒）
 const DOUBLE_X = 2.9 // 双展台（本地双人）时的横向偏移（略大于底座半径，避免两环相叠）
 const PARTICLE_COUNT = 140 // 漂浮粒子数
+const RACING_CAR_LOOKUP = new Map(RACING_CARS.map((car) => [car.id, car]))
 
 /** 回弹缓动：换车登场时轻微 overshoot，更有弹性 */
 function easeOutBack(t: number): number {
@@ -66,6 +68,8 @@ export class CarShowroom {
   private particlePositions: Float32Array
   /** 前补光：颜色跟随 P1 赛车，把整个展厅染上当前车的色调 */
   private accent: THREE.DirectionalLight
+  private livery: LiveryId = 'classic'
+  private disposed = false
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
@@ -158,6 +162,16 @@ export class CarShowroom {
     slot.spinBoost = 7
   }
 
+  setLivery(livery: LiveryId): void {
+    if (this.livery === livery) return
+    this.livery = livery
+    this.slots.forEach((slot) => {
+      if (slot.carId < 0) return
+      const config = slot.pendingCar ?? RACING_CAR_LOOKUP.get(slot.carId)
+      if (config) this.attachCar(slot, config)
+    })
+  }
+
   start(): void {
     if (this.running) return
     this.running = true
@@ -183,6 +197,7 @@ export class CarShowroom {
   }
 
   dispose(): void {
+    this.disposed = true
     this.stop()
     this.resizeObserver.disconnect()
     disposeObject(this.scene)
@@ -275,13 +290,22 @@ export class CarShowroom {
     })
   }
 
-  /** 中点换车：释放旧车 GPU 资源再挂新车，防止反复切换导致显存泄漏 */
+  /** 中点换车：真实模型未就绪时保留当前画面；只有真实资源失败才启用程序化兜底。 */
   private attachCar(slot: ShowroomSlot, config: RacingCar): void {
+    const loaded = buildLoadedCarMesh(config, this.livery)
+    if (!loaded && !hasCarModelFailed(config.id)) {
+      void preloadCarModels([config.id]).then(() => {
+        if (!this.disposed && slot.carId === config.id) this.attachCar(slot, config)
+      })
+      return
+    }
+
     if (slot.car) {
+      slot.car.userData.racingDisposed = true
       slot.pivot.remove(slot.car)
       disposeObject(slot.car)
     }
-    slot.car = buildCarMesh(config).group
+    slot.car = (loaded ?? buildCarMesh(config)).group
     slot.pivot.add(slot.car)
     slot.ringColor.set(config.color)
   }

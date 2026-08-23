@@ -22,4 +22,8 @@ export const STORAGE_KEYS = {
   DOCS_FOLDER_DEPTH: 'docs:folder-depth',
   // rhythm
   RHYTHM_SETTINGS: 'rhythm:settings',
+  // racing
+  RACING_SAVE: 'racing:save:v1',
+  RACING_SETTINGS: 'racing:settings:v1',
+  RACING_CONFIG: 'racing:config:v1',
 } as const

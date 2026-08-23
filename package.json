@@ -27,6 +27,7 @@
     "kb:publish": "node scripts/knowledge/kb-sync-raw.mjs --push && node scripts/knowledge/build-knowledge.mjs"
   },
   "dependencies": {
+    "@lucide/vue": "1.33.0",
     "@vuepic/vue-datepicker": "^13.0.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",

@@ -1,0 +1,13 @@
+{
+  "id": "desert",
+  "name": "赤沙峡谷",
+  "environment": "/assets/racing/desert/quarry_01_1k.hdr",
+  "props": [
+    "/assets/racing/props/desert/cactus-tall.glb",
+    "/assets/racing/props/desert/rock-tall.glb",
+    "/assets/racing/props/common/bannerTowerRed.glb",
+    "/assets/racing/props/common/grandStandCovered.glb"
+  ],
+  "source": "https://polyhaven.com/a/quarry_01",
+  "license": "CC0"
+}
