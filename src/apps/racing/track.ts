@@ -537,6 +537,32 @@ export function buildEnvironment(
     scene.add(mesh)
   }
 
+  if (theme === 'ridge') {
+    const starCount = Math.round(160 * density)
+    const positions = new Float32Array(starCount * 3)
+    for (let i = 0; i < starCount; i++) {
+      const angle = random() * Math.PI * 2
+      const distance = 150 + random() * 190
+      positions[i * 3] = Math.cos(angle) * distance
+      positions[i * 3 + 1] = 65 + random() * 125
+      positions[i * 3 + 2] = Math.sin(angle) * distance
+    }
+    const stars = new THREE.BufferGeometry()
+    stars.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    scene.add(
+      new THREE.Points(
+        stars,
+        new THREE.PointsMaterial({
+          color: 0xe7e4ff,
+          size: 1.1,
+          transparent: true,
+          opacity: 0.88,
+          depthWrite: false,
+        }),
+      ),
+    )
+  }
+
   // 云（几坨压扁的白色球）
   const cloudMat = new THREE.MeshStandardMaterial({
     color:

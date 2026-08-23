@@ -1,13 +1,19 @@
 {
   "id": "ridge",
   "name": "极夜回环",
-  "environment": "/assets/racing/snow/snowy_field_1k.hdr",
+  "environment": "/assets/racing/ridge/qwantani_night_1k.hdr",
   "props": [
-    "/assets/racing/props/snow/tree-snow-a.glb",
-    "/assets/racing/props/snow/rocks-large.glb",
+    "/assets/racing/props/ridge/tree-dark.glb",
+    "/assets/racing/props/ridge/rock-tall.glb",
+    "/assets/racing/props/ridge/light-orb.glb",
+    "/assets/racing/props/ridge/light-post.glb",
     "/assets/racing/props/common/bannerTowerRed.glb",
     "/assets/racing/props/common/grandStandCovered.glb"
   ],
-  "source": "https://polyhaven.com/a/snowy_field",
+  "sources": [
+    "https://polyhaven.com/a/qwantani_night",
+    "https://kenney.nl/assets/nature-kit",
+    "https://kenney.nl/assets/racing-kit"
+  ],
   "license": "CC0"
 }

@@ -1345,7 +1345,8 @@ function initScene() {
     }
     environmentTexture = texture
     initializedScene.environment = texture
-    initializedScene.environmentIntensity = racingSettings.quality === 'low' ? 0.55 : 0.85
+    initializedScene.environmentIntensity =
+      activeTrackId.value === 'ridge' ? 0.4 : racingSettings.quality === 'low' ? 0.55 : 0.85
   })
   particles?.dispose() // 上一局的粒子系统共享几何体
   particles = new ParticleSystem(scene)

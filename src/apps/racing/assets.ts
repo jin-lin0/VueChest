@@ -7,7 +7,7 @@ export const TRACK_ENVIRONMENT_URLS: Record<FixedTrackId, string> = {
   forest: '/assets/racing/forest/tief_etz_1k.hdr',
   desert: '/assets/racing/desert/quarry_01_1k.hdr',
   snow: '/assets/racing/snow/snowy_field_1k.hdr',
-  ridge: '/assets/racing/snow/snowy_field_1k.hdr',
+  ridge: '/assets/racing/ridge/qwantani_night_1k.hdr',
 }
 
 const TRACK_PROP_URLS: Record<FixedTrackId, [string, string]> = {
@@ -20,7 +20,11 @@ const TRACK_PROP_URLS: Record<FixedTrackId, [string, string]> = {
     '/assets/racing/props/desert/rock-tall.glb',
   ],
   snow: ['/assets/racing/props/snow/tree-snow-a.glb', '/assets/racing/props/snow/rocks-large.glb'],
-  ridge: ['/assets/racing/props/snow/tree-snow-a.glb', '/assets/racing/props/snow/rocks-large.glb'],
+  ridge: ['/assets/racing/props/ridge/tree-dark.glb', '/assets/racing/props/ridge/rock-tall.glb'],
+}
+
+const TRACK_ACCENT_PROP_URLS: Partial<Record<FixedTrackId, readonly string[]>> = {
+  ridge: ['/assets/racing/props/ridge/light-orb.glb', '/assets/racing/props/ridge/light-post.glb'],
 }
 
 const COMMON_PROP_URLS = [
@@ -85,7 +89,11 @@ export async function preloadRaceAssets(
       if (response.ok) await response.json()
     },
     () => loadEnvironmentSource(trackId),
-    ...[...TRACK_PROP_URLS[trackId], ...COMMON_PROP_URLS].map((url) => () => loadPropSource(url)),
+    ...[
+      ...TRACK_PROP_URLS[trackId],
+      ...(TRACK_ACCENT_PROP_URLS[trackId] ?? []),
+      ...COMMON_PROP_URLS,
+    ].map((url) => () => loadPropSource(url)),
   ]
   let completed = 0
   onProgress(4, '准备赛车资源')
@@ -150,6 +158,42 @@ function disposeModel(root: THREE.Object3D) {
   })
 }
 
+function tintRidgeLight(root: THREE.Object3D): void {
+  const glow = new THREE.Color(0xc58cff)
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    for (const material of materials) {
+      if (!(material instanceof THREE.MeshStandardMaterial)) continue
+      material.color.lerp(glow, 0.55)
+      material.emissive.copy(glow)
+      material.emissiveIntensity = 1.35
+    }
+  })
+}
+
+function selectSharpCorners(points: THREE.Vector3[], count: number): number[] {
+  const ranked = points
+    .map((point, index) => {
+      const previous = points[(index - 1 + points.length) % points.length]
+      const next = points[(index + 1) % points.length]
+      const incoming = point.clone().sub(previous).normalize()
+      const outgoing = next.clone().sub(point).normalize()
+      return { index, angle: Math.acos(THREE.MathUtils.clamp(incoming.dot(outgoing), -1, 1)) }
+    })
+    .sort((a, b) => b.angle - a.angle)
+  const selected: number[] = []
+  for (const candidate of ranked) {
+    const farEnough = selected.every((index) => {
+      const distance = Math.abs(candidate.index - index)
+      return Math.min(distance, points.length - distance) >= 4
+    })
+    if (farEnough) selected.push(candidate.index)
+    if (selected.length >= count) break
+  }
+  return selected.sort((a, b) => a - b)
+}
+
 /** 把每个主题实际用到的 CC0 道具实例化到赛道边，低画质自动减少实例数。 */
 export async function loadTrackProps(
   scene: THREE.Scene,
@@ -166,9 +210,12 @@ export async function loadTrackProps(
       loadPropSource(TRACK_PROP_URLS[trackId][1]),
       loadPropSource(COMMON_PROP_URLS[0]),
       loadPropSource(COMMON_PROP_URLS[1]),
+      ...(TRACK_ACCENT_PROP_URLS[trackId] ?? []).map((url) => loadPropSource(url)),
     ])
     if (sources.some((source) => !source) || cancelled()) return
-    const [themeA, themeB, banner, grandstand] = sources.map((source) => cloneModel(source!))
+    const [themeA, themeB, banner, grandstand] = sources
+      .slice(0, 4)
+      .map((source) => cloneModel(source!))
     if (cancelled()) {
       ;[themeA, themeB, banner, grandstand].forEach(disposeModel)
       return
@@ -194,6 +241,33 @@ export async function loadTrackProps(
       instance.position.z += point.z + (dx / length) * offset * side
       instance.rotation.y = (i * 2.399) % (Math.PI * 2)
       scene.add(instance)
+    }
+
+    if (trackId === 'ridge' && sources.length >= 6) {
+      const accentSources = sources.slice(4)
+      const cornerIndices = selectSharpCorners(points, quality === 'low' ? 6 : 10)
+      cornerIndices.forEach((index, order) => {
+        const source = accentSources[order % accentSources.length]
+        if (!source) return
+        const instance = cloneModel(source)
+        normalizeModel(instance, order % 2 === 0 ? 3.2 : 5.5)
+        tintRidgeLight(instance)
+        const previous = points[(index - 1 + points.length) % points.length]
+        const point = points[index]
+        const next = points[(index + 1) % points.length]
+        const incomingX = point.x - previous.x
+        const incomingZ = point.z - previous.z
+        const outgoingX = next.x - point.x
+        const outgoingZ = next.z - point.z
+        const turnCross = incomingX * outgoingZ - incomingZ * outgoingX
+        const length = Math.hypot(outgoingX, outgoingZ) || 1
+        const side = turnCross >= 0 ? -1 : 1
+        const offset = trackWidth / 2 + 2.8
+        instance.position.x += point.x + (-outgoingZ / length) * offset * side
+        instance.position.z += point.z + (outgoingX / length) * offset * side
+        instance.rotation.y = Math.atan2(outgoingX, outgoingZ)
+        scene.add(instance)
+      })
     }
 
     const start = points[0]

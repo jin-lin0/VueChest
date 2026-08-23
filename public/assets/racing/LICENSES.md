@@ -18,7 +18,11 @@ standalone GLB files; the full source packs, website logos and preview images ar
 - Tief Etz — https://polyhaven.com/a/tief_etz
 - Quarry 01 — https://polyhaven.com/a/quarry_01
 - Snowy Field — https://polyhaven.com/a/snowy_field
+- Qwantani Night — https://polyhaven.com/a/qwantani_night
 - License: Creative Commons Zero (CC0) — https://polyhaven.com/license
 
 Only the 1K HDR environment files are included. Website artwork and preview images are not bundled.
 
+`props/ridge/` contains selected standalone GLB files from Kenney Nature Kit and Racing Kit.
+The extreme-night track uses the 1K Qwantani Night HDRI; full source archives and preview
+images are not bundled.
