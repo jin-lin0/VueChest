@@ -50,4 +50,88 @@ describe('workspace templates', () => {
     expect(imported?.items).toEqual([{ appKey: 'builtin:1' }, { appKey: 'market:42' }])
     expect(store.config.activeWorkspaceId).toBe(id)
   })
+
+  it('deduplicates repeated app cards when loading a workspace', () => {
+    mocks.storage.set('workspace-config:guest', {
+      version: 1,
+      activeWorkspaceId: 'workspace-1',
+      workspaces: [
+        {
+          id: 'workspace-1',
+          name: '我的工作台',
+          icon: '⌂',
+          items: [{ appKey: 'builtin:1' }, { appKey: 'market:42' }, { appKey: 'market:42' }],
+        },
+      ],
+      recentApps: [],
+      knownApps: ['builtin:1', 'market:42'],
+      preferences: {
+        showWorkspaceBar: true,
+        showAppDescriptions: true,
+        cardDensity: 'standard',
+      },
+      layoutUpdatedAt: 1,
+    })
+
+    const store = useWorkspaceStore()
+    store.init()
+
+    expect(store.activeWorkspace?.items).toEqual([{ appKey: 'builtin:1' }, { appKey: 'market:42' }])
+  })
+
+  it('records a restored app as known without adding a duplicate card', () => {
+    mocks.storage.set('workspace-config:guest', {
+      version: 1,
+      activeWorkspaceId: 'workspace-1',
+      workspaces: [
+        {
+          id: 'workspace-1',
+          name: '我的工作台',
+          icon: '⌂',
+          items: [{ appKey: 'builtin:1' }, { appKey: 'market:42' }],
+        },
+      ],
+      recentApps: [],
+      knownApps: ['builtin:1'],
+      preferences: {
+        showWorkspaceBar: true,
+        showAppDescriptions: true,
+        cardDensity: 'standard',
+      },
+      layoutUpdatedAt: 1,
+    })
+
+    const store = useWorkspaceStore()
+    store.init()
+    store.reconcileAvailableApps(['builtin:1', 'market:42'])
+
+    expect(store.activeWorkspace?.items).toEqual([{ appKey: 'builtin:1' }, { appKey: 'market:42' }])
+    expect(store.config.knownApps).toContain('market:42')
+    expect(store.config.layoutUpdatedAt).toBe(1)
+  })
+
+  it('still adds a newly installed app that is absent from every workspace', () => {
+    const store = useWorkspaceStore()
+    store.init()
+
+    store.reconcileAvailableApps(['builtin:1', 'market:42'])
+    store.reconcileAvailableApps(['builtin:1', 'market:42'])
+
+    expect(store.activeWorkspace?.items.filter((item) => item.appKey === 'market:42')).toEqual([
+      { appKey: 'market:42' },
+    ])
+  })
+
+  it('deduplicates cards passed back from workspace reordering', () => {
+    const store = useWorkspaceStore()
+    store.init()
+
+    store.setActiveItems([
+      { appKey: 'builtin:1' },
+      { appKey: 'market:42' },
+      { appKey: 'market:42' },
+    ])
+
+    expect(store.activeWorkspace?.items).toEqual([{ appKey: 'builtin:1' }, { appKey: 'market:42' }])
+  })
 })

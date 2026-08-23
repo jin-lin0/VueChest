@@ -66,6 +66,25 @@ const createId = () => {
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 
+function normalizeWorkspaceItems(value: unknown): WorkspaceItem[] {
+  if (!Array.isArray(value)) return []
+
+  const seen = new Set<string>()
+  const items: WorkspaceItem[] = []
+  for (const entry of value) {
+    const appKey =
+      entry && typeof entry === 'object' && 'appKey' in entry
+        ? String((entry as { appKey?: unknown }).appKey || '')
+        : ''
+    if (!APP_KEY_RE.test(appKey) || seen.has(appKey)) continue
+
+    seen.add(appKey)
+    items.push({ appKey })
+    if (items.length >= 100) break
+  }
+  return items
+}
+
 function createInitialConfig(): WorkspaceConfig {
   const keys = builtinAppKeys()
   const oldOrder = getStorage<number[]>(STORAGE_KEYS.HOME_APP_ORDER, []) || []
@@ -119,12 +138,7 @@ function normalizeConfig(value: unknown): WorkspaceConfig {
               ? item.name.trim().slice(0, 20)
               : '未命名工作区',
           icon: typeof item.icon === 'string' && item.icon ? item.icon.slice(0, 8) : '◫',
-          items: Array.isArray(item.items)
-            ? item.items
-                .filter((entry) => entry && APP_KEY_RE.test(entry.appKey))
-                .slice(0, 100)
-                .map((entry) => ({ appKey: entry.appKey }))
-            : [],
+          items: normalizeWorkspaceItems(item.items),
         }))
     : []
 
@@ -409,7 +423,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   function setActiveItems(items: WorkspaceItem[]) {
     if (!activeWorkspace.value) return
-    activeWorkspace.value.items = items.map((item) => ({ appKey: item.appKey }))
+    activeWorkspace.value.items = normalizeWorkspaceItems(items)
     saveLayout()
   }
 
@@ -444,12 +458,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const additions = validKeys.filter((key) => !known.has(key))
     if (additions.length === 0) return
 
+    const placedApps = new Set(
+      config.value.workspaces.flatMap((workspace) => workspace.items.map((item) => item.appKey)),
+    )
+    let layoutChanged = false
     additions.forEach((appKey) => {
-      activeWorkspace.value?.items.push({ appKey })
+      if (!placedApps.has(appKey) && activeWorkspace.value) {
+        activeWorkspace.value.items.push({ appKey })
+        placedApps.add(appKey)
+        layoutChanged = true
+      }
       known.add(appKey)
     })
     config.value.knownApps = [...known]
-    saveLayout()
+    if (layoutChanged) saveLayout()
+    else saveLocal()
   }
 
   return {
