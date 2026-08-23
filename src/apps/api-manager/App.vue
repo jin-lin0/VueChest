@@ -527,11 +527,13 @@ async function deleteApi(api: ApiItem) {
 }
 
 function togglePin(api: ApiItem) {
+  const willPin = !api.pinned
   const userApi = userApis.value.find((item) => item.id === api.id)
   if (userApi) userApi.pinned = !userApi.pinned
   else if (pinnedSystemIds.value.includes(api.id)) {
     pinnedSystemIds.value = pinnedSystemIds.value.filter((id) => id !== api.id)
   } else pinnedSystemIds.value = [...pinnedSystemIds.value, api.id]
+  notify('success', willPin ? `已置顶「${api.name}」` : `已取消置顶「${api.name}」`)
 }
 
 function addParam() {
@@ -670,14 +672,17 @@ onBeforeUnmount(() => {
             <span v-for="index in 6" :key="index"></span>
           </div>
 
-          <button
+          <div
             v-for="api in filteredApis"
             v-else
             :key="api.id"
             class="catalog-item"
             :class="{ active: selectedApi?.id === api.id }"
-            type="button"
+            role="button"
+            tabindex="0"
             @click="selectApi(api)"
+            @keydown.enter.prevent="selectApi(api)"
+            @keydown.space.prevent="selectApi(api)"
           >
             <span class="method-dot" :class="api.method.toLowerCase()">{{ api.method }}</span>
             <span class="catalog-item-copy">
@@ -687,11 +692,20 @@ onBeforeUnmount(() => {
               >
               <small>{{ api.category }} · {{ api.params.length }} 个参数</small>
             </span>
-            <span v-if="api.pinned" class="pin-indicator" title="已置顶">●</span>
+            <button
+              class="catalog-pin-button"
+              :class="{ active: api.pinned }"
+              type="button"
+              :aria-label="api.pinned ? `取消置顶 ${api.name}` : `置顶 ${api.name}`"
+              :title="api.pinned ? '取消置顶' : '置顶'"
+              @click.stop="togglePin(api)"
+            >
+              {{ api.pinned ? '★' : '☆' }}
+            </button>
             <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true">
               <path d="m9 18 6-6-6-6" />
             </svg>
-          </button>
+          </div>
 
           <EmptyState
             v-if="!isCatalogLoading && filteredApis.length === 0"
@@ -981,10 +995,10 @@ onBeforeUnmount(() => {
                   type="button"
                   class="pin-button"
                   :class="{ active: selectedApi.pinned }"
-                  :aria-label="selectedApi.pinned ? '取消置顶' : '置顶'"
                   @click="togglePin(selectedApi)"
                 >
-                  ●
+                  <span aria-hidden="true">{{ selectedApi.pinned ? '★' : '☆' }}</span>
+                  {{ selectedApi.pinned ? '已置顶' : '置顶' }}
                 </button>
               </div>
               <p>{{ selectedApi.description }}</p>

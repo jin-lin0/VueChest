@@ -450,9 +450,28 @@ svg {
   font-size: 9px;
 }
 
-.pin-indicator {
+.catalog-pin-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.catalog-pin-button:hover,
+.catalog-pin-button.active {
+  background: rgba(213, 139, 33, 0.12);
   color: var(--lab-amber);
-  font-size: 8px;
+  transform: scale(1.06);
 }
 
 .chevron {
@@ -1335,18 +1354,27 @@ svg {
 }
 
 .pin-button {
-  width: 29px;
+  display: inline-flex;
   height: 29px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
   border-radius: 8px;
   background: var(--bg-subtle);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .pin-button.active {
   background: rgba(213, 139, 33, 0.12);
   color: var(--lab-amber);
+}
+
+.pin-button span {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .endpoint-heading > p {
