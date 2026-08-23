@@ -27,7 +27,7 @@ const onAudioError = () => {
 
 // 沉浸式游戏页（全屏 canvas）隐藏播放条，避免遮挡游戏画面
 const route = useRoute()
-const GAME_ROUTE_PREFIXES = ['/snake', '/racing']
+const GAME_ROUTE_PREFIXES = ['/snake', '/racing', '/rhythm', '/neon-survivor']
 const isGameRoute = computed(() => GAME_ROUTE_PREFIXES.some((p) => route.path.startsWith(p)))
 
 // 播放条作为 App.vue 外壳的 flex 兄弟节点钉在底部（见 App.vue 的 .app / .app-main 布局），
@@ -36,10 +36,15 @@ const isGameRoute = computed(() => GAME_ROUTE_PREFIXES.some((p) => route.path.st
 // --- Refs ---
 const audioRef = ref<HTMLAudioElement | null>(null)
 const showLyrics = ref(false)
-const drawerTab = ref<'playlist' | 'simi'>('playlist')
+const drawerTab = ref<'playlist' | 'simi' | 'history'>('playlist')
 const progressDragging = ref(false)
 const progressPercent = ref(0)
 const lyricContainerRef = ref<HTMLDivElement | null>(null)
+const showSleepMenu = ref(false)
+const sleepMinutes = ref(30)
+const sleepEndsAt = ref<number | null>(null)
+const sleepRemaining = ref(0)
+let sleepTimer: ReturnType<typeof setInterval> | null = null
 
 // --- Audio control ---
 const onTimeUpdate = () => {
@@ -170,6 +175,40 @@ const playFromPlaylist = (index: number) => {
   if (song) music.playSong(song)
 }
 
+const tickSleepTimer = () => {
+  if (!sleepEndsAt.value) return
+  sleepRemaining.value = Math.max(0, Math.ceil((sleepEndsAt.value - Date.now()) / 1000))
+  if (sleepRemaining.value > 0) return
+  audioRef.value?.pause()
+  music.isPlaying = false
+  sleepEndsAt.value = null
+  if (sleepTimer) clearInterval(sleepTimer)
+  sleepTimer = null
+  playErrorToast.value = '睡眠定时结束，播放已暂停'
+}
+
+const startSleepTimer = () => {
+  const minutes = Math.max(1, Math.min(180, Number(sleepMinutes.value) || 30))
+  sleepEndsAt.value = Date.now() + minutes * 60_000
+  sleepRemaining.value = minutes * 60
+  if (sleepTimer) clearInterval(sleepTimer)
+  sleepTimer = setInterval(tickSleepTimer, 1000)
+  showSleepMenu.value = false
+}
+
+const cancelSleepTimer = () => {
+  sleepEndsAt.value = null
+  sleepRemaining.value = 0
+  if (sleepTimer) clearInterval(sleepTimer)
+  sleepTimer = null
+}
+
+const sleepLabel = computed(() => {
+  if (!sleepRemaining.value) return '定时'
+  const minutes = Math.ceil(sleepRemaining.value / 60)
+  return `${minutes}m`
+})
+
 // --- Keyboard shortcuts ---
 const onKeydown = (e: KeyboardEvent) => {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
@@ -181,6 +220,14 @@ const onKeydown = (e: KeyboardEvent) => {
     music.playPrev()
   } else if (e.code === 'ArrowRight') {
     music.playNext()
+  } else if (e.code === 'ArrowUp') {
+    e.preventDefault()
+    music.setVolume(music.volume + 0.05)
+  } else if (e.code === 'ArrowDown') {
+    e.preventDefault()
+    music.setVolume(music.volume - 0.05)
+  } else if (e.code === 'KeyM') {
+    music.setVolume(music.volume > 0 ? 0 : 0.7)
   }
 }
 
@@ -190,6 +237,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  if (sleepTimer) clearInterval(sleepTimer)
 })
 </script>
 
@@ -218,12 +266,19 @@ onUnmounted(() => {
         <button :class="{ active: drawerTab === 'simi' }" @click="drawerTab = 'simi'">
           相似推荐
         </button>
+        <button :class="{ active: drawerTab === 'history' }" @click="drawerTab = 'history'">
+          最近播放
+        </button>
       </div>
       <button class="drawer-close" @click="music.showPlaylist = false">&times;</button>
     </template>
 
     <!-- 播放列表 -->
     <template v-if="drawerTab === 'playlist'">
+      <div v-if="music.playlist.length" class="queue-toolbar">
+        <button @click="music.shufflePlaylist">随机排序</button>
+        <button @click="music.clearPlaylist">清空队列</button>
+      </div>
       <EmptyState v-if="music.playlist.length === 0" icon="🎵" title="播放列表为空" />
       <div
         v-for="(song, index) in music.playlist"
@@ -244,7 +299,7 @@ onUnmounted(() => {
     </template>
 
     <!-- 相似推荐 -->
-    <template v-else>
+    <template v-else-if="drawerTab === 'simi'">
       <div v-if="music.isLoadingSimi" class="drawer-loading">加载中...</div>
       <EmptyState v-else-if="music.simiSongs.length === 0" icon="🎶" title="暂无相似歌曲推荐" />
       <div
@@ -271,6 +326,34 @@ onUnmounted(() => {
           @click.stop="music.toggleFavoriteSong(song)"
         >
           {{ music.isFavoriteSong(song.id) ? '❤️' : '🤍' }}
+        </button>
+      </div>
+    </template>
+    <template v-else>
+      <div v-if="music.playHistory.length" class="queue-toolbar">
+        <span>最近 {{ music.playHistory.length }} 首</span>
+        <button @click="music.clearPlayHistory">清空记录</button>
+      </div>
+      <EmptyState v-if="music.playHistory.length === 0" icon="◷" title="暂无播放记录" />
+      <div
+        v-for="song in music.playHistory"
+        :key="song.id"
+        class="song-item"
+        @click="music.playSong(song)"
+      >
+        <img
+          v-if="song.coverUrl"
+          :src="song.coverUrl + '?param=80y80'"
+          class="simi-cover"
+          alt=""
+          loading="lazy"
+        />
+        <div class="song-info">
+          <div class="song-name">{{ song.name }}</div>
+          <div class="song-artist">{{ song.artists }}</div>
+        </div>
+        <button class="remove-btn" @click.stop="music.removePlayHistoryItem(song.id)">
+          &times;
         </button>
       </div>
     </template>
@@ -422,6 +505,26 @@ onUnmounted(() => {
           >
             词
           </button>
+          <div class="sleep-control">
+            <button
+              class="sleep-btn"
+              :class="{ active: sleepEndsAt }"
+              @click="showSleepMenu = !showSleepMenu"
+              :title="sleepEndsAt ? '睡眠定时运行中' : '睡眠定时'"
+            >
+              {{ sleepLabel }}
+            </button>
+            <div v-if="showSleepMenu" class="sleep-menu" @click.stop>
+              <strong>睡眠定时</strong>
+              <div>
+                <input v-model.number="sleepMinutes" type="number" min="1" max="180" /><span
+                  >分钟</span
+                >
+              </div>
+              <button @click="startSleepTimer">开始计时</button>
+              <button v-if="sleepEndsAt" class="cancel" @click="cancelSleepTimer">取消定时</button>
+            </div>
+          </div>
           <button
             class="list-btn"
             @click="music.showPlaylist = !music.showPlaylist"
@@ -726,6 +829,97 @@ onUnmounted(() => {
   border-radius: 6px;
   color: var(--text-secondary);
   transition: all 0.2s;
+}
+
+.sleep-control {
+  position: relative;
+}
+.sleep-btn {
+  min-width: 38px;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+.sleep-btn.active {
+  border-color: var(--accent);
+  background: rgba(108, 92, 231, 0.18);
+  color: #fff;
+}
+.sleep-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  width: 190px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #1b1b2d;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.sleep-menu > strong {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--text);
+  font-size: 12px;
+}
+.sleep-menu > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.sleep-menu input {
+  width: 90px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.sleep-menu span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.sleep-menu > button {
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+.sleep-menu > button.cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+.queue-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 8px 10px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.queue-toolbar span {
+  margin-right: auto;
+}
+.queue-toolbar button {
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
 }
 
 .lyrics-btn:hover {

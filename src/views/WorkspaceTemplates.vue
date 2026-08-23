@@ -57,12 +57,12 @@ const officialTemplates: SharedTemplate[] = [
   {
     name: '娱乐工作区',
     icon: '🎮',
-    description: '音乐、音游、赛车和贪吃蛇。',
+    description: '音乐播放器和游戏中心。',
     template: {
       version: 1,
       name: '娱乐',
       icon: '🎮',
-      appKeys: [builtinKey(10), builtinKey(16), builtinKey(11), builtinKey(13)],
+      appKeys: [builtinKey(10), builtinKey(18)],
     },
     isOfficial: true,
   },

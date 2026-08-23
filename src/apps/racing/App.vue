@@ -220,7 +220,7 @@
           <button @click="resumeGame">继续游戏</button>
           <button @click="restartGame">重新开始</button>
           <button @click="quitGame">退出游戏</button>
-          <button @click="goBack">返回主页</button>
+          <button @click="goBack">返回游戏中心</button>
         </div>
       </div>
     </div>
@@ -552,7 +552,7 @@
           挑战幽灵
         </button>
         <button @click="quitGame">返回菜单</button>
-        <button @click="goBack">返回主页</button>
+        <button @click="goBack">返回游戏中心</button>
       </div>
     </div>
 
@@ -1210,9 +1210,9 @@ let boostPlayerData: PlayerData | null = null
 const tireMarks: { mesh: THREE.Mesh; opacity: number; createdAt: number }[] = []
 let lastTireMarkTime = 0
 
-// 返回主页
+// 返回游戏中心
 function goBack() {
-  router.push('/')
+  router.push('/games')
 }
 
 // 暂停游戏

@@ -15,7 +15,7 @@ onMounted(() => {
 <template>
   <div class="lobby-page">
     <header class="lobby-header">
-      <button class="btn back" @click="router.push('/')">← 返回</button>
+      <button class="btn back" @click="router.push('/games')">← 返回游戏中心</button>
       <h2>🐍 贪吃蛇</h2>
       <div />
     </header>

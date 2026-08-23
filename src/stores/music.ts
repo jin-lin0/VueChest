@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { getStorage, setStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config'
@@ -89,14 +89,16 @@ export const useMusicStore = defineStore('music', () => {
   const isSearching = ref(false)
 
   // Player state
-  const playlist = ref<Song[]>([])
+  const playlist = ref<Song[]>(getStorage<Song[]>(STORAGE_KEYS.MUSIC_QUEUE, []) || [])
   const currentIndex = ref(-1)
   const activeSong = ref<Song | null>(null)
   const isPlaying = ref(false)
   const currentTime = ref(0)
   const duration = ref(0)
   const volume = ref(getStorage<number>(STORAGE_KEYS.MUSIC_VOLUME) ?? 0.7)
-  const playMode = ref<'list' | 'single' | 'random'>('list')
+  const playMode = ref<'list' | 'single' | 'random'>(
+    getStorage<'list' | 'single' | 'random'>(STORAGE_KEYS.MUSIC_PLAY_MODE, 'list') || 'list',
+  )
   const songUrl = ref('')
   const showPlaylist = ref(false)
   const playerBarVisible = ref(false)
@@ -149,6 +151,12 @@ export const useMusicStore = defineStore('music', () => {
   const searchHistory = ref<string[]>(
     getStorage<string[]>(STORAGE_KEYS.MUSIC_SEARCH_HISTORY, []) || [],
   )
+  const playHistory = ref<Song[]>(getStorage<Song[]>(STORAGE_KEYS.MUSIC_PLAY_HISTORY, []) || [])
+
+  watch(playlist, (value) => setStorage(STORAGE_KEYS.MUSIC_QUEUE, value.slice(0, 200)), {
+    deep: true,
+  })
+  watch(playMode, (value) => setStorage(STORAGE_KEYS.MUSIC_PLAY_MODE, value))
 
   // ===== 收藏（我的喜欢 + 用户分组）=====
   // 未登录时 favorites 仅来自本地；登录后由服务端分组水合
@@ -369,6 +377,11 @@ export const useMusicStore = defineStore('music', () => {
     isLoadingUrl.value = true
     activeSong.value = song
     playerBarVisible.value = true
+    playHistory.value = [song, ...playHistory.value.filter((item) => item.id !== song.id)].slice(
+      0,
+      80,
+    )
+    setStorage(STORAGE_KEYS.MUSIC_PLAY_HISTORY, playHistory.value)
 
     try {
       const url = musicApi.songUrlPath(song.server || 'netease', song.id)
@@ -613,6 +626,35 @@ export const useMusicStore = defineStore('music', () => {
         activeSong.value = null
       }
     }
+  }
+
+  const clearPlaylist = () => {
+    playlist.value = []
+    currentIndex.value = -1
+    activeSong.value = null
+    songUrl.value = ''
+    isPlaying.value = false
+  }
+
+  const shufflePlaylist = () => {
+    const currentId = activeSong.value?.id
+    const shuffled = [...playlist.value]
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1))
+      ;[shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]]
+    }
+    playlist.value = shuffled
+    currentIndex.value = currentId ? shuffled.findIndex((item) => item.id === currentId) : -1
+  }
+
+  const clearPlayHistory = () => {
+    playHistory.value = []
+    setStorage(STORAGE_KEYS.MUSIC_PLAY_HISTORY, [])
+  }
+
+  const removePlayHistoryItem = (songId: string) => {
+    playHistory.value = playHistory.value.filter((item) => item.id !== songId)
+    setStorage(STORAGE_KEYS.MUSIC_PLAY_HISTORY, playHistory.value)
   }
 
   // ===== Discover 发现页 =====
@@ -888,6 +930,7 @@ export const useMusicStore = defineStore('music', () => {
     simiSongs,
     isLoadingSimi,
     searchHistory,
+    playHistory,
     favorites,
     favoriteGroups,
     groupsLoaded,
@@ -927,6 +970,10 @@ export const useMusicStore = defineStore('music', () => {
     isInGroup,
     cyclePlayMode,
     removeSongFromPlaylist,
+    clearPlaylist,
+    shufflePlaylist,
+    clearPlayHistory,
+    removePlayHistoryItem,
     formatDuration,
     removeSearchHistory,
     clearSearchHistory,

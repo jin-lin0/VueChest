@@ -55,9 +55,18 @@ export type WorkspaceSyncState = 'local' | 'syncing' | 'synced' | 'error'
 const MAX_WORKSPACES = 8
 const MAX_RECENT_APPS = 12
 const APP_KEY_RE = /^(builtin|market):\d+$/
-
-const builtinAppKeys = () =>
+const availableBuiltinAppKeys = () =>
   APP_MODULES.filter((app) => !app.devOnly || import.meta.env.DEV).map((app) => `builtin:${app.id}`)
+
+const defaultHiddenBuiltinKeys = () =>
+  APP_MODULES.filter((app) => (!app.devOnly || import.meta.env.DEV) && app.defaultHidden).map(
+    (app) => `builtin:${app.id}`,
+  )
+
+const defaultBuiltinAppKeys = () =>
+  APP_MODULES.filter((app) => (!app.devOnly || import.meta.env.DEV) && !app.defaultHidden).map(
+    (app) => `builtin:${app.id}`,
+  )
 
 const createId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
@@ -86,7 +95,8 @@ function normalizeWorkspaceItems(value: unknown): WorkspaceItem[] {
 }
 
 function createInitialConfig(): WorkspaceConfig {
-  const keys = builtinAppKeys()
+  const keys = defaultBuiltinAppKeys()
+  const availableKeys = availableBuiltinAppKeys()
   const oldOrder = getStorage<number[]>(STORAGE_KEYS.HOME_APP_ORDER, []) || []
   const oldHidden = new Set(getStorage<number[]>(STORAGE_KEYS.HOME_APP_HIDDEN, []) || [])
   const orderedKeys = oldOrder
@@ -112,7 +122,7 @@ function createInitialConfig(): WorkspaceConfig {
       },
     ],
     recentApps: [],
-    knownApps: keys,
+    knownApps: availableKeys,
     preferences: {
       showWorkspaceBar: true,
       showAppDescriptions: true,
@@ -162,8 +172,13 @@ function normalizeConfig(value: unknown): WorkspaceConfig {
           }))
       : [],
     knownApps: Array.isArray(raw.knownApps)
-      ? [...new Set(raw.knownApps.filter((key) => typeof key === 'string' && APP_KEY_RE.test(key)))]
-      : builtinAppKeys(),
+      ? [
+          ...new Set([
+            ...raw.knownApps.filter((key) => typeof key === 'string' && APP_KEY_RE.test(key)),
+            ...defaultHiddenBuiltinKeys(),
+          ]),
+        ]
+      : availableBuiltinAppKeys(),
     preferences: {
       showWorkspaceBar: raw.preferences?.showWorkspaceBar !== false,
       showAppDescriptions: raw.preferences?.showAppDescriptions !== false,

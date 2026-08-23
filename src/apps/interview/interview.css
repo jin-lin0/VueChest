@@ -145,11 +145,11 @@ input:focus-visible {
 .hero-panel {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(250px, 0.5fr);
+  grid-template-columns: minmax(0, 1fr) 210px;
   align-items: center;
-  min-height: 360px;
+  min-height: 180px;
   overflow: hidden;
-  padding: 54px 62px;
+  padding: 24px 34px;
   border-radius: 30px;
   background:
     radial-gradient(circle at 76% 20%, rgba(117, 132, 255, 0.42), transparent 26%),
@@ -217,7 +217,7 @@ input:focus-visible {
 .hero-actions {
   display: flex;
   gap: 12px;
-  margin-top: 31px;
+  margin-top: 0;
 }
 
 .primary-action,
@@ -281,8 +281,8 @@ button:disabled {
 .progress-ring {
   position: relative;
   display: grid;
-  width: 184px;
-  height: 184px;
+  width: 112px;
+  height: 112px;
   place-items: center;
   border-radius: 50%;
   background: conic-gradient(#73e2d4 var(--quiz-progress), rgba(255, 255, 255, 0.12) 0);
@@ -291,8 +291,8 @@ button:disabled {
 
 .progress-ring::before {
   position: absolute;
-  width: 146px;
-  height: 146px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   background: #253052;
   content: '';
@@ -306,13 +306,13 @@ button:disabled {
 }
 
 .progress-ring strong {
-  font-size: 39px;
+  font-size: 25px;
   line-height: 1;
   letter-spacing: -0.04em;
 }
 
 .progress-ring span {
-  margin-top: 8px;
+  margin-top: 4px;
   color: rgba(255, 255, 255, 0.58);
   font-size: 11px;
 }
@@ -320,7 +320,7 @@ button:disabled {
 .hero-summary {
   display: flex;
   gap: 26px;
-  margin-top: 23px;
+  margin-top: 12px;
   color: rgba(255, 255, 255, 0.55);
   font-size: 11px;
 }
@@ -1294,7 +1294,7 @@ button:disabled {
   .hero-panel {
     grid-template-columns: 1fr;
     min-height: auto;
-    padding: 34px 25px;
+    padding: 20px;
     border-radius: 22px;
   }
   .hero-copy h1 {

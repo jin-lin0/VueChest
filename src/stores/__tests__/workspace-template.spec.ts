@@ -6,6 +6,14 @@ const mocks = vi.hoisted(() => ({ storage: new Map<string, unknown>() }))
 vi.mock('@/config', () => ({
   APP_MODULES: [
     { id: 1, name: 'API 管理', icon: 'A', route: '/api-manager', description: 'API' },
+    {
+      id: 11,
+      name: '赛车',
+      icon: 'R',
+      route: '/racing',
+      description: 'Racing',
+      defaultHidden: true,
+    },
   ],
   STORAGE_KEYS: {
     HOME_APP_ORDER: 'home_app_order',
@@ -77,6 +85,44 @@ describe('workspace templates', () => {
     store.init()
 
     expect(store.activeWorkspace?.items).toEqual([{ appKey: 'builtin:1' }, { appKey: 'market:42' }])
+  })
+
+  it('keeps an individually added game while excluding it from a new default workspace', () => {
+    mocks.storage.set('workspace-config:guest', {
+      version: 1,
+      activeWorkspaceId: 'workspace-1',
+      workspaces: [
+        {
+          id: 'workspace-1',
+          name: '我的工作台',
+          icon: '⌂',
+          items: [{ appKey: 'builtin:1' }, { appKey: 'builtin:11' }],
+        },
+      ],
+      recentApps: [],
+      knownApps: ['builtin:1', 'builtin:11'],
+      preferences: {
+        showWorkspaceBar: true,
+        showAppDescriptions: true,
+        cardDensity: 'standard',
+      },
+      layoutUpdatedAt: 1,
+    })
+
+    const store = useWorkspaceStore()
+    store.init()
+
+    expect(store.activeWorkspace?.items).toEqual([
+      { appKey: 'builtin:1' },
+      { appKey: 'builtin:11' },
+    ])
+
+    mocks.storage.clear()
+    setActivePinia(createPinia())
+    const freshStore = useWorkspaceStore()
+    freshStore.init()
+    expect(freshStore.activeWorkspace?.items).toEqual([{ appKey: 'builtin:1' }])
+    expect(freshStore.config.knownApps).toContain('builtin:11')
   })
 
   it('records a restored app as known without adding a duplicate card', () => {

@@ -3,9 +3,15 @@ export const STORAGE_KEYS = {
   HOME_APP_HIDDEN: 'home_app_hidden',
   WORKSPACE_CONFIG_PREFIX: 'workspace-config',
   STOCK_FAVORITES: 'stock-favorites',
+  STOCK_ALERTS: 'stock-alerts',
+  STOCK_NOTES: 'stock-notes',
+  STOCK_RECENT: 'stock-recent',
   MUSIC_VOLUME: 'music-volume',
   MUSIC_SEARCH_HISTORY: 'music-search-history',
   MUSIC_FAVORITES: 'music-favorites',
+  MUSIC_PLAY_HISTORY: 'music-play-history',
+  MUSIC_QUEUE: 'music-queue',
+  MUSIC_PLAY_MODE: 'music-play-mode',
   // ai-chat
   AI_CHAT_SESSIONS: 'ai-chat-sessions',
   AI_CHAT_PROVIDER: 'ai-chat-provider',
@@ -18,6 +24,13 @@ export const STORAGE_KEYS = {
   API_MANAGER_PINNED_IDS: 'api-manager:pinned-ids',
   API_MANAGER_RECENT_IDS: 'api-manager:recent-ids',
   API_MANAGER_HISTORY: 'api-manager:history',
+  API_MANAGER_ENVIRONMENTS: 'api-manager:environments',
+  API_MANAGER_ACTIVE_ENVIRONMENT: 'api-manager:active-environment',
+  API_MANAGER_COLLECTIONS: 'api-manager:collections',
+  API_MANAGER_ACTIVE_COLLECTION: 'api-manager:active-collection',
+  API_MANAGER_SAVED_REQUESTS: 'api-manager:saved-requests',
+  // games
+  GAME_CENTER_PROFILE: 'game-center:profile',
   // docs
   DOCS_FOLDER_DEPTH: 'docs:folder-depth',
   // rhythm

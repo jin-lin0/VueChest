@@ -6,6 +6,8 @@ import {
   formatBytes,
   getEnabledHeaders,
   inferApiAccess,
+  evaluateAssertions,
+  resolveVariables,
 } from '../request-utils'
 
 const api: ApiItem = {
@@ -49,6 +51,29 @@ describe('buildRequestUrl', () => {
     expect(buildRequestUrl(api, { name: 'a/b', year: '2024', page: '2' })).toBe(
       'https://example.com/users/a%2Fb?year=2024&page=2',
     )
+  })
+})
+
+describe('API workspace helpers', () => {
+  it('resolves enabled environment variables', () => {
+    expect(
+      resolveVariables('https://{{host}}/users/{{id}}', [
+        { id: '1', key: 'host', value: 'api.example.com', enabled: true },
+        { id: '2', key: 'id', value: '42', enabled: true },
+      ]),
+    ).toBe('https://api.example.com/users/42')
+  })
+
+  it('evaluates response assertions', () => {
+    const results = evaluateAssertions(
+      [
+        { id: 's', type: 'status', expected: '200', enabled: true },
+        { id: 't', type: 'time', expected: '500', enabled: true },
+        { id: 'b', type: 'body-includes', expected: 'success', enabled: true },
+      ],
+      { status: 200, time: 120, body: '{"success":true}' },
+    )
+    expect(results.every((item) => item.passed)).toBe(true)
   })
 })
 

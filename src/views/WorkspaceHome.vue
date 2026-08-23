@@ -333,7 +333,6 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
         <span class="brand-mark">⚡</span>
         <span class="brand-copy">
           <strong>应用中心</strong>
-          <small>VUECHEST</small>
         </span>
       </button>
 

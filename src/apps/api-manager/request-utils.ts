@@ -7,6 +7,75 @@ export interface RequestHeader {
   enabled: boolean
 }
 
+export interface EnvironmentVariable {
+  id: string
+  key: string
+  value: string
+  enabled: boolean
+}
+
+export interface AssertionRule {
+  id: string
+  type: 'status' | 'time' | 'body-includes'
+  expected: string
+  enabled: boolean
+}
+
+export interface AssertionResult {
+  id: string
+  passed: boolean
+  label: string
+  detail: string
+}
+
+export function resolveVariables(text: string, variables: EnvironmentVariable[]): string {
+  const values = new Map(
+    variables
+      .filter((item) => item.enabled && item.key.trim())
+      .map((item) => [item.key.trim(), item.value]),
+  )
+  return text.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (match, key: string) =>
+    values.has(key) ? values.get(key)! : match,
+  )
+}
+
+export function evaluateAssertions(
+  rules: AssertionRule[],
+  response: { status: number; time: number; body: string },
+): AssertionResult[] {
+  return rules
+    .filter((rule) => rule.enabled)
+    .map((rule) => {
+      if (rule.type === 'status') {
+        const expected = Number(rule.expected)
+        const passed = Number.isFinite(expected) && response.status === expected
+        return {
+          id: rule.id,
+          passed,
+          label: `状态码等于 ${rule.expected || '--'}`,
+          detail: `实际 ${response.status}`,
+        }
+      }
+      if (rule.type === 'time') {
+        const expected = Number(rule.expected)
+        const passed = Number.isFinite(expected) && response.time < expected
+        return {
+          id: rule.id,
+          passed,
+          label: `响应耗时小于 ${rule.expected || '--'} ms`,
+          detail: `实际 ${response.time} ms`,
+        }
+      }
+      const passed = Boolean(rule.expected) && response.body.includes(rule.expected)
+      return {
+        id: rule.id,
+        passed,
+        label: `响应包含「${rule.expected || '--'}」`,
+        detail: passed ? '已找到目标文本' : '未找到目标文本',
+      }
+    })
+}
+
 function getParamValue(param: ApiItem['params'][number], values: Record<string, string>): string {
   const value = values[param.name]
   return value !== undefined && value !== '' ? value : param.defaultValue

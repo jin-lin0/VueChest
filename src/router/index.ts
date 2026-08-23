@@ -47,6 +47,12 @@ const router = createRouter({
       meta: { title: '音乐' },
     },
     {
+      path: '/games',
+      name: 'game-center',
+      component: () => import('../apps/game-center/App.vue'),
+      meta: { title: '游戏中心' },
+    },
+    {
       path: '/racing',
       name: 'racing',
       component: () => import('../apps/racing/App.vue'),

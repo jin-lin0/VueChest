@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 import { getStorage, setStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config'
 import { formatDate } from '@/utils'
+import { api } from '@/lib/request'
+import { buildTechnicalSnapshot, type TechnicalSnapshot } from '@/apps/stock/research'
 
 export interface FavoriteStock {
   code: string
@@ -19,6 +21,8 @@ export interface FavoriteStockData {
   high: string
   low: string
   volume: string
+  turnover?: number | null
+  pe?: number | null
 }
 
 export interface StockResult {
@@ -45,6 +49,69 @@ export interface SearchResult {
   code: string
   name: string
   market: string
+}
+
+export interface MarketIndex {
+  code: string
+  name: string
+  price: number | null
+  change: number | null
+  changePercent: number | null
+}
+
+export interface StockResearchSummary {
+  code: string
+  name: string
+  price: number | null
+  high: number | null
+  low: number | null
+  open: number | null
+  previousClose: number | null
+  volume: number | null
+  amount: number | null
+  outerVolume: number | null
+  volumeRatio: number | null
+  totalMarketCap: number | null
+  floatMarketCap: number | null
+  pe: number | null
+  pb: number | null
+  turnover: number | null
+  changePercent: number | null
+  amplitude: number | null
+}
+
+export interface FinancialReport {
+  reportDate: string
+  reportName: string
+  revenue: number | null
+  revenueGrowth: number | null
+  netProfit: number | null
+  netProfitGrowth: number | null
+  eps: number | null
+  roe: number | null
+  grossMargin: number | null
+  netMargin: number | null
+  debtRatio: number | null
+  currentRatio: number | null
+  cashflowPerShare: number | null
+}
+
+export interface StockNotice {
+  id: string
+  title: string
+  date: string
+  category: string
+  url: string
+}
+
+export interface PriceAlert {
+  id: string
+  code: string
+  name: string
+  direction: 'above' | 'below'
+  target: number
+  enabled: boolean
+  triggeredAt?: number
 }
 
 const getMarketId = (code: string): number => {
@@ -88,6 +155,20 @@ export const useStockStore = defineStore('stock', () => {
   const searchResults = ref<SearchResult[]>([])
   const isSearching = ref(false)
   const showSearchResults = ref(false)
+  const marketOverview = ref<MarketIndex[]>([])
+  const researchSummary = ref<StockResearchSummary | null>(null)
+  const financials = ref<FinancialReport[]>([])
+  const notices = ref<StockNotice[]>([])
+  const technicalSnapshot = ref<TechnicalSnapshot | null>(null)
+  const isResearchLoading = ref(false)
+  const researchError = ref('')
+  const alerts = ref<PriceAlert[]>(getStorage<PriceAlert[]>(STORAGE_KEYS.STOCK_ALERTS, []) || [])
+  const notes = ref<Record<string, string>>(
+    getStorage<Record<string, string>>(STORAGE_KEYS.STOCK_NOTES, {}) || {},
+  )
+  const recentStocks = ref<FavoriteStock[]>(
+    getStorage<FavoriteStock[]>(STORAGE_KEYS.STOCK_RECENT, []) || [],
+  )
 
   const formattedCode = computed(() => {
     if (!stockCode.value) return ''
@@ -134,6 +215,93 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
+  const recordRecent = (code: string, name: string) => {
+    recentStocks.value = [
+      { code, name },
+      ...recentStocks.value.filter((item) => item.code !== code),
+    ].slice(0, 8)
+    setStorage(STORAGE_KEYS.STOCK_RECENT, recentStocks.value)
+  }
+
+  const fetchMarketOverview = async () => {
+    try {
+      const { data } = await api.get<{ data: MarketIndex[] }>(
+        '/api/research-stocks/market-overview',
+        { auth: false },
+      )
+      marketOverview.value = data || []
+    } catch {
+      marketOverview.value = []
+    }
+  }
+
+  const fetchResearchData = async (code: string) => {
+    isResearchLoading.value = true
+    researchError.value = ''
+    try {
+      const [summaryResult, financialResult, noticeResult] = await Promise.allSettled([
+        api.get<{ data: StockResearchSummary }>(`/api/research-stocks/${code}/summary`, {
+          auth: false,
+        }),
+        api.get<{ data: FinancialReport[] }>(`/api/research-stocks/${code}/financials`, {
+          auth: false,
+        }),
+        api.get<{ data: StockNotice[] }>(`/api/research-stocks/${code}/notices?limit=10`, {
+          auth: false,
+        }),
+      ])
+      researchSummary.value =
+        summaryResult.status === 'fulfilled' ? summaryResult.value.data || null : null
+      financials.value =
+        financialResult.status === 'fulfilled' ? financialResult.value.data || [] : []
+      notices.value = noticeResult.status === 'fulfilled' ? noticeResult.value.data || [] : []
+      if (!researchSummary.value && !financials.value.length && !notices.value.length) {
+        researchError.value = '研究数据暂时不可用，行情与技术指标仍可正常使用'
+      }
+    } finally {
+      isResearchLoading.value = false
+    }
+  }
+
+  const refreshTechnicalSnapshot = () => {
+    technicalSnapshot.value = buildTechnicalSnapshot(klineChartData.value)
+  }
+
+  const checkAlerts = (code: string, price: number) => {
+    let changed = false
+    alerts.value = alerts.value.map((alert) => {
+      if (!alert.enabled || alert.code !== code) return alert
+      const reached = alert.direction === 'above' ? price >= alert.target : price <= alert.target
+      if (!reached || alert.triggeredAt) return alert
+      changed = true
+      return { ...alert, triggeredAt: Date.now() }
+    })
+    if (changed) setStorage(STORAGE_KEYS.STOCK_ALERTS, alerts.value)
+  }
+
+  const loadStock = async (code: string, type: 'day' | 'week' | 'month' = 'day', count = 250) => {
+    stockCode.value = code
+    isLoading.value = true
+    error.value = ''
+    try {
+      const [stockData, klineData] = await Promise.all([
+        fetchStockQuote(code),
+        fetchKlineData(code, type, count),
+      ])
+      result.value = stockData
+      klineChartData.value = klineData
+      klineResult.value = klineData.at(-1) || null
+      refreshTechnicalSnapshot()
+      recordRecent(code, stockData.name)
+      checkAlerts(code, Number(stockData.close))
+      await fetchResearchData(code)
+    } catch (reason) {
+      error.value = reason instanceof Error ? reason.message : '查询失败，请稍后重试'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const queryStock = async () => {
     const code = stockCode.value.trim()
     if (!code) {
@@ -146,18 +314,7 @@ export const useStockStore = defineStore('stock', () => {
       return
     }
 
-    isLoading.value = true
-    error.value = ''
-    result.value = null
-
-    try {
-      const stockData = await fetchStockQuote(code)
-      result.value = stockData
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : '查询失败，请稍后重试'
-    } finally {
-      isLoading.value = false
-    }
+    await loadStock(code)
   }
 
   const searchStocks = async (query: string) => {
@@ -217,24 +374,12 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
-  const selectSearchResult = async (result: SearchResult) => {
-    stockCode.value = result.code
+  const selectSearchResult = async (item: SearchResult) => {
+    stockCode.value = item.code
     searchQuery.value = ''
     searchResults.value = []
     showSearchResults.value = false
-    // 自动查询选中的股票
-    queryStock()
-    // 获取历史K线数据
-    try {
-      const klineData = await fetchKlineData(result.code, 'day', 120)
-      klineChartData.value = klineData
-      // 设置最近一个交易日的K线数据作为默认显示
-      if (klineData.length > 0) {
-        klineResult.value = klineData[klineData.length - 1]
-      }
-    } catch (e) {
-      console.error('获取K线数据失败:', e)
-    }
+    await loadStock(item.code)
   }
 
   const clearSearch = () => {
@@ -261,6 +406,11 @@ export const useStockStore = defineStore('stock', () => {
     fetchFavoritesData()
   }
 
+  const reorderFavorites = (items: FavoriteStock[]) => {
+    favorites.value = items
+    setStorage(STORAGE_KEYS.STOCK_FAVORITES, favorites.value)
+  }
+
   const toggleFavorite = () => {
     const code = stockCode.value.trim()
     if (!code || !result.value) return
@@ -282,6 +432,8 @@ export const useStockStore = defineStore('stock', () => {
     const high = fields[33]
     const low = fields[34]
     const volume = fields[36]
+    const turnover = Number(fields[38])
+    const pe = Number(fields[39])
 
     const change = (Number(price) - Number(yesterdayClose)).toFixed(2)
     const changePercent =
@@ -299,6 +451,8 @@ export const useStockStore = defineStore('stock', () => {
       high,
       low,
       volume: Number(volume).toLocaleString(),
+      turnover: Number.isFinite(turnover) ? turnover : null,
+      pe: Number.isFinite(pe) ? pe : null,
     }
   }
 
@@ -399,6 +553,7 @@ export const useStockStore = defineStore('stock', () => {
       if (foundIndex !== -1) {
         klineResult.value = klineData[foundIndex]
         klineChartData.value = klineData
+        refreshTechnicalSnapshot()
       } else {
         error.value = '未找到该日期的交易数据，可能为非交易日'
       }
@@ -408,6 +563,32 @@ export const useStockStore = defineStore('stock', () => {
       isLoading.value = false
     }
   }
+
+  const addAlert = (payload: Omit<PriceAlert, 'id' | 'enabled'>) => {
+    const alert: PriceAlert = { ...payload, id: crypto.randomUUID(), enabled: true }
+    alerts.value = [alert, ...alerts.value].slice(0, 30)
+    setStorage(STORAGE_KEYS.STOCK_ALERTS, alerts.value)
+    return alert
+  }
+
+  const removeAlert = (id: string) => {
+    alerts.value = alerts.value.filter((alert) => alert.id !== id)
+    setStorage(STORAGE_KEYS.STOCK_ALERTS, alerts.value)
+  }
+
+  const toggleAlert = (id: string) => {
+    alerts.value = alerts.value.map((alert) =>
+      alert.id === id ? { ...alert, enabled: !alert.enabled, triggeredAt: undefined } : alert,
+    )
+    setStorage(STORAGE_KEYS.STOCK_ALERTS, alerts.value)
+  }
+
+  const setResearchNote = (code: string, text: string) => {
+    notes.value = { ...notes.value, [code]: text }
+    setStorage(STORAGE_KEYS.STOCK_NOTES, notes.value)
+  }
+
+  const getResearchNote = (code: string) => notes.value[code] || ''
 
   return {
     stockCode,
@@ -424,6 +605,16 @@ export const useStockStore = defineStore('stock', () => {
     searchResults,
     isSearching,
     showSearchResults,
+    marketOverview,
+    researchSummary,
+    financials,
+    notices,
+    technicalSnapshot,
+    isResearchLoading,
+    researchError,
+    alerts,
+    notes,
+    recentStocks,
     formattedCode,
     queryStock,
     queryStockByDate,
@@ -433,8 +624,18 @@ export const useStockStore = defineStore('stock', () => {
     isFavorite,
     addFavorite,
     removeFavorite,
+    reorderFavorites,
     toggleFavorite,
     fetchFavoritesData,
     fetchKlineData,
+    fetchMarketOverview,
+    fetchResearchData,
+    loadStock,
+    refreshTechnicalSnapshot,
+    addAlert,
+    removeAlert,
+    toggleAlert,
+    setResearchNote,
+    getResearchNote,
   }
 })

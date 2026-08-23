@@ -6,6 +6,7 @@ import { RouteLoadingBar, MusicPlayer, Toast, CommandPalette } from '@/component
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { registerToastHost } from '@/composables/useToast'
 import { useAuthStore, useWorkspaceStore } from '@/stores'
+import { recordGameLaunchFromRoute } from '@/apps/game-center/profile'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -44,6 +45,7 @@ router.afterEach((to) => {
   else if (to.name === 'market-installed' && Number(to.params.id)) {
     workspaceStore.recordRecent(`market:${Number(to.params.id)}`)
   }
+  recordGameLaunchFromRoute(to.path)
 })
 </script>
 

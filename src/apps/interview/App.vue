@@ -7,7 +7,7 @@
 
       <div class="brand-lockup">
         <span class="brand-mark">Q</span>
-        <span><strong>Interview Studio</strong><small>面试训练台</small></span>
+        <span><strong>面试题库</strong><small>训练台</small></span>
       </div>
 
       <div class="bar-actions">
@@ -22,12 +22,8 @@
     </header>
 
     <main v-if="!showDetail" class="dashboard-shell">
-      <section class="hero-panel" aria-labelledby="interview-title">
+      <section class="hero-panel" aria-label="训练概览">
         <div class="hero-copy">
-          <span class="eyebrow">YOUR INTERVIEW TRAINING SPACE</span>
-          <h1 id="interview-title">把会的说清楚，把不会的练熟</h1>
-          <p>按专项建立知识结构，用自评记录真实掌握度。每次先口述，再对照标准答案复盘。</p>
-
           <div class="hero-actions">
             <button
               class="primary-action"
@@ -143,10 +139,8 @@
       <section class="content-section" aria-labelledby="training-mode-title">
         <div class="section-heading">
           <div>
-            <span class="section-kicker">PRACTICE MODE</span>
-            <h2 id="training-mode-title">选择今天的训练方式</h2>
+            <h2 id="training-mode-title">训练模式</h2>
           </div>
-          <p>短时间也能完成一次有效练习</p>
         </div>
 
         <div class="mode-grid">
@@ -205,10 +199,8 @@
       <section v-if="categories.length" class="content-section" aria-labelledby="category-title">
         <div class="section-heading">
           <div>
-            <span class="section-kicker">FOCUS BY TOPIC</span>
             <h2 id="category-title">专项训练</h2>
           </div>
-          <p>按知识域逐个击破</p>
         </div>
 
         <div class="category-grid">
@@ -236,7 +228,6 @@
       <section ref="catalogRef" class="catalog-section" aria-labelledby="catalog-title">
         <div class="catalog-heading">
           <div>
-            <span class="section-kicker">QUESTION LIBRARY</span>
             <h2 id="catalog-title">{{ catalogTitle }}</h2>
             <p>{{ filteredTotal }} 道结果 · 点击题目进入口述练习</p>
           </div>

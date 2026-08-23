@@ -9,6 +9,7 @@ import snake from '@/apps/snake'
 import devToolbox from '@/apps/dev-toolbox'
 import rhythm from '@/apps/rhythm'
 import neonSurvivor from '@/apps/neon-survivor'
+import gameCenter from '@/apps/game-center'
 
 export interface AppModule {
   id: number
@@ -17,12 +18,14 @@ export interface AppModule {
   route: string
   description: string
   devOnly?: boolean
+  defaultHidden?: boolean
 }
 
 function appDef(
   id: number,
   app: { route: string; meta: { name: string; icon: string; description: string } },
   devOnly = false,
+  defaultHidden = false,
 ): AppModule {
   return {
     id,
@@ -31,17 +34,19 @@ function appDef(
     route: app.route,
     description: app.meta.description,
     devOnly,
+    defaultHidden,
   }
 }
 
 export const APP_MODULES: AppModule[] = [
-  appDef(17, neonSurvivor),
-  appDef(16, rhythm),
+  appDef(18, gameCenter),
+  appDef(17, neonSurvivor, false, true),
+  appDef(16, rhythm, false, true),
   appDef(14, bilibiliSubtitle),
-  appDef(13, snake),
+  appDef(13, snake, false, true),
   appDef(15, devToolbox),
   appDef(12, interview),
-  appDef(11, racing),
+  appDef(11, racing, false, true),
   appDef(9, stock),
   appDef(10, music),
   appDef(8, aiChat),

@@ -499,7 +499,7 @@ onUnmounted(() => {
       <div class="menu-grid"></div>
 
       <header class="menu-header">
-        <button class="nav-back" @click="router.push('/')">← <span>返回工作台</span></button>
+        <button class="nav-back" @click="router.push('/games')">← <span>返回游戏中心</span></button>
         <div class="menu-brand"><i></i> VUECHEST ARCADE</div>
         <button
           class="sound-toggle"

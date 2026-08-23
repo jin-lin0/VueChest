@@ -5,6 +5,7 @@ import CopyButton from '@/components/common/CopyButton.vue'
 import CustomSelect, { type SelectOption } from '@/components/common/CustomSelect.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Toast from '@/components/common/Toast.vue'
+import Modal from '@/components/common/Modal.vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { getStorage, setStorage } from '@/lib/storage'
@@ -15,6 +16,11 @@ import {
   formatBytes,
   getEnabledHeaders,
   inferApiAccess,
+  evaluateAssertions,
+  resolveVariables,
+  type AssertionResult,
+  type AssertionRule,
+  type EnvironmentVariable,
   type RequestHeader,
 } from './request-utils'
 
@@ -43,8 +49,32 @@ interface RequestHistoryItem {
 }
 
 type CatalogScope = 'all' | 'featured' | 'pinned' | 'recent'
-type RequestTab = 'params' | 'headers' | 'body'
-type ResponseTab = 'preview' | 'headers'
+type RequestTab = 'params' | 'headers' | 'body' | 'tests'
+type ResponseTab = 'preview' | 'headers' | 'tests'
+
+interface ApiEnvironment {
+  id: string
+  name: string
+  variables: EnvironmentVariable[]
+}
+
+interface ApiCollection {
+  id: string
+  name: string
+  color: string
+}
+
+interface SavedRequest {
+  id: string
+  name: string
+  collectionId: string
+  apiId: string | number
+  paramValues: Record<string, string>
+  headers: RequestHeader[]
+  body: string
+  assertions: AssertionRule[]
+  createdAt: string
+}
 
 const LEGACY_USER_APIS_KEY = 'userApis'
 const LEGACY_PINNED_IDS_KEY = 'pinnedSystemIds'
@@ -77,6 +107,18 @@ const error = ref<string | null>(null)
 const validationMessage = ref<string | null>(null)
 const isLoading = ref(false)
 const activeController = ref<AbortController | null>(null)
+const environments = ref<ApiEnvironment[]>([])
+const activeEnvironmentId = ref('')
+const collections = ref<ApiCollection[]>([])
+const activeCollectionId = ref('')
+const savedRequests = ref<SavedRequest[]>([])
+const assertions = ref<AssertionRule[]>([])
+const assertionResults = ref<AssertionResult[]>([])
+const showWorkspaceManager = ref(false)
+const newEnvironmentName = ref('')
+const newCollectionName = ref('')
+const saveRequestName = ref('')
+const workspaceFileRef = ref<HTMLInputElement | null>(null)
 
 const showAddForm = ref(false)
 const editingId = ref<string | number | null>(null)
@@ -112,6 +154,11 @@ const corsOptions: SelectOption[] = [
   { value: 'supported', label: '支持 CORS' },
   { value: 'unknown', label: '未知 / 待验证' },
 ]
+const assertionTypeOptions: SelectOption[] = [
+  { value: 'status', label: '状态码等于' },
+  { value: 'time', label: '响应耗时小于' },
+  { value: 'body-includes', label: '响应包含文本' },
+]
 
 onMounted(async () => {
   const legacyUserApis = getStorage<ApiItem[]>(LEGACY_USER_APIS_KEY, []) ?? []
@@ -124,6 +171,22 @@ onMounted(async () => {
   recentIds.value = getStorage<(string | number)[]>(STORAGE_KEYS.API_MANAGER_RECENT_IDS, []) ?? []
   requestHistory.value =
     getStorage<RequestHistoryItem[]>(STORAGE_KEYS.API_MANAGER_HISTORY, []) ?? []
+  environments.value = getStorage<ApiEnvironment[]>(STORAGE_KEYS.API_MANAGER_ENVIRONMENTS, []) ?? []
+  if (!environments.value.length) {
+    environments.value = [{ id: crypto.randomUUID(), name: '默认环境', variables: [] }]
+  }
+  activeEnvironmentId.value =
+    getStorage<string>(STORAGE_KEYS.API_MANAGER_ACTIVE_ENVIRONMENT, environments.value[0].id) ||
+    environments.value[0].id
+  collections.value = getStorage<ApiCollection[]>(STORAGE_KEYS.API_MANAGER_COLLECTIONS, []) ?? []
+  if (!collections.value.length) {
+    collections.value = [{ id: crypto.randomUUID(), name: '默认集合', color: '#667eea' }]
+  }
+  activeCollectionId.value =
+    getStorage<string>(STORAGE_KEYS.API_MANAGER_ACTIVE_COLLECTION, collections.value[0].id) ||
+    collections.value[0].id
+  savedRequests.value =
+    getStorage<SavedRequest[]>(STORAGE_KEYS.API_MANAGER_SAVED_REQUESTS, []) ?? []
 
   defaultApis.value = (await import('./defaults')).defaultApis
   isCatalogLoading.value = false
@@ -135,6 +198,19 @@ watch(pinnedSystemIds, (value) => setStorage(STORAGE_KEYS.API_MANAGER_PINNED_IDS
 })
 watch(recentIds, (value) => setStorage(STORAGE_KEYS.API_MANAGER_RECENT_IDS, value), { deep: true })
 watch(requestHistory, (value) => setStorage(STORAGE_KEYS.API_MANAGER_HISTORY, value), {
+  deep: true,
+})
+watch(environments, (value) => setStorage(STORAGE_KEYS.API_MANAGER_ENVIRONMENTS, value), {
+  deep: true,
+})
+watch(activeEnvironmentId, (value) =>
+  setStorage(STORAGE_KEYS.API_MANAGER_ACTIVE_ENVIRONMENT, value),
+)
+watch(collections, (value) => setStorage(STORAGE_KEYS.API_MANAGER_COLLECTIONS, value), {
+  deep: true,
+})
+watch(activeCollectionId, (value) => setStorage(STORAGE_KEYS.API_MANAGER_ACTIVE_COLLECTION, value))
+watch(savedRequests, (value) => setStorage(STORAGE_KEYS.API_MANAGER_SAVED_REQUESTS, value), {
   deep: true,
 })
 
@@ -194,12 +270,34 @@ const filteredApis = computed(() => {
     })
 })
 
+const activeEnvironment = computed(
+  () =>
+    environments.value.find((item) => item.id === activeEnvironmentId.value) ||
+    environments.value[0],
+)
+const activeVariables = computed(() => activeEnvironment.value?.variables || [])
+const environmentOptions = computed<SelectOption[]>(() =>
+  environments.value.map((item) => ({ value: item.id, label: item.name })),
+)
+const collectionOptions = computed<SelectOption[]>(() =>
+  collections.value.map((item) => ({ value: item.id, label: item.name })),
+)
 const currentUrl = computed(() =>
-  selectedApi.value ? buildRequestUrl(selectedApi.value, paramValues.value) : '',
+  selectedApi.value
+    ? resolveVariables(buildRequestUrl(selectedApi.value, paramValues.value), activeVariables.value)
+    : '',
 )
 const curlCommand = computed(() =>
   selectedApi.value
-    ? buildCurlCommand(selectedApi.value, currentUrl.value, requestHeaders.value, requestBody.value)
+    ? buildCurlCommand(
+        selectedApi.value,
+        currentUrl.value,
+        requestHeaders.value.map((header) => ({
+          ...header,
+          value: resolveVariables(header.value, activeVariables.value),
+        })),
+        resolveVariables(requestBody.value, activeVariables.value),
+      )
     : '',
 )
 const responseText = computed(() => {
@@ -231,6 +329,11 @@ function resetRequest(api: ApiItem) {
   requestTab.value = api.params.length ? 'params' : 'headers'
   responseTab.value = 'preview'
   response.value = null
+  assertionResults.value = []
+  assertions.value = [
+    { id: crypto.randomUUID(), type: 'status', expected: '200', enabled: true },
+    { id: crypto.randomUUID(), type: 'time', expected: '2000', enabled: false },
+  ]
   error.value = null
   validationMessage.value = null
 }
@@ -341,17 +444,23 @@ async function executeApi() {
   const startedAt = performance.now()
 
   try {
-    const headers = getEnabledHeaders(requestHeaders.value)
+    const headers = Object.fromEntries(
+      Object.entries(getEnabledHeaders(requestHeaders.value)).map(([name, value]) => [
+        name,
+        resolveVariables(value, activeVariables.value),
+      ]),
+    )
     const hasContentType = Object.keys(headers).some(
       (name) => name.toLowerCase() === 'content-type',
     )
-    const hasBody = api.method !== 'GET' && requestBody.value.trim() !== ''
+    const resolvedBody = resolveVariables(requestBody.value, activeVariables.value)
+    const hasBody = api.method !== 'GET' && resolvedBody.trim() !== ''
     if (hasBody && !hasContentType) headers['Content-Type'] = 'application/json'
 
     const result = await fetch(currentUrl.value, {
       method: api.method,
       headers,
-      body: hasBody ? requestBody.value : undefined,
+      body: hasBody ? resolvedBody : undefined,
       signal: controller.signal,
     })
     const contentType = result.headers.get('content-type') ?? ''
@@ -369,6 +478,13 @@ async function executeApi() {
       headers: responseHeaders,
       ...parsed,
     }
+    const assertionBody =
+      typeof parsed.data === 'string' ? parsed.data : JSON.stringify(parsed.data ?? '')
+    assertionResults.value = evaluateAssertions(assertions.value, {
+      status: result.status,
+      time,
+      body: assertionBody,
+    })
     addHistory({
       apiId: api.id,
       apiName: api.name,
@@ -551,6 +667,160 @@ function removeParam(index: number) {
   formData.value.params?.splice(index, 1)
 }
 
+function addEnvironment() {
+  const name = newEnvironmentName.value.trim()
+  if (!name) return
+  const environment: ApiEnvironment = { id: crypto.randomUUID(), name, variables: [] }
+  environments.value.push(environment)
+  activeEnvironmentId.value = environment.id
+  newEnvironmentName.value = ''
+}
+
+function removeEnvironment(id: string) {
+  if (environments.value.length <= 1) return
+  environments.value = environments.value.filter((item) => item.id !== id)
+  if (activeEnvironmentId.value === id) activeEnvironmentId.value = environments.value[0].id
+}
+
+function addEnvironmentVariable() {
+  activeEnvironment.value?.variables.push({
+    id: crypto.randomUUID(),
+    key: '',
+    value: '',
+    enabled: true,
+  })
+}
+
+function removeEnvironmentVariable(id: string) {
+  if (!activeEnvironment.value) return
+  activeEnvironment.value.variables = activeEnvironment.value.variables.filter(
+    (item) => item.id !== id,
+  )
+}
+
+function addCollection() {
+  const name = newCollectionName.value.trim()
+  if (!name) return
+  const colors = ['#667eea', '#0f766e', '#e65f5c', '#d97706', '#2563eb']
+  const collection: ApiCollection = {
+    id: crypto.randomUUID(),
+    name,
+    color: colors[collections.value.length % colors.length],
+  }
+  collections.value.push(collection)
+  activeCollectionId.value = collection.id
+  newCollectionName.value = ''
+}
+
+function removeCollection(id: string) {
+  if (collections.value.length <= 1) return
+  collections.value = collections.value.filter((item) => item.id !== id)
+  savedRequests.value = savedRequests.value.filter((item) => item.collectionId !== id)
+  if (activeCollectionId.value === id) activeCollectionId.value = collections.value[0].id
+}
+
+function addAssertion() {
+  assertions.value.push({
+    id: crypto.randomUUID(),
+    type: 'body-includes',
+    expected: '',
+    enabled: true,
+  })
+}
+
+function removeAssertion(id: string) {
+  assertions.value = assertions.value.filter((item) => item.id !== id)
+  assertionResults.value = assertionResults.value.filter((item) => item.id !== id)
+}
+
+function saveCurrentRequest() {
+  if (!selectedApi.value) return
+  const name = saveRequestName.value.trim() || `${selectedApi.value.name} 副本`
+  savedRequests.value.unshift({
+    id: crypto.randomUUID(),
+    name,
+    collectionId: activeCollectionId.value || collections.value[0].id,
+    apiId: selectedApi.value.id,
+    paramValues: { ...paramValues.value },
+    headers: requestHeaders.value.map((item) => ({ ...item })),
+    body: requestBody.value,
+    assertions: assertions.value.map((item) => ({ ...item })),
+    createdAt: new Date().toISOString(),
+  })
+  saveRequestName.value = ''
+  notify('success', `已保存请求「${name}」`)
+}
+
+function openSavedRequest(saved: SavedRequest) {
+  const api = apis.value.find((item) => item.id === saved.apiId)
+  if (!api) {
+    notify('warning', '原始 API 已不存在')
+    return
+  }
+  selectApi(api)
+  paramValues.value = { ...saved.paramValues }
+  requestHeaders.value = saved.headers.map((item) => ({ ...item }))
+  requestBody.value = saved.body
+  assertions.value = saved.assertions.map((item) => ({ ...item }))
+  showWorkspaceManager.value = false
+}
+
+function removeSavedRequest(id: string) {
+  savedRequests.value = savedRequests.value.filter((item) => item.id !== id)
+}
+
+function exportWorkspace() {
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    userApis: userApis.value,
+    environments: environments.value,
+    collections: collections.value,
+    savedRequests: savedRequests.value,
+  }
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+  )
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `vuechest-api-workspace-${new Date().toISOString().slice(0, 10)}.json`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+function importWorkspace(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const payload = JSON.parse(String(reader.result || '{}')) as {
+        version?: number
+        userApis?: ApiItem[]
+        environments?: ApiEnvironment[]
+        collections?: ApiCollection[]
+        savedRequests?: SavedRequest[]
+      }
+      if (payload.version !== 1) throw new Error('不支持的工作区版本')
+      if (Array.isArray(payload.userApis)) userApis.value = payload.userApis
+      if (Array.isArray(payload.environments) && payload.environments.length) {
+        environments.value = payload.environments
+        activeEnvironmentId.value = environments.value[0].id
+      }
+      if (Array.isArray(payload.collections) && payload.collections.length) {
+        collections.value = payload.collections
+        activeCollectionId.value = collections.value[0].id
+      }
+      if (Array.isArray(payload.savedRequests)) savedRequests.value = payload.savedRequests
+      notify('success', 'API 工作区已导入')
+    } catch (reason) {
+      notify('error', reason instanceof Error ? reason.message : '导入失败')
+    }
+  }
+  reader.readAsText(file)
+  ;(event.target as HTMLInputElement).value = ''
+}
+
 async function clearHistory() {
   if (!requestHistory.value.length) return
   const ok = await confirm('确定清空全部请求历史吗？')
@@ -601,6 +871,13 @@ onBeforeUnmount(() => {
 
       <div class="topbar-actions">
         <span class="catalog-health"><i></i>{{ apis.length }} 个接口已载入</span>
+        <div class="environment-switcher" title="当前请求环境">
+          <span>ENV</span>
+          <CustomSelect v-model="activeEnvironmentId" :options="environmentOptions" size="sm" />
+        </div>
+        <button class="secondary-button compact" type="button" @click="showWorkspaceManager = true">
+          工作区 · {{ savedRequests.length }}
+        </button>
         <button class="primary-button compact" type="button" @click="showAddFormPanel">
           <span aria-hidden="true">＋</span> 添加 API
         </button>
@@ -611,7 +888,6 @@ onBeforeUnmount(() => {
       <aside class="catalog-panel" aria-label="API 目录">
         <div class="catalog-heading">
           <div>
-            <span class="section-kicker">API CATALOG</span>
             <h2>接口目录</h2>
           </div>
           <span class="catalog-count">{{ filteredApis.length }}</span>
@@ -722,41 +998,6 @@ onBeforeUnmount(() => {
 
       <section class="workspace-panel">
         <div v-if="!selectedApi && !showAddForm" class="overview-screen">
-          <section class="overview-hero">
-            <div class="hero-copy">
-              <span class="hero-kicker"><i></i> API EXPLORATION WORKSPACE</span>
-              <h1>把一个接口，<br /><em>真正跑明白。</em></h1>
-              <p>从可信目录发现 API，配置参数与请求头，直接查看格式化响应并复制为 cURL。</p>
-              <div class="hero-actions">
-                <button
-                  class="primary-button"
-                  type="button"
-                  @click="featuredApis[0] && selectApi(featuredApis[0])"
-                >
-                  <span class="play-symbol">▶</span> 运行精选接口
-                </button>
-                <button class="secondary-button" type="button" @click="showAddFormPanel">
-                  ＋ 添加自己的 API
-                </button>
-              </div>
-            </div>
-            <div class="hero-console" aria-hidden="true">
-              <div class="console-bar">
-                <span></span><span></span><span></span><small>response.json</small>
-              </div>
-              <pre><span class="code-muted">{</span>
-  <span class="code-key">"workspace"</span>: <span class="code-string">"API Lab"</span>,
-  <span class="code-key">"ready"</span>: <span class="code-value">true</span>,
-  <span class="code-key">"catalog"</span>: <span class="code-number">{{ apis.length }}</span>,
-  <span class="code-key">"features"</span>: [
-    <span class="code-string">"CORS checked"</span>,
-    <span class="code-string">"cURL export"</span>,
-    <span class="code-string">"request history"</span>
-  ]
-<span class="code-muted">}</span></pre>
-            </div>
-          </section>
-
           <section class="stats-strip" aria-label="API 目录统计">
             <div>
               <span>接口总数</span><strong>{{ apis.length }}</strong
@@ -779,7 +1020,6 @@ onBeforeUnmount(() => {
           <section class="overview-section featured-section">
             <div class="section-heading">
               <div>
-                <span class="section-kicker">CURATED & VERIFIED</span>
                 <h2>本周实用 API</h2>
               </div>
               <p>来自官方文档，并实测 HTTPS、响应状态与浏览器 CORS。</p>
@@ -812,7 +1052,6 @@ onBeforeUnmount(() => {
           <section class="overview-section history-section">
             <div class="section-heading inline-heading">
               <div>
-                <span class="section-kicker">LOCAL HISTORY</span>
                 <h2>最近请求</h2>
               </div>
               <button v-if="requestHistory.length" type="button" @click="clearHistory">
@@ -845,13 +1084,41 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </section>
+
+          <section v-if="savedRequests.length" class="overview-section saved-section">
+            <div class="section-heading inline-heading">
+              <div><h2>已保存请求</h2></div>
+              <button type="button" @click="showWorkspaceManager = true">管理工作区</button>
+            </div>
+            <div class="saved-request-grid">
+              <button
+                v-for="saved in savedRequests.slice(0, 6)"
+                :key="saved.id"
+                type="button"
+                @click="openSavedRequest(saved)"
+              >
+                <span
+                  class="saved-color"
+                  :style="{
+                    background: collections.find((item) => item.id === saved.collectionId)?.color,
+                  }"
+                ></span>
+                <span
+                  ><strong>{{ saved.name }}</strong
+                  ><small>{{
+                    collections.find((item) => item.id === saved.collectionId)?.name || '未分类'
+                  }}</small></span
+                >
+                <b>打开 →</b>
+              </button>
+            </div>
+          </section>
         </div>
 
         <div v-else-if="showAddForm" class="editor-screen">
           <div class="editor-heading">
             <div>
-              <button type="button" @click="cancelForm">← 返回工作台</button
-              ><span class="section-kicker">CUSTOM ENDPOINT</span>
+              <button type="button" @click="cancelForm">← 返回工作台</button>
               <h1>{{ editingId === null ? '添加自定义 API' : '编辑自定义 API' }}</h1>
               <p>
                 把常用接口保存到本机目录。参数既可以放进 URL
@@ -1016,6 +1283,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div class="endpoint-actions">
+              <button type="button" @click="saveCurrentRequest">保存请求</button>
               <a
                 v-if="selectedApi.docsUrl"
                 :href="selectedApi.docsUrl"
@@ -1079,6 +1347,13 @@ onBeforeUnmount(() => {
                 >
                   Body
                 </button>
+                <button
+                  :class="{ active: requestTab === 'tests' }"
+                  type="button"
+                  @click="requestTab = 'tests'"
+                >
+                  Tests <span>{{ assertions.length }}</span>
+                </button>
               </div>
 
               <div class="request-config vc-scrollbar vc-scrollbar--thin">
@@ -1126,7 +1401,7 @@ onBeforeUnmount(() => {
                   <p class="security-note">敏感 Header 只用于本次页面会话，不会写入请求历史。</p>
                 </div>
 
-                <div v-else class="body-editor">
+                <div v-else-if="requestTab === 'body'" class="body-editor">
                   <div class="code-editor-bar">
                     <span>JSON / TEXT</span
                     ><small>Content-Type 未填写时默认 application/json</small>
@@ -1136,6 +1411,38 @@ onBeforeUnmount(() => {
                     spellcheck="false"
                     aria-label="请求 Body"
                   ></textarea>
+                </div>
+                <div v-else class="assertion-editor">
+                  <div class="assertion-head">
+                    <span>启用</span><span>断言</span><span>期望值</span><span></span>
+                  </div>
+                  <div v-for="rule in assertions" :key="rule.id" class="assertion-row">
+                    <label class="row-check"
+                      ><input v-model="rule.enabled" type="checkbox" /><span></span
+                    ></label>
+                    <CustomSelect
+                      v-model="rule.type"
+                      :options="assertionTypeOptions"
+                      size="sm"
+                      block
+                    />
+                    <input
+                      v-model="rule.expected"
+                      type="text"
+                      :placeholder="
+                        rule.type === 'status' ? '200' : rule.type === 'time' ? '2000' : 'success'
+                      "
+                    />
+                    <button type="button" aria-label="删除断言" @click="removeAssertion(rule.id)">
+                      ×
+                    </button>
+                  </div>
+                  <button class="add-table-row" type="button" @click="addAssertion">
+                    ＋ 添加断言
+                  </button>
+                  <p class="security-note">
+                    每次请求完成后自动执行，用于快速验证状态、性能和响应内容。
+                  </p>
                 </div>
               </div>
 
@@ -1187,6 +1494,19 @@ onBeforeUnmount(() => {
                 >
                   Headers <span>{{ response ? Object.keys(response.headers).length : 0 }}</span>
                 </button>
+                <button
+                  :class="{ active: responseTab === 'tests' }"
+                  :disabled="!response"
+                  type="button"
+                  @click="responseTab = 'tests'"
+                >
+                  Tests
+                  <span
+                    >{{ assertionResults.filter((item) => item.passed).length }}/{{
+                      assertionResults.length
+                    }}</span
+                  >
+                </button>
                 <div v-if="response" class="response-metrics">
                   <span class="status-pill" :class="getStatusTone(response.status)"
                     ><i></i>{{ response.status }} {{ response.statusText }}</span
@@ -1217,11 +1537,23 @@ onBeforeUnmount(() => {
                     />
                     <pre v-else><code>{{ responseText }}</code></pre>
                   </div>
-                  <div v-else class="response-headers-table">
+                  <div v-else-if="responseTab === 'headers'" class="response-headers-table">
                     <div v-for="(value, name) in response.headers" :key="name">
                       <strong>{{ name }}</strong
                       ><code>{{ value }}</code>
                     </div>
+                  </div>
+                  <div v-else class="assertion-results">
+                    <div
+                      v-for="item in assertionResults"
+                      :key="item.id"
+                      :class="item.passed ? 'passed' : 'failed'"
+                    >
+                      <span>{{ item.passed ? '✓' : '×' }}</span
+                      ><strong>{{ item.label }}</strong
+                      ><small>{{ item.detail }}</small>
+                    </div>
+                    <p v-if="!assertionResults.length">还没有启用的断言。</p>
                   </div>
                 </template>
                 <div v-else class="response-placeholder">
@@ -1239,7 +1571,6 @@ onBeforeUnmount(() => {
           <section class="request-history-drawer">
             <div class="history-drawer-heading">
               <div>
-                <span class="section-kicker">REQUEST HISTORY</span>
                 <h2>本地请求记录</h2>
               </div>
               <button v-if="requestHistory.length" type="button" @click="clearHistory">清空</button>
@@ -1265,6 +1596,124 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </main>
+
+    <Modal v-model:open="showWorkspaceManager" title="API 工作区" width="min(920px, 94vw)">
+      <div class="workspace-manager">
+        <section class="manager-section environment-manager">
+          <div class="manager-heading">
+            <div>
+              <h3>环境变量</h3>
+              <p>
+                在 URL、Header 或 Body 中使用 <code v-pre>{{ variable }}</code
+                >。
+              </p>
+            </div>
+          </div>
+          <div class="manager-toolbar">
+            <CustomSelect v-model="activeEnvironmentId" :options="environmentOptions" size="sm" />
+            <input
+              v-model="newEnvironmentName"
+              type="text"
+              placeholder="新环境名称"
+              @keydown.enter="addEnvironment"
+            />
+            <button type="button" @click="addEnvironment">新建环境</button>
+            <button
+              v-if="environments.length > 1"
+              class="danger-text"
+              type="button"
+              @click="removeEnvironment(activeEnvironmentId)"
+            >
+              删除环境
+            </button>
+          </div>
+          <div class="variable-table">
+            <div class="variable-head">
+              <span>启用</span><span>变量名</span><span>值</span><span></span>
+            </div>
+            <div
+              v-for="variable in activeEnvironment?.variables || []"
+              :key="variable.id"
+              class="variable-row"
+            >
+              <label class="row-check"
+                ><input v-model="variable.enabled" type="checkbox" /><span></span
+              ></label>
+              <input v-model="variable.key" type="text" placeholder="baseUrl" />
+              <input v-model="variable.value" type="text" placeholder="https://api.example.com" />
+              <button type="button" @click="removeEnvironmentVariable(variable.id)">×</button>
+            </div>
+            <button class="add-table-row" type="button" @click="addEnvironmentVariable">
+              ＋ 添加变量
+            </button>
+          </div>
+        </section>
+
+        <section class="manager-section collection-manager">
+          <div class="manager-heading">
+            <div>
+              <h3>请求集合</h3>
+              <p>保存当前参数、Header、Body 与断言。</p>
+            </div>
+          </div>
+          <div class="manager-toolbar">
+            <CustomSelect v-model="activeCollectionId" :options="collectionOptions" size="sm" />
+            <input
+              v-model="newCollectionName"
+              type="text"
+              placeholder="新集合名称"
+              @keydown.enter="addCollection"
+            />
+            <button type="button" @click="addCollection">新建集合</button>
+            <button
+              v-if="collections.length > 1"
+              class="danger-text"
+              type="button"
+              @click="removeCollection(activeCollectionId)"
+            >
+              删除集合
+            </button>
+          </div>
+          <div class="save-current-row">
+            <input v-model="saveRequestName" type="text" placeholder="当前请求名称" />
+            <button type="button" :disabled="!selectedApi" @click="saveCurrentRequest">
+              保存当前请求
+            </button>
+          </div>
+          <div class="manager-saved-list">
+            <div v-for="saved in savedRequests" :key="saved.id">
+              <span
+                class="saved-color"
+                :style="{
+                  background: collections.find((item) => item.id === saved.collectionId)?.color,
+                }"
+              ></span>
+              <span
+                ><strong>{{ saved.name }}</strong
+                ><small>{{ new Date(saved.createdAt).toLocaleString() }}</small></span
+              >
+              <button type="button" @click="openSavedRequest(saved)">打开</button>
+              <button type="button" class="danger-text" @click="removeSavedRequest(saved.id)">
+                删除
+              </button>
+            </div>
+            <p v-if="!savedRequests.length">还没有保存请求。</p>
+          </div>
+        </section>
+
+        <footer class="manager-footer">
+          <button type="button" @click="exportWorkspace">导出工作区</button>
+          <button type="button" @click="workspaceFileRef?.click()">导入工作区</button>
+          <input
+            ref="workspaceFileRef"
+            type="file"
+            accept="application/json,.json"
+            hidden
+            @change="importWorkspace"
+          />
+        </footer>
+      </div>
+    </Modal>
 
     <Toast ref="toastRef" />
   </div>

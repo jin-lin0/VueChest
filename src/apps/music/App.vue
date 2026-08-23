@@ -18,7 +18,7 @@ const auth = useAuthStore()
 
 const goBack = () => router.push('/')
 
-const activeTab = ref<'discover' | 'search' | 'favorites'>('discover')
+const activeTab = ref<'discover' | 'search' | 'favorites' | 'history'>('discover')
 
 // ===== 收藏分组展示 =====
 const activeGroupId = ref<number | null>(null)
@@ -56,7 +56,13 @@ onMounted(async () => {
       <!-- Header -->
       <div class="page-header">
         <button class="back-btn" @click="goBack">&larr;</button>
-        <h1>音乐播放器</h1>
+        <div class="music-title">
+          <h1>音乐播放器</h1>
+          <small>{{ music.playlist.length }} 首队列 · {{ music.favorites.length }} 首收藏</small>
+        </div>
+        <button class="header-queue" @click="music.showPlaylist = true">
+          播放队列 {{ music.playlist.length }}
+        </button>
       </div>
 
       <!-- Main content -->
@@ -71,6 +77,9 @@ onMounted(async () => {
           </button>
           <button :class="{ active: activeTab === 'favorites' }" @click="activeTab = 'favorites'">
             我的收藏
+          </button>
+          <button :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">
+            最近播放
           </button>
         </div>
 
@@ -143,6 +152,51 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+
+        <div v-show="activeTab === 'history'" class="content-section history-section">
+          <div class="history-heading">
+            <div>
+              <h2>最近播放</h2>
+              <small>本机保留最近 {{ music.playHistory.length }} 首</small>
+            </div>
+            <button v-if="music.playHistory.length" @click="music.clearPlayHistory">
+              清空记录
+            </button>
+          </div>
+          <div v-if="!music.playHistory.length" class="ms-empty">暂无播放记录</div>
+          <div v-else class="ms-song-list">
+            <div
+              v-for="(song, index) in music.playHistory"
+              :key="song.id"
+              class="ms-song-item"
+              :class="{ playing: music.activeSong?.id === song.id }"
+              @click="music.playSong(song)"
+            >
+              <span class="ms-song-index">{{ index + 1 }}</span>
+              <img
+                v-if="song.coverUrl"
+                :src="song.coverUrl + '?param=100y100'"
+                class="ms-song-cover"
+                alt=""
+                loading="lazy"
+              />
+              <div class="ms-song-info">
+                <div class="ms-song-name">{{ song.name }}</div>
+                <div class="ms-song-artist">{{ song.artists }} · {{ song.album }}</div>
+              </div>
+              <span v-if="song.duration" class="ms-song-duration">{{
+                music.formatDuration(song.duration)
+              }}</span>
+              <button
+                class="history-remove"
+                aria-label="移除播放记录"
+                @click.stop="music.removePlayHistoryItem(song.id)"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -207,6 +261,51 @@ onMounted(async () => {
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--border);
+}
+
+.music-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.music-title small {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.header-queue {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11px;
+}
+.history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.history-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.history-heading small {
+  color: var(--text-secondary);
+}
+.history-heading button,
+.history-remove {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.history-remove {
+  padding: 8px;
+  font-size: 18px;
 }
 
 .back-btn {

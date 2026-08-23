@@ -3,6 +3,7 @@
 // 分析与校验区保留下来是有意的：自动谱面质量依赖 BPM/offset 正确，
 // 出问题时需要能当场听出来并手动纠正。
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { analyze, gridAlignment, type AnalyzeResult } from './core/analyze'
 import { AudioClock } from './core/clock'
 import { Metronome } from './core/metronome'
@@ -11,6 +12,8 @@ import { generateBeatmap, beatmapDensity, difficultyLabel, type Beatmap } from '
 import { loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from './core/settings'
 import PlayView from './components/PlayView.vue'
 import { musicApi } from '@/lib/musicApi'
+
+const router = useRouter()
 
 type Stage = 'idle' | 'fetching' | 'decoding' | 'analyzing' | 'ready' | 'error'
 
@@ -490,6 +493,9 @@ onUnmounted(() => {
   />
 
   <div v-else class="lab">
+    <button class="game-center-back" type="button" @click="router.push('/games')">
+      ← 返回游戏中心
+    </button>
     <!-- 背景层：柔光球 + 细网格，给纯色背景一点空间纵深 -->
     <div class="bg-grid" />
     <div class="bg-orb orb-a" />
@@ -816,7 +822,7 @@ onUnmounted(() => {
 .lab {
   position: relative;
   min-height: 100%;
-  padding: clamp(24px, 4vw, 52px) clamp(16px, 3vw, 44px) 72px;
+  padding: clamp(68px, 7vw, 84px) clamp(16px, 3vw, 44px) 72px;
   overflow: hidden;
   color: #e9e6f5;
   background:
@@ -824,6 +830,32 @@ onUnmounted(() => {
     radial-gradient(70% 60% at 90% 15%, #2a1030 0%, transparent 55%),
     linear-gradient(180deg, #0d0a1a 0%, #07060f 100%);
   font-family: 'Rajdhani', system-ui, -apple-system, sans-serif;
+}
+
+.game-center-back {
+  position: absolute;
+  z-index: 3;
+  top: 18px;
+  left: 18px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  background: rgba(13, 10, 26, 0.72);
+  color: #b9b4ca;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(12px);
+  transition:
+    border-color 0.2s,
+    color 0.2s,
+    background 0.2s;
+}
+
+.game-center-back:hover {
+  border-color: rgba(0, 229, 255, 0.42);
+  background: rgba(24, 17, 43, 0.9);
+  color: #fff;
 }
 
 /* 细网格：给背景一点"技术感"的纹理，但压到几乎看不见 */
