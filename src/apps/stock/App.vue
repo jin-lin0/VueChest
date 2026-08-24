@@ -16,6 +16,7 @@ import {
   type BacktestResult,
   type CompareSeries,
 } from './portfolio'
+import { buildResearchDecision, extractNoticeSignals, type DecisionSummary } from './decision'
 import { useToast } from '@/composables/useToast'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
@@ -66,6 +67,23 @@ const compareCandidates = computed(() => {
   const items = [...stock.favorites, ...stock.recentStocks, ...stock.positions]
   return [...new Map(items.map((item) => [item.code, { code: item.code, name: item.name }])).values()]
 })
+const latestNoticeSignals = computed(() => extractNoticeSignals(stock.notices))
+
+const researchDecision = computed<DecisionSummary>(() =>
+  buildResearchDecision({
+    technical: stock.technicalSnapshot,
+    valuation: quote.value,
+    financial: latestFinancial.value,
+    technicalPrice: currentPrice.value,
+    technicalVolatility: stock.technicalSnapshot?.volatility20 ?? null,
+    support: stock.technicalSnapshot?.support ?? null,
+    resistance: stock.technicalSnapshot?.resistance ?? null,
+    notices: latestNoticeSignals.value,
+    klineLength: stock.klineChartData.length,
+    financialCount: stock.financials.length,
+  }),
+)
+
 const compareChartSeries = computed<ResearchSeries[]>(() => {
   const colors = ['#0f766e', '#7c3aed', '#dc2626', '#d97706']
   return compareSeries.value.map((item, index) => ({
@@ -260,6 +278,7 @@ function runBacktest() {
 async function copyResearchCard() {
   if (!stock.result) return
   const tech = stock.technicalSnapshot
+  const decision = researchDecision.value
   const summary = [
     `${stock.result.name}（${stock.formattedCode}）`,
     `现价：${formatPrice(currentPrice.value)}，涨跌：${formatPercent(changePercent.value)}`,
@@ -268,6 +287,13 @@ async function copyResearchCard() {
     latestFinancial.value
       ? `最新财报：营收同比 ${formatPercent(latestFinancial.value.revenueGrowth)}，ROE ${formatPercent(latestFinancial.value.roe)}`
       : '',
+    `综合研判：${decision.label}（${decision.score}/100）`,
+    `置信度：${decision.confidence}`,
+    `数据覆盖率：${decision.dataCoverage}%`,
+    decision.missingData.length ? `缺失项：${decision.missingData.join('；')}` : '',
+    decision.highlights.length ? `利好要点：${decision.highlights.join('；')}` : '',
+    decision.watchItems.length ? `关键触发：${decision.watchItems.join('；')}` : '',
+    decision.risks.length ? `风险提示：${decision.risks.join('；')}` : '',
     '数据仅供研究记录，不构成投资建议。',
   ]
     .filter(Boolean)
@@ -577,6 +603,42 @@ onUnmounted(() => {
             </article>
 
             <div class="analysis-grid">
+              <article class="workspace-card decision-card">
+                <header class="card-header">
+                  <div>
+                    <h2>研判结论</h2>
+                    <p>基于技术、估值、财务与公告信号的执行化输出</p>
+                  </div>
+                  <span class="decision-badge" :class="researchDecision.tone">{{ researchDecision.label }}</span>
+                </header>
+                <div class="decision-score">
+                  <strong>{{ researchDecision.score }}</strong><span>/100</span>
+                  <small>置信度 {{ researchDecision.confidence }}</small>
+                </div>
+                <div class="decision-metrics">
+                  <span>数据覆盖率：{{ researchDecision.dataCoverage }}%</span>
+                  <span v-if="researchDecision.missingData.length">
+                    缺失项：{{ researchDecision.missingData.join(' · ') }}
+                  </span>
+                </div>
+                <div v-if="researchDecision.highlights.length" class="decision-highlights">
+                  <span v-for="item in researchDecision.highlights" :key="`h-${item}`">{{ item }}</span>
+                </div>
+                <div v-if="researchDecision.watchItems.length" class="decision-block">
+                  <h3>关键触发</h3>
+                  <ul>
+                    <li v-for="item in researchDecision.watchItems" :key="`w-${item}`">{{ item }}</li>
+                  </ul>
+                </div>
+                <div v-if="researchDecision.risks.length" class="decision-block">
+                  <h3>风险提示</h3>
+                  <ul>
+                    <li v-for="item in researchDecision.risks" :key="`r-${item}`">{{ item }}</li>
+                  </ul>
+                </div>
+                <p class="decision-action">{{ researchDecision.action }}</p>
+              </article>
+
               <article class="workspace-card signal-card">
                 <header class="card-header">
                   <div><h2>技术研判</h2></div>
@@ -1848,6 +1910,98 @@ onUnmounted(() => {
 }
 .quality-grid b {
   font-size: 10px;
+}
+.decision-card .card-header > div p {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.decision-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  font-size: 12px;
+  font-weight: 800;
+}
+.decision-badge.bullish {
+  color: var(--stock-up);
+  border: 1px solid color-mix(in srgb, var(--stock-up) 28%, transparent);
+}
+.decision-badge.neutral {
+  color: #e8a317;
+  border: 1px solid color-mix(in srgb, #e8a317 28%, transparent);
+}
+.decision-badge.bearish {
+  color: var(--stock-down);
+  border: 1px solid color-mix(in srgb, var(--stock-down) 28%, transparent);
+}
+.decision-score {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 12px 0 10px;
+}
+.decision-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.decision-score strong {
+  font-size: 28px;
+}
+.decision-score small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.decision-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.decision-highlights span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.decision-block {
+  margin-top: 12px;
+}
+.decision-block h3 {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.decision-block ul {
+  margin: 0;
+  padding: 0 0 0 16px;
+  color: var(--text-secondary);
+  display: grid;
+  gap: 6px;
+}
+.decision-block li {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.decision-action {
+  margin-top: 12px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1.65;
 }
 .notice-preview a {
   display: flex;
