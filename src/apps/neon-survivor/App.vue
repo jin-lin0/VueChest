@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStorage, setStorage } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { BOSS_TIMES, NeonSurvivorEngine } from './engine'
 import type {
   Difficulty,
@@ -11,11 +12,12 @@ import type {
   RunSummary,
   UpgradeOption,
 } from './types'
+import { recordGameResult } from '@/apps/game-center/profile'
 
 defineOptions({ name: 'NeonSurvivorApp' })
 
-const BEST_SCORE_KEY = 'neon-survivor:best-score'
-const SOUND_KEY = 'neon-survivor:sound'
+const BEST_SCORE_KEY = STORAGE_KEYS.SURVIVOR_BEST_SCORE
+const SOUND_KEY = STORAGE_KEYS.SURVIVOR_SOUND
 
 const router = useRouter()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -340,6 +342,16 @@ onMounted(() => {
         bestScore.value = result.score
         setStorage(BEST_SCORE_KEY, result.score)
       }
+      recordGameResult('neon-survivor', {
+        score: result.score,
+        won: result.victory,
+        duration: result.elapsed,
+        metadata: {
+          kills: result.kills,
+          level: result.level,
+          difficulty: difficulty.value,
+        },
+      })
     },
     onSound: playSound,
   })

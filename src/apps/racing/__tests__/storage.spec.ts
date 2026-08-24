@@ -1,5 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { TRACKS } from '../game'
+
+const mocks = vi.hoisted(() => ({ storage: new Map<string, unknown>() }))
+
+vi.mock('@/lib/storage', () => ({
+  getStorage: (key: string, fallback?: unknown) =>
+    mocks.storage.has(key) ? mocks.storage.get(key) : (fallback ?? null),
+  setStorage: (key: string, value: unknown) => mocks.storage.set(key, value),
+}))
+
 import {
   DEFAULT_RACING_SAVE,
   loadRaceConfig,
@@ -9,34 +19,27 @@ import {
   updateRecord,
 } from '../storage'
 
-function installStorage(initial: Record<string, string> = {}) {
-  const store = new Map(Object.entries(initial))
-  vi.stubGlobal('localStorage', {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => void store.set(key, value),
-    removeItem: (key: string) => void store.delete(key),
-  })
+function installStorage(initial: Record<string, unknown> = {}) {
+  mocks.storage.clear()
+  for (const [key, value] of Object.entries(initial)) mocks.storage.set(key, value)
 }
 
 describe('赛车存档', () => {
-  beforeEach(() => {
-    vi.unstubAllGlobals()
-    installStorage()
-  })
+  beforeEach(() => installStorage())
 
   it('空或损坏存档回退默认值', () => {
     expect(loadRacingSave()).toEqual(DEFAULT_RACING_SAVE)
-    installStorage({ 'racing:save:v1': '{bad json' })
+    installStorage({ [STORAGE_KEYS.RACING_SAVE]: 'damaged' })
     expect(loadRacingSave()).toEqual(DEFAULT_RACING_SAVE)
   })
 
   it('设置字段会夹到安全范围', () => {
     installStorage({
-      'racing:settings:v1': JSON.stringify({
+      [STORAGE_KEYS.RACING_SETTINGS]: {
         steeringSensitivity: 9,
         masterVolume: -2,
         particles: 999,
-      }),
+      },
     })
     const settings = loadRacingSettings()
     expect(settings.steeringSensitivity).toBe(1.5)
@@ -44,14 +47,14 @@ describe('赛车存档', () => {
     expect(settings.particles).toBe(100)
   })
 
-  it('非法比赛配置回退安全默认值，写入失败不阻断游戏', () => {
+  it('非法比赛配置回退安全默认值，设置通过统一存储写入', () => {
     installStorage({
-      'racing:config:v1': JSON.stringify({
+      [STORAGE_KEYS.RACING_CONFIG]: {
         mode: 'unknown',
         trackId: 'moon',
         laps: 99,
         aiCount: 12,
-      }),
+      },
     })
     expect(loadRaceConfig()).toMatchObject({
       mode: 'quick',
@@ -59,26 +62,22 @@ describe('赛车存档', () => {
       laps: 3,
       aiCount: 3,
     })
-    vi.stubGlobal('localStorage', {
-      getItem: () => null,
-      setItem: () => {
-        throw new Error('quota')
-      },
-    })
-    expect(() => saveRacingSettings(loadRacingSettings())).not.toThrow()
+    const settings = loadRacingSettings()
+    saveRacingSettings(settings)
+    expect(mocks.storage.get(STORAGE_KEYS.RACING_SETTINGS)).toEqual(settings)
   })
 
   it('高难赛道配置和纪录可以持久化读取', () => {
     installStorage({
-      'racing:config:v1': JSON.stringify({
+      [STORAGE_KEYS.RACING_CONFIG]: {
         mode: 'quick',
         trackId: 'ridge',
         difficulty: 'expert',
         laps: 3,
         aiCount: 3,
         localPlayers: 1,
-      }),
-      'racing:save:v1': JSON.stringify({
+      },
+      [STORAGE_KEYS.RACING_SAVE]: {
         ...DEFAULT_RACING_SAVE,
         records: {
           'ridge:1': {
@@ -89,7 +88,7 @@ describe('赛车存档', () => {
             medal: 'silver',
           },
         },
-      }),
+      },
     })
     expect(loadRaceConfig().trackId).toBe('ridge')
     expect(loadRacingSave().records['ridge:1']?.medal).toBe('silver')

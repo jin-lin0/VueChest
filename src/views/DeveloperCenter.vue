@@ -59,6 +59,19 @@ const stats = computed(() => ({
     0,
   ),
   comments: apps.value.reduce((sum, app) => sum + app.rating.commentCount, 0),
+  listed: apps.value.filter((app) => app.status === 'approved' && app.isListed).length,
+  averageRating: (() => {
+    const rated = apps.value.filter(
+      (app) => app.rating.averageRating != null && app.rating.commentCount > 0,
+    )
+    const count = rated.reduce((sum, app) => sum + app.rating.commentCount, 0)
+    if (!count) return null
+    const score = rated.reduce(
+      (sum, app) => sum + Number(app.rating.averageRating) * app.rating.commentCount,
+      0,
+    )
+    return score / count
+  })(),
 }))
 
 const reviewLabel: Record<DeveloperVersion['reviewStatus'], string> = {
@@ -159,10 +172,30 @@ onMounted(() => void loadApps())
     </header>
 
     <div class="stats-grid">
-      <div><strong>{{ stats.apps }}</strong><span>我的应用</span></div>
-      <div><strong>{{ stats.downloads }}</strong><span>累计下载</span></div>
-      <div><strong>{{ stats.pending }}</strong><span>待审版本</span></div>
-      <div><strong>{{ stats.comments }}</strong><span>评论数量</span></div>
+      <div>
+        <strong>{{ stats.apps }}</strong
+        ><span>我的应用</span>
+      </div>
+      <div>
+        <strong>{{ stats.downloads }}</strong
+        ><span>累计下载</span>
+      </div>
+      <div>
+        <strong>{{ stats.pending }}</strong
+        ><span>待审版本</span>
+      </div>
+      <div>
+        <strong>{{ stats.comments }}</strong
+        ><span>评论数量</span>
+      </div>
+      <div>
+        <strong>{{ stats.listed }}</strong
+        ><span>正在上架</span>
+      </div>
+      <div>
+        <strong>{{ stats.averageRating == null ? '—' : stats.averageRating.toFixed(1) }}</strong>
+        <span>综合评分</span>
+      </div>
     </div>
 
     <p v-if="error" class="error-message">{{ error }}</p>
@@ -184,7 +217,9 @@ onMounted(() => void loadApps())
             <div class="app-title">
               <strong>{{ app.name }}</strong>
               <span :class="`status-${app.status}`">{{ appStatusLabel[app.status] }}</span>
-              <span v-if="app.status === 'approved' && !app.isListed" class="status-unlisted">已下架</span>
+              <span v-if="app.status === 'approved' && !app.isListed" class="status-unlisted"
+                >已下架</span
+              >
             </div>
             <small>线上版本 v{{ app.version }} · {{ app.category || '未分类' }}</small>
           </div>
@@ -193,14 +228,14 @@ onMounted(() => void loadApps())
         <div class="app-metrics">
           <span>{{ app.downloads }} 次下载</span>
           <span>{{ app.rating.commentCount }} 条评论</span>
-          <span>{{ app.rating.averageRating ? `${app.rating.averageRating.toFixed(1)} 分` : '暂无评分' }}</span>
+          <span>{{
+            app.rating.averageRating ? `${app.rating.averageRating.toFixed(1)} 分` : '暂无评分'
+          }}</span>
           <span>{{ app.versions.length }} 个版本</span>
         </div>
 
         <div class="app-actions">
-          <button
-            @click="router.push({ path: `/market/${app.id}`, query: { from: 'developer' } })"
-          >
+          <button @click="router.push({ path: `/market/${app.id}`, query: { from: 'developer' } })">
             查看详情
           </button>
           <button
@@ -348,7 +383,7 @@ onMounted(() => void loadApps())
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.7rem;
   margin-bottom: 1rem;
 }

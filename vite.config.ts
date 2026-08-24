@@ -43,13 +43,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          charts: ['lightweight-charts'],
-          // markdown 渲染（文档中心 / AI 聊天等公开页均需要）
-          markdown: ['marked', 'highlight.js'],
-          // md-editor-v3 体积最大且仅后台 QuestionEditor 使用，
-          // 单独成块以免拖累使用 markdown 渲染的公开页面
-          editor: ['md-editor-v3'],
-          three: ['three'],
         },
       },
     },

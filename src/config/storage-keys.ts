@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   STOCK_ALERTS: 'stock-alerts',
   STOCK_NOTES: 'stock-notes',
   STOCK_RECENT: 'stock-recent',
+  STOCK_POSITIONS: 'stock-positions',
   MUSIC_VOLUME: 'music-volume',
   MUSIC_SEARCH_HISTORY: 'music-search-history',
   MUSIC_FAVORITES: 'music-favorites',
@@ -30,13 +31,13 @@ export const STORAGE_KEYS = {
   API_MANAGER_ACTIVE_COLLECTION: 'api-manager:active-collection',
   API_MANAGER_SAVED_REQUESTS: 'api-manager:saved-requests',
   // games
-  GAME_CENTER_PROFILE: 'game-center:profile',
+  GAME_CENTER_PROFILE: 'games:profile',
+  RACING_SAVE: 'games:racing:save',
+  RACING_SETTINGS: 'games:racing:settings',
+  RACING_CONFIG: 'games:racing:config',
+  RHYTHM_SETTINGS: 'games:rhythm:settings',
+  SURVIVOR_BEST_SCORE: 'games:survivor:best-score',
+  SURVIVOR_SOUND: 'games:survivor:sound',
   // docs
   DOCS_FOLDER_DEPTH: 'docs:folder-depth',
-  // rhythm
-  RHYTHM_SETTINGS: 'rhythm:settings',
-  // racing
-  RACING_SAVE: 'racing:save:v1',
-  RACING_SETTINGS: 'racing:settings:v1',
-  RACING_CONFIG: 'racing:config:v1',
 } as const

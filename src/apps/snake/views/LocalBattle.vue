@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnakeGame } from '../composables/useSnakeGame'
 import { PLAYER_COLORS, DIR_MAP_WASD, DIR_MAP_ARROWS } from '../types'
 import SnakeCanvas from '../components/SnakeCanvas.vue'
 import SnakeResultModal from '../components/SnakeResultModal.vue'
 import '../styles/battleShared.css'
+import { recordGameResult } from '@/apps/game-center/profile'
 
 defineOptions({ name: 'SnakeBattleLocalView' })
 
@@ -17,6 +18,26 @@ const showSetup = ref(true)
 
 const game = useSnakeGame({ mode: 'local' })
 const canvasWidth = ref(360)
+
+watch(
+  () => game.state.status,
+  (status) => {
+    if (status !== 'finished') return
+    const winner = game.state.stats.find((item) => item.playerId === game.state.winnerId)
+    recordGameResult('snake', {
+      score: (winner?.length || 0) * 100 + Math.max(0, winner?.health || 0) * 10,
+      won: Boolean(game.state.winnerId),
+      duration: (game.state.tickCount * game.state.tickInterval) / 1000,
+      metadata: {
+        mode: 'local',
+        winner: game.state.winnerName || '平局',
+        p1Wins: game.p1Wins.value,
+        p2Wins: game.p2Wins.value,
+      },
+    })
+  },
+  { flush: 'post' },
+)
 
 onMounted(() => {
   updateCanvasSize()

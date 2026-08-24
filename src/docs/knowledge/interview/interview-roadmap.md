@@ -18,27 +18,27 @@ order: 1
 | 入口     | 本文                                                   | 安排复习节奏、统一答题结构   |
 | 高频问答 | 《前端核心标准问答》《Agent 核心标准问答》             | 练 60～120 秒口述答案        |
 | 项目深挖 | 《前端项目与场景标准问答》《Agent 工程与项目标准问答》 | 准备二面、项目拷打和系统设计 |
-| 全量题库 | 《牛客全量标准答案》九个专题                           | 逐条覆盖源题 400/400         |
+| 全量题库 | 《牛客全量标准答案》九个专题                           | 逐条覆盖源题 408/408         |
 | 实战     | 《前端 & Agent 模拟面试》                              | 限时自测、找表达漏洞         |
 | 词典     | 原《前端面试知识文档》《AI Agent 面试知识文档》        | 忘记细节时查阅               |
 | 题源     | 《牛客面试题库》                                       | 保留问题原文与来源           |
 
-### 牛客 400 题全量答案目录
+### 牛客 408 题全量答案目录
 
-| 编号范围    | 数量 | 专题            | 标准答案                                         |
-| ----------- | ---: | --------------- | ------------------------------------------------ |
-| NQ-001～056 |   56 | JavaScript / TS | [打开文档](./niuke-js-ts-full-qa.md)             |
-| NQ-057～097 |   41 | Vue / React     | [打开文档](./niuke-framework-full-qa.md)         |
-| NQ-098～125 |   28 | CSS             | [打开文档](./niuke-css-full-qa.md)               |
-| NQ-126～160 |   35 | 浏览器 / 网络   | [打开文档](./niuke-browser-network-full-qa.md)   |
-| NQ-161～206 |   46 | 工程化 / 性能   | [打开文档](./niuke-engineering-full-qa.md)       |
-| NQ-207～276 |   70 | AI / Agent      | [打开文档](./niuke-agent-full-qa.md)             |
-| NQ-277～336 |   60 | 场景 / 手写题   | [打开文档](./niuke-coding-scenario-full-qa.md)   |
-| NQ-337～362 |   26 | HR / 软技能     | [打开文档](./niuke-hr-full-qa.md)                |
-| NQ-363～400 |   38 | Agent 生产工程  | [打开文档](./niuke-agent-engineering-full-qa.md) |
-| NQ-296 附录 |   45 | JavaScript 算法 | [打开代码附录](./niuke-algorithms-js.md)         |
+| 数量 | 专题            | 标准答案                                         |
+| ---: | --------------- | ------------------------------------------------ |
+|   56 | JavaScript / TS | [打开文档](./niuke-js-ts-full-qa.md)             |
+|   41 | Vue / React     | [打开文档](./niuke-framework-full-qa.md)         |
+|   28 | CSS             | [打开文档](./niuke-css-full-qa.md)               |
+|   35 | 浏览器 / 网络   | [打开文档](./niuke-browser-network-full-qa.md)   |
+|   46 | 工程化 / 性能   | [打开文档](./niuke-engineering-full-qa.md)       |
+|   73 | AI / Agent      | [打开文档](./niuke-agent-full-qa.md)             |
+|   62 | 场景 / 手写题   | [打开文档](./niuke-coding-scenario-full-qa.md)   |
+|   26 | HR / 软技能     | [打开文档](./niuke-hr-full-qa.md)                |
+|   41 | Agent 生产工程  | [打开文档](./niuke-agent-engineering-full-qa.md) |
+|   45 | JavaScript 算法 | [打开代码附录](./niuke-algorithms-js.md)         |
 
-源题里有少数项目把几十道算法合并在同一个问题条目中。场景/手写题主文提供面试者思路和 JavaScript 实现；NQ-296 中列出的算法另用代码附录逐项展开。仓库命令 `pnpm interview:validate` 会检查源题与答案是否仍为 400/400，并对所有 JavaScript 代码块做语法解析。
+源题里有少数项目把几十道算法合并在同一个问题条目中。场景/手写题主文提供面试者思路，列出的算法子题另用代码附录逐项展开。仓库命令 `pnpm interview:validate` 会按题目文本、所属文件和小节检查 408 道源题与答案，并解析所有 JavaScript 代码块的语法。
 
 ### 一道题的训练方法
 

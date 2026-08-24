@@ -1,19 +1,35 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import StockChart from './components/StockChart.vue'
+import ResearchLineChart, { type ResearchSeries } from './components/ResearchLineChart.vue'
 import { useStockStore, type KlineData, type PriceAlert } from '@/stores/stock'
 import { STOCK_COLORS } from './config'
 import { debounce } from '@/utils'
 import { formatLargeNumber } from './research'
+import {
+  correlation,
+  normalizePerformance,
+  portfolioTotals,
+  runMaBacktest,
+  type BacktestResult,
+  type CompareSeries,
+} from './portfolio'
 import { useToast } from '@/composables/useToast'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 
 defineOptions({ name: 'StockResearchWorkspace' })
 
-type ResearchPanel = 'overview' | 'financials' | 'notices' | 'journal'
+type ResearchPanel =
+  | 'overview'
+  | 'portfolio'
+  | 'compare'
+  | 'backtest'
+  | 'financials'
+  | 'notices'
+  | 'journal'
 type KlinePeriod = 'day' | 'week' | 'month'
 
 const router = useRouter()
@@ -26,6 +42,17 @@ const activeKline = ref<KlineData | null>(null)
 const noteDraft = ref('')
 const alertDirection = ref<PriceAlert['direction']>('above')
 const alertTarget = ref<number | null>(null)
+const positionShares = ref<number | null>(null)
+const positionCost = ref<number | null>(null)
+const compareSelection = ref<string[]>([])
+const compareSeries = ref<CompareSeries[]>([])
+const compareCorrelation = ref<Record<string, number | null>>({})
+const compareLoading = ref(false)
+const backtestShort = ref(5)
+const backtestLong = ref(20)
+const backtestCapital = ref(100_000)
+const backtestResult = ref<BacktestResult | null>(null)
+let portfolioRefreshTimer: ReturnType<typeof setInterval> | null = null
 
 const quote = computed(() => stock.researchSummary)
 const currentPrice = computed(() => quote.value?.price ?? Number(stock.result?.close || 0))
@@ -34,8 +61,48 @@ const isUp = computed(() => changePercent.value >= 0)
 const displayKline = computed(() => activeKline.value ?? stock.klineResult)
 const latestFinancial = computed(() => stock.financials[0] ?? null)
 const currentAlerts = computed(() => stock.alerts.filter((item) => item.code === stock.stockCode))
+const portfolioSummary = computed(() => portfolioTotals(stock.portfolioPositionMetrics))
+const compareCandidates = computed(() => {
+  const items = [...stock.favorites, ...stock.recentStocks, ...stock.positions]
+  return [...new Map(items.map((item) => [item.code, { code: item.code, name: item.name }])).values()]
+})
+const compareChartSeries = computed<ResearchSeries[]>(() => {
+  const colors = ['#0f766e', '#7c3aed', '#dc2626', '#d97706']
+  return compareSeries.value.map((item, index) => ({
+    name: item.name,
+    color: colors[index % colors.length],
+    points: item.points,
+  }))
+})
+const financialChartSeries = computed<ResearchSeries[]>(() => {
+  const rows = [...stock.financials].reverse()
+  return [
+    {
+      name: '营业收入（亿）',
+      color: '#0f766e',
+      points: rows
+        .filter((item) => item.revenue != null)
+        .map((item) => ({ date: item.reportDate, value: Number((item.revenue! / 1e8).toFixed(2)) })),
+    },
+    {
+      name: '归母净利润（亿）',
+      color: '#7c3aed',
+      points: rows
+        .filter((item) => item.netProfit != null)
+        .map((item) => ({ date: item.reportDate, value: Number((item.netProfit! / 1e8).toFixed(2)) })),
+    },
+  ]
+})
+const backtestChartSeries = computed<ResearchSeries[]>(() =>
+  backtestResult.value
+    ? [{ name: '策略权益', color: '#0f766e', points: backtestResult.value.equity }]
+    : [],
+)
 const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number }> = [
   { id: 'overview', label: '行情研判' },
+  { id: 'portfolio', label: '模拟持仓', count: () => stock.positions.length },
+  { id: 'compare', label: '股票对比', count: () => compareSelection.value.length },
+  { id: 'backtest', label: '策略回测' },
   { id: 'financials', label: '财务质量', count: () => stock.financials.length },
   { id: 'notices', label: '公司公告', count: () => stock.notices.length },
   { id: 'journal', label: '研究笔记', count: () => currentAlerts.value.length },
@@ -54,12 +121,6 @@ function formatPrice(value: number | string | null | undefined, digits = 2) {
 function formatPercent(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return '--'
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
-}
-
-function formatDate(value: string) {
-  if (!value) return '--'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('zh-CN')
 }
 
 function hideSearchResults() {
@@ -131,6 +192,71 @@ function createAlert() {
   addToast('success', '价格提醒已创建，将在刷新行情时检查')
 }
 
+function savePosition() {
+  if (!stock.result || !positionShares.value || !positionCost.value) return
+  if (positionShares.value <= 0 || positionCost.value <= 0) return
+  stock.upsertPosition({
+    code: stock.stockCode,
+    name: stock.result.name,
+    shares: positionShares.value,
+    costPrice: positionCost.value,
+  })
+  addToast('success', '模拟持仓已保存')
+}
+
+function toggleCompare(code: string) {
+  if (compareSelection.value.includes(code)) {
+    compareSelection.value = compareSelection.value.filter((item) => item !== code)
+    return
+  }
+  if (compareSelection.value.length >= 4) {
+    addToast('warning', '最多同时对比 4 只股票')
+    return
+  }
+  compareSelection.value.push(code)
+}
+
+async function runComparison() {
+  if (compareSelection.value.length < 2) {
+    addToast('warning', '请至少选择 2 只股票')
+    return
+  }
+  compareLoading.value = true
+  try {
+    const rows = await Promise.all(
+      compareSelection.value.map(async (code) => ({
+        code,
+        data: await stock.fetchKlineData(code, 'day', 250),
+      })),
+    )
+    compareSeries.value = rows.map((row) => {
+      const item = compareCandidates.value.find((candidate) => candidate.code === row.code)
+      return normalizePerformance(row.code, item?.name || row.code, row.data)
+    })
+    const base = rows[0]
+    compareCorrelation.value = Object.fromEntries(
+      rows.slice(1).map((row) => [row.code, correlation(base.data, row.data)]),
+    )
+  } catch (error) {
+    addToast('error', error instanceof Error ? error.message : '股票对比加载失败')
+  } finally {
+    compareLoading.value = false
+  }
+}
+
+function runBacktest() {
+  try {
+    backtestResult.value = runMaBacktest(
+      stock.klineChartData,
+      Number(backtestShort.value),
+      Number(backtestLong.value),
+      Number(backtestCapital.value),
+    )
+  } catch (error) {
+    addToast('error', error instanceof Error ? error.message : '回测失败')
+  }
+}
+
 async function copyResearchCard() {
   if (!stock.result) return
   const tech = stock.technicalSnapshot
@@ -151,7 +277,11 @@ async function copyResearchCard() {
 }
 
 onMounted(() => {
-  void Promise.all([stock.fetchMarketOverview(), stock.fetchFavoritesData()])
+  void Promise.all([stock.fetchMarketOverview(), stock.fetchFavoritesData(), stock.fetchPortfolioData()])
+  portfolioRefreshTimer = setInterval(() => void stock.fetchPortfolioData(), 60_000)
+})
+onUnmounted(() => {
+  if (portfolioRefreshTimer) clearInterval(portfolioRefreshTimer)
 })
 </script>
 
@@ -591,6 +721,52 @@ onMounted(() => {
             </div>
           </section>
 
+          <section v-else-if="activePanel === 'portfolio'" class="portfolio-panel">
+            <div class="portfolio-summary-grid">
+              <article><small>模拟总成本</small><strong>{{ formatLargeNumber(portfolioSummary.cost) }}</strong></article>
+              <article><small>当前市值</small><strong>{{ formatLargeNumber(portfolioSummary.marketValue) }}</strong></article>
+              <article :class="portfolioSummary.profit >= 0 ? 'up' : 'down'"><small>浮动盈亏</small><strong>{{ formatLargeNumber(portfolioSummary.profit) }}</strong><b>{{ formatPercent(portfolioSummary.profitPercent) }}</b></article>
+              <article><small>已获取行情</small><strong>{{ portfolioSummary.priced }}/{{ stock.positions.length }}</strong></article>
+            </div>
+            <div class="portfolio-layout">
+              <article class="workspace-card position-form-card">
+                <header class="card-header"><div><h2>记录模拟持仓</h2><p>{{ stock.result.name }} · {{ stock.stockCode }}</p></div></header>
+                <label><span>持有数量</span><input v-model.number="positionShares" type="number" min="1" step="100" placeholder="100" /></label>
+                <label><span>成本价</span><input v-model.number="positionCost" type="number" min="0.01" step="0.01" :placeholder="formatPrice(currentPrice)" /></label>
+                <button type="button" :disabled="!positionShares || !positionCost" @click="savePosition">保存持仓</button>
+                <p>仅保存在本机，用于研究和复盘，不连接交易账户。</p>
+              </article>
+              <article class="workspace-card position-list-card">
+                <header class="card-header"><div><h2>持仓明细</h2></div><button @click="stock.fetchPortfolioData">刷新行情</button></header>
+                <div v-if="stock.portfolioPositionMetrics.length" class="position-table-wrap">
+                  <table class="position-table">
+                    <thead><tr><th>股票</th><th>数量</th><th>成本价</th><th>现价</th><th>市值</th><th>盈亏</th><th></th></tr></thead>
+                    <tbody><tr v-for="item in stock.portfolioPositionMetrics" :key="item.id">
+                      <td><strong>{{ item.name }}</strong><small>{{ item.code }}</small></td><td>{{ item.shares.toLocaleString() }}</td><td>{{ formatPrice(item.costPrice) }}</td><td>{{ formatPrice(item.currentPrice) }}</td><td>{{ formatLargeNumber(item.marketValue) }}</td><td :class="Number(item.profit) >= 0 ? 'up' : 'down'"><strong>{{ formatLargeNumber(item.profit) }}</strong><small>{{ formatPercent(item.profitPercent) }}</small></td><td><button aria-label="删除持仓" @click="stock.removePosition(item.id)">×</button></td>
+                    </tr></tbody>
+                  </table>
+                </div>
+                <div v-else class="panel-empty small">还没有模拟持仓</div>
+              </article>
+            </div>
+          </section>
+
+          <section v-else-if="activePanel === 'compare'" class="workspace-card full-panel compare-panel">
+            <header class="panel-heading"><div><h2>多股票对比</h2><p>将最近 250 个交易日归一化为 100，比较收益、波动与相关性。</p></div><button :disabled="compareLoading || compareSelection.length < 2" @click="runComparison">{{ compareLoading ? '加载中…' : '开始对比' }}</button></header>
+            <div class="compare-picker"><button v-for="item in compareCandidates" :key="item.code" :class="{ active: compareSelection.includes(item.code) }" @click="toggleCompare(item.code)"><strong>{{ item.name }}</strong><small>{{ item.code }}</small></button></div>
+            <ResearchLineChart v-if="compareChartSeries.length" :series="compareChartSeries" :height="330" />
+            <div v-if="compareSeries.length" class="compare-metrics"><article v-for="(item, index) in compareSeries" :key="item.code"><i :style="{ background: compareChartSeries[index]?.color }"></i><span><strong>{{ item.name }}</strong><small>{{ item.code }}</small></span><span><small>区间收益</small><b :class="item.changePercent >= 0 ? 'up' : 'down'">{{ formatPercent(item.changePercent) }}</b></span><span><small>年化波动</small><b>{{ formatPercent(item.volatility) }}</b></span><span v-if="index > 0"><small>与 {{ compareSeries[0].name }} 相关性</small><b>{{ compareCorrelation[item.code] ?? '--' }}</b></span></article></div>
+            <div v-else class="panel-empty">选择 2–4 只自选或最近研究的股票</div>
+          </section>
+
+          <section v-else-if="activePanel === 'backtest'" class="workspace-card full-panel backtest-panel">
+            <header class="panel-heading"><div><h2>均线策略回测</h2><p>短均线上穿长均线买入、下穿卖出，含双边 0.03% 费用。</p></div></header>
+            <div class="backtest-form"><label><span>短均线</span><input v-model.number="backtestShort" type="number" min="2" max="60" /></label><label><span>长均线</span><input v-model.number="backtestLong" type="number" min="3" max="120" /></label><label><span>初始资金</span><input v-model.number="backtestCapital" type="number" min="1000" step="1000" /></label><button @click="runBacktest">运行回测</button></div>
+            <template v-if="backtestResult"><div class="backtest-metrics"><article><small>策略收益</small><strong :class="backtestResult.totalReturn >= 0 ? 'up' : 'down'">{{ formatPercent(backtestResult.totalReturn) }}</strong></article><article><small>同期持有</small><strong :class="backtestResult.benchmarkReturn >= 0 ? 'up' : 'down'">{{ formatPercent(backtestResult.benchmarkReturn) }}</strong></article><article><small>最大回撤</small><strong class="down">{{ formatPercent(backtestResult.maxDrawdown) }}</strong></article><article><small>交易胜率</small><strong>{{ formatPercent(backtestResult.winRate) }}</strong></article><article><small>交易次数</small><strong>{{ backtestResult.trades.length }}</strong></article></div><ResearchLineChart :series="backtestChartSeries" :height="300" /><div class="trade-list"><div v-for="trade in backtestResult.trades.slice().reverse().slice(0, 12)" :key="`${trade.buyDate}-${trade.sellDate}`"><span><small>买入</small><strong>{{ trade.buyDate }} · ¥{{ formatPrice(trade.buyPrice) }}</strong></span><span><small>卖出</small><strong>{{ trade.sellDate }} · ¥{{ formatPrice(trade.sellPrice) }}</strong></span><b :class="trade.returnPercent >= 0 ? 'up' : 'down'">{{ formatPercent(trade.returnPercent) }}</b></div></div></template>
+            <div v-else class="panel-empty">使用当前股票已加载的 K 线进行回测</div>
+            <p class="backtest-note">回测仅验证历史规则表现，不代表未来收益；未计入滑点、涨跌停和无法成交等现实约束。</p>
+          </section>
+
           <section v-else-if="activePanel === 'financials'" class="workspace-card full-panel">
             <header class="panel-heading">
               <div>
@@ -599,6 +775,7 @@ onMounted(() => {
               </div>
               <span>数据源：东方财富</span>
             </header>
+            <ResearchLineChart v-if="financialChartSeries.some((item) => item.points.length)" :series="financialChartSeries" :height="280" />
             <div v-if="stock.financials.length" class="financial-table-wrap">
               <table class="financial-table">
                 <thead>
@@ -1898,6 +2075,15 @@ onMounted(() => {
   color: var(--text-muted);
   cursor: pointer;
 }
+.portfolio-panel { display: grid; gap: 14px; }
+.portfolio-summary-grid,.backtest-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.portfolio-summary-grid article,.backtest-metrics article { display: flex; min-height: 82px; flex-direction: column; justify-content: center; padding: 14px 16px; border: 1px solid var(--border-light); border-radius: 15px; background: var(--bg-card); box-shadow: var(--shadow-sm); }
+.portfolio-summary-grid small,.backtest-metrics small { color: var(--text-muted); font-size: 10px; }.portfolio-summary-grid strong,.backtest-metrics strong { margin-top: 4px; font-size: 20px; }.portfolio-summary-grid b { font-size: 10px; }
+.portfolio-layout { display: grid; grid-template-columns: 280px minmax(0,1fr); gap: 14px; }.position-form-card { display: flex; flex-direction: column; gap: 12px; }.position-form-card .card-header p { color: var(--text-muted); font-size: 10px; }.position-form-card label { display: flex; flex-direction: column; gap: 5px; color: var(--text-secondary); font-size: 10px; }.position-form-card input,.backtest-form input { box-sizing: border-box; width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--border-light); border-radius: 9px; outline: 0; background: var(--bg-page); color: var(--text-primary); }.position-form-card > button,.panel-heading > button,.backtest-form > button { min-height: 38px; border: 0; border-radius: 9px; background: #0f766e; color: #fff; cursor: pointer; font-weight: 800; }.position-form-card > button:disabled,.panel-heading > button:disabled { cursor: not-allowed; opacity: .45; }.position-form-card > p,.backtest-note { color: var(--text-muted); font-size: 9px; line-height: 1.6; }
+.position-table-wrap { overflow: auto; margin-top: 12px; }.position-table { width: 100%; border-collapse: collapse; white-space: nowrap; }.position-table th,.position-table td { padding: 11px 9px; border-bottom: 1px solid var(--border-light); text-align: right; font-size: 10px; }.position-table th { color: var(--text-muted); font-size: 9px; }.position-table th:first-child,.position-table td:first-child { text-align: left; }.position-table td:first-child,.position-table td:nth-last-child(2) { display: table-cell; }.position-table td:first-child strong,.position-table td:first-child small,.position-table td:nth-last-child(2) strong,.position-table td:nth-last-child(2) small { display: block; }.position-table small { color: var(--text-muted); }.position-table button { border: 0; background: transparent; color: var(--text-muted); cursor: pointer; }
+.compare-panel .panel-heading button { padding: 8px 14px; }.compare-picker { display: flex; flex-wrap: wrap; gap: 7px; margin: 16px 0 12px; }.compare-picker button { display: flex; flex-direction: column; padding: 8px 11px; border: 1px solid var(--border-light); border-radius: 9px; background: var(--bg-page); color: var(--text-primary); cursor: pointer; text-align: left; }.compare-picker button.active { border-color: #0f766e; background: color-mix(in srgb,#0f766e 10%,var(--bg-card)); }.compare-picker small { color: var(--text-muted); font-size: 9px; }.compare-metrics { display: grid; gap: 7px; margin-top: 10px; }.compare-metrics article { display: grid; grid-template-columns: 6px minmax(120px,1fr) repeat(3,minmax(100px,.6fr)); align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border-light); border-radius: 10px; }.compare-metrics i { width: 6px; height: 34px; border-radius: 99px; }.compare-metrics span { display: flex; flex-direction: column; }.compare-metrics small { color: var(--text-muted); font-size: 9px; }.compare-metrics b { font-size: 12px; }
+.backtest-form { display: grid; grid-template-columns: repeat(3,minmax(100px,1fr)) auto; align-items: end; gap: 8px; margin: 16px 0; }.backtest-form label { display: flex; flex-direction: column; gap: 5px; color: var(--text-secondary); font-size: 9px; }.backtest-form > button { padding: 0 16px; }.backtest-metrics { grid-template-columns: repeat(5,minmax(0,1fr)); margin-bottom: 12px; }.trade-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; margin-top: 12px; }.trade-list > div { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--border-light); border-radius: 10px; }.trade-list span { display: flex; flex-direction: column; }.trade-list small { color: var(--text-muted); font-size: 8px; }.trade-list strong,.trade-list b { font-size: 10px; }.backtest-note { margin-top: 12px; text-align: center; }
+
 .research-source-error {
   margin: 12px 0;
   color: var(--warning);
@@ -2022,6 +2208,13 @@ onMounted(() => {
   .journal-grid {
     grid-template-columns: 1fr;
   }
+  .portfolio-summary-grid,.backtest-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .portfolio-layout { grid-template-columns: 1fr; }
+  .backtest-form { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .backtest-form > button { min-height: 38px; }
+  .compare-metrics { overflow-x: auto; }
+  .compare-metrics article { min-width: 660px; }
+  .trade-list { grid-template-columns: 1fr; }
   .candle-inspector {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2104,6 +2297,8 @@ onMounted(() => {
     grid-column: 1/-1;
     padding: 10px;
   }
+  .portfolio-summary-grid,.backtest-metrics { grid-template-columns: 1fr 1fr; }
+  .backtest-form { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 820px) {

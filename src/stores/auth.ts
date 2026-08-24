@@ -36,6 +36,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const sessions = ref<UserSessionInfo[]>([])
+  const isInitialized = ref(false)
+  let initPromise: Promise<void> | null = null
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
 
@@ -43,18 +45,25 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAdmin = computed(() => user.value?.role === 'admin' || user.value?.role === 'super_admin')
 
-  async function initAuth() {
-    if (!token.value) return
+  function initAuth(): Promise<void> {
+    if (isInitialized.value) return Promise.resolve()
+    if (initPromise) return initPromise
 
-    try {
-      const savedUser = localStorage.getItem(USER_INFO_KEY)
-      if (savedUser) {
-        user.value = JSON.parse(savedUser)
+    initPromise = (async () => {
+      if (!token.value) return
+      try {
+        const savedUser = localStorage.getItem(USER_INFO_KEY)
+        if (savedUser) user.value = JSON.parse(savedUser)
+        await fetchUserInfo()
+      } catch {
+        clearAuth()
       }
-      await fetchUserInfo()
-    } catch {
-      clearAuth()
-    }
+    })().finally(() => {
+      isInitialized.value = true
+      initPromise = null
+    })
+
+    return initPromise
   }
 
   async function login(
@@ -268,6 +277,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     error,
     sessions,
+    isInitialized,
     isAuthenticated,
     isSuperAdmin,
     isAdmin,

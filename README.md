@@ -25,19 +25,19 @@
 
 源码位于 `src/apps/`，由 `src/router/index.ts` 挂载路由：
 
-| 应用 | 路由 | 说明 |
-| --- | --- | --- |
-| AI 聊天 | `/ai-chat` | 多平台模型（OpenRouter / 硅基流动 DeepSeek），服务端中转密钥，历史落库 |
-| 股票研究工作台 | `/stock` | 腾讯实时行情与 K 线；大盘、技术指标、估值、财务、公告、研究笔记与价格提醒 |
-| B 站字幕 | `/bilibili-subtitle` | 提取 B 站视频字幕 |
-| 音乐 | `/music` | 网易云音乐播放、收藏分组、持久队列、播放历史、相似推荐与睡眠定时 |
-| 面试题库 | `/interview` | 题目练习 + 知识文档（后台管理题库） |
-| API 管理 | `/api-manager` | 免费接口目录、环境变量、请求集合、自动断言、导入导出与在线调试 |
-| 开发工具箱 | `/dev-toolbox` | 42 个开发小工具，分 8 类（编码解码 / 时间日期 / 格式化转换 / 加密生成 / 文本处理 / 前端网络 / 图片媒体 / 单位换算）：TOML/INI/Query/FormData、HTTP 状态码/Curl/JSON Schema、Punycode/Hex/Gzip、图片→Base64/主色调/占位图、单位换算等；侧边栏支持搜索、分组折叠、最近使用、?tool= 深链，右键可「置顶」常用工具 |
-| 赛车游戏 | `/racing` | 3D 赛车小游戏 |
-| 贪吃蛇 | `/snake` | 本地双人 / 人机对战 |
-| 游戏中心 | `/games` | 汇总游戏入口、本机记录、每日挑战、赛车档案与成就 |
-| 帮助文档 | `/docs` | Markdown 文档中心（`src/docs/`） |
+| 应用           | 路由                 | 说明                                                                                                                                                                                                                                                                                                          |
+| -------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI 聊天        | `/ai-chat`           | 多平台模型（OpenRouter / 硅基流动 DeepSeek），服务端中转密钥，历史落库                                                                                                                                                                                                                                        |
+| 股票研究工作台 | `/stock`             | 腾讯实时行情与 K 线；大盘、技术指标、估值、财务、公告、研究笔记与价格提醒                                                                                                                                                                                                                                     |
+| B 站字幕       | `/bilibili-subtitle` | 提取 B 站视频字幕                                                                                                                                                                                                                                                                                             |
+| 音乐           | `/music`             | 网易云音乐播放、收藏分组、持久队列、播放历史、相似推荐与睡眠定时                                                                                                                                                                                                                                              |
+| 面试题库       | `/interview`         | 题目练习 + 知识文档（后台管理题库）                                                                                                                                                                                                                                                                           |
+| API 管理       | `/api-manager`       | 免费接口目录、环境变量、请求集合、自动断言、导入导出与在线调试                                                                                                                                                                                                                                                |
+| 开发工具箱     | `/dev-toolbox`       | 42 个开发小工具，分 8 类（编码解码 / 时间日期 / 格式化转换 / 加密生成 / 文本处理 / 前端网络 / 图片媒体 / 单位换算）：TOML/INI/Query/FormData、HTTP 状态码/Curl/JSON Schema、Punycode/Hex/Gzip、图片→Base64/主色调/占位图、单位换算等；侧边栏支持搜索、分组折叠、最近使用、?tool= 深链，右键可「置顶」常用工具 |
+| 赛车游戏       | `/racing`            | 3D 赛车小游戏                                                                                                                                                                                                                                                                                                 |
+| 贪吃蛇         | `/snake`             | 本地双人 / 人机对战                                                                                                                                                                                                                                                                                           |
+| 游戏中心       | `/games`             | 汇总游戏入口、本机记录、每日挑战、赛车档案与成就                                                                                                                                                                                                                                                              |
+| 帮助文档       | `/docs`              | Markdown 文档中心（`src/docs/`）                                                                                                                                                                                                                                                                              |
 
 另含页面级模块：`/` 首页、`/market` 应用市场（可上传/安装 `market-apps/` 中的第三方应用）、`/login` `/register` 认证、`/admin` 后台管理（题库、分类、应用、用户）。
 
@@ -77,6 +77,7 @@ pnpm dev
 ```
 
 默认启动在 `http://localhost:5173`，通过 `.env.development` 中的 `VITE_API_BASE_URL` 连接后端（默认 `http://localhost:3000`）。
+启动前会自动扫描 Markdown 并更新文档懒加载目录，无需手动运行 `docs:catalog`。
 
 ### 生产构建
 
@@ -84,7 +85,7 @@ pnpm dev
 pnpm build
 ```
 
-等价于 `run-p type-check "build-only {@}"` —— 先做 `vue-tsc` 类型检查再 `vite build`。产物输出到 `dist/`。
+依次生成文档懒加载目录、执行 TypeScript 类型检查、Vite 构建和首屏体积预算检查。当前预算限制入口 gzip ≤30KB、首屏 JavaScript gzip 合计 ≤100KB，并阻止首页重新引入远程字体或过多预加载。产物输出到 `dist/`。
 
 ### 预览构建产物
 
@@ -101,10 +102,10 @@ pnpm format    # prettier --write src/
 
 ## 环境变量
 
-| 文件 | 变量 | 说明 |
-| --- | --- | --- |
-| `.env.development` | `VITE_API_BASE_URL` | 开发后端地址（默认 `http://localhost:3000`） |
-| `.env.production` | `VITE_API_BASE_URL` | 生产后端地址（默认 `https://server.020201.xyz`） |
+| 文件               | 变量                | 说明                                             |
+| ------------------ | ------------------- | ------------------------------------------------ |
+| `.env.development` | `VITE_API_BASE_URL` | 开发后端地址（默认 `http://localhost:3000`）     |
+| `.env.production`  | `VITE_API_BASE_URL` | 生产后端地址（默认 `https://server.020201.xyz`） |
 
 ## 市场应用构建 / 发布
 
@@ -112,6 +113,16 @@ pnpm format    # prettier --write src/
 pnpm build:market     # 构建 market-apps/ 到产物目录
 pnpm publish:market   # 发布到后端 R2 存储
 ```
+
+市场发布会为应用包计算 SHA-256，并把校验值写入 R2 对象元数据和版本记录。浏览器安装时会重新计算校验值；不一致的包不会进入本地缓存。
+
+## 面试文档维护
+
+```sh
+pnpm interview:validate # 检查题目覆盖、所属章节和答案代码块语法
+```
+
+新增题目时，同时在 `niuke.md` 和对应的 `niuke-*-full-qa.md` 中写入相同题目文本与答案即可。答案文档以题目文本作为三级标题，不维护全局编号或源文件行号。
 
 ## A 股短线交易知识库
 
@@ -133,12 +144,12 @@ data/
 
 ### 脚本（scripts/knowledge/）
 
-| 脚本 | 作用 |
-| --- | --- |
-| `r2-kb.mjs` | R2 共用助手：复用 `VueChestServer/.env` 的 R2 凭证与 `@aws-sdk`，提供 getR2 / 上传 / 列举 / 下载 / 删除 / 复制。前端不引 aws-sdk。 |
-| `kb-sync-raw.mjs` | `--pull` 把 R2 的 `stock/knowledge/raw/*` 下载到本地 `data/raw/`；`--push` 把本地 `data/raw/*` 上传到 R2。 |
-| `build-knowledge.mjs` | 聚合本地 `data/raw/*` → 产出 `atoms.json` / `index.json` / `graph.json`（写入 `data/generated/`），并发布到 R2 的 `stock/knowledge/generated/`。发布前校验本地 raw 是否覆盖 R2 全量（防止误覆盖成子集），可用 `--force` 跳过。 |
-| `validate-knowledge.mjs` | 质量门禁：检查 raw 原子是否合规（必需小节 / category / confidence / citations）。 |
+| 脚本                     | 作用                                                                                                                                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `r2-kb.mjs`              | R2 共用助手：复用 `VueChestServer/.env` 的 R2 凭证与 `@aws-sdk`，提供 getR2 / 上传 / 列举 / 下载 / 删除 / 复制。前端不引 aws-sdk。                                                                                             |
+| `kb-sync-raw.mjs`        | `--pull` 把 R2 的 `stock/knowledge/raw/*` 下载到本地 `data/raw/`；`--push` 把本地 `data/raw/*` 上传到 R2。                                                                                                                     |
+| `build-knowledge.mjs`    | 聚合本地 `data/raw/*` → 产出 `atoms.json` / `index.json` / `graph.json`（写入 `data/generated/`），并发布到 R2 的 `stock/knowledge/generated/`。发布前校验本地 raw 是否覆盖 R2 全量（防止误覆盖成子集），可用 `--force` 跳过。 |
+| `validate-knowledge.mjs` | 质量门禁：检查 raw 原子是否合规（必需小节 / category / confidence / citations）。                                                                                                                                              |
 
 ### npm 命令
 

@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from '@/config/storage-keys'
+import { getStorage, setStorage } from '@/lib/storage'
 import {
   DEFAULT_RACING_SETTINGS,
   DEFAULT_RACE_CONFIG,
@@ -35,22 +36,8 @@ export const DEFAULT_RACING_SAVE: RacingSaveV1 = {
   championshipWins: 0,
 }
 
-function readJson(key: string): unknown {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-function writeJson(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // 存储不可用不应中断游戏。
-  }
-}
+const readStored = (key: string): unknown => getStorage<unknown>(key)
+const writeStored = (key: string, value: unknown): void => setStorage(key, value)
 
 function finiteNumber(value: unknown, fallback: number, min: number, max: number): number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -59,7 +46,7 @@ function finiteNumber(value: unknown, fallback: number, min: number, max: number
 }
 
 export function loadRacingSettings(): RacingSettings {
-  const parsed = readJson(STORAGE_KEYS.RACING_SETTINGS)
+  const parsed = readStored(STORAGE_KEYS.RACING_SETTINGS)
   if (!parsed || typeof parsed !== 'object') {
     return { ...DEFAULT_RACING_SETTINGS, keyBindings: { ...DEFAULT_RACING_SETTINGS.keyBindings } }
   }
@@ -95,11 +82,11 @@ export function loadRacingSettings(): RacingSettings {
 }
 
 export function saveRacingSettings(settings: RacingSettings): void {
-  writeJson(STORAGE_KEYS.RACING_SETTINGS, settings)
+  writeStored(STORAGE_KEYS.RACING_SETTINGS, settings)
 }
 
 export function loadRaceConfig(): RaceConfig {
-  const parsed = readJson(STORAGE_KEYS.RACING_CONFIG)
+  const parsed = readStored(STORAGE_KEYS.RACING_CONFIG)
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_RACE_CONFIG }
   const o = parsed as Record<string, unknown>
   const mode = ['quick', 'time-trial', 'knockout', 'item-battle', 'championship'].includes(
@@ -124,7 +111,7 @@ export function loadRaceConfig(): RaceConfig {
 }
 
 export function saveRaceConfig(config: RaceConfig): void {
-  writeJson(STORAGE_KEYS.RACING_CONFIG, config)
+  writeStored(STORAGE_KEYS.RACING_CONFIG, config)
 }
 
 function isMedal(value: unknown): value is Medal {
@@ -132,7 +119,7 @@ function isMedal(value: unknown): value is Medal {
 }
 
 export function loadRacingSave(): RacingSaveV1 {
-  const parsed = readJson(STORAGE_KEYS.RACING_SAVE)
+  const parsed = readStored(STORAGE_KEYS.RACING_SAVE)
   if (!parsed || typeof parsed !== 'object') return structuredClone(DEFAULT_RACING_SAVE)
   const o = parsed as Record<string, unknown>
   const records: Record<string, RacingRecord> = {}
@@ -182,7 +169,7 @@ export function loadRacingSave(): RacingSaveV1 {
 }
 
 export function saveRacingSave(save: RacingSaveV1): void {
-  writeJson(STORAGE_KEYS.RACING_SAVE, save)
+  writeStored(STORAGE_KEYS.RACING_SAVE, save)
 }
 
 export function recordKey(trackId: FixedTrackId, carId: number): string {

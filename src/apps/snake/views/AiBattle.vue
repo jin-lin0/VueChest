@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnakeGame } from '../composables/useSnakeGame'
 import { PLAYER_COLORS, DIR_MAP_WASD } from '../types'
@@ -8,6 +8,7 @@ import SnakeCanvas from '../components/SnakeCanvas.vue'
 import SnakeResultModal from '../components/SnakeResultModal.vue'
 import SnakeTouchControl from '../components/SnakeTouchControl.vue'
 import '../styles/battleShared.css'
+import { recordGameResult } from '@/apps/game-center/profile'
 
 defineOptions({ name: 'SnakeBattleAiView' })
 
@@ -19,6 +20,25 @@ const isMobile = ref(false)
 
 const game = useSnakeGame({ mode: 'ai' })
 const canvasWidth = ref(360)
+
+watch(
+  () => game.state.status,
+  (status) => {
+    if (status !== 'finished') return
+    const human = game.state.stats.find((item) => item.playerId === game.HUMAN_ID)
+    recordGameResult('snake', {
+      score: (human?.length || 0) * 100 + Math.max(0, human?.health || 0) * 10,
+      won: game.state.winnerId === game.HUMAN_ID,
+      duration: (game.state.tickCount * game.state.tickInterval) / 1000,
+      metadata: {
+        mode: 'ai',
+        difficulty: selectedDifficulty.value,
+        length: human?.length || 0,
+      },
+    })
+  },
+  { flush: 'post' },
+)
 
 const difficultyOptions: { key: Difficulty; label: string; desc: string; color: string }[] = [
   { key: 'easy', label: '简单', desc: 'AI 血量越低越聪明，绝地反击', color: PLAYER_COLORS[1].head },

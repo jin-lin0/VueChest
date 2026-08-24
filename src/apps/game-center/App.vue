@@ -5,6 +5,7 @@ import {
   CarFront,
   ChevronLeft,
   Crosshair,
+  Download,
   Flame,
   Gamepad2,
   Gauge,
@@ -15,11 +16,21 @@ import {
   Sparkles,
   Target,
   Trophy,
+  Upload,
 } from '@lucide/vue'
 import { getStorage } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { loadRacingSave } from '@/apps/racing/storage'
 import { loadSettings as loadRhythmSettings } from '@/apps/rhythm/core/settings'
-import { dailyChallenge, loadGameProfile, type GameCenterProfile, type GameId } from './profile'
+import {
+  dailyChallenge,
+  exportGameArchive,
+  importGameArchive,
+  isDailyChallengeComplete,
+  loadGameProfile,
+  type GameCenterProfile,
+  type GameId,
+} from './profile'
 
 defineOptions({ name: 'GameCenterView' })
 
@@ -37,8 +48,10 @@ const router = useRouter()
 const profile = ref<GameCenterProfile>(loadGameProfile())
 const racing = ref(loadRacingSave())
 const rhythm = ref(loadRhythmSettings())
-const survivorBest = ref(getStorage<number>('neon-survivor:best-score', 0) || 0)
+const survivorBest = ref(getStorage<number>(STORAGE_KEYS.SURVIVOR_BEST_SCORE, 0) || 0)
 const todayChallenge = computed(() => dailyChallenge(new Date()))
+const archiveInput = ref<HTMLInputElement | null>(null)
+const challengeCompleted = computed(() => isDailyChallengeComplete(profile.value))
 
 const games: GameCard[] = [
   {
@@ -84,8 +97,11 @@ const racingRecords = computed(() => Object.values(racing.value.records))
 const racingGolds = computed(
   () => racingRecords.value.filter((item) => item.medal === 'gold').length,
 )
-const totalLaunches = computed(() =>
-  Object.values(profile.value.launches).reduce((sum, value) => sum + value, 0),
+const completedRuns = computed(() => profile.value.results.length)
+const recentResults = computed(() =>
+  profile.value.results
+    .slice(0, 12)
+    .map((result) => ({ ...result, game: gameMap.get(result.gameId) })),
 )
 const recentGames = computed(() =>
   profile.value.recent
@@ -123,17 +139,37 @@ const achievements = computed(() => [
     icon: Flame,
   },
   {
+    id: 'rhythm-rank',
+    name: '节奏高手',
+    detail: '音游结算达到 S 或更高评级',
+    unlocked: profile.value.results.some(
+      (result) => result.gameId === 'rhythm' && ['S', 'SS', 'SSS'].includes(String(result.rank)),
+    ),
+    icon: Music2,
+  },
+  {
+    id: 'snake-win',
+    name: '对战胜利',
+    detail: '在贪吃蛇对战中获得胜利',
+    unlocked: profile.value.results.some((result) => result.gameId === 'snake' && result.won),
+    icon: Gamepad2,
+  },
+  {
     id: 'survivor',
     name: '高分生存',
     detail: '星渊幸存者最高分达到 50,000',
-    unlocked: survivorBest.value >= 50_000,
+    unlocked:
+      survivorBest.value >= 50_000 ||
+      profile.value.results.some(
+        (result) => result.gameId === 'neon-survivor' && Number(result.score) >= 50_000,
+      ),
     icon: Crosshair,
   },
   {
     id: 'regular',
     name: '常驻玩家',
-    detail: '累计启动游戏 20 次',
-    unlocked: totalLaunches.value >= 20,
+    detail: '完成并结算 20 局游戏',
+    unlocked: completedRuns.value >= 20,
     icon: Sparkles,
   },
 ])
@@ -144,7 +180,7 @@ function reloadProfile() {
   profile.value = loadGameProfile()
   racing.value = loadRacingSave()
   rhythm.value = loadRhythmSettings()
-  survivorBest.value = getStorage<number>('neon-survivor:best-score', 0) || 0
+  survivorBest.value = getStorage<number>(STORAGE_KEYS.SURVIVOR_BEST_SCORE, 0) || 0
 }
 
 function openGame(route: string) {
@@ -157,6 +193,44 @@ function relativeTime(value: number) {
   if (minutes < 60) return `${minutes} 分钟前`
   if (minutes < 1440) return `${Math.floor(minutes / 60)} 小时前`
   return `${Math.floor(minutes / 1440)} 天前`
+}
+
+function exportArchive() {
+  const archive = exportGameArchive()
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json' }),
+  )
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `vuechest-games-${new Date().toISOString().slice(0, 10)}.json`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+function importArchive(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      importGameArchive(JSON.parse(String(reader.result || '{}')))
+      reloadProfile()
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : '存档导入失败')
+    }
+  }
+  reader.readAsText(file)
+  input.value = ''
+}
+
+function resultSummary(result: (typeof recentResults.value)[number]) {
+  if (result.gameId === 'rhythm')
+    return `${result.rank || '--'} · ${Number(result.score || 0).toLocaleString()} 分`
+  if (result.gameId === 'racing')
+    return `第 ${result.rank || '--'} 名 · ${Number(result.score || 0).toLocaleString()} 分`
+  if (result.gameId === 'snake') return result.won ? '胜利' : '对局完成'
+  return `${Number(result.score || 0).toLocaleString()} 分`
 }
 
 onMounted(reloadProfile)
@@ -174,9 +248,20 @@ onActivated(reloadProfile)
         <span class="header-mark"><Gamepad2 :size="22" /></span>
         <span><strong>游戏中心</strong><small>本机记录与挑战</small></span>
       </div>
-      <button class="refresh-button" type="button" @click="reloadProfile">
-        <RefreshCw :size="15" />刷新记录
-      </button>
+      <div class="header-tools">
+        <button type="button" @click="exportArchive"><Download :size="15" />导出存档</button>
+        <button type="button" @click="archiveInput?.click()"><Upload :size="15" />导入存档</button>
+        <button class="refresh-button" type="button" @click="reloadProfile">
+          <RefreshCw :size="15" />刷新记录
+        </button>
+        <input
+          ref="archiveInput"
+          type="file"
+          accept="application/json,.json"
+          hidden
+          @change="importArchive"
+        />
+      </div>
     </header>
 
     <main class="center-shell">
@@ -184,13 +269,13 @@ onActivated(reloadProfile)
         <article>
           <span><Play :size="17" /></span>
           <div>
-            <small>累计启动</small><strong>{{ totalLaunches }}</strong>
+            <small>完成局数</small><strong>{{ completedRuns }}</strong>
           </div>
         </article>
         <article>
           <span><Medal :size="17" /></span>
           <div>
-            <small>赛车记录</small><strong>{{ racingRecords.length }}</strong>
+            <small>连续挑战</small><strong>{{ profile.streak.current }} 天</strong>
           </div>
         </article>
         <article>
@@ -241,7 +326,7 @@ onActivated(reloadProfile)
         </section>
 
         <aside class="center-sidebar">
-          <section class="side-card challenge-card">
+          <section class="side-card challenge-card" :class="{ completed: challengeCompleted }">
             <header>
               <span><Target :size="18" /></span>
               <div>
@@ -250,9 +335,16 @@ onActivated(reloadProfile)
             </header>
             <h2>{{ todayChallenge.title }}</h2>
             <p>{{ todayChallenge.detail }}</p>
-            <button type="button" @click="openGame(todayChallenge.route)">
+            <button
+              v-if="!challengeCompleted"
+              type="button"
+              @click="openGame(todayChallenge.route)"
+            >
               打开游戏 <Play :size="13" fill="currentColor" />
             </button>
+            <strong v-else class="challenge-done"
+              >✓ 今日已完成 · 最佳连续 {{ profile.streak.best }} 天</strong
+            >
           </section>
 
           <section class="side-card record-card">
@@ -323,6 +415,26 @@ onActivated(reloadProfile)
           </article>
         </div>
       </section>
+
+      <section class="result-history-section">
+        <div class="section-heading">
+          <div>
+            <h2>最近结算</h2>
+            <small>保留最近 200 局真实游戏结果</small>
+          </div>
+        </div>
+        <div v-if="recentResults.length" class="result-history-grid">
+          <article v-for="result in recentResults" :key="result.id">
+            <span><component :is="result.game?.icon || Gamepad2" :size="17" /></span>
+            <div>
+              <strong>{{ result.game?.name || result.gameId }}</strong
+              ><small>{{ relativeTime(result.playedAt) }}</small>
+            </div>
+            <b :class="{ win: result.won }">{{ resultSummary(result) }}</b>
+          </article>
+        </div>
+        <div v-else class="result-history-empty">完成一局游戏后，结算会记录在这里。</div>
+      </section>
     </main>
   </div>
 </template>
@@ -371,7 +483,8 @@ onActivated(reloadProfile)
   gap: 10px;
 }
 .header-left > button,
-.refresh-button {
+.refresh-button,
+.header-tools > button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -381,6 +494,15 @@ onActivated(reloadProfile)
   background: rgba(255, 255, 255, 0.04);
   color: #dfe8f7;
   cursor: pointer;
+}
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.header-tools > button {
+  padding: 8px 10px;
+  font-size: 11px;
 }
 .header-left > button {
   width: 38px;
@@ -638,6 +760,16 @@ onActivated(reloadProfile)
   cursor: pointer;
   font-weight: 800;
 }
+.challenge-card.completed {
+  border-color: rgba(107, 200, 255, 0.34);
+  background: rgba(35, 93, 118, 0.2);
+}
+.challenge-done {
+  display: block;
+  margin-top: 15px;
+  color: #6bc8ff;
+  font-size: 11px;
+}
 .record-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -732,6 +864,56 @@ onActivated(reloadProfile)
 .achievement-grid .unlocked b {
   color: #6bc8ff;
 }
+.result-history-section {
+  margin-top: 24px;
+}
+.result-history-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.result-history-grid article {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 11px;
+  background: rgba(17, 23, 36, 0.72);
+}
+.result-history-grid article > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(107, 200, 255, 0.09);
+  color: #6bc8ff;
+}
+.result-history-grid article > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.result-history-grid small {
+  color: #75849e;
+  font-size: 9px;
+}
+.result-history-grid b {
+  color: #91a0b7;
+  font-size: 10px;
+}
+.result-history-grid b.win {
+  color: #6bc8ff;
+}
+.result-history-empty {
+  padding: 28px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #75849e;
+  text-align: center;
+}
 @media (max-width: 1100px) {
   .center-layout {
     grid-template-columns: 1fr;
@@ -741,6 +923,9 @@ onActivated(reloadProfile)
   }
   .achievement-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .result-history-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 760px) {
@@ -763,11 +948,16 @@ onActivated(reloadProfile)
   .game-card {
     grid-template-columns: 120px 1fr;
   }
-  .refresh-button {
+  .refresh-button,
+  .header-tools > button {
     font-size: 0;
   }
-  .refresh-button svg {
+  .refresh-button svg,
+  .header-tools > button svg {
     font-size: initial;
+  }
+  .result-history-grid {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 480px) {

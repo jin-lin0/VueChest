@@ -79,6 +79,39 @@
       </div>
     </section>
 
+    <section v-if="reports.length" class="pending-panel report-panel">
+      <div class="pending-header">
+        <div>
+          <h2>待处理举报</h2>
+          <p>共 {{ reports.length }} 条安全或内容举报</p>
+        </div>
+      </div>
+      <div class="pending-list">
+        <article v-for="report in reports" :key="report.id" class="pending-item report-item">
+          <div class="pending-app">
+            <span>{{ report.app?.icon || '⚠️' }}</span>
+            <div>
+              <strong>{{ report.app?.name || `应用 #${report.appId}` }}</strong>
+              <small
+                >{{ reportReasonLabel[report.reason] }} ·
+                {{ report.reporter?.username || '用户' }}</small
+              >
+            </div>
+          </div>
+          <p>{{ report.details }}</p>
+          <time>{{ new Date(report.createdAt).toLocaleString() }}</time>
+          <div class="pending-actions">
+            <button class="btn-approve" @click="openReportReview(report, 'resolved')">
+              标记已处理
+            </button>
+            <button class="btn-secondary" @click="openReportReview(report, 'dismissed')">
+              驳回举报
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <div class="toolbar">
       <div class="search-box">
         <span class="search-icon">🔍</span>
@@ -184,12 +217,7 @@
       </button>
     </div>
 
-    <Modal
-      :open="showEditModal"
-      :width="640"
-      title="✏️ 编辑应用"
-      @close="showEditModal = false"
-    >
+    <Modal :open="showEditModal" :width="640" title="✏️ 编辑应用" @close="showEditModal = false">
       <div class="form-row">
         <div class="form-group">
           <label>应用名称 <span class="required">*</span></label>
@@ -312,6 +340,42 @@
       </div>
     </Modal>
 
+    <Modal
+      :open="!!reportTarget"
+      :title="reportResolution === 'resolved' ? '处理举报' : '驳回举报'"
+      width="min(520px, 94vw)"
+      @close="reportTarget = null"
+    >
+      <div v-if="reportTarget" class="reject-form">
+        <p>
+          {{ reportTarget.app?.name || `应用 #${reportTarget.appId}` }} ·
+          {{ reportReasonLabel[reportTarget.reason] }}
+        </p>
+        <blockquote>{{ reportTarget.details }}</blockquote>
+        <label>
+          <span>处理说明</span>
+          <textarea
+            v-model="reportNote"
+            class="form-textarea"
+            rows="4"
+            maxlength="1000"
+            placeholder="记录核查结果和处理动作"
+          ></textarea>
+          <small>{{ reportNote.length }}/1000</small>
+        </label>
+        <div class="reject-actions">
+          <button class="btn-secondary" @click="reportTarget = null">取消</button>
+          <button
+            class="btn-primary"
+            :disabled="savingReport || reportNote.trim().length < 2"
+            @click="submitReportReview"
+          >
+            {{ savingReport ? '保存中...' : '确认' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
+
     <Toast ref="toastRef" />
   </div>
 </template>
@@ -356,6 +420,17 @@ interface PendingVersion {
   app?: { id: number; name: string; icon: string; version: string; status: string }
 }
 
+interface AppReport {
+  id: number
+  appId: number
+  reason: 'malware' | 'privacy' | 'fraud' | 'offensive' | 'copyright' | 'other'
+  details: string
+  status: 'open' | 'resolved' | 'dismissed'
+  createdAt: string
+  app?: { id: number; name: string; icon: string; version: string; status: string } | null
+  reporter?: { id: number; username: string } | null
+}
+
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
 function showToast(type: 'success' | 'error' | 'warning' | 'info', message: string) {
@@ -365,6 +440,11 @@ function showToast(type: 'success' | 'error' | 'warning' | 'info', message: stri
 const apps = ref<MarketAppItem[]>([])
 const pendingVersions = ref<PendingVersion[]>([])
 const reviewingVersionId = ref<number | null>(null)
+const reports = ref<AppReport[]>([])
+const reportTarget = ref<AppReport | null>(null)
+const reportResolution = ref<'resolved' | 'dismissed'>('resolved')
+const reportNote = ref('')
+const savingReport = ref(false)
 const rejectTarget = ref<{
   kind: 'app' | 'version'
   appId: number
@@ -416,7 +496,50 @@ onMounted(() => {
   fetchCategories()
   fetchApps()
   fetchPendingVersions()
+  fetchReports()
 })
+
+const reportReasonLabel: Record<AppReport['reason'], string> = {
+  malware: '恶意行为或病毒',
+  privacy: '隐私或越权访问',
+  fraud: '欺诈或误导',
+  offensive: '不当内容',
+  copyright: '版权问题',
+  other: '其他',
+}
+
+async function fetchReports() {
+  try {
+    const { data } = await api.get<{ data: AppReport[] }>('/api/market/admin/reports?status=open')
+    reports.value = data
+  } catch (error) {
+    showToast('error', error instanceof Error ? error.message : '举报队列加载失败')
+  }
+}
+
+function openReportReview(report: AppReport, resolution: 'resolved' | 'dismissed') {
+  reportTarget.value = report
+  reportResolution.value = resolution
+  reportNote.value = ''
+}
+
+async function submitReportReview() {
+  if (!reportTarget.value || reportNote.value.trim().length < 2) return
+  savingReport.value = true
+  try {
+    await api.put(`/api/market/admin/reports/${reportTarget.value.id}`, {
+      status: reportResolution.value,
+      resolutionNote: reportNote.value.trim(),
+    })
+    showToast('success', reportResolution.value === 'resolved' ? '举报已处理' : '举报已驳回')
+    reportTarget.value = null
+    await fetchReports()
+  } catch (error) {
+    showToast('error', error instanceof Error ? error.message : '举报处理失败')
+  } finally {
+    savingReport.value = false
+  }
+}
 
 onUnmounted(() => {
   if (searchTimer) clearTimeout(searchTimer)
@@ -456,9 +579,7 @@ async function handleReject(app: MarketAppItem) {
 
 async function fetchPendingVersions() {
   try {
-    const { data } = await api.get<{ data: PendingVersion[] }>(
-      '/api/market/admin/pending-versions',
-    )
+    const { data } = await api.get<{ data: PendingVersion[] }>('/api/market/admin/pending-versions')
     pendingVersions.value = data
   } catch (error) {
     showToast('error', error instanceof Error ? error.message : '待审核版本加载失败')
@@ -599,7 +720,9 @@ function openEditModal(app: MarketAppItem) {
   showEditModal.value = true
 
   api
-    .get<{ data: { readme?: string; releaseNotes?: string } }>(`/api/market/apps/${app.id}`, { auth: false })
+    .get<{ data: { readme?: string; releaseNotes?: string } }>(`/api/market/apps/${app.id}`, {
+      auth: false,
+    })
     .then((res) => {
       if (res.data?.readme) editForm.readme = res.data.readme
       if (res.data?.releaseNotes) editForm.releaseNotes = res.data.releaseNotes
@@ -858,6 +981,11 @@ async function deleteApp(app: MarketAppItem) {
   background: var(--warning-bg);
 }
 
+.report-panel {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: var(--danger-bg);
+}
+
 .pending-header h2 {
   margin: 0;
   color: var(--text-primary);
@@ -946,6 +1074,16 @@ async function deleteApp(app: MarketAppItem) {
 .reject-form > p {
   margin: 0;
   color: var(--text-primary);
+}
+
+.reject-form blockquote {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--danger);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .reject-form label {

@@ -5,6 +5,11 @@ import { STORAGE_KEYS } from '@/config'
 import { formatDate } from '@/utils'
 import { api } from '@/lib/request'
 import { buildTechnicalSnapshot, type TechnicalSnapshot } from '@/apps/stock/research'
+import {
+  positionMetrics,
+  type StockPosition,
+  type PositionMetrics,
+} from '@/apps/stock/portfolio'
 
 export interface FavoriteStock {
   code: string
@@ -168,6 +173,16 @@ export const useStockStore = defineStore('stock', () => {
   )
   const recentStocks = ref<FavoriteStock[]>(
     getStorage<FavoriteStock[]>(STORAGE_KEYS.STOCK_RECENT, []) || [],
+  )
+  const positions = ref<StockPosition[]>(
+    getStorage<StockPosition[]>(STORAGE_KEYS.STOCK_POSITIONS, []) || [],
+  )
+  const portfolioQuotes = ref<Record<string, number>>({})
+  const isPortfolioLoading = ref(false)
+  const portfolioPositionMetrics = computed<PositionMetrics[]>(() =>
+    positions.value.map((position) =>
+      positionMetrics(position, portfolioQuotes.value[position.code]),
+    ),
   )
 
   const formattedCode = computed(() => {
@@ -456,6 +471,51 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
+  const fetchQuoteBatch = async (codes: string[]): Promise<FavoriteStockData[]> => {
+    const unique = [...new Set(codes.filter((code) => /^\d{6}$/.test(code)))]
+    if (!unique.length) return []
+    const symbols = unique.map((code) => toSymbol(code)).join(',')
+    const response = await fetch(`/api/stock/q=${symbols}`)
+    if (!response.ok) throw new Error(`请求失败: ${response.status}`)
+    const text = new TextDecoder('gbk').decode(await response.arrayBuffer())
+    return unique
+      .map((code) => parseQuoteData(code, text))
+      .filter((item): item is FavoriteStockData => Boolean(item))
+  }
+
+  const fetchPortfolioData = async () => {
+    if (!positions.value.length) {
+      portfolioQuotes.value = {}
+      return
+    }
+    isPortfolioLoading.value = true
+    try {
+      const quotes = await fetchQuoteBatch(positions.value.map((item) => item.code))
+      portfolioQuotes.value = Object.fromEntries(
+        quotes.map((quote) => [quote.code, Number(quote.price)]),
+      )
+      quotes.forEach((quote) => checkAlerts(quote.code, Number(quote.price)))
+    } finally {
+      isPortfolioLoading.value = false
+    }
+  }
+
+  const upsertPosition = (payload: Omit<StockPosition, 'id' | 'createdAt'>) => {
+    const existing = positions.value.find((item) => item.code === payload.code)
+    if (existing) Object.assign(existing, payload)
+    else positions.value.push({ ...payload, id: crypto.randomUUID(), createdAt: Date.now() })
+    positions.value = [...positions.value]
+    setStorage(STORAGE_KEYS.STOCK_POSITIONS, positions.value)
+    addFavorite(payload.code, payload.name)
+    void fetchPortfolioData()
+  }
+
+  const removePosition = (id: string) => {
+    positions.value = positions.value.filter((item) => item.id !== id)
+    setStorage(STORAGE_KEYS.STOCK_POSITIONS, positions.value)
+    void fetchPortfolioData()
+  }
+
   const fetchFavoritesData = async () => {
     if (favorites.value.length === 0) {
       favoritesData.value = []
@@ -615,6 +675,10 @@ export const useStockStore = defineStore('stock', () => {
     alerts,
     notes,
     recentStocks,
+    positions,
+    portfolioQuotes,
+    portfolioPositionMetrics,
+    isPortfolioLoading,
     formattedCode,
     queryStock,
     queryStockByDate,
@@ -628,6 +692,8 @@ export const useStockStore = defineStore('stock', () => {
     toggleFavorite,
     fetchFavoritesData,
     fetchKlineData,
+    fetchQuoteBatch,
+    fetchPortfolioData,
     fetchMarketOverview,
     fetchResearchData,
     loadStock,
@@ -637,5 +703,7 @@ export const useStockStore = defineStore('stock', () => {
     toggleAlert,
     setResearchNote,
     getResearchNote,
+    upsertPosition,
+    removePosition,
   }
 })

@@ -1,16 +1,3 @@
-import aiChat from '@/apps/ai-chat'
-import apiManager from '@/apps/api-manager'
-import music from '@/apps/music'
-import racing from '@/apps/racing'
-import interview from '@/apps/interview'
-import stock from '@/apps/stock'
-import bilibiliSubtitle from '@/apps/bilibili-subtitle'
-import snake from '@/apps/snake'
-import devToolbox from '@/apps/dev-toolbox'
-import rhythm from '@/apps/rhythm'
-import neonSurvivor from '@/apps/neon-survivor'
-import gameCenter from '@/apps/game-center'
-
 export interface AppModule {
   id: number
   name: string
@@ -21,34 +8,19 @@ export interface AppModule {
   defaultHidden?: boolean
 }
 
-function appDef(
-  id: number,
-  app: { route: string; meta: { name: string; icon: string; description: string } },
-  devOnly = false,
-  defaultHidden = false,
-): AppModule {
-  return {
-    id,
-    name: app.meta.name,
-    icon: app.meta.icon,
-    route: app.route,
-    description: app.meta.description,
-    devOnly,
-    defaultHidden,
-  }
-}
-
+// 这里只保留纯元数据。不要从各应用的 index.ts 导入定义，否则首页入口会把
+// Three.js、图表、编辑器和游戏引擎全部拉进首屏依赖图。
 export const APP_MODULES: AppModule[] = [
-  appDef(18, gameCenter),
-  appDef(17, neonSurvivor, false, true),
-  appDef(16, rhythm, false, true),
-  appDef(14, bilibiliSubtitle),
-  appDef(13, snake, false, true),
-  appDef(15, devToolbox),
-  appDef(12, interview),
-  appDef(11, racing, false, true),
-  appDef(9, stock),
-  appDef(10, music),
-  appDef(8, aiChat),
-  appDef(1, apiManager),
+  { id: 18, name: '游戏中心', icon: '🎮', route: '/games', description: '集中查看游戏、挑战、成绩与本机成就' },
+  { id: 17, name: '星渊幸存者', icon: '🚀', route: '/neon-survivor', description: '六分钟霓虹肉鸽射击：双摇杆战斗、随机强化、精英敌潮与三阶段 Boss', defaultHidden: true },
+  { id: 16, name: '音游', icon: '🎹', route: '/rhythm', description: '自动分析音乐节拍生成谱面，4 键下落式音游', defaultHidden: true },
+  { id: 14, name: 'B站字幕', icon: '📝', route: '/bilibili-subtitle', description: '粘贴 B站视频链接，一键提取字幕文本用于分析' },
+  { id: 13, name: 'PK贪吃蛇', icon: '🐍', route: '/snake', description: '贪吃蛇双人对战 & 人机对战，在方块中一决高下', defaultHidden: true },
+  { id: 15, name: '开发工具箱', icon: '🧰', route: '/dev-toolbox', description: 'Base64 编解码、时间戳转换、文本/JSON 转换等常用开发小工具集合' },
+  { id: 12, name: '面试题库', icon: '📚', route: '/interview', description: '专项训练、掌握度追踪与随机模拟，建立可复盘的面试学习路径' },
+  { id: 11, name: '3D赛车', icon: '🏎️', route: '/racing', description: '3D赛车竞速：AI对手、漂移氮气、道具技能，支持本地双人分屏', defaultHidden: true },
+  { id: 9, name: '股票查询', icon: '📈', route: '/stock', description: '查询A股历史行情，分析开盘收盘价' },
+  { id: 10, name: '音乐播放', icon: '🎵', route: '/music', description: '搜索歌曲，在线播放，歌词同步显示' },
+  { id: 8, name: 'AI 对话', icon: '🤖', route: '/ai-chat', description: '基于大模型的智能对话助手' },
+  { id: 1, name: 'API 工作台', icon: '🔗', route: '/api-manager', description: '发现实用 API，配置请求并在线调试响应' },
 ]

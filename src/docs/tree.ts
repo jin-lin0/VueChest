@@ -19,7 +19,7 @@ export function firstLeaf(items: DocItem[]): DocItem | undefined {
     if (item.children?.length) {
       const child = firstLeaf(item.children)
       if (child) return child
-    } else if (item.content) {
+    } else if (item.content || item.loadContent) {
       return item
     }
   }

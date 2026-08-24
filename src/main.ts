@@ -13,7 +13,7 @@ initTheme()
 import App from './App.vue'
 import router from './router'
 import { initStorage } from './lib/storage'
-import { useAuthStore } from './stores'
+import { useAuthStore } from './stores/auth'
 import { useMarketStore } from './stores/market'
 import { getClientGeo, getGeoHeader } from './lib/clientGeo'
 import { API_BASE } from './lib/request'

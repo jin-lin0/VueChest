@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { getStorage, setStorage, removeStorage } from '@/lib/storage'
 import { api } from '@/lib/request'
 import { useAuthStore } from '@/stores/auth'
+import { addedNetworkPermissions, sha256Hex, verifyBundleIntegrity } from '@/lib/bundle-integrity'
 
 export interface MarketAppItem {
   id: number
@@ -21,6 +22,8 @@ export interface MarketAppItem {
   status?: string
   /** 允许访问的网络域名白名单（沙箱联网能力用，由上传/审核时声明） */
   allowNetwork?: string[]
+  /** 经审核版本的应用包 SHA-256；旧版数据可能为空 */
+  sha256?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -36,6 +39,7 @@ export interface InstalledApp {
   updatedAt?: number
   /** 允许访问的网络域名白名单，随详情写入，供沙箱 caps 读取 */
   allowNetwork?: string[]
+  sha256?: string | null
 }
 
 export interface MarketAppVersion {
@@ -43,6 +47,8 @@ export interface MarketAppVersion {
   version: string
   size?: number
   releaseNotes?: string
+  allowNetwork?: string[]
+  sha256?: string | null
   status: 'active' | 'yanked'
   createdAt: string
   updatedAt: string
@@ -50,12 +56,19 @@ export interface MarketAppVersion {
 
 const INSTALLED_KEY = 'market_installed_apps'
 const BUNDLE_KEY_PREFIX = 'market-bundle-'
+const ROLLBACK_BUNDLE_KEY_PREFIX = 'market-rollback-bundle-'
+const ROLLBACK_META_KEY_PREFIX = 'market-rollback-meta-'
 const AUTO_UPDATE_KEY = 'market-auto-update'
 const UPDATE_CHECK_INTERVAL = 60 * 1000
 
 export interface AppUpdateInfo {
   installed: InstalledApp
   latest: MarketAppItem
+}
+
+export interface AppRollbackPoint {
+  entry: InstalledApp
+  savedAt: number
 }
 
 export interface MarketComment {
@@ -75,8 +88,30 @@ export interface MarketComment {
   }
 }
 
+export type MarketReportReason =
+  | 'malware'
+  | 'privacy'
+  | 'fraud'
+  | 'offensive'
+  | 'copyright'
+  | 'other'
+
+async function fetchVerifiedBundle(fileUrl: string, expectedSha256?: string | null) {
+  const response = await fetch(fileUrl)
+  if (!response.ok) throw new Error(`应用包下载失败 (${response.status})`)
+  const content = await response.arrayBuffer()
+  if (content.byteLength === 0) throw new Error('应用包内容为空')
+  const sha256 = await verifyBundleIntegrity(content, expectedSha256)
+  const code = new TextDecoder().decode(content)
+  if (!code.trim()) throw new Error('应用包内容为空')
+  return { code, sha256 }
+}
+
 function parseVersion(value: string) {
-  const normalized = String(value || '0').trim().replace(/^v/i, '').split('+')[0]
+  const normalized = String(value || '0')
+    .trim()
+    .replace(/^v/i, '')
+    .split('+')[0]
   const [main, prerelease = ''] = normalized.split('-', 2)
   return {
     parts: main.split('.').map((part) => Number.parseInt(part, 10) || 0),
@@ -183,7 +218,13 @@ export const useMarketStore = defineStore('market', () => {
     // 1. 下载 bundle + 详情（并发）
     const [downloadRes, detail] = await Promise.all([
       api.get<{
-        data: { fileUrl: string; name: string; version: string; allowNetwork?: string[] }
+        data: {
+          fileUrl: string
+          name: string
+          version: string
+          allowNetwork?: string[]
+          sha256?: string | null
+        }
       }>(
         versionId
           ? `/api/market/apps/${appId}/versions/${versionId}/download`
@@ -194,13 +235,10 @@ export const useMarketStore = defineStore('market', () => {
     ])
 
     if (!downloadRes.data.fileUrl) throw new Error('应用下载地址无效')
-    const response = await fetch(downloadRes.data.fileUrl)
-    if (!response.ok) throw new Error(`应用包下载失败 (${response.status})`)
-    const code = await response.text()
-    if (!code.trim()) throw new Error('应用包内容为空')
+    const bundle = await fetchVerifiedBundle(downloadRes.data.fileUrl, downloadRes.data.sha256)
 
     // 2. 缓存 bundle 到 IndexedDB（仅在沙箱 iframe 内执行）
-    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, code)
+    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, bundle.code)
 
     // 3. 构建 InstalledApp 记录（元信息来自服务端，不再依赖父进程解析 bundle）
     return {
@@ -212,6 +250,7 @@ export const useMarketStore = defineStore('market', () => {
       description: detail?.description || '',
       version: downloadRes.data.version,
       allowNetwork: downloadRes.data.allowNetwork || detail?.allowNetwork || [],
+      sha256: downloadRes.data.sha256 || detail?.sha256 || null,
       installedAt: Date.now(),
     }
   }
@@ -224,15 +263,12 @@ export const useMarketStore = defineStore('market', () => {
     if (cached) return cached
     try {
       const downloadRes = await api.get<{
-        data: { fileUrl: string }
+        data: { fileUrl: string; sha256?: string | null }
       }>(`/api/market/apps/${appId}/download`, { auth: false })
       if (!downloadRes.data.fileUrl) return null
-      const response = await fetch(downloadRes.data.fileUrl)
-      if (!response.ok) return null
-      const code = await response.text()
-      if (!code.trim()) return null
-      setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, code)
-      return code
+      const bundle = await fetchVerifiedBundle(downloadRes.data.fileUrl, downloadRes.data.sha256)
+      setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, bundle.code)
+      return bundle.code
     } catch {
       return null
     }
@@ -266,6 +302,8 @@ export const useMarketStore = defineStore('market', () => {
     }
 
     removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
+    removeStorage(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`)
+    removeStorage(`${ROLLBACK_META_KEY_PREFIX}${appId}`)
     const nextLatest = { ...latestApps.value }
     delete nextLatest[appId]
     latestApps.value = nextLatest
@@ -287,21 +325,23 @@ export const useMarketStore = defineStore('market', () => {
     /** 应用声明的联网域名白名单，经管理员审核后生效 */
     allowNetwork?: string[]
   }) {
+    const sha256 = await sha256Hex(await formData.file.arrayBuffer())
     const { data: upload } = await api.post<{
-      data: { key: string; uploadUrl: string }
+      data: { key: string; uploadUrl: string; headers?: Record<string, string> }
     }>('/api/uploads/presign', {
       kind: 'app',
       contentType: 'application/javascript',
       size: formData.file.size,
       name: `${formData.name}-v${formData.version}`,
+      sha256,
     })
     const uploaded = await fetch(upload.uploadUrl, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/javascript' },
+      headers: { 'Content-Type': 'application/javascript', ...(upload.headers || {}) },
       body: formData.file,
     })
     if (!uploaded.ok) throw new Error('应用文件上传失败')
-    await api.post('/api/uploads/complete', { kind: 'app', key: upload.key })
+    await api.post('/api/uploads/complete', { kind: 'app', key: upload.key, sha256 })
 
     const { data } = await api.post<{
       data: { id: number; name: string; version: string; status: string }
@@ -315,6 +355,7 @@ export const useMarketStore = defineStore('market', () => {
       releaseNotes: formData.releaseNotes,
       screenshots: formData.screenshots || [],
       allowNetwork: formData.allowNetwork || [],
+      sha256,
       fileKey: upload.key,
       fileSize: formData.file.size,
     })
@@ -335,8 +376,8 @@ export const useMarketStore = defineStore('market', () => {
   } | null> {
     try {
       const q = new URLSearchParams()
-      if (params?.page) q.set("page", String(params.page))
-      if (params?.limit) q.set("limit", String(params.limit))
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.limit) q.set('limit', String(params.limit))
       const { data } = await api.get<{
         data: {
           items: MarketComment[]
@@ -345,7 +386,7 @@ export const useMarketStore = defineStore('market', () => {
       }>(`/api/market/apps/${appId}/comments?${q.toString()}`)
       return data
     } catch (e) {
-      console.error("Failed to fetch comments:", e)
+      console.error('Failed to fetch comments:', e)
       return null
     }
   }
@@ -361,13 +402,20 @@ export const useMarketStore = defineStore('market', () => {
       )
       return data
     } catch (e) {
-      console.error("Failed to post comment:", e)
+      console.error('Failed to post comment:', e)
       throw e
     }
   }
 
   async function deleteComment(commentId: number): Promise<void> {
     await api.delete(`/api/market/comments/${commentId}`)
+  }
+
+  async function reportApp(
+    appId: number,
+    payload: { reason: MarketReportReason; details: string },
+  ): Promise<void> {
+    await api.post(`/api/market/apps/${appId}/reports`, payload)
   }
 
   // 将已安装的 App ID 列表同步到服务端
@@ -392,6 +440,51 @@ export const useMarketStore = defineStore('market', () => {
     return updatingIds.value.includes(appId)
   }
 
+  function permissionExpansion(appId: number, nextPermissions?: string[]) {
+    const current = installedApps.value.find((item) => item.id === appId)
+    return addedNetworkPermissions(current?.allowNetwork, nextPermissions)
+  }
+
+  function saveRollbackPoint(appId: number, entry: InstalledApp, bundle: string | null) {
+    if (!bundle) return
+    setStorage(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, bundle)
+    setStorage(`${ROLLBACK_META_KEY_PREFIX}${appId}`, {
+      entry: { ...entry },
+      savedAt: Date.now(),
+    })
+  }
+
+  function hasRollback(appId: number) {
+    return !!(
+      getStorage<string>(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, '') &&
+      getStorage<AppRollbackPoint | null>(`${ROLLBACK_META_KEY_PREFIX}${appId}`, null)?.entry
+    )
+  }
+
+  async function rollbackApp(appId: number): Promise<InstalledApp> {
+    if (isUpdating(appId)) throw new Error('应用正在更新，请稍后再回退')
+    const currentIndex = installedApps.value.findIndex((item) => item.id === appId)
+    if (currentIndex < 0) throw new Error('应用未安装')
+    const rollbackBundle = getStorage<string>(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, '')
+    const point = getStorage<AppRollbackPoint | null>(`${ROLLBACK_META_KEY_PREFIX}${appId}`, null)
+    const currentBundle = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`, '')
+    if (!rollbackBundle || !point?.entry || !currentBundle) throw new Error('没有可回退的版本')
+    await verifyBundleIntegrity(new TextEncoder().encode(rollbackBundle), point.entry.sha256)
+
+    const currentEntry = { ...installedApps.value[currentIndex] }
+    const restored = {
+      ...point.entry,
+      installedAt: currentEntry.installedAt,
+      updatedAt: Date.now(),
+    }
+    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, rollbackBundle)
+    installedApps.value.splice(currentIndex, 1, restored)
+    persistInstalledApps()
+    saveRollbackPoint(appId, currentEntry, currentBundle)
+    await checkForUpdates({ force: true }).catch(() => [])
+    return restored
+  }
+
   function setAutoUpdate(enabled: boolean) {
     autoUpdateEnabled.value = enabled
     setStorage(AUTO_UPDATE_KEY, enabled)
@@ -412,15 +505,15 @@ export const useMarketStore = defineStore('market', () => {
     return hasUpdate(appId)
   }
 
-  async function setVersionStatus(
-    appId: number,
-    versionId: number,
-    status: 'active' | 'yanked',
-  ) {
+  async function setVersionStatus(appId: number, versionId: number, status: 'active' | 'yanked') {
     await api.put(`/api/market/apps/${appId}/versions/${versionId}/status`, { status })
   }
 
-  async function installVersion(appId: number, versionId: number): Promise<InstalledApp> {
+  async function installVersion(
+    appId: number,
+    versionId: number,
+    options?: { approvePermissions?: boolean },
+  ): Promise<InstalledApp> {
     if (isUpdating(appId)) {
       const current = installedApps.value.find((item) => item.id === appId)
       if (!current) throw new Error('应用正在安装')
@@ -436,11 +529,19 @@ export const useMarketStore = defineStore('market', () => {
     try {
       const nextEntry = await downloadAndInstall(appId, versionId)
       if (!nextEntry) throw new Error('应用版本下载失败')
+      const addedPermissions = addedNetworkPermissions(
+        oldEntry?.allowNetwork,
+        nextEntry.allowNetwork,
+      )
+      if (oldEntry && addedPermissions.length && !options?.approvePermissions) {
+        throw new Error(`新版本新增联网权限：${addedPermissions.join('、')}`)
+      }
       if (oldEntry) {
         nextEntry.installedAt = oldEntry.installedAt
         nextEntry.updatedAt = Date.now()
         const replaceIndex = installedApps.value.findIndex((item) => item.id === appId)
         if (replaceIndex < 0) throw new Error('应用已被卸载，已取消安装')
+        saveRollbackPoint(appId, oldEntry, oldBundle)
         installedApps.value.splice(replaceIndex, 1, nextEntry)
       } else {
         installedApps.value.push(nextEntry)
@@ -466,7 +567,10 @@ export const useMarketStore = defineStore('market', () => {
     }
   }
 
-  async function updateApp(appId: number): Promise<InstalledApp> {
+  async function updateApp(
+    appId: number,
+    options?: { approvePermissions?: boolean },
+  ): Promise<InstalledApp> {
     if (isUpdating(appId)) {
       const current = installedApps.value.find((item) => item.id === appId)
       if (!current) throw new Error('应用未安装')
@@ -480,7 +584,10 @@ export const useMarketStore = defineStore('market', () => {
       latest = (await fetchAppDetail(appId)) || undefined
       if (latest) latestApps.value = { ...latestApps.value, [appId]: latest }
     }
-    if (!latest || compareVersions(latest.version, installedApps.value[currentIndex].version) <= 0) {
+    if (
+      !latest ||
+      compareVersions(latest.version, installedApps.value[currentIndex].version) <= 0
+    ) {
       return installedApps.value[currentIndex]
     }
 
@@ -492,6 +599,13 @@ export const useMarketStore = defineStore('market', () => {
     try {
       const nextEntry = await downloadAndInstall(appId)
       if (!nextEntry) throw new Error('新版本下载失败')
+      const addedPermissions = addedNetworkPermissions(
+        oldEntry.allowNetwork,
+        nextEntry.allowNetwork,
+      )
+      if (addedPermissions.length && !options?.approvePermissions) {
+        throw new Error(`新版本新增联网权限：${addedPermissions.join('、')}`)
+      }
       if (compareVersions(nextEntry.version, oldEntry.version) <= 0) {
         if (oldBundle) setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, oldBundle)
         else removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
@@ -504,6 +618,7 @@ export const useMarketStore = defineStore('market', () => {
       nextEntry.updatedAt = Date.now()
       const replaceIndex = installedApps.value.findIndex((item) => item.id === appId)
       if (replaceIndex < 0) throw new Error('应用已被卸载，已取消更新')
+      saveRollbackPoint(appId, oldEntry, oldBundle)
       installedApps.value.splice(replaceIndex, 1, nextEntry)
       persistInstalledApps()
       return nextEntry
@@ -669,6 +784,9 @@ export const useMarketStore = defineStore('market', () => {
     isInstalled,
     hasUpdate,
     isUpdating,
+    permissionExpansion,
+    hasRollback,
+    rollbackApp,
     isCheckingUpdates,
     isUpdatingAll,
     autoUpdateEnabled,
@@ -686,6 +804,7 @@ export const useMarketStore = defineStore('market', () => {
     fetchComments,
     postComment,
     deleteComment,
+    reportApp,
     refreshInstalledMeta,
     syncFromServer,
     syncToServer,

@@ -5,6 +5,8 @@ export interface DocItem {
   title: string
   /** 原始 Markdown 内容；文件夹节点（含 children）可省略 */
   content?: string
+  /** 知识库正文按需加载；目录渲染不触发下载。 */
+  loadContent?: () => Promise<string>
   /** 子目录（可多级嵌套）；存在即为「文件夹」节点，仅作分组不单独展示正文 */
   children?: DocItem[]
 }

@@ -63,7 +63,11 @@ function mockMarketApi() {
     if (path === '/api/market/apps/1') return Promise.resolve({ data: latest })
     if (path === '/api/market/apps/1/download') {
       return Promise.resolve({
-        data: { fileUrl: 'https://cdn.example.com/app.js', name: latest.name, version: latest.version },
+        data: {
+          fileUrl: 'https://cdn.example.com/app.js',
+          name: latest.name,
+          version: latest.version,
+        },
       })
     }
     return Promise.reject(new Error(`unexpected path: ${path}`))
@@ -81,9 +85,14 @@ beforeEach(() => {
 
 describe('market app updates', () => {
   it('replaces the bundle only after a successful download', async () => {
+    const bundle = new TextEncoder().encode('new bundle')
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => 'new bundle' }),
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => bundle.buffer,
+      }),
     )
     const store = useMarketStore()
     store.initInstalledApps()
@@ -97,12 +106,19 @@ describe('market app updates', () => {
     expect(store.installedApps[0].installedAt).toBe(100)
     expect(mocks.storage.get('market-bundle-1')).toBe('new bundle')
     expect(store.hasUpdate(1)).toBe(false)
+    expect(store.hasRollback(1)).toBe(true)
+
+    await store.rollbackApp(1)
+    expect(store.installedApps[0].version).toBe('1.0.0')
+    expect(mocks.storage.get('market-bundle-1')).toBe('old bundle')
   })
 
   it('keeps the old version and bundle when the download fails', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 404, text: async () => 'not found' }),
+      vi
+        .fn()
+        .mockResolvedValue({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) }),
     )
     const store = useMarketStore()
     store.initInstalledApps()

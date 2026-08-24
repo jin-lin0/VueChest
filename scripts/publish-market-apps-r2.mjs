@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -64,15 +65,23 @@ for (const entry of apps) {
   const file = new File([code], jsFile, {
     type: 'application/javascript',
   })
+  const sha256 = createHash('sha256').update(code).digest('hex')
+  const version = meta.version || '1.0.0'
   const presign = await request('/api/uploads/presign', {
     method: 'POST',
     headers: auth,
-    body: JSON.stringify({ kind: 'app', contentType: file.type, size: file.size, name: meta.name }),
+    body: JSON.stringify({
+      kind: 'app',
+      contentType: file.type,
+      size: file.size,
+      name: `${meta.name}-v${version}`,
+      sha256,
+    }),
   })
 
   const uploaded = await fetch(presign.data.uploadUrl, {
     method: 'PUT',
-    headers: { 'Content-Type': file.type },
+    headers: { 'Content-Type': file.type, ...(presign.data.headers || {}) },
     body: file,
   })
   if (!uploaded.ok) throw new Error(`${meta.name}: R2 上传失败 (${uploaded.status})`)
@@ -80,7 +89,7 @@ for (const entry of apps) {
   await request('/api/uploads/complete', {
     method: 'POST',
     headers: auth,
-    body: JSON.stringify({ kind: 'app', key: presign.data.key }),
+    body: JSON.stringify({ kind: 'app', key: presign.data.key, sha256 }),
   })
   const created = await request('/api/market/apps', {
     method: 'POST',
@@ -89,11 +98,12 @@ for (const entry of apps) {
       name: meta.name,
       icon: meta.icon,
       description: meta.description || '',
-      version: meta.version || '1.0.0',
+      version,
       category: meta.category || '工具',
       readme: meta.readme || '',
       fileKey: presign.data.key,
       fileSize: file.size,
+      sha256,
     }),
   })
   await request(`/api/market/apps/${created.data.id}/approve`, {

@@ -2,7 +2,9 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { APP_MODULES } from '@/config'
-import { useAuthStore, useMarketStore, useWorkspaceStore } from '@/stores'
+import { useAuthStore } from '@/stores/auth'
+import { useMarketStore } from '@/stores/market'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { COMMAND_PALETTE_EVENT } from '@/lib/command-palette'
 
 interface CommandItem {

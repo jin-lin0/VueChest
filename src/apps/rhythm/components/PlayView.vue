@@ -23,7 +23,21 @@ const props = defineProps<{
   approachTime: number
 }>()
 
-const emit = defineEmits<{ exit: []; retry: [] }>()
+const emit = defineEmits<{
+  exit: []
+  retry: []
+  result: [
+    payload: {
+      score: number
+      accuracy: number
+      rank: string
+      maxCombo: number
+      miss: number
+      duration: number
+      difficulty: string
+    },
+  ]
+}>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const rootRef = ref<HTMLElement | null>(null)
@@ -146,6 +160,15 @@ function buildGame() {
         accuracy.value = game?.accuracy ?? 100
         stage.value = 'result'
         game?.stop()
+        emit('result', {
+          score: s.score,
+          accuracy: accuracy.value,
+          rank: rankOf(accuracy.value, s.miss, props.beatmap.notes.length),
+          maxCombo: s.maxCombo,
+          miss: s.miss,
+          duration: props.beatmap.duration,
+          difficulty: difficulty.value,
+        })
       },
       onPause: () => {
         paused.value = true

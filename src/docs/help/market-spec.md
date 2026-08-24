@@ -181,22 +181,25 @@ export default {
 
 ## 9. 相关 API 端点
 
-| 方法   | 路径                                                                                      | 说明                                                                                         | 鉴权   |
-| ------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |
-| GET    | `/api/market/categories` → `[{name,count}]`                                               | 分类及数量（仅统计已通过）                                                                   | 否     |
-| GET    | `/api/market/apps?category=&keyword=&page=&limit=`                                        | 应用列表（公开只见已通过；管理员可见全部）                                                   | 可选   |
-| GET    | `/api/market/apps/:id`                                                                    | 应用详情（非管理员 / 非上传者只能看已通过）                                                  | 可选   |
-| GET    | `/api/market/apps/:id/download` → `{name,version,fileUrl}`                                | 获取 bundle 地址（仅已通过，含下载计数）                                                     | 否     |
-| POST   | `/api/uploads/presign` `{kind:'app',contentType,size,name}` → `{key,uploadUrl,expiresIn}` | 申请预签名直传地址（校验类型 / 大小 ≤10MB）                                                  | 是     |
-| PUT    | `uploadUrl`                                                                               | 用预签名 URL 直传文件到 R2                                                                   | 否     |
-| POST   | `/api/uploads/complete` `{kind:'app',key}`                                                | 完成上传（再次校验文件大小）                                                                 | 是     |
-| POST   | `/api/market/apps` `{name,icon,description,version,category,readme,fileKey,fileSize}`     | 创建应用（`name`/`icon`/`fileKey` 必填，`fileKey` 须以 `apps/{userId}/` 开头，状态 pending） | 是     |
-| POST   | `/api/market/apps/:id/approve`                                                            | 审核通过（上架）                                                                             | 管理员 |
-| POST   | `/api/market/apps/:id/reject`                                                             | 审核拒绝                                                                                     | 管理员 |
-| PUT    | `/api/market/apps/:id`                                                                    | 更新应用（名称 / 分类 / 状态 / 文件等）                                                      | 管理员 |
-| DELETE | `/api/market/apps/:id`                                                                    | 删除应用（同时删 R2 文件）                                                                   | 管理员 |
-| GET    | `/api/auth/installed-apps` → `[id]`                                                       | 读取当前用户已安装应用 ID 列表                                                               | 是     |
-| PUT    | `/api/auth/installed-apps` `{installedApps:[id]}`                                         | 全量更新已安装应用 ID 列表（跨设备同步）                                                     | 是     |
+| 方法   | 路径                                                                                         | 说明                                                             | 鉴权   |
+| ------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------ |
+| GET    | `/api/market/categories` → `[{name,count}]`                                                  | 分类及数量（仅统计已通过）                                       | 否     |
+| GET    | `/api/market/apps?category=&keyword=&page=&limit=`                                           | 应用列表（公开只见已通过；管理员可见全部）                       | 可选   |
+| GET    | `/api/market/apps/:id`                                                                       | 应用详情（非管理员 / 非上传者只能看已通过）                      | 可选   |
+| GET    | `/api/market/apps/:id/download` → `{name,version,fileUrl,allowNetwork,sha256}`               | 获取审核版本的 bundle 地址、权限和校验值（仅已通过，含下载计数） | 否     |
+| POST   | `/api/uploads/presign` `{kind:'app',contentType,size,name,sha256}`                           | 申请预签名直传地址并签入 SHA-256 元数据（校验类型 / 大小 ≤10MB） | 是     |
+| PUT    | `uploadUrl`                                                                                  | 用预签名 URL 直传文件到 R2                                       | 否     |
+| POST   | `/api/uploads/complete` `{kind:'app',key,sha256}`                                            | 完成上传（再次校验文件大小和 R2 SHA-256 元数据）                 | 是     |
+| POST   | `/api/market/apps` `{name,icon,description,version,category,readme,fileKey,fileSize,sha256}` | 创建应用（文件路径须属于当前用户，状态 pending）                 | 是     |
+| POST   | `/api/market/apps/:id/reports` `{reason,details}`                                            | 提交应用举报；同一用户同一应用只允许一条待处理举报               | 是     |
+| GET    | `/api/market/admin/reports?status=open`                                                      | 查询举报审核队列                                                 | 管理员 |
+| PUT    | `/api/market/admin/reports/:id` `{status,resolutionNote}`                                    | 处理或驳回举报并保留审核说明                                     | 管理员 |
+| POST   | `/api/market/apps/:id/approve`                                                               | 审核通过（上架）                                                 | 管理员 |
+| POST   | `/api/market/apps/:id/reject`                                                                | 审核拒绝                                                         | 管理员 |
+| PUT    | `/api/market/apps/:id`                                                                       | 更新应用（名称 / 分类 / 状态 / 文件等）                          | 管理员 |
+| DELETE | `/api/market/apps/:id`                                                                       | 删除应用（同时删 R2 文件）                                       | 管理员 |
+| GET    | `/api/auth/installed-apps` → `[id]`                                                          | 读取当前用户已安装应用 ID 列表                                   | 是     |
+| PUT    | `/api/auth/installed-apps` `{installedApps:[id]}`                                            | 全量更新已安装应用 ID 列表（跨设备同步）                         | 是     |
 
 > 鉴权列的"可选"表示接口对匿名开放，但携带管理员令牌时可见到更多内容（如未通过审核的应用）。"管理员"表示需要 `admin` / `super_admin` 角色。
 

@@ -6,7 +6,7 @@ export function createRouterGuard(router: Router) {
     const { useAuthStore } = await import('@/stores/auth')
     const authStore = useAuthStore()
 
-    await authStore.initAuth()
+    if (!authStore.isInitialized) await authStore.initAuth()
 
     const requiresAuth = to.meta.requiresAuth === true
     const requiresSuperAdmin = to.meta.requiresSuperAdmin === true

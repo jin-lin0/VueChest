@@ -100,11 +100,16 @@ for (const [filename, minimumQuestions] of [
   ['vuechest-project-qa.md', 20],
 ]) {
   const markdown = readInterview(filename)
-  const questions = count(markdown, /^### Q\d+[：:]/gm)
-  const answers = count(markdown, /^\*\*面试者标准回答(?:模板)?：\*\*/gm)
+  const blocks = markdown
+    .split(/(?=^### Q\d+[：:])/m)
+    .filter((block) => /^### Q\d+[：:]/.test(block))
+  const questions = blocks.length
+  const answers = blocks.filter(
+    (block) => knowledgeUnits(block.replace(/^### .+$/m, '')) >= 40,
+  ).length
   const ready = questions >= minimumQuestions && questions === answers
-  interviewChecks.push(`${filename}: ${questions} 问 / ${answers} 答`)
-  if (!ready) interviewProblems.push(`${filename} 的问题与面试者标准回答未一一对应`)
+  interviewChecks.push(`${filename}: ${questions} 问 / ${answers} 有完整正文`)
+  if (!ready) interviewProblems.push(`${filename} 存在缺少完整正文的问题`)
 }
 
 for (const filename of ['algorithm.md', 'scenario.md']) {

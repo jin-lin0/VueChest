@@ -9,6 +9,7 @@
 
 import { DEFAULT_APPROACH_TIME } from './renderer'
 import { STORAGE_KEYS } from '@/config/storage-keys'
+import { getStorage, removeStorage, setStorage } from '@/lib/storage'
 
 const STORAGE_KEY = STORAGE_KEYS.RHYTHM_SETTINGS
 /** 可持久化的玩家设置。全部可选——旧版本存档缺字段时走默认值 */
@@ -57,7 +58,7 @@ export const DEFAULT_SETTINGS: RhythmSettings = {
 /**
  * 每个字段的合法区间，与 UI 滑块的 min/max 保持一致。
  *
- * 为什么要校验而不是直接信任存档：localStorage 是用户可改的，
+ * 为什么要校验而不是直接信任存档：导入文件和浏览器数据都可能被修改，
  * 手写一个 noteSpeed: 0 进去会让 renderer 的 pxPerSec 变成 Infinity，
  * 整个画面直接崩。这类"读外部数据"的边界必须自己守。
  */
@@ -80,24 +81,10 @@ function clampNumber(key: string, value: unknown, fallback: number): number {
 }
 
 /**
- * 读取设置。任何异常（禁用 localStorage、JSON 损坏、字段被改坏）
- * 都退回默认值——设置读取失败绝不该阻止玩家进游戏。
+ * 读取设置。缺失、类型错误或字段被改坏时都退回默认值。
  */
 export function loadSettings(): RhythmSettings {
-  let raw: string | null = null
-  try {
-    raw = localStorage.getItem(STORAGE_KEY)
-  } catch {
-    /* 隐私模式等场景下 localStorage 不可用 */
-  }
-  if (!raw) return { ...DEFAULT_SETTINGS }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return { ...DEFAULT_SETTINGS }
-  }
+  const parsed = getStorage<unknown>(STORAGE_KEY)
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_SETTINGS }
 
   const o = parsed as Record<string, unknown>
@@ -118,20 +105,12 @@ export function loadSettings(): RhythmSettings {
   }
 }
 
-/** 保存设置。写入失败静默忽略——存不下也不该影响正在玩的这局 */
+/** 保存设置到统一 IndexedDB 存储层。 */
 export function saveSettings(s: RhythmSettings): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
-  } catch {
-    /* 配额满或不可用时忽略 */
-  }
+  setStorage(STORAGE_KEY, s)
 }
 
 /** 清除存档，用于「恢复默认」 */
 export function clearSettings(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    /* 忽略 */
-  }
+  removeStorage(STORAGE_KEY)
 }

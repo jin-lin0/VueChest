@@ -89,6 +89,17 @@ async function checkOne(app: InstalledApp) {
   }
 }
 
+async function rollback(app: InstalledApp) {
+  const ok = await confirm(`确定将“${app.name}”回退到上一个本地版本吗？当前版本会保留为回退点。`)
+  if (!ok) return
+  try {
+    const restored = await market.rollbackApp(app.id)
+    actionMessage.value = `“${app.name}”已回退到 v${restored.version}`
+  } catch (error) {
+    actionMessage.value = error instanceof Error ? error.message : '版本回退失败'
+  }
+}
+
 onMounted(async () => {
   await refreshUsage()
   const appId = Number(route.query.app)
@@ -116,11 +127,7 @@ onMounted(async () => {
 
     <p v-if="actionMessage" class="action-message">{{ actionMessage }}</p>
 
-    <EmptyState
-      v-if="market.installedApps.length === 0"
-      icon="📦"
-      title="还没有安装市场应用"
-    />
+    <EmptyState v-if="market.installedApps.length === 0" icon="📦" title="还没有安装市场应用" />
 
     <main v-else class="installed-list">
       <article v-for="app in market.installedApps" :key="app.id" class="installed-card">
@@ -138,7 +145,9 @@ onMounted(async () => {
         <dl class="app-facts">
           <div>
             <dt>本地数据</dt>
-            <dd>{{ formatFileSize(usage[app.id]?.bytes || 0) }} · {{ usage[app.id]?.entries || 0 }} 项</dd>
+            <dd>
+              {{ formatFileSize(usage[app.id]?.bytes || 0) }} · {{ usage[app.id]?.entries || 0 }} 项
+            </dd>
           </div>
           <div>
             <dt>联网权限</dt>
@@ -148,18 +157,23 @@ onMounted(async () => {
             <dt>最近更新</dt>
             <dd>{{ new Date(app.updatedAt).toLocaleString() }}</dd>
           </div>
+          <div>
+            <dt>完整性校验</dt>
+            <dd>{{ app.sha256 ? `SHA-256 ${app.sha256.slice(0, 12)}…` : '旧版本未记录' }}</dd>
+          </div>
         </dl>
 
         <div class="card-actions">
           <button @click="router.push(app.route)">打开</button>
-          <button
-            @click="router.push({ path: `/market/${app.id}`, query: { from: 'installed' } })"
-          >
+          <button @click="router.push({ path: `/market/${app.id}`, query: { from: 'installed' } })">
             版本与详情
           </button>
           <button @click="checkOne(app)">检查此应用</button>
+          <button :disabled="!market.hasRollback(app.id)" @click="rollback(app)">
+            回退上个版本
+          </button>
           <button @click="exportData(app)">导出数据</button>
-          <button :disabled="!(usage[app.id]?.entries)" @click="clearData(app)">清除数据</button>
+          <button :disabled="!usage[app.id]?.entries" @click="clearData(app)">清除数据</button>
           <button class="danger" @click="openUninstall(app)">卸载</button>
         </div>
       </article>

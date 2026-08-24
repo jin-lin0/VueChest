@@ -2,7 +2,7 @@
 // 音游主界面：选曲/分析 → 校验节拍 → 生成谱面 → 游玩。
 // 分析与校验区保留下来是有意的：自动谱面质量依赖 BPM/offset 正确，
 // 出问题时需要能当场听出来并手动纠正。
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { analyze, gridAlignment, type AnalyzeResult } from './core/analyze'
 import { AudioClock } from './core/clock'
@@ -12,8 +12,24 @@ import { generateBeatmap, beatmapDensity, difficultyLabel, type Beatmap } from '
 import { loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from './core/settings'
 import PlayView from './components/PlayView.vue'
 import { musicApi } from '@/lib/musicApi'
+import { recordGameResult } from '@/apps/game-center/profile'
 
 const router = useRouter()
+
+onMounted(() => {
+  if (document.querySelector('link[data-rhythm-font]')) return
+  const preconnect = document.createElement('link')
+  preconnect.rel = 'preconnect'
+  preconnect.href = 'https://fonts.gstatic.com'
+  preconnect.crossOrigin = 'anonymous'
+  preconnect.dataset.rhythmFont = 'preconnect'
+  const stylesheet = document.createElement('link')
+  stylesheet.rel = 'stylesheet'
+  stylesheet.href =
+    'https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap'
+  stylesheet.dataset.rhythmFont = 'stylesheet'
+  document.head.append(preconnect, stylesheet)
+})
 
 type Stage = 'idle' | 'fetching' | 'decoding' | 'analyzing' | 'ready' | 'error'
 
@@ -89,7 +105,7 @@ const playing = ref(false)
 /**
  * 谱面与手感参数。
  *
- * 初值全部来自 localStorage 存档（缺失/损坏时回落到 DEFAULT_SETTINGS），
+ * 初值全部来自统一 IndexedDB 存档（缺失/损坏时回落到 DEFAULT_SETTINGS），
  * 改动后会自动写回——延迟校准这类设备特有值刷新就丢的话，
  * 玩家每次都得重新校准，设置项等于白做。
  * 默认值定义在 core/settings.ts，那里是唯一真相。
@@ -176,6 +192,29 @@ function exitPlay() {
   playing.value = false
 }
 
+function recordRhythmResult(result: {
+  score: number
+  accuracy: number
+  rank: string
+  maxCombo: number
+  miss: number
+  duration: number
+  difficulty: string
+}) {
+  recordGameResult('rhythm', {
+    score: result.score,
+    rank: result.rank,
+    duration: result.duration,
+    metadata: {
+      song: songTitle.value,
+      accuracy: Number(result.accuracy.toFixed(2)),
+      maxCombo: result.maxCombo,
+      miss: result.miss,
+      difficulty: result.difficulty,
+    },
+  })
+}
+
 function getCtx(): AudioContext {
   if (!ctx) ctx = new AudioContext()
   return ctx
@@ -196,7 +235,9 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string) 
     let t = performance.now()
     const arrayBuffer = await getBuffer()
     timings.value.fetch = Math.round(performance.now() - t)
-    log(`获取完成，${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB，耗时 ${timings.value.fetch}ms`)
+    log(
+      `获取完成，${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB，耗时 ${timings.value.fetch}ms`,
+    )
 
     stage.value = 'decoding'
     t = performance.now()
@@ -211,7 +252,9 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string) 
     t = performance.now()
     const res = await analyze(audioBuffer)
     timings.value.analyze = Math.round(performance.now() - t)
-    log(`分析完成：BPM ${res.bpm}（原始检测 ${res.rawBpm}），首拍 ${res.offset.toFixed(3)}s，onset ${res.onsets.length} 个，耗时 ${timings.value.analyze}ms`)
+    log(
+      `分析完成：BPM ${res.bpm}（原始检测 ${res.rawBpm}），首拍 ${res.offset.toFixed(3)}s，onset ${res.onsets.length} 个，耗时 ${timings.value.analyze}ms`,
+    )
 
     result.value = res
     bpmScale.value = 1
@@ -382,9 +425,7 @@ const stageText = computed(
 )
 
 /** 分析是否正在进行中，用于禁用按钮与显示进度 */
-const busy = computed(() =>
-  ['fetching', 'decoding', 'analyzing'].includes(stage.value),
-)
+const busy = computed(() => ['fetching', 'decoding', 'analyzing'].includes(stage.value))
 
 /**
  * 难度预设。
@@ -468,6 +509,11 @@ function markCustom() {
   activePreset.value = 'custom'
 }
 
+function selectQuantizeDivision(value: 1 | 2 | 4) {
+  quantizeDivision.value = value
+  markCustom()
+}
+
 /** 高级参数面板的展开状态 */
 const showAdvanced = ref(false)
 
@@ -490,6 +536,7 @@ onUnmounted(() => {
     :approach-time="noteSpeed"
     class="fullscreen-play"
     @exit="exitPlay"
+    @result="recordRhythmResult"
   />
 
   <div v-else class="lab">
@@ -659,8 +706,9 @@ onUnmounted(() => {
 
         <div v-if="gapStats" class="stat-note">
           起音间隔 {{ gapStats.min }}–{{ gapStats.max }}ms（中位 {{ gapStats.median }}ms，标准差
-          <b>{{ gapStats.std }}ms</b>）·
-          落在 BPM 网格 ±40ms：<b :class="{ warn: gridAlignRate < 50 }">
+          <b>{{ gapStats.std }}ms</b>）· 落在 BPM 网格 ±40ms：<b
+            :class="{ warn: gridAlignRate < 50 }"
+          >
             {{ gridAlignRate.toFixed(1) }}%
           </b>
           <span class="sub-note">偏低说明掺了换气/杂音等非节拍起音</span>
@@ -686,7 +734,12 @@ onUnmounted(() => {
         <div v-if="result" class="timeline-wrap">
           <p class="tl-label">前 {{ visibleSpan.toFixed(0) }}s 起音点分布</p>
           <div class="timeline">
-            <i v-for="(m, i) in onsetMarkers" :key="i" class="onset" :style="{ left: m.left + '%' }" />
+            <i
+              v-for="(m, i) in onsetMarkers"
+              :key="i"
+              class="onset"
+              :style="{ left: m.left + '%' }"
+            />
             <div
               v-if="playTime > 0"
               class="playhead"
@@ -701,13 +754,13 @@ onUnmounted(() => {
 
         <div class="controls">
           <span class="ctl-label">网格</span>
-          <button :class="{ on: quantizeDivision === 1 }" @click="quantizeDivision = 1; markCustom()">
+          <button :class="{ on: quantizeDivision === 1 }" @click="selectQuantizeDivision(1)">
             1/4
           </button>
-          <button :class="{ on: quantizeDivision === 2 }" @click="quantizeDivision = 2; markCustom()">
+          <button :class="{ on: quantizeDivision === 2 }" @click="selectQuantizeDivision(2)">
             1/8
           </button>
-          <button :class="{ on: quantizeDivision === 4 }" @click="quantizeDivision = 4; markCustom()">
+          <button :class="{ on: quantizeDivision === 4 }" @click="selectQuantizeDivision(4)">
             1/16
           </button>
         </div>
@@ -783,7 +836,9 @@ onUnmounted(() => {
         </p>
 
         <div v-if="result" class="metrics">
-          <div class="metric"><span class="k">BPM</span><b>{{ result.bpm || '失败' }}</b></div>
+          <div class="metric">
+            <span class="k">BPM</span><b>{{ result.bpm || '失败' }}</b>
+          </div>
           <div class="metric">
             <span class="k">原始检测</span>
             <b :class="{ corrected: result.rawBpm !== result.bpm }">{{ result.rawBpm }}</b>
@@ -794,10 +849,18 @@ onUnmounted(() => {
               {{ result.offset.toFixed(3) }}s
             </b>
           </div>
-          <div class="metric"><span class="k">原始偏移</span><b>{{ result.rawOffset.toFixed(3) }}s</b></div>
-          <div class="metric"><span class="k">获取</span><b>{{ timings.fetch }}ms</b></div>
-          <div class="metric"><span class="k">解码</span><b>{{ timings.decode }}ms</b></div>
-          <div class="metric"><span class="k">分析</span><b>{{ timings.analyze }}ms</b></div>
+          <div class="metric">
+            <span class="k">原始偏移</span><b>{{ result.rawOffset.toFixed(3) }}s</b>
+          </div>
+          <div class="metric">
+            <span class="k">获取</span><b>{{ timings.fetch }}ms</b>
+          </div>
+          <div class="metric">
+            <span class="k">解码</span><b>{{ timings.decode }}ms</b>
+          </div>
+          <div class="metric">
+            <span class="k">分析</span><b>{{ timings.analyze }}ms</b>
+          </div>
         </div>
       </section>
 
@@ -829,7 +892,11 @@ onUnmounted(() => {
     radial-gradient(90% 65% at 15% 0%, #1e1436 0%, transparent 60%),
     radial-gradient(70% 60% at 90% 15%, #2a1030 0%, transparent 55%),
     linear-gradient(180deg, #0d0a1a 0%, #07060f 100%);
-  font-family: 'Rajdhani', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Rajdhani',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .game-center-back {

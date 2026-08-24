@@ -6,6 +6,8 @@ import type { MarketAppItem, MarketAppVersion } from '@/stores/market'
 import { useAuthStore } from '@/stores/auth'
 import { formatFileSize } from '@/utils'
 import AppComments from '@/components/AppComments.vue'
+import { Modal } from '@/components'
+import type { MarketReportReason } from '@/stores/market'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,14 +22,21 @@ const updating = ref(false)
 const error = ref('')
 const actionError = ref('')
 const versions = ref<MarketAppVersion[]>([])
+const permissionModalOpen = ref(false)
+const pendingAction = ref<'install' | 'update' | 'version' | null>(null)
+const pendingVersion = ref<MarketAppVersion | null>(null)
+const reportModalOpen = ref(false)
+const reportReason = ref<MarketReportReason>('privacy')
+const reportDetails = ref('')
+const reportSubmitting = ref(false)
+const reportMessage = ref('')
 
 const screenshots = computed(() => app.value?.screenshots || [])
 const activeShot = ref(0)
 
 function prevShot() {
   if (screenshots.value.length === 0) return
-  activeShot.value =
-    (activeShot.value - 1 + screenshots.value.length) % screenshots.value.length
+  activeShot.value = (activeShot.value - 1 + screenshots.value.length) % screenshots.value.length
 }
 function nextShot() {
   if (screenshots.value.length === 0) return
@@ -84,7 +93,7 @@ async function handleUpdate() {
   updating.value = true
   actionError.value = ''
   try {
-    await market.updateApp(app.value.id)
+    await market.updateApp(app.value.id, { approvePermissions: true })
   } catch (e) {
     actionError.value = e instanceof Error ? e.message : '更新失败'
   } finally {
@@ -96,6 +105,14 @@ const isInstalled = computed(() => (app.value ? market.isInstalled(app.value.id)
 const hasUpdate = computed(() => (app.value ? market.hasUpdate(app.value.id) : false))
 const installedVersion = computed(() =>
   app.value ? market.installedApps.find((item) => item.id === app.value?.id)?.version : undefined,
+)
+const requestedPermissions = computed(() =>
+  pendingAction.value === 'version'
+    ? pendingVersion.value?.allowNetwork || []
+    : app.value?.allowNetwork || [],
+)
+const addedPermissions = computed(() =>
+  app.value ? market.permissionExpansion(app.value.id, requestedPermissions.value) : [],
 )
 const returnContext = computed(() => {
   const source = route.query.from
@@ -109,9 +126,52 @@ async function handleInstallVersion(version: MarketAppVersion) {
   if (!app.value) return
   actionError.value = ''
   try {
-    await market.installVersion(app.value.id, version.id)
+    await market.installVersion(app.value.id, version.id, { approvePermissions: true })
   } catch (e) {
     actionError.value = e instanceof Error ? e.message : '版本安装失败'
+  }
+}
+
+function requestAction(action: 'install' | 'update' | 'version', version?: MarketAppVersion) {
+  pendingAction.value = action
+  pendingVersion.value = version || null
+  permissionModalOpen.value = true
+}
+
+async function confirmPermissionAction() {
+  const action = pendingAction.value
+  const version = pendingVersion.value
+  permissionModalOpen.value = false
+  if (action === 'install') await handleInstall()
+  else if (action === 'update') await handleUpdate()
+  else if (action === 'version' && version) await handleInstallVersion(version)
+}
+
+function openReport() {
+  reportMessage.value = ''
+  if (!auth.isAuthenticated) {
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  reportModalOpen.value = true
+}
+
+async function submitReport() {
+  if (!app.value || reportDetails.value.trim().length < 5) return
+  reportSubmitting.value = true
+  reportMessage.value = ''
+  try {
+    await market.reportApp(app.value.id, {
+      reason: reportReason.value,
+      details: reportDetails.value.trim(),
+    })
+    reportModalOpen.value = false
+    reportDetails.value = ''
+    reportMessage.value = '举报已提交，管理员会在后台处理。'
+  } catch (reason) {
+    reportMessage.value = reason instanceof Error ? reason.message : '举报提交失败'
+  } finally {
+    reportSubmitting.value = false
   }
 }
 
@@ -171,7 +231,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
               v-if="!isInstalled"
               class="install-btn"
               :disabled="installing"
-              @click="handleInstall"
+              @click="requestAction('install')"
             >
               {{ installing ? '安装中...' : '安装' }}
             </button>
@@ -179,7 +239,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
               v-if="isInstalled && hasUpdate"
               class="install-btn"
               :disabled="updating"
-              @click="handleUpdate"
+              @click="requestAction('update')"
             >
               {{ updating ? '更新中...' : '更新到最新版' }}
             </button>
@@ -193,6 +253,33 @@ async function handleVersionStatus(version: MarketAppVersion) {
             </button>
           </div>
           <p v-if="actionError" class="action-error">{{ actionError }}</p>
+          <p v-if="reportMessage" class="action-message">{{ reportMessage }}</p>
+        </div>
+      </div>
+
+      <div class="detail-section security-section">
+        <div class="section-heading">
+          <div>
+            <h2>安装权限与安全</h2>
+            <p>应用仅在隔离沙箱中运行，安装前会再次核对应用包。</p>
+          </div>
+          <button class="report-btn" @click="openReport">举报应用</button>
+        </div>
+        <div class="security-grid">
+          <div>
+            <strong>联网权限</strong>
+            <span>{{ app.allowNetwork?.length ? app.allowNetwork.join('、') : '不允许联网' }}</span>
+          </div>
+          <div>
+            <strong>本地数据</strong>
+            <span>仅能访问自己的隔离存储</span>
+          </div>
+          <div>
+            <strong>完整性</strong>
+            <span>{{
+              app.sha256 ? `SHA-256 ${app.sha256.slice(0, 12)}…` : '旧版本未记录校验值'
+            }}</span>
+          </div>
         </div>
       </div>
 
@@ -213,7 +300,9 @@ async function handleVersionStatus(version: MarketAppVersion) {
             <div class="version-main">
               <strong>v{{ version.version }}</strong>
               <span v-if="version.version === app.version" class="version-tag">市场最新版</span>
-              <span v-if="version.version === installedVersion" class="version-tag installed">当前安装</span>
+              <span v-if="version.version === installedVersion" class="version-tag installed"
+                >当前安装</span
+              >
               <span v-if="version.status === 'yanked'" class="version-tag yanked">已下架</span>
               <time>{{ new Date(version.createdAt).toLocaleDateString() }}</time>
             </div>
@@ -226,7 +315,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
                   (isInstalled || version.version !== app.version)
                 "
                 :disabled="market.isUpdating(app.id)"
-                @click="handleInstallVersion(version)"
+                @click="requestAction('version', version)"
               >
                 {{ installedVersion ? '安装此版本' : '安装' }}
               </button>
@@ -270,6 +359,79 @@ async function handleVersionStatus(version: MarketAppVersion) {
       </div>
 
       <AppComments v-if="app" :app-id="app.id" />
+
+      <Modal
+        :open="permissionModalOpen"
+        title="确认安装权限"
+        width="min(520px, 94vw)"
+        @close="permissionModalOpen = false"
+      >
+        <div class="permission-dialog">
+          <p>
+            将{{ pendingAction === 'update' ? '更新' : '安装' }}
+            <strong>{{ app.name }}</strong>
+            <template v-if="pendingVersion"> v{{ pendingVersion.version }}</template>
+          </p>
+          <ul>
+            <li>在隔离的 iframe 沙箱内运行，不能注册宿主路由或读取宿主存储。</li>
+            <li>本地数据只写入该应用自己的命名空间。</li>
+            <li v-if="requestedPermissions.length">
+              允许访问：{{ requestedPermissions.join('、') }}
+            </li>
+            <li v-else>不允许访问网络。</li>
+            <li>下载完成后核对 SHA-256；不一致会立即终止安装。</li>
+          </ul>
+          <p v-if="addedPermissions.length" class="permission-warning">
+            本次新增联网权限：{{ addedPermissions.join('、') }}
+          </p>
+          <div class="dialog-actions">
+            <button @click="permissionModalOpen = false">取消</button>
+            <button class="install-btn" @click="confirmPermissionAction">确认并继续</button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        :open="reportModalOpen"
+        title="举报应用"
+        width="min(500px, 94vw)"
+        @close="reportModalOpen = false"
+      >
+        <div class="report-dialog">
+          <label>
+            <span>问题类型</span>
+            <select v-model="reportReason">
+              <option value="malware">恶意行为或病毒</option>
+              <option value="privacy">隐私或越权访问</option>
+              <option value="fraud">欺诈或误导</option>
+              <option value="offensive">不当内容</option>
+              <option value="copyright">版权问题</option>
+              <option value="other">其他</option>
+            </select>
+          </label>
+          <label>
+            <span>问题说明</span>
+            <textarea
+              v-model="reportDetails"
+              rows="5"
+              maxlength="1000"
+              placeholder="请说明复现方式、风险或受影响范围（至少 5 个字）"
+            ></textarea>
+            <small>{{ reportDetails.length }}/1000</small>
+          </label>
+          <p v-if="reportMessage" class="action-error">{{ reportMessage }}</p>
+          <div class="dialog-actions">
+            <button @click="reportModalOpen = false">取消</button>
+            <button
+              class="install-btn"
+              :disabled="reportSubmitting || reportDetails.trim().length < 5"
+              @click="submitReport"
+            >
+              {{ reportSubmitting ? '提交中...' : '提交举报' }}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </template>
   </div>
 </template>
@@ -419,6 +581,134 @@ async function handleVersionStatus(version: MarketAppVersion) {
   margin-top: 0.7rem;
   color: var(--danger);
   font-size: 0.85rem;
+}
+
+.action-message {
+  margin-top: 0.7rem;
+  color: var(--success);
+  font-size: 0.85rem;
+}
+
+.section-heading,
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.section-heading h2 {
+  margin-bottom: 0.25rem;
+}
+
+.section-heading p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.report-btn,
+.dialog-actions > button:not(.install-btn) {
+  padding: 0.48rem 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.security-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.security-grid > div {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+
+.security-grid strong,
+.security-grid span {
+  display: block;
+}
+
+.security-grid strong {
+  margin-bottom: 0.35rem;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+
+.security-grid span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+}
+
+.permission-dialog > p:first-child {
+  color: var(--text-primary);
+}
+
+.permission-dialog ul {
+  padding-left: 1.2rem;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.8;
+}
+
+.permission-warning {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  color: #b45309;
+  font-size: 0.82rem;
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.dialog-actions .install-btn {
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+}
+
+.report-dialog label,
+.report-dialog label > span {
+  display: block;
+}
+
+.report-dialog label {
+  margin-bottom: 0.9rem;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.report-dialog select,
+.report-dialog textarea {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.report-dialog small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  text-align: right;
 }
 
 .version-list {
@@ -612,6 +902,14 @@ async function handleVersionStatus(version: MarketAppVersion) {
 
   .hero-actions {
     justify-content: center;
+  }
+
+  .security-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading {
+    align-items: flex-start;
   }
 }
 </style>

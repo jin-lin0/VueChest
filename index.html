@@ -18,18 +18,6 @@
     <!-- 设计 token：宿主与 market 沙箱共用同一份 public/tokens.css（含 :root 浅色 / :root.dark 深色），
          由 <head> 最先加载，避免首屏浅/深闪烁。改 token 只改这里，勿在 src 另存一份。 -->
     <link rel="stylesheet" href="/tokens.css" />
-    <!--
-      Rajdhani：音游界面用的显示字体。
-      选它而不是 Orbitron/Space Grotesk 之类：它的数字字形窄而挺，
-      等宽数字（tabular-nums）在分数飞速滚动时不会晃，同时带一点科技感
-      又不会像纯装饰字体那样牺牲可读性。仅音游模块使用，按需加载。
-    -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap"
-      rel="stylesheet"
-    />
     <title>VueChest - 应用中心</title>
   </head>
   <body>

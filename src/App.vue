@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { APP_MODULES } from '@/config'
-import { RouteLoadingBar, MusicPlayer, Toast, CommandPalette } from '@/components'
+import RouteLoadingBar from '@/components/common/RouteLoadingBar.vue'
+import Toast from '@/components/common/Toast.vue'
+import CommandPalette from '@/components/business/CommandPalette.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { registerToastHost } from '@/composables/useToast'
-import { useAuthStore, useWorkspaceStore } from '@/stores'
+import { useAuthStore } from '@/stores/auth'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { recordGameLaunchFromRoute } from '@/apps/game-center/profile'
 
 const router = useRouter()
+const MusicPlayer = defineAsyncComponent(() => import('@/components/business/MusicPlayer.vue'))
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 const isRouteLoading = ref(false)

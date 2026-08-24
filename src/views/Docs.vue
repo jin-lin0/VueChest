@@ -259,19 +259,24 @@ async function selectTab(tab: DocTab) {
 }
 
 const activeDoc = computed(() => {
-  const found = currentAllDocs.value.find((d) => d.id === route.query.doc && d.content)
-  return found ?? currentAllDocs.value.find((d) => d.content) ?? currentAllDocs.value[0]
+  const hasBody = (doc: DocItem) => Boolean(doc.content || doc.loadContent)
+  const found = currentAllDocs.value.find((doc) => doc.id === route.query.doc && hasBody(doc))
+  return found ?? currentAllDocs.value.find(hasBody) ?? currentAllDocs.value[0]
 })
 
+const activeContent = ref('')
+const docLoading = ref(false)
+const docLoadError = ref('')
+let docLoadVersion = 0
+
 const html = computed(() => {
-  const doc = activeDoc.value
-  if (!doc?.content) return ''
-  return renderMarkdown(doc.content, { tocLevels: [2, 3] })
+  if (!activeContent.value) return ''
+  return renderMarkdown(activeContent.value, { tocLevels: [2, 3] })
 })
 
 // ---- 本页目录（TOC）：从二级/三级标题提取 ----
 const toc = computed(() =>
-  activeDoc.value?.content ? extractToc(activeDoc.value.content, [2, 3]) : [],
+  activeContent.value ? extractToc(activeContent.value, [2, 3]) : [],
 )
 const activeHeading = ref('')
 
@@ -299,13 +304,31 @@ function onScroll() {
 
 watch(
   () => activeDoc.value?.id,
-  (id) => {
+  async (id) => {
+    const version = ++docLoadVersion
     closeFolderContextMenu()
     activeHeading.value = ''
+    activeContent.value = ''
+    docLoadError.value = ''
     // 切换文档时只打开其所属路径的文件夹，不收起其它文件夹
     if (id) ensureAncestorsOpen(id)
-    nextTick(collectHeadings)
+    const doc = activeDoc.value
+    if (!doc) return
+    docLoading.value = true
+    try {
+      const content = doc.content ?? (await doc.loadContent?.()) ?? ''
+      if (version !== docLoadVersion) return
+      activeContent.value = content
+    } catch (error) {
+      if (version !== docLoadVersion) return
+      docLoadError.value = error instanceof Error ? error.message : '文档加载失败'
+    } finally {
+      if (version === docLoadVersion) docLoading.value = false
+    }
+    await nextTick()
+    collectHeadings()
   },
+  { immediate: true },
 )
 watch(activeTab, (tab) => {
   initializeFolderDefaults(tab)
@@ -591,7 +614,14 @@ function onContentClick(e: MouseEvent) {
           class="docs-donate"
         />
 
+        <div v-if="docLoading" class="docs-loading" role="status">
+          <span></span><strong>正在加载文档</strong>
+        </div>
+        <div v-else-if="docLoadError" class="docs-loading error" role="alert">
+          <strong>{{ docLoadError }}</strong>
+        </div>
         <article
+          v-else
           class="docs-content"
           ref="contentRef"
           v-html="html"
@@ -982,6 +1012,29 @@ function onContentClick(e: MouseEvent) {
   gap: var(--space-6);
   min-width: 0;
 }
+.docs-loading {
+  display: grid;
+  min-height: 320px;
+  width: 100%;
+  max-width: 820px;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+.docs-loading span {
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: docs-spin 0.8s linear infinite;
+}
+.docs-loading.error { color: var(--danger); }
+@keyframes docs-spin { to { transform: rotate(360deg); } }
 .docs-donate {
   width: 100%;
   max-width: 820px;

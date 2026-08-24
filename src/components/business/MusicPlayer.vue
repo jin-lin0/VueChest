@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { useMusicStore } from '@/stores'
-import { Drawer, EmptyState } from '@/components'
+import { useMusicStore } from '@/stores/music'
+import Drawer from '@/components/common/Drawer.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 
 defineOptions({ name: 'MusicPlayer' })
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores'
+import { useAuthStore } from '@/stores/auth'
 import { api } from '@/lib/request'
-import { Toast } from '@/components'
+import Toast from '@/components/common/Toast.vue'
 import { roleText } from '@/utils'
 
 const router = useRouter()

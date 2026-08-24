@@ -37,7 +37,7 @@
       <header class="menu-topbar">
         <button class="back-btn" @click="goBack">
           <span>←</span>
-          <span>返回</span>
+          <span>返回游戏中心</span>
         </button>
         <div class="menu-title">
           <h1>🏎️ 极速狂飙</h1>
@@ -643,6 +643,7 @@ import {
 } from './storage'
 import { GhostRecorder, interpolateGhost, loadGhost, saveGhost, type GhostLap } from './ghost'
 import { loadTrackEnvironment, loadTrackProps, preloadRaceAssets } from './assets'
+import { recordGameResult } from '@/apps/game-center/profile'
 
 const router = useRouter()
 const gameContainer = ref<HTMLDivElement>()
@@ -2474,6 +2475,18 @@ function finalizeProgress() {
     }
   }
   saveRacingSave(racingSave.value)
+  recordGameResult('racing', {
+    score: score.value,
+    won: rank.value === 1,
+    rank: rank.value,
+    duration: gameTime.value + player1Data.penaltyTime,
+    metadata: {
+      mode: raceConfig.mode,
+      track: activeTrackId.value,
+      difficulty: raceConfig.difficulty,
+      medal: earnedMedal.value,
+    },
+  })
   newUnlocks.value = racingSave.value.unlockedLiveries
     .filter((livery) => !unlocksBefore.has(livery))
     .map((livery) => LIVERY_LABELS[livery] || livery)
@@ -2513,6 +2526,14 @@ function finishMultiRace() {
   multiFinishDeadline.value = 0
   racingAudio.finish(true)
   gameState.value = 'result'
+  recordGameResult('racing', {
+    score: score.value,
+    won:
+      player1Data.finished &&
+      (!player2Data.finished || player1Data.finishTime <= player2Data.finishTime),
+    duration: gameTime.value,
+    metadata: { mode: raceConfig.mode, track: activeTrackId.value, localPlayers: 2 },
+  })
 }
 
 /** 平滑跟随相机：滞后跟随 + FOV 随速度拉伸 + 碰撞震动。 */
