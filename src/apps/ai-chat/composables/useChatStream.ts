@@ -14,6 +14,8 @@ export interface StreamChatParams {
   temperature?: number
   /** 用于切换会话/卸载时中止当前流，避免旧流继续推送 */
   signal?: AbortSignal
+  /** OpenRouter 触发模型降级时，同步最终实际使用的模型。 */
+  onModelResolved?: (model: string) => void
 }
 
 const DEFAULT_MAX_TOKENS = 4096
@@ -29,6 +31,7 @@ export function useChatStream() {
       maxTokens = DEFAULT_MAX_TOKENS,
       temperature = DEFAULT_TEMPERATURE,
       signal,
+      onModelResolved,
     } = params
 
     const token = getAuthToken()
@@ -80,6 +83,7 @@ export function useChatStream() {
 
           try {
             const json = JSON.parse(data)
+            if (typeof json?.model === 'string') onModelResolved?.(json.model)
             const delta = json?.choices?.[0]?.delta?.content
             if (delta) {
               yield delta

@@ -4,6 +4,7 @@ export interface ModelOption {
   id: string
   name: string
   contextLength?: number | null
+  expirationDate?: string | null
 }
 
 export interface ProviderMeta {

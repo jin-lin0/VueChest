@@ -51,7 +51,13 @@ const providerOptions = computed<SelectOption[]>(() =>
   providers.value.map((p) => ({ value: p.id, label: p.name })),
 )
 const modelOptions = computed<SelectOption[]>(() =>
-  currentProvider.value.models.map((m) => ({ value: m.id, label: m.name })),
+  currentProvider.value.models.map((model, index) => {
+    const recommended = currentProvider.value.id === 'openrouter' && index === 0 ? '推荐 · ' : ''
+    const expiration = model.expirationDate
+      ? ` · 免费至 ${model.expirationDate.slice(0, 10)}`
+      : ''
+    return { value: model.id, label: `${recommended}${model.name}${expiration}` }
+  }),
 )
 
 const showSettings = ref(false)
@@ -364,6 +370,16 @@ const sendMessage = async () => {
         model: selectedModel.value,
         messages: apiMessages,
         signal: streamSignal,
+        onModelResolved: (usedModel) => {
+          if (currentSessionId.value !== streamSessionId) return
+          if (!currentProvider.value.models.some((option) => option.id === usedModel)) return
+          selectedModel.value = usedModel
+          const activeSession = sessions.value.find((item) => item.id === streamSessionId)
+          if (activeSession) {
+            activeSession.model = usedModel
+            saveSessions()
+          }
+        },
       })) {
         // 若已切换到其它会话，跳过写入（旧流会被 watch/abort 及时中止，这里是兜底）
         if (currentSessionId.value !== streamSessionId) continue
@@ -588,7 +604,10 @@ onUnmounted(() => {
             <label>模型</label>
             <CustomSelect v-model="selectedModel" :options="modelOptions" block />
           </div>
-          <p class="setting-note">API Key 由服务端配置，无需在此填写。</p>
+          <p v-if="currentProvider.id === 'openrouter'" class="setting-note">
+            免费模型按 OpenRouter 智能指数排序，第一项为推荐默认；到期日期表示免费供应结束时间。
+          </p>
+          <p v-else class="setting-note">API Key 由服务端配置，无需在此填写。</p>
         </div>
       </div>
 
