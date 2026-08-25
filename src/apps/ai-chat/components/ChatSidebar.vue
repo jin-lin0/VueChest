@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { EmptyState } from '@/components'
+import type { ConversationSummary } from '../config'
 
 defineProps<{
   showSidebar: boolean
-  sessions: any[]
+  sessions: ConversationSummary[]
   currentId: string | null
 }>()
 
@@ -56,7 +57,7 @@ const emit = defineEmits<{
         <button
           class="btn-delete"
           @click.stop="emit('delete', session.id)"
-          title="删除对话（仅本地）"
+          title="删除对话"
         >
           <svg
             width="14"

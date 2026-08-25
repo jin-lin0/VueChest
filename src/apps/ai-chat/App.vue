@@ -8,9 +8,13 @@ import { STORAGE_KEYS } from '@/config/storage-keys'
 import ChatSidebar from './components/ChatSidebar.vue'
 import {
   fetchProviders,
+  fetchConversations,
   fetchConversation,
+  deleteConversation,
+  resolveModelSelection,
   type ProviderMeta,
   type ChatMessage,
+  type ConversationSummary,
 } from './config'
 import { suggestionPool } from './suggestions'
 import { useChatStream } from './composables/useChatStream'
@@ -24,13 +28,8 @@ interface Message {
   timestamp: number
 }
 
-/** 会话元数据（不含消息，消息存在服务端，按 id 拉取） */
-interface ChatSession {
-  id: string
-  title: string
-  createdAt: number
-  updatedAt: number
-}
+/** 会话元数据（不含消息，服务端为主、本地仅保留容错缓存） */
+type ChatSession = ConversationSummary
 
 const router = useRouter()
 
@@ -87,7 +86,13 @@ const refreshSuggestions = () => {
 
 const sortedSessions = computed(() => [...sessions.value].sort((a, b) => b.updatedAt - a.updatedAt))
 
-const canSend = computed(() => inputMessage.value.trim() && !isLoading.value)
+const canSend = computed(
+  () =>
+    inputMessage.value.trim() &&
+    selectedProviderId.value &&
+    selectedModel.value &&
+    !isLoading.value,
+)
 
 const goBack = () => {
   router.push('/')
@@ -100,7 +105,10 @@ const selectProvider = (raw?: string | number) => {
   if (!meta) return
   selectedProviderId.value = id
   setStorage(STORAGE_KEYS.AI_CHAT_PROVIDER, id)
-  selectedModel.value = getStorage<string>(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${id}`, '') || meta.defaultModel
+  selectedModel.value = resolveModelSelection(
+    meta,
+    getStorage<string>(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${id}`, ''),
+  )
 }
 
 const generateId = () => crypto.randomUUID()
@@ -109,6 +117,8 @@ const createSession = (): ChatSession => {
   const session: ChatSession = {
     id: generateId(),
     title: '新对话',
+    provider: selectedProviderId.value || null,
+    model: selectedModel.value || null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
@@ -137,15 +147,34 @@ const switchSession = (id: string) => {
   loadMessages(id)
 }
 
-const deleteSession = (id: string) => {
-  abortActiveStream()
+const deleteSession = async (id: string) => {
   const idx = sessions.value.findIndex((s) => s.id === id)
   if (idx === -1) return
+  if (id === currentSessionId.value && isLoading.value) {
+    error.value = '请等待当前回答结束后再删除会话'
+    return
+  }
+
+  try {
+    await deleteConversation(id)
+  } catch (reason) {
+    // 尚未发送过消息的新会话只存在本地，服务端返回 404 时仍可正常移除。
+    const status =
+      reason && typeof reason === 'object' && 'status' in reason
+        ? Number((reason as { status?: unknown }).status)
+        : 0
+    if (status !== 404) {
+      error.value = reason instanceof Error ? reason.message : '删除会话失败'
+      return
+    }
+  }
+
   sessions.value.splice(idx, 1)
   if (currentSessionId.value === id) {
-    if (sessions.value.length > 0) {
-      currentSessionId.value = sessions.value[0].id
-      loadMessages(currentSessionId.value)
+    const next = sortedSessions.value[0]
+    if (next) {
+      currentSessionId.value = next.id
+      await loadMessages(next.id)
     } else {
       currentSessionId.value = null
       currentMessages.value = []
@@ -158,11 +187,14 @@ const saveSessions = () => {
   setStorage(STORAGE_KEYS.AI_CHAT_SESSIONS, sessions.value)
 }
 
-const loadSessions = () => {
-  const saved = getStorage<ChatSession[]>(STORAGE_KEYS.AI_CHAT_SESSIONS, []) ?? []
-  if (saved.length > 0) {
-    sessions.value = saved
-    currentSessionId.value = saved[0].id
+const loadSessions = async () => {
+  const localFallback = getStorage<ChatSession[]>(STORAGE_KEYS.AI_CHAT_SESSIONS, []) ?? []
+  try {
+    sessions.value = await fetchConversations()
+    saveSessions()
+  } catch (reason) {
+    sessions.value = localFallback
+    error.value = reason instanceof Error ? reason.message : '加载会话列表失败'
   }
 }
 
@@ -171,7 +203,12 @@ const loadProviders = async () => {
   try {
     const list = await fetchProviders()
     providers.value = list
-    if (list.length === 0) return
+    if (list.length === 0) {
+      selectedProviderId.value = ''
+      selectedModel.value = ''
+      error.value = '没有可用的 AI 平台或免费模型'
+      return
+    }
     const stored = getStorage<string>(STORAGE_KEYS.AI_CHAT_PROVIDER, '')
     const valid = list.some((p) => p.id === stored)
     if (!valid) {
@@ -179,8 +216,15 @@ const loadProviders = async () => {
       setStorage(STORAGE_KEYS.AI_CHAT_PROVIDER, list[0].id)
     }
     const meta = list.find((p) => p.id === selectedProviderId.value)
-    selectedModel.value =
-      getStorage<string>(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${selectedProviderId.value}`, '') || meta?.defaultModel || ''
+    selectedModel.value = meta
+      ? resolveModelSelection(
+          meta,
+          getStorage<string>(
+            `${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${selectedProviderId.value}`,
+            '',
+          ),
+        )
+      : ''
   } catch {
     error.value = '加载平台列表失败，请检查服务端是否已启动并配置 API Key'
   }
@@ -199,10 +243,16 @@ const loadMessages = async (id: string) => {
     if (data.provider && providers.value.some((p) => p.id === data.provider)) {
       selectedProviderId.value = data.provider
       setStorage(STORAGE_KEYS.AI_CHAT_PROVIDER, data.provider)
+      const provider = providers.value.find((item) => item.id === data.provider)
+      if (provider) selectedModel.value = resolveModelSelection(provider, data.model)
     }
-    if (data.model) selectedModel.value = data.model
     const sess = sessions.value.find((s) => s.id === id)
-    if (sess && data.title) sess.title = data.title
+    if (sess && data.title) {
+      sess.title = data.title
+      sess.provider = data.provider
+      sess.model = data.model
+      saveSessions()
+    }
   } catch {
     currentMessages.value = []
   }
@@ -270,9 +320,13 @@ const sendMessage = async () => {
   currentMessages.value.push(userMessage)
 
   const session = sessions.value.find((s) => s.id === convId)
-  if (session && session.title === '新对话') {
-    session.title =
-      userMessage.content.slice(0, 20) + (userMessage.content.length > 20 ? '...' : '')
+  if (session) {
+    if (session.title === '新对话') {
+      session.title =
+        userMessage.content.slice(0, 20) + (userMessage.content.length > 20 ? '...' : '')
+    }
+    session.provider = selectedProviderId.value
+    session.model = selectedModel.value
     session.updatedAt = Date.now()
     saveSessions()
   }
@@ -334,6 +388,8 @@ const sendMessage = async () => {
 
     const sess = sessions.value.find((s) => s.id === convId)
     if (sess) {
+      sess.provider = selectedProviderId.value
+      sess.model = selectedModel.value
       sess.updatedAt = Date.now()
       saveSessions()
     }
@@ -363,16 +419,10 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 }
 
-const clearCurrentChat = () => {
+const deleteCurrentConversation = async () => {
   if (!currentSessionId.value) return
-  const id = currentSessionId.value
-  currentMessages.value = []
-  const sess = sessions.value.find((s) => s.id === id)
-  if (sess) {
-    sess.title = '新对话'
-    sess.updatedAt = Date.now()
-    saveSessions()
-  }
+  await deleteSession(currentSessionId.value)
+  if (!currentSessionId.value) startNewConversation()
 }
 
 const autoResize = () => {
@@ -413,7 +463,7 @@ const copyMessage = (content: string, messageId: string) =>
   })
 
 onMounted(async () => {
-  loadSessions()
+  await Promise.all([loadSessions(), loadProviders()])
   let isNew = false
   if (sessions.value.length === 0) {
     // 首次进入没有会话：新建并直接跳转到空会话（不请求 /messages）
@@ -422,9 +472,8 @@ onMounted(async () => {
     currentMessages.value = []
     isNew = true
   } else {
-    currentSessionId.value = sessions.value[0].id
+    currentSessionId.value = sortedSessions.value[0].id
   }
-  await loadProviders()
   // 仅已有会话需要拉历史；新建会话必为空，跳过 /messages 请求
   if (!isNew && currentSessionId.value) {
     await loadMessages(currentSessionId.value)
@@ -491,7 +540,7 @@ onUnmounted(() => {
           <CustomSelect v-model="selectedModel" :options="modelOptions" size="sm" />
         </div>
         <div class="header-actions">
-          <button class="btn-icon" @click="clearCurrentChat" title="清空对话（仅本地）">
+          <button class="btn-icon" @click="deleteCurrentConversation" title="删除当前会话">
             <svg
               width="18"
               height="18"
