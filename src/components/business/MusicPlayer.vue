@@ -580,8 +580,11 @@ onUnmounted(() => {
             <div v-if="showSleepMenu" class="sleep-menu" @click.stop>
               <header>
                 <strong>睡眠定时</strong>
-                <button type="button" aria-label="关闭睡眠定时" @click="showSleepMenu = false">
-                  &times;
+                <button type="button" class="sleep-menu-close" aria-label="关闭睡眠定时" @click="showSleepMenu = false">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                  </svg>
                 </button>
               </header>
               <div v-if="sleepEndsAt" class="sleep-running-status">
@@ -963,18 +966,36 @@ onUnmounted(() => {
   font-size: 13px;
 }
 .sleep-menu > header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
   width: 25px;
   height: 25px;
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 18px;
   line-height: 1;
 }
 .sleep-menu > header button:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
+}
+.sleep-menu > header button:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.sleep-menu > header button:focus-visible {
+  outline: 2px solid rgba(108, 92, 231, 0.5);
+  outline-offset: 2px;
+}
+.sleep-menu-close svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .sleep-running-status {
   display: grid;
