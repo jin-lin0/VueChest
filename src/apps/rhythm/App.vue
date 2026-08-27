@@ -13,23 +13,25 @@ import { loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from './c
 import PlayView from './components/PlayView.vue'
 import { musicApi } from '@/lib/musicApi'
 import { recordGameResult } from '@/apps/game-center/profile'
+import { getStorage, removeStorage } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { downloadFile } from '@/utils'
+import {
+  loadRhythmScores,
+  saveRhythmScore,
+  scoresForSong,
+  sliceBeatmap,
+  validateBeatmap,
+} from './core/library'
 
 const router = useRouter()
 
-onMounted(() => {
-  if (document.querySelector('link[data-rhythm-font]')) return
-  const preconnect = document.createElement('link')
-  preconnect.rel = 'preconnect'
-  preconnect.href = 'https://fonts.gstatic.com'
-  preconnect.crossOrigin = 'anonymous'
-  preconnect.dataset.rhythmFont = 'preconnect'
-  const stylesheet = document.createElement('link')
-  stylesheet.rel = 'stylesheet'
-  stylesheet.href =
-    'https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap'
-  stylesheet.dataset.rhythmFont = 'stylesheet'
-  document.head.append(preconnect, stylesheet)
-})
+interface RhythmSource {
+  id: string
+  title: string
+  artist: string
+  url: string
+}
 
 type Stage = 'idle' | 'fetching' | 'decoding' | 'analyzing' | 'ready' | 'error'
 
@@ -100,7 +102,23 @@ function log(msg: string) {
 const decodedBuffer = ref<AudioBuffer | null>(null)
 const songTitle = ref('')
 const beatmap = ref<Beatmap | null>(null)
+const importedBeatmap = ref<Beatmap | null>(null)
 const playing = ref(false)
+const playBuffer = ref<AudioBuffer | null>(null)
+const playBeatmap = ref<Beatmap | null>(null)
+const rhythmScores = ref(loadRhythmScores())
+const beatmapFileRef = ref<HTMLInputElement | null>(null)
+const practiceStart = ref(0)
+const practiceEnd = ref(30)
+const lastWeakSegment = ref<{ start: number; end: number; misses: number } | null>(null)
+const analysisCache = new Map<
+  string,
+  { result: AnalyzeResult; buffer: AudioBuffer; label: string }
+>()
+
+const currentSongScores = computed(() =>
+  scoresForSong(rhythmScores.value, songTitle.value).slice(0, 5),
+)
 
 /**
  * 谱面与手感参数。
@@ -183,13 +201,19 @@ function buildBeatmap() {
 
 function startPlay() {
   stopPlayback()
-  buildBeatmap()
-  if (beatmap.value?.notes.length) playing.value = true
-  else log('❌ 谱面为空，无法开始')
+  if (!importedBeatmap.value) buildBeatmap()
+  const map = importedBeatmap.value || beatmap.value
+  if (map?.notes.length && decodedBuffer.value) {
+    playBeatmap.value = map
+    playBuffer.value = decodedBuffer.value
+    playing.value = true
+  } else log('❌ 谱面为空，无法开始')
 }
 
 function exitPlay() {
   playing.value = false
+  playBeatmap.value = null
+  playBuffer.value = null
 }
 
 function recordRhythmResult(result: {
@@ -200,6 +224,8 @@ function recordRhythmResult(result: {
   miss: number
   duration: number
   difficulty: string
+  averageError: number
+  weakSegment?: { start: number; end: number; misses: number }
 }) {
   recordGameResult('rhythm', {
     score: result.score,
@@ -213,6 +239,121 @@ function recordRhythmResult(result: {
       difficulty: result.difficulty,
     },
   })
+  rhythmScores.value = saveRhythmScore({
+    songId: songTitle.value,
+    title: songTitle.value,
+    difficulty: result.difficulty,
+    score: result.score,
+    accuracy: result.accuracy,
+    rank: result.rank,
+    maxCombo: result.maxCombo,
+    miss: result.miss,
+    averageError: result.averageError,
+  })
+  lastWeakSegment.value = result.weakSegment || null
+}
+
+function practiceLastWeakSegment() {
+  if (!lastWeakSegment.value) return
+  practiceStart.value = Math.floor(lastWeakSegment.value.start)
+  practiceEnd.value = Math.ceil(lastWeakSegment.value.end)
+  startSegmentPractice()
+}
+
+function applySuggestedCalibration(deltaMs: number) {
+  userOffset.value = Math.max(-150, Math.min(150, Math.round(userOffset.value + deltaMs)))
+}
+
+function exportBeatmap() {
+  if (!importedBeatmap.value) buildBeatmap()
+  const map = importedBeatmap.value || beatmap.value
+  if (!map) return
+  downloadFile(
+    `${songTitle.value || 'rhythm'}-beatmap.json`,
+    JSON.stringify(map, null, 2),
+    'application/json;charset=utf-8',
+  )
+}
+
+function exportDifficultyPack() {
+  if (!result.value || !decodedBuffer.value) return
+  const analyzed = result.value
+  const maps = DIFFICULTY_PRESETS.map((preset) => ({
+    difficulty: preset.key,
+    beatmap: generateBeatmap(
+      {
+        songId: songTitle.value,
+        title: songTitle.value,
+        bpm: effectiveBpm.value,
+        offset: analyzed.offset,
+        duration: analyzed.duration,
+        odf: analyzed.odf,
+        frameDuration: analyzed.odfFrameDuration,
+      },
+      {
+        lanes: 4,
+        quantizeDivision: preset.division,
+        targetDensity: preset.density,
+        chordRatio: preset.chord,
+        beatBias: beatBias.value,
+        rms: holdEnabled.value ? analyzed.rms : undefined,
+        rmsFrameDuration: analyzed.odfFrameDuration,
+        holdRmsPercentile: preset.hold,
+      },
+    ),
+  }))
+  downloadFile(
+    `${songTitle.value || 'rhythm'}-difficulty-pack.json`,
+    JSON.stringify({ version: 1, title: songTitle.value, maps }, null, 2),
+    'application/json;charset=utf-8',
+  )
+}
+
+async function importBeatmap(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    if (!decodedBuffer.value) throw new Error('请先选择与谱面对应的音频，再导入谱面')
+    importedBeatmap.value = validateBeatmap(JSON.parse(await file.text()))
+    beatmap.value = importedBeatmap.value
+    songTitle.value = importedBeatmap.value.title
+    sourceLabel.value = `${importedBeatmap.value.title} · 导入谱面`
+    log(`已导入谱面：${importedBeatmap.value.notes.length} notes`)
+  } catch (reason) {
+    errorMsg.value = reason instanceof Error ? reason.message : '谱面导入失败'
+  }
+  input.value = ''
+}
+
+function sliceAudioBuffer(buffer: AudioBuffer, start: number, end: number) {
+  const fromFrame = Math.max(0, Math.floor(start * buffer.sampleRate))
+  const toFrame = Math.min(buffer.length, Math.ceil(end * buffer.sampleRate))
+  const target = getCtx().createBuffer(
+    buffer.numberOfChannels,
+    Math.max(1, toFrame - fromFrame),
+    buffer.sampleRate,
+  )
+  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    target.copyToChannel(buffer.getChannelData(channel).slice(fromFrame, toFrame), channel)
+  }
+  return target
+}
+
+function startSegmentPractice() {
+  if (!importedBeatmap.value) buildBeatmap()
+  const map = importedBeatmap.value || beatmap.value
+  if (!map || !decodedBuffer.value) return
+  const start = Math.max(0, Math.min(practiceStart.value, map.duration - 1))
+  const end = Math.max(start + 5, Math.min(practiceEnd.value, map.duration))
+  const segment = sliceBeatmap(map, start, end)
+  if (!segment.notes.length) {
+    errorMsg.value = '所选片段没有音符，请调整范围'
+    return
+  }
+  playBeatmap.value = segment
+  playBuffer.value = sliceAudioBuffer(decodedBuffer.value, start, end)
+  playing.value = true
 }
 
 function getCtx(): AudioContext {
@@ -221,13 +362,30 @@ function getCtx(): AudioContext {
 }
 
 /** 统一的分析流程：拿到 ArrayBuffer 之后的部分完全一致 */
-async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string) {
+async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string, cacheKey?: string) {
   stopPlayback()
   result.value = null
   errorMsg.value = ''
   logs.value = []
   timings.value = {}
   sourceLabel.value = label
+  importedBeatmap.value = null
+  lastWeakSegment.value = null
+
+  if (cacheKey) {
+    const cached = analysisCache.get(cacheKey)
+    if (cached) {
+      result.value = cached.result
+      decodedBuffer.value = cached.buffer
+      songTitle.value = cached.label
+      sourceLabel.value = cached.label
+      bpmScale.value = 1
+      clock = new AudioClock(getCtx(), cached.buffer)
+      stage.value = 'ready'
+      log('已复用本次会话中的音频分析缓存')
+      return
+    }
+  }
 
   try {
     stage.value = 'fetching'
@@ -257,10 +415,13 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string) 
     )
 
     result.value = res
+    practiceStart.value = 0
+    practiceEnd.value = Math.min(30, Math.floor(res.duration))
     bpmScale.value = 1
     decodedBuffer.value = audioBuffer
     songTitle.value = label
     clock = new AudioClock(getCtx(), audioBuffer)
+    if (cacheKey) analysisCache.set(cacheKey, { result: res, buffer: audioBuffer, label })
     latencyInfo.value =
       `baseLatency ${((getCtx().baseLatency || 0) * 1000).toFixed(1)}ms / ` +
       `outputLatency ${((getCtx().outputLatency || 0) * 1000).toFixed(1)}ms`
@@ -276,7 +437,11 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string) 
 function onPickFile(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
-  runAnalyze(() => file.arrayBuffer(), `本地文件 ${file.name}`)
+  runAnalyze(
+    () => file.arrayBuffer(),
+    `本地文件 ${file.name}`,
+    `local:${file.name}:${file.size}:${file.lastModified}`,
+  )
 }
 
 async function doSearch() {
@@ -302,11 +467,15 @@ async function doSearch() {
 
 function pickSong(song: { id: string; name: string; artist: string }) {
   const url = musicApi.songUrlPath('netease', song.id)
-  runAnalyze(async () => {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`音频请求失败 ${res.status}`)
-    return res.arrayBuffer()
-  }, `${song.name} - ${song.artist}`)
+  runAnalyze(
+    async () => {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`音频请求失败 ${res.status}`)
+      return res.arrayBuffer()
+    },
+    `${song.name} - ${song.artist}`,
+    `netease:${song.id}`,
+  )
 }
 
 /**
@@ -517,6 +686,36 @@ function selectQuantizeDivision(value: 1 | 2 | 4) {
 /** 高级参数面板的展开状态 */
 const showAdvanced = ref(false)
 
+onMounted(async () => {
+  if (!document.querySelector('link[data-rhythm-font]')) {
+    const preconnect = document.createElement('link')
+    preconnect.rel = 'preconnect'
+    preconnect.href = 'https://fonts.gstatic.com'
+    preconnect.crossOrigin = 'anonymous'
+    preconnect.dataset.rhythmFont = 'preconnect'
+    const stylesheet = document.createElement('link')
+    stylesheet.rel = 'stylesheet'
+    stylesheet.href =
+      'https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap'
+    stylesheet.dataset.rhythmFont = 'stylesheet'
+    document.head.append(preconnect, stylesheet)
+  }
+
+  const source = getStorage<RhythmSource>(STORAGE_KEYS.RHYTHM_SOURCE)
+  if (source?.url) {
+    removeStorage(STORAGE_KEYS.RHYTHM_SOURCE)
+    await runAnalyze(
+      async () => {
+        const response = await fetch(source.url)
+        if (!response.ok) throw new Error(`音频请求失败 ${response.status}`)
+        return response.arrayBuffer()
+      },
+      `${source.title} - ${source.artist}`,
+      `music:${source.id}`,
+    )
+  }
+})
+
 onUnmounted(() => {
   stopPlayback()
   metronome?.dispose()
@@ -528,15 +727,16 @@ onUnmounted(() => {
 <template>
   <!-- 游玩时独占全屏，避免页面滚动干扰操作 -->
   <PlayView
-    v-if="playing && decodedBuffer && beatmap"
+    v-if="playing && playBuffer && playBeatmap"
     :audio-ctx="getCtx()"
-    :audio-buffer="decodedBuffer"
-    :beatmap="beatmap"
+    :audio-buffer="playBuffer"
+    :beatmap="playBeatmap"
     :user-offset="userOffset"
     :approach-time="noteSpeed"
     class="fullscreen-play"
     @exit="exitPlay"
     @result="recordRhythmResult"
+    @calibrate="applySuggestedCalibration"
   />
 
   <div v-else class="lab">
@@ -578,6 +778,19 @@ onUnmounted(() => {
               <small>LOCAL FILE · 不依赖第三方服务</small>
             </span>
             <input type="file" accept="audio/*" @change="onPickFile" />
+          </label>
+          <label class="entry">
+            <span class="entry-icon">♫</span>
+            <span class="entry-text">
+              <b>导入谱面</b>
+              <small>BEATMAP JSON</small>
+            </span>
+            <input
+              ref="beatmapFileRef"
+              type="file"
+              accept="application/json,.json"
+              @change="importBeatmap"
+            />
           </label>
         </div>
 
@@ -666,10 +879,26 @@ onUnmounted(() => {
             一键制谱并开始 / INSTANT GEN &amp; PLAY
           </button>
 
+          <div class="actions export-actions">
+            <button :disabled="!decodedBuffer" @click="exportBeatmap">导出当前谱面</button>
+            <button :disabled="!decodedBuffer" @click="exportDifficultyPack">导出四难度包</button>
+            <button v-if="lastWeakSegment" @click="practiceLastWeakSegment">
+              复练上局失误段（{{ lastWeakSegment.misses }} miss）
+            </button>
+          </div>
+
           <p v-if="beatmapInfo" class="gen-info">
             上次生成 {{ beatmapInfo.notes }} notes · 双押 {{ beatmapInfo.chordPoints }} · 长按
             {{ beatmapInfo.holdNotes }} · 整拍填充 {{ beatmapInfo.beatFill }}%
           </p>
+          <div v-if="currentSongScores.length" class="score-history">
+            <span class="deck-label">本曲最佳 / BEST SCORES</span>
+            <div v-for="score in currentSongScores" :key="score.id">
+              <b>{{ score.rank }}</b
+              ><strong>{{ score.score.toLocaleString() }}</strong
+              ><small>{{ score.accuracy.toFixed(2) }}% · {{ score.difficulty }}</small>
+            </div>
+          </div>
         </div>
 
         <p v-else-if="!busy && !searchResults.length" class="empty">
@@ -834,6 +1063,22 @@ onUnmounted(() => {
           校准：打完一局后看结算的「平均误差」，按提示调这个值。正值把判定往后推。<br />
           以上参数都会存在本机，下次打开自动沿用。
         </p>
+
+        <div class="controls">
+          <span class="ctl-label">片段复练</span>
+          <input
+            v-model.number="practiceStart"
+            type="number"
+            min="0"
+            :max="result?.duration || 0"
+          />
+          <span>至</span>
+          <input v-model.number="practiceEnd" type="number" min="5" :max="result?.duration || 0" />
+          <span>秒</span>
+          <button :disabled="!result || !decodedBuffer" @click="startSegmentPractice">
+            开始复练
+          </button>
+        </div>
 
         <div v-if="result" class="metrics">
           <div class="metric">

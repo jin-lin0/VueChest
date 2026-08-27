@@ -34,6 +34,7 @@ coverage
 
 *.tsbuildinfo
 AGENTS.md
+design-qa.md
 
 # 候选文件
 scripts/candidates/

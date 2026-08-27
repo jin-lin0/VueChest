@@ -19,6 +19,7 @@ import { REALTIME_KEY, REGISTER_KEY } from './composables/useRealtime'
 // 工具组件一律异步加载：外壳（侧栏 / 抽屉）先出来，选中的工具才拉自己的 chunk，
 // 避免 41 个工具（含 diff、qrcode、yaml 等第三方依赖）压进同一个 dev-toolbox 包。
 const TextTransformTool = defineAsyncComponent(() => import('./components/TextTransformTool.vue'))
+const PipelineTool = defineAsyncComponent(() => import('./components/PipelineTool.vue'))
 const Base64Tool = defineAsyncComponent(() => import('./components/Base64Tool.vue'))
 const TimestampTool = defineAsyncComponent(() => import('./components/TimestampTool.vue'))
 const UrlTool = defineAsyncComponent(() => import('./components/UrlTool.vue'))
@@ -88,6 +89,14 @@ interface ToolDef {
 
 /* 新增工具只需在此登记一项即可出现在左侧导航（按 group 自动分组） */
 const tools: ToolDef[] = [
+  {
+    id: 'pipeline',
+    name: '工具流水线',
+    icon: '⛓️',
+    group: '工作流',
+    desc: '串联编码、格式化、压缩、哈希和文本处理，支持预设、批量与深链',
+    component: PipelineTool,
+  },
   {
     id: 'text-transform',
     name: '文本转换',
@@ -403,6 +412,7 @@ const tools: ToolDef[] = [
 ]
 
 const GROUP_ORDER = [
+  '工作流',
   '文本处理',
   '编码解码',
   '时间日期',

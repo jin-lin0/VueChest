@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getStorage, setStorage } from '@/lib/storage'
-import { copyToClipboard } from '@/utils'
+import { getStorage, removeStorage, setStorage } from '@/lib/storage'
+import { copyToClipboard, downloadFile } from '@/utils'
 import { MarkdownView, CustomSelect, Drawer, type SelectOption } from '@/components'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import ChatSidebar from './components/ChatSidebar.vue'
 import {
   fetchProviders,
-  fetchConversations,
+  fetchConversationPage,
   fetchConversation,
   deleteConversation,
+  renameConversation,
   resolveModelSelection,
   type ProviderMeta,
   type ChatMessage,
@@ -18,14 +19,26 @@ import {
 } from './config'
 import { suggestionPool } from './suggestions'
 import { useChatStream } from './composables/useChatStream'
+import {
+  conversationToJson,
+  conversationToMarkdown,
+  safeConversationFilename,
+} from './conversation-utils'
 
 defineOptions({ name: 'AIChatView' })
 
 interface Message {
   id: string
+  serverId?: number
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: number
+}
+
+interface SendOptions {
+  mode?: 'normal' | 'edit' | 'regenerate'
+  replaceFromMessageId?: number
+  rollbackMessages?: Message[]
 }
 
 /** 会话元数据（不含消息，服务端为主、本地仅保留容错缓存） */
@@ -34,13 +47,19 @@ type ChatSession = ConversationSummary
 const router = useRouter()
 
 const sessions = ref<ChatSession[]>([])
+const sessionQuery = ref('')
+const sessionPage = ref(1)
+const sessionsHasMore = ref(false)
+const sessionsLoading = ref(false)
 const currentSessionId = ref<string | null>(null)
 const currentMessages = ref<Message[]>([])
 const inputMessage = ref('')
+const editingTarget = ref<{ index: number; serverId: number } | null>(null)
 const isLoading = ref(false)
 const providers = ref<ProviderMeta[]>([])
 const selectedProviderId = ref(getStorage<string>(STORAGE_KEYS.AI_CHAT_PROVIDER, '') || '')
 const selectedModel = ref('')
+const lastResolvedModel = ref('')
 
 const FALLBACK_PROVIDER: ProviderMeta = { id: '', name: 'AI 助手', models: [], defaultModel: '' }
 const currentProvider = computed<ProviderMeta>(
@@ -53,10 +72,9 @@ const providerOptions = computed<SelectOption[]>(() =>
 const modelOptions = computed<SelectOption[]>(() =>
   currentProvider.value.models.map((model, index) => {
     const recommended = currentProvider.value.id === 'openrouter' && index === 0 ? '推荐 · ' : ''
-    const expiration = model.expirationDate
-      ? ` · 免费至 ${model.expirationDate.slice(0, 10)}`
-      : ''
-    return { value: model.id, label: `${recommended}${model.name}${expiration}` }
+    const expiration = model.expirationDate ? ` · 免费至 ${model.expirationDate.slice(0, 10)}` : ''
+    const health = model.health === 'cooldown' ? ' · 近期受限' : ''
+    return { value: model.id, label: `${recommended}${model.name}${expiration}${health}` }
   }),
 )
 
@@ -193,14 +211,48 @@ const saveSessions = () => {
   setStorage(STORAGE_KEYS.AI_CHAT_SESSIONS, sessions.value)
 }
 
-const loadSessions = async () => {
+const loadSessions = async (options: { query?: string; page?: number; append?: boolean } = {}) => {
   const localFallback = getStorage<ChatSession[]>(STORAGE_KEYS.AI_CHAT_SESSIONS, []) ?? []
+  const query = options.query ?? sessionQuery.value
+  const page = options.page || 1
+  sessionsLoading.value = true
   try {
-    sessions.value = await fetchConversations()
+    const result = await fetchConversationPage({ query, page, limit: 50 })
+    if (options.append) {
+      const existing = new Set(sessions.value.map((item) => item.id))
+      sessions.value.push(...result.items.filter((item) => !existing.has(item.id)))
+    } else {
+      sessions.value = result.items
+    }
+    sessionQuery.value = query
+    sessionPage.value = result.page
+    sessionsHasMore.value = result.hasMore
+    if (!query) saveSessions()
+  } catch (reason) {
+    if (!options.append && !query) sessions.value = localFallback
+    error.value = reason instanceof Error ? reason.message : '加载会话列表失败'
+  } finally {
+    sessionsLoading.value = false
+  }
+}
+
+const searchSessions = (query: string) => {
+  void loadSessions({ query, page: 1 })
+}
+
+const loadMoreSessions = () => {
+  if (!sessionsHasMore.value || sessionsLoading.value) return
+  void loadSessions({ query: sessionQuery.value, page: sessionPage.value + 1, append: true })
+}
+
+const renameSession = async (id: string, title: string) => {
+  try {
+    await renameConversation(id, title)
+    const session = sessions.value.find((item) => item.id === id)
+    if (session) session.title = title.trim()
     saveSessions()
   } catch (reason) {
-    sessions.value = localFallback
-    error.value = reason instanceof Error ? reason.message : '加载会话列表失败'
+    error.value = reason instanceof Error ? reason.message : '重命名会话失败'
   }
 }
 
@@ -225,10 +277,7 @@ const loadProviders = async () => {
     selectedModel.value = meta
       ? resolveModelSelection(
           meta,
-          getStorage<string>(
-            `${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${selectedProviderId.value}`,
-            '',
-          ),
+          getStorage<string>(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${selectedProviderId.value}`, ''),
         )
       : ''
   } catch {
@@ -242,6 +291,7 @@ const loadMessages = async (id: string) => {
     const data = await fetchConversation(id)
     currentMessages.value = (data.messages || []).map((m: ChatMessage) => ({
       id: generateId(),
+      serverId: m.id,
       role: m.role,
       content: m.content,
       timestamp: m.timestamp || Date.now(),
@@ -304,8 +354,13 @@ const formatTime = (ts: number) => {
   return `${d.getMonth() + 1}/${d.getDate()} ${time}`
 }
 
-const sendMessage = async () => {
-  if (!canSend.value) return
+const sendMessage = async (options: SendOptions = {}) => {
+  const mode = options.mode || (editingTarget.value ? 'edit' : 'normal')
+  if (mode === 'regenerate') {
+    if (isLoading.value || !options.replaceFromMessageId) return
+  } else if (!canSend.value) {
+    return
+  }
 
   error.value = ''
 
@@ -317,13 +372,30 @@ const sendMessage = async () => {
   const convId = currentSessionId.value || createSession().id
   currentSessionId.value = convId
 
-  const userMessage: Message = {
-    id: generateId(),
-    role: 'user',
-    content: inputMessage.value.trim(),
-    timestamp: Date.now(),
+  let rollbackMessages = options.rollbackMessages
+  let replaceFromMessageId = options.replaceFromMessageId
+  let userMessage: Message
+  if (mode === 'regenerate') {
+    const latestUser = [...currentMessages.value]
+      .reverse()
+      .find((message) => message.role === 'user')
+    if (!latestUser) return
+    userMessage = latestUser
+  } else {
+    if (mode === 'edit' && editingTarget.value) {
+      rollbackMessages = currentMessages.value.map((message) => ({ ...message }))
+      replaceFromMessageId = editingTarget.value.serverId
+      currentMessages.value = currentMessages.value.slice(0, editingTarget.value.index)
+    }
+    userMessage = {
+      id: generateId(),
+      role: 'user',
+      content: inputMessage.value.trim(),
+      timestamp: Date.now(),
+    }
+    currentMessages.value.push(userMessage)
+    editingTarget.value = null
   }
-  currentMessages.value.push(userMessage)
 
   const session = sessions.value.find((s) => s.id === convId)
   if (session) {
@@ -337,7 +409,7 @@ const sendMessage = async () => {
     saveSessions()
   }
 
-  inputMessage.value = ''
+  if (mode !== 'regenerate') inputMessage.value = ''
   isLoading.value = true
 
   await nextTick()
@@ -348,12 +420,13 @@ const sendMessage = async () => {
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({ role: m.role, content: m.content }))
 
-  currentMessages.value.push({
+  const assistantMessage: Message = {
     id: generateId(),
     role: 'assistant',
     content: '',
     timestamp: Date.now(),
-  })
+  }
+  currentMessages.value.push(assistantMessage)
   const assistantIndex = currentMessages.value.length - 1
 
   const { streamChat } = useChatStream()
@@ -370,13 +443,28 @@ const sendMessage = async () => {
         model: selectedModel.value,
         messages: apiMessages,
         signal: streamSignal,
+        mode,
+        replaceFromMessageId,
         onModelResolved: (usedModel) => {
           if (currentSessionId.value !== streamSessionId) return
+          lastResolvedModel.value = usedModel
           if (!currentProvider.value.models.some((option) => option.id === usedModel)) return
           selectedModel.value = usedModel
           const activeSession = sessions.value.find((item) => item.id === streamSessionId)
           if (activeSession) {
             activeSession.model = usedModel
+            saveSessions()
+          }
+        },
+        onPersisted: (persisted) => {
+          if (persisted.userMessageId) userMessage.serverId = persisted.userMessageId
+          if (persisted.assistantMessageId) {
+            assistantMessage.serverId = persisted.assistantMessageId
+          }
+          const activeSession = sessions.value.find((item) => item.id === streamSessionId)
+          if (activeSession) {
+            activeSession.title = persisted.title
+            activeSession.updatedAt = Date.now()
             saveSessions()
           }
         },
@@ -412,6 +500,10 @@ const sendMessage = async () => {
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : '请求出错，请检查网络'
     error.value = errMsg
+    if (rollbackMessages) {
+      currentMessages.value = rollbackMessages
+      return
+    }
     const errorMessage: Message = {
       id: generateId(),
       role: 'assistant',
@@ -423,6 +515,10 @@ const sendMessage = async () => {
   } finally {
     activeController = null
     isLoading.value = false
+    if (streamSignal.aborted && fullContent && currentSessionId.value === streamSessionId) {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      await loadMessages(streamSessionId)
+    }
     await nextTick()
     scrollToBottom()
   }
@@ -433,6 +529,57 @@ const handleKeydown = (e: KeyboardEvent) => {
     e.preventDefault()
     sendMessage()
   }
+}
+
+const editMessage = (index: number) => {
+  const message = currentMessages.value[index]
+  if (isLoading.value || message?.role !== 'user' || !message.serverId) return
+  editingTarget.value = { index, serverId: message.serverId }
+  inputMessage.value = message.content
+  nextTick(() => textareaRef.value?.focus())
+}
+
+const cancelEditing = () => {
+  editingTarget.value = null
+  inputMessage.value = ''
+}
+
+const regenerateMessage = (index: number) => {
+  const message = currentMessages.value[index]
+  if (isLoading.value || message?.role !== 'assistant' || !message.serverId) return
+  const rollbackMessages = currentMessages.value.map((item) => ({ ...item }))
+  currentMessages.value = currentMessages.value.slice(0, index)
+  void sendMessage({
+    mode: 'regenerate',
+    replaceFromMessageId: message.serverId,
+    rollbackMessages,
+  })
+}
+
+const stopGenerating = () => {
+  abortActiveStream()
+}
+
+const currentSession = computed(() =>
+  sessions.value.find((session) => session.id === currentSessionId.value),
+)
+
+const exportConversationJson = () => {
+  if (!currentSession.value) return
+  downloadFile(
+    `ai-${safeConversationFilename(currentSession.value.title)}.json`,
+    conversationToJson(currentSession.value, currentMessages.value),
+    'application/json;charset=utf-8',
+  )
+}
+
+const exportConversationMarkdown = () => {
+  if (!currentSession.value) return
+  downloadFile(
+    `ai-${safeConversationFilename(currentSession.value.title)}.md`,
+    conversationToMarkdown(currentSession.value, currentMessages.value),
+    'text/markdown;charset=utf-8',
+  )
 }
 
 const deleteCurrentConversation = async () => {
@@ -494,6 +641,13 @@ onMounted(async () => {
   if (!isNew && currentSessionId.value) {
     await loadMessages(currentSessionId.value)
   }
+  const draft = getStorage<{ text?: string }>(STORAGE_KEYS.AI_CHAT_DRAFT)
+  if (draft?.text) {
+    inputMessage.value = draft.text
+    removeStorage(STORAGE_KEYS.AI_CHAT_DRAFT)
+    await nextTick()
+    textareaRef.value?.focus()
+  }
   if (isMobile.value) {
     showSidebar.value = false
   }
@@ -513,22 +667,42 @@ onUnmounted(() => {
         :show-sidebar="showSidebar"
         :sessions="sortedSessions"
         :current-id="currentSessionId"
+        :loading="sessionsLoading"
+        :has-more="sessionsHasMore"
         @back="goBack"
         @new="startNewConversation"
         @select="switchSession"
         @delete="deleteSession"
+        @rename="renameSession"
+        @search="searchSessions"
+        @load-more="loadMoreSessions"
       />
     </aside>
 
-    <Drawer :open="isMobile && showSidebar" :width="260" :no-padding="true" @close="showSidebar = false">
+    <Drawer
+      :open="isMobile && showSidebar"
+      :width="260"
+      :no-padding="true"
+      @close="showSidebar = false"
+    >
       <ChatSidebar
         :show-sidebar="true"
         :sessions="sortedSessions"
         :current-id="currentSessionId"
+        :loading="sessionsLoading"
+        :has-more="sessionsHasMore"
         @back="goBack"
         @new="startNewConversation"
-        @select="(id: string) => { switchSession(id); showSidebar = false }"
+        @select="
+          (id: string) => {
+            switchSession(id)
+            showSidebar = false
+          }
+        "
         @delete="deleteSession"
+        @rename="renameSession"
+        @search="searchSessions"
+        @load-more="loadMoreSessions"
       />
     </Drawer>
 
@@ -556,6 +730,20 @@ onUnmounted(() => {
           <CustomSelect v-model="selectedModel" :options="modelOptions" size="sm" />
         </div>
         <div class="header-actions">
+          <button
+            class="text-action"
+            :disabled="!currentMessages.length"
+            @click="exportConversationMarkdown"
+          >
+            导出 MD
+          </button>
+          <button
+            class="text-action"
+            :disabled="!currentMessages.length"
+            @click="exportConversationJson"
+          >
+            JSON
+          </button>
           <button class="btn-icon" @click="deleteCurrentConversation" title="删除当前会话">
             <svg
               width="18"
@@ -670,6 +858,22 @@ onUnmounted(() => {
               <div class="message-meta">
                 <span class="message-time">{{ formatTime(msg.timestamp) }}</span>
                 <button
+                  v-if="msg.role === 'user' && msg.serverId"
+                  class="copy-btn"
+                  title="编辑此问题并重新发送"
+                  @click="editMessage(index)"
+                >
+                  编辑重发
+                </button>
+                <button
+                  v-if="msg.role === 'assistant' && msg.content && msg.serverId"
+                  class="copy-btn"
+                  title="重新生成此回答，后续消息将被替换"
+                  @click="regenerateMessage(index)"
+                >
+                  重新生成
+                </button>
+                <button
                   v-if="msg.role === 'assistant' && msg.content"
                   class="copy-btn"
                   :class="{ copied: copiedMessageId === msg.id }"
@@ -732,6 +936,10 @@ onUnmounted(() => {
       </div>
 
       <div class="input-area">
+        <div v-if="editingTarget" class="editing-banner">
+          <span>正在编辑历史问题，发送后将替换这条消息及后续回答。</span>
+          <button @click="cancelEditing">取消</button>
+        </div>
         <div class="input-wrapper">
           <textarea
             ref="textareaRef"
@@ -741,11 +949,15 @@ onUnmounted(() => {
             rows="1"
             :disabled="isLoading"
           />
+          <button v-if="isLoading" class="send-btn stop" title="停止生成" @click="stopGenerating">
+            <span class="stop-icon"></span>
+          </button>
           <button
+            v-else
             class="send-btn"
             :class="{ active: canSend }"
             :disabled="!canSend"
-            @click="sendMessage"
+            @click="() => sendMessage()"
           >
             <svg
               width="20"
@@ -761,7 +973,10 @@ onUnmounted(() => {
           </button>
         </div>
         <div class="input-footer">
-          <span>{{ currentProvider.name || 'AI 助手' }}</span>
+          <span>
+            {{ currentProvider.name || 'AI 助手' }}
+            <template v-if="lastResolvedModel"> · 实际模型 {{ lastResolvedModel }}</template>
+          </span>
         </div>
       </div>
     </main>
@@ -842,6 +1057,21 @@ onUnmounted(() => {
 
 .header-actions .btn-icon {
   color: var(--text-secondary);
+}
+
+.text-action {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  padding: 5px 7px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.text-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .settings-panel {
@@ -1065,13 +1295,14 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  padding: 2px 4px;
   background: transparent;
   border: none;
   border-radius: 4px;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
+  font-size: 11px;
 }
 
 .copy-btn:hover {
@@ -1190,6 +1421,23 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.editing-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto 7px;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.editing-banner button {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
 .input-wrapper {
   max-width: 800px;
   margin: 0 auto;
@@ -1247,6 +1495,18 @@ onUnmounted(() => {
 
 .send-btn.active:hover {
   background: var(--accent-strong);
+}
+
+.send-btn.stop {
+  background: var(--danger);
+  cursor: pointer;
+}
+
+.stop-icon {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: white;
 }
 
 .input-footer {

@@ -1,29 +1,51 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useMusicStore } from '@/stores/music'
+import { setStorage } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import Drawer from '@/components/common/Drawer.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
 defineOptions({ name: 'MusicPlayer' })
 
 const music = useMusicStore()
+const router = useRouter()
+
+function sendToRhythm() {
+  const song = music.activeSong || music.currentSong
+  if (!song || !music.songUrl) return
+  setStorage(STORAGE_KEYS.RHYTHM_SOURCE, {
+    id: song.id,
+    title: song.name,
+    artist: song.artists,
+    url: music.songUrl,
+  })
+  music.isPlaying = false
+  router.push('/rhythm')
+}
 
 // —— 播放失败提示 toast ——
 const playErrorToast = ref('')
 let playErrorTimer: ReturnType<typeof setTimeout> | null = null
+
+const showPlayerToast = (message: string, duration = 3200) => {
+  playErrorToast.value = message
+  if (playErrorTimer) clearTimeout(playErrorTimer)
+  playErrorTimer = setTimeout(() => {
+    playErrorToast.value = ''
+    playErrorTimer = null
+  }, duration)
+}
+
 onUnmounted(() => {
   if (playErrorTimer) clearTimeout(playErrorTimer)
 })
 
 const onAudioError = () => {
   if (!music.songUrl) return
-  playErrorToast.value = '该歌曲暂不可播放（可能因版权 / 地区限制）'
   music.isPlaying = false
-  if (playErrorTimer) clearTimeout(playErrorTimer)
-  playErrorTimer = setTimeout(() => {
-    playErrorToast.value = ''
-  }, 3200)
+  showPlayerToast('该歌曲暂不可播放（可能因版权 / 地区限制）')
 }
 
 // 沉浸式游戏页（全屏 canvas）隐藏播放条，避免遮挡游戏画面
@@ -41,10 +63,12 @@ const drawerTab = ref<'playlist' | 'simi' | 'history'>('playlist')
 const progressDragging = ref(false)
 const progressPercent = ref(0)
 const lyricContainerRef = ref<HTMLDivElement | null>(null)
+const sleepControlRef = ref<HTMLElement | null>(null)
 const showSleepMenu = ref(false)
 const sleepMinutes = ref(30)
 const sleepEndsAt = ref<number | null>(null)
 const sleepRemaining = ref(0)
+const sleepPresets = [15, 30, 45, 60, 90]
 let sleepTimer: ReturnType<typeof setInterval> | null = null
 
 // --- Audio control ---
@@ -185,16 +209,20 @@ const tickSleepTimer = () => {
   sleepEndsAt.value = null
   if (sleepTimer) clearInterval(sleepTimer)
   sleepTimer = null
-  playErrorToast.value = '睡眠定时结束，播放已暂停'
+  showSleepMenu.value = false
+  showPlayerToast('睡眠定时结束，播放已暂停', 3800)
 }
 
 const startSleepTimer = () => {
+  const wasActive = Boolean(sleepEndsAt.value)
   const minutes = Math.max(1, Math.min(180, Number(sleepMinutes.value) || 30))
+  sleepMinutes.value = minutes
   sleepEndsAt.value = Date.now() + minutes * 60_000
   sleepRemaining.value = minutes * 60
   if (sleepTimer) clearInterval(sleepTimer)
   sleepTimer = setInterval(tickSleepTimer, 1000)
   showSleepMenu.value = false
+  showPlayerToast(wasActive ? `睡眠定时已更新为 ${minutes} 分钟` : `已开启 ${minutes} 分钟睡眠定时`)
 }
 
 const cancelSleepTimer = () => {
@@ -202,16 +230,47 @@ const cancelSleepTimer = () => {
   sleepRemaining.value = 0
   if (sleepTimer) clearInterval(sleepTimer)
   sleepTimer = null
+  showSleepMenu.value = false
+  showPlayerToast('已取消睡眠定时')
+}
+
+const selectSleepPreset = (minutes: number) => {
+  sleepMinutes.value = minutes
 }
 
 const sleepLabel = computed(() => {
   if (!sleepRemaining.value) return '定时'
+  if (sleepRemaining.value < 60) return `${sleepRemaining.value}s`
   const minutes = Math.ceil(sleepRemaining.value / 60)
   return `${minutes}m`
 })
 
+const sleepEndLabel = computed(() => {
+  if (!sleepEndsAt.value) return ''
+  return new Date(sleepEndsAt.value).toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+})
+
+const sleepRemainingLabel = computed(() => {
+  if (!sleepRemaining.value) return ''
+  const minutes = Math.floor(sleepRemaining.value / 60)
+  const seconds = sleepRemaining.value % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+})
+
+const onDocumentPointerDown = (event: PointerEvent) => {
+  if (!showSleepMenu.value) return
+  if (!sleepControlRef.value?.contains(event.target as Node)) showSleepMenu.value = false
+}
+
 // --- Keyboard shortcuts ---
 const onKeydown = (e: KeyboardEvent) => {
+  if (e.code === 'Escape' && showSleepMenu.value) {
+    showSleepMenu.value = false
+    return
+  }
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
   if (e.target instanceof HTMLElement && e.target.tagName === 'BUTTON') return
   if (e.code === 'Space') {
@@ -234,10 +293,12 @@ const onKeydown = (e: KeyboardEvent) => {
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
+  document.addEventListener('pointerdown', onDocumentPointerDown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
   if (sleepTimer) clearInterval(sleepTimer)
 })
 </script>
@@ -499,6 +560,7 @@ onUnmounted(() => {
           <span class="time-display">
             {{ formatTime(music.currentTime) }} / {{ formatTime(music.duration) }}
           </span>
+          <button class="lyrics-btn" title="发送到音游制谱" @click="sendToRhythm">🎹</button>
           <button
             class="lyrics-btn"
             :class="{ active: showLyrics }"
@@ -506,24 +568,51 @@ onUnmounted(() => {
           >
             词
           </button>
-          <div class="sleep-control">
+          <div ref="sleepControlRef" class="sleep-control">
             <button
               class="sleep-btn"
               :class="{ active: sleepEndsAt }"
               @click="showSleepMenu = !showSleepMenu"
-              :title="sleepEndsAt ? '睡眠定时运行中' : '睡眠定时'"
+              :title="sleepEndsAt ? `睡眠定时至 ${sleepEndLabel}` : '睡眠定时'"
             >
               {{ sleepLabel }}
             </button>
             <div v-if="showSleepMenu" class="sleep-menu" @click.stop>
-              <strong>睡眠定时</strong>
-              <div>
-                <input v-model.number="sleepMinutes" type="number" min="1" max="180" /><span
-                  >分钟</span
-                >
+              <header>
+                <strong>睡眠定时</strong>
+                <button type="button" aria-label="关闭睡眠定时" @click="showSleepMenu = false">
+                  &times;
+                </button>
+              </header>
+              <div v-if="sleepEndsAt" class="sleep-running-status">
+                <span>运行中</span>
+                <strong>{{ sleepRemainingLabel }}</strong>
+                <small>{{ sleepEndLabel }} 暂停播放</small>
               </div>
-              <button @click="startSleepTimer">开始计时</button>
-              <button v-if="sleepEndsAt" class="cancel" @click="cancelSleepTimer">取消定时</button>
+              <div class="sleep-presets" aria-label="常用睡眠时长">
+                <button
+                  v-for="minutes in sleepPresets"
+                  :key="minutes"
+                  type="button"
+                  :class="{ active: sleepMinutes === minutes }"
+                  @click="selectSleepPreset(minutes)"
+                >
+                  {{ minutes }} 分
+                </button>
+              </div>
+              <label class="sleep-custom-duration">
+                <span>自定义</span>
+                <input v-model.number="sleepMinutes" type="number" min="1" max="180" />
+                <span>分钟</span>
+              </label>
+              <div class="sleep-menu-actions">
+                <button class="primary" type="button" @click="startSleepTimer">
+                  {{ sleepEndsAt ? '更新计时' : '开始计时' }}
+                </button>
+                <button v-if="sleepEndsAt" class="cancel" type="button" @click="cancelSleepTimer">
+                  取消定时
+                </button>
+              </div>
             </div>
           </div>
           <button
@@ -856,48 +945,127 @@ onUnmounted(() => {
   position: absolute;
   right: 0;
   bottom: calc(100% + 12px);
-  width: 190px;
-  padding: 13px;
+  width: 250px;
+  padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #1b1b2d;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
-.sleep-menu > strong {
-  display: block;
-  margin-bottom: 9px;
-  color: var(--text);
-  font-size: 12px;
-}
-.sleep-menu > div {
+.sleep-menu > header {
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: space-between;
+  margin-bottom: 11px;
 }
-.sleep-menu input {
-  width: 90px;
-  padding: 7px;
+.sleep-menu > header strong {
+  color: var(--text);
+  font-size: 13px;
+}
+.sleep-menu > header button {
+  width: 25px;
+  height: 25px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.sleep-menu > header button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.sleep-running-status {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 3px 8px;
+  margin-bottom: 11px;
+  padding: 9px 10px;
+  border: 1px solid rgba(108, 92, 231, 0.28);
+  border-radius: 9px;
+  background: rgba(108, 92, 231, 0.11);
+}
+.sleep-running-status > span {
+  grid-row: 1 / span 2;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(108, 92, 231, 0.22);
+  color: #cfc8ff;
+  font-size: 9px;
+}
+.sleep-running-status strong {
+  color: #fff;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.sleep-running-status small {
+  color: var(--text-secondary);
+  font-size: 9px;
+}
+.sleep-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.sleep-presets button {
+  height: 31px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+}
+.sleep-presets button:hover,
+.sleep-presets button.active {
+  border-color: rgba(108, 92, 231, 0.7);
+  background: rgba(108, 92, 231, 0.16);
+  color: #fff;
+}
+.sleep-custom-duration {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.sleep-custom-duration input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 34px;
+  padding: 0 8px;
   border: 1px solid var(--border);
   border-radius: 7px;
   outline: 0;
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
+  font-variant-numeric: tabular-nums;
 }
-.sleep-menu span {
+.sleep-custom-duration span {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 10px;
 }
-.sleep-menu > button {
-  width: 100%;
-  margin-top: 8px;
-  padding: 7px;
+.sleep-menu-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  margin-top: 11px;
+}
+.sleep-menu-actions button {
+  height: 34px;
   border: 0;
   border-radius: 7px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.sleep-menu-actions button.primary {
   background: var(--accent);
   color: #fff;
-  cursor: pointer;
 }
-.sleep-menu > button.cancel {
+.sleep-menu-actions button.cancel {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
 }

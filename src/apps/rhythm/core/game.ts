@@ -13,6 +13,8 @@ import { noteEndTime, type Beatmap } from './beatmap'
 export interface GameCallbacks {
   /** 每次判定（含 miss）时回调，用于 UI 更新与音效 */
   onJudge?: (judgement: Judgement, stats: Readonly<JudgeStats>) => void
+  /** 自动 miss 的时间窗口，用于结算后定位薄弱片段。 */
+  onMiss?: (currentTime: number, count: number) => void
   /** 每帧回调，用于同步进度条等 */
   onFrame?: (currentTime: number, stats: Readonly<JudgeStats>) => void
   /** 歌曲结束或全部判定完毕 */
@@ -435,6 +437,7 @@ export class Game {
     if (missed > 0) {
       this.renderer.addEffect(-1, 'miss', now) // lane -1 只出文字，不画轨道圈
       this.callbacks.onJudge?.('miss', this.engine.getStats())
+      this.callbacks.onMiss?.(now, missed)
     }
 
     this.renderer.draw(this.engine.notes, now, this.engine.getStats().combo)

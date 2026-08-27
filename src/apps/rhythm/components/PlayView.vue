@@ -26,6 +26,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   exit: []
   retry: []
+  calibrate: [deltaMs: number]
   result: [
     payload: {
       score: number
@@ -35,6 +36,8 @@ const emit = defineEmits<{
       miss: number
       duration: number
       difficulty: string
+      averageError: number
+      weakSegment?: { start: number; end: number; misses: number }
     },
   ]
 }>()
@@ -53,6 +56,8 @@ const isFullscreen = ref(false)
 const elapsed = ref(0)
 /** 按下的轨道，驱动底部键位胶囊的高亮 */
 const pressedLanes = ref<Set<number>>(new Set())
+const calibrationApplied = ref(false)
+const missWindows = ref<Array<{ time: number; count: number }>>([])
 
 /**
  * 跑道几何：由 Renderer 计算后同步过来。
@@ -74,8 +79,7 @@ const KEYS = ['d', 'f', 'j', 'k']
  * 用 ontouchstart 判断会把它们误判成手机、藏掉键盘玩家需要的键位提示。
  * 只在初始化时判一次——设备的主指针类型在一局游戏里不会变。
  */
-const isTouch =
-  typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
+const isTouch = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
 
 const density = computed(() => beatmapDensity(props.beatmap))
 const difficulty = computed(() => difficultyLabel(density.value))
@@ -97,12 +101,26 @@ const multiplier = computed(() => comboMultiplier(stats.value?.combo ?? 0))
  */
 const scoreText = computed(() => {
   const s = stats.value?.score ?? 0
-  return String(s).padStart(7, '0').replace(/\B(?=(\d{3})+$)/g, ',')
+  return String(s)
+    .padStart(7, '0')
+    .replace(/\B(?=(\d{3})+$)/g, ',')
 })
 
 const timeCode = computed(
   () => `${formatClock(elapsed.value)} / ${formatClock(props.beatmap.duration)}`,
 )
+
+function weakestSegment() {
+  if (!missWindows.value.length) return undefined
+  const buckets = new Map<number, number>()
+  for (const item of missWindows.value) {
+    const bucket = Math.floor(item.time / 10)
+    buckets.set(bucket, (buckets.get(bucket) || 0) + item.count)
+  }
+  const [bucket, misses] = [...buckets.entries()].sort((a, b) => b[1] - a[1])[0]
+  const start = Math.max(0, bucket * 10 - 5)
+  return { start, end: Math.min(props.beatmap.duration, start + 20), misses }
+}
 
 /** 触屏热区的定位样式：铺满整格轨道，直接复用 Canvas 算出的宽度 */
 function laneStyle(i: number) {
@@ -155,6 +173,7 @@ function buildGame() {
         elapsed.value = t
         stats.value = { ...s, errors: s.errors }
       },
+      onMiss: (time, count) => missWindows.value.push({ time, count }),
       onFinish: (s) => {
         stats.value = { ...s, errors: s.errors }
         accuracy.value = game?.accuracy ?? 100
@@ -168,6 +187,8 @@ function buildGame() {
           miss: s.miss,
           duration: props.beatmap.duration,
           difficulty: difficulty.value,
+          averageError: averageError(s.errors),
+          weakSegment: weakestSegment(),
         })
       },
       onPause: () => {
@@ -258,7 +279,15 @@ function retry() {
   accuracy.value = 100
   progress.value = 0
   elapsed.value = 0
+  calibrationApplied.value = false
+  missWindows.value = []
   startGame()
+}
+
+function applyCalibration() {
+  if (calibrationApplied.value) return
+  emit('calibrate', avgError.value)
+  calibrationApplied.value = true
 }
 
 /** 触屏 / 鼠标点击轨道 */
@@ -335,9 +364,7 @@ onUnmounted(() => {
 
     <header class="hud">
       <div class="hud-left">
-        <button class="exit-btn" @click="quit">
-          <span class="arrow">←</span> 退出
-        </button>
+        <button class="exit-btn" @click="quit"><span class="arrow">←</span> 退出</button>
         <button
           v-if="stage === 'playing' && !paused"
           class="exit-btn"
@@ -393,11 +420,21 @@ onUnmounted(() => {
         <p class="eyebrow">READY</p>
         <h2>{{ beatmap.title }}</h2>
         <div class="ready-stats">
-          <div><b>{{ difficulty }}</b><span>DIFFICULTY</span></div>
-          <div><b>{{ beatmap.notes.length }}</b><span>NOTES</span></div>
-          <div><b>{{ beatmap.bpm }}</b><span>BPM</span></div>
+          <div>
+            <b>{{ difficulty }}</b
+            ><span>DIFFICULTY</span>
+          </div>
+          <div>
+            <b>{{ beatmap.notes.length }}</b
+            ><span>NOTES</span>
+          </div>
+          <div>
+            <b>{{ beatmap.bpm }}</b
+            ><span>BPM</span>
+          </div>
           <div v-if="beatmap.meta.holdNotes > 0">
-            <b>{{ beatmap.meta.holdNotes }}</b><span>HOLDS</span>
+            <b>{{ beatmap.meta.holdNotes }}</b
+            ><span>HOLDS</span>
           </div>
         </div>
         <p class="keys-hint">
@@ -414,8 +451,9 @@ onUnmounted(() => {
           <small>START</small>
         </button>
         <p class="tiny">
-          点击后有 {{ (approachTime + PREP_TIME).toFixed(1) }}s
-          倒计时准备{{ isTouch ? '' : ' · Esc 暂停' }}
+          点击后有 {{ (approachTime + PREP_TIME).toFixed(1) }}s 倒计时准备{{
+            isTouch ? '' : ' · Esc 暂停'
+          }}
         </p>
       </div>
 
@@ -437,11 +475,21 @@ onUnmounted(() => {
         <div class="final-acc">{{ accuracy.toFixed(2) }}%</div>
 
         <div class="breakdown">
-          <div><span class="j-perfect">PERFECT</span><b>{{ stats?.perfect ?? 0 }}</b></div>
-          <div><span class="j-great">GREAT</span><b>{{ stats?.great ?? 0 }}</b></div>
-          <div><span class="j-good">GOOD</span><b>{{ stats?.good ?? 0 }}</b></div>
-          <div><span class="j-miss">MISS</span><b>{{ stats?.miss ?? 0 }}</b></div>
-          <div><span>MAX COMBO</span><b>{{ stats?.maxCombo ?? 0 }}</b></div>
+          <div>
+            <span class="j-perfect">PERFECT</span><b>{{ stats?.perfect ?? 0 }}</b>
+          </div>
+          <div>
+            <span class="j-great">GREAT</span><b>{{ stats?.great ?? 0 }}</b>
+          </div>
+          <div>
+            <span class="j-good">GOOD</span><b>{{ stats?.good ?? 0 }}</b>
+          </div>
+          <div>
+            <span class="j-miss">MISS</span><b>{{ stats?.miss ?? 0 }}</b>
+          </div>
+          <div>
+            <span>MAX COMBO</span><b>{{ stats?.maxCombo ?? 0 }}</b>
+          </div>
           <div v-if="beatmap.meta.holdNotes > 0">
             <span>HOLD BREAK</span><b>{{ stats?.holdBreaks ?? 0 }}</b>
           </div>
@@ -458,6 +506,8 @@ onUnmounted(() => {
         <p v-if="Math.abs(avgError) > 15" class="calib-tip">
           你习惯{{ avgError > 0 ? '偏晚' : '偏早' }}按键。可在校准里把偏移调整
           {{ avgError > 0 ? '+' : '' }}{{ avgError.toFixed(0) }}ms 试试。
+          <button v-if="!calibrationApplied" @click="applyCalibration">应用建议</button>
+          <span v-else>已应用</span>
         </p>
 
         <div class="result-actions">
@@ -510,9 +560,12 @@ onUnmounted(() => {
   min-height: 0;
   overflow: hidden;
   color: #e9e6f5;
-  background:
-    radial-gradient(120% 80% at 50% 0%, #1b1330 0%, #0d0a1a 45%, #07060f 100%);
-  font-family: 'Rajdhani', system-ui, -apple-system, sans-serif;
+  background: radial-gradient(120% 80% at 50% 0%, #1b1330 0%, #0d0a1a 45%, #07060f 100%);
+  font-family:
+    'Rajdhani',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 /* ===== 背景光晕 ===== */

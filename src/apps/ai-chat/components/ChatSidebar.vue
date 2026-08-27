@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onUnmounted, ref, watch } from 'vue'
 import { EmptyState } from '@/components'
 import type { ConversationSummary } from '../config'
 
@@ -6,6 +7,8 @@ defineProps<{
   showSidebar: boolean
   sessions: ConversationSummary[]
   currentId: string | null
+  loading?: boolean
+  hasMore?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -13,7 +16,35 @@ const emit = defineEmits<{
   new: []
   select: [id: string]
   delete: [id: string]
+  rename: [id: string, title: string]
+  search: [query: string]
+  loadMore: []
 }>()
+
+const query = ref('')
+const editingId = ref<string | null>(null)
+const editingTitle = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(query, (value) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => emit('search', value.trim()), 250)
+})
+
+function startRename(session: ConversationSummary) {
+  editingId.value = session.id
+  editingTitle.value = session.title
+}
+
+function saveRename() {
+  const title = editingTitle.value.trim()
+  if (editingId.value && title) emit('rename', editingId.value, title)
+  editingId.value = null
+}
+
+onUnmounted(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+})
 </script>
 
 <template>
@@ -46,32 +77,53 @@ const emit = defineEmits<{
       </button>
     </div>
     <div v-if="showSidebar" class="session-list">
+      <input
+        v-model="query"
+        class="session-search"
+        type="search"
+        placeholder="搜索会话"
+        aria-label="搜索会话"
+      />
       <div
         v-for="session in sessions"
         :key="session.id"
         class="session-item"
         :class="{ active: session.id === currentId }"
+        role="button"
+        tabindex="0"
         @click="emit('select', session.id)"
+        @keydown.enter="emit('select', session.id)"
+        @keydown.space.prevent="emit('select', session.id)"
       >
-        <div class="session-title">{{ session.title }}</div>
-        <button
-          class="btn-delete"
-          @click.stop="emit('delete', session.id)"
-          title="删除对话"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+        <input
+          v-if="editingId === session.id"
+          v-model="editingTitle"
+          class="rename-input"
+          maxlength="60"
+          aria-label="修改会话标题"
+          @click.stop
+          @keydown.enter.stop.prevent="saveRename"
+          @keydown.esc.stop="editingId = null"
+          @blur="saveRename"
+        />
+        <div v-else class="session-title">{{ session.title }}</div>
+        <div v-if="editingId !== session.id" class="session-actions">
+          <button class="session-action" title="重命名" @click.stop="startRename(session)">
+            ✎
+          </button>
+          <button
+            class="session-action danger"
+            title="删除对话"
+            @click.stop="emit('delete', session.id)"
           >
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
+            ×
+          </button>
+        </div>
       </div>
-      <EmptyState v-if="sessions.length === 0" title="暂无对话" />
+      <button v-if="hasMore" class="load-more" :disabled="loading" @click="emit('loadMore')">
+        {{ loading ? '加载中…' : '加载更多' }}
+      </button>
+      <EmptyState v-if="!loading && sessions.length === 0" title="没有匹配的会话" />
     </div>
   </div>
 </template>
@@ -121,6 +173,28 @@ const emit = defineEmits<{
   min-height: 0;
 }
 
+.session-search,
+.rename-input {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.session-search {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.session-search:focus,
+.rename-input:focus {
+  border-color: var(--accent);
+}
+
 .session-item {
   padding: 10px 12px;
   border-radius: 8px;
@@ -149,26 +223,48 @@ const emit = defineEmits<{
   margin-right: 4px;
 }
 
-.btn-delete {
+.rename-input {
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.session-actions {
+  display: flex;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.session-action {
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 2px;
+  padding: 2px 4px;
   border-radius: 4px;
-  display: flex;
-  opacity: 0;
-  transition:
-    opacity 0.2s,
-    color 0.2s;
+  font-size: 14px;
 }
 
-.session-item:hover .btn-delete {
+.session-item:hover .session-actions,
+.session-item:focus-within .session-actions {
   opacity: 1;
 }
 
-.btn-delete:hover {
+.session-action:hover {
+  color: var(--accent);
+}
+
+.session-action.danger:hover {
   color: var(--danger);
 }
 
+.load-more {
+  width: 100%;
+  margin-top: 6px;
+  padding: 7px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
 </style>

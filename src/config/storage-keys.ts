@@ -17,6 +17,8 @@ export const STORAGE_KEYS = {
   AI_CHAT_SESSIONS: 'ai-chat-sessions',
   AI_CHAT_PROVIDER: 'ai-chat-provider',
   AI_CHAT_MODEL_PREFIX: 'ai-chat-model-',
+  AI_CHAT_DRAFT: 'ai-chat-draft',
+  BILI_ANALYSIS_CACHE: 'bili-analysis-cache',
   // interview
   INTERVIEW_PRACTICED: 'interview_practiced',
   INTERVIEW_LEARNING: 'interview_learning',
@@ -36,6 +38,8 @@ export const STORAGE_KEYS = {
   RACING_SETTINGS: 'games:racing:settings',
   RACING_CONFIG: 'games:racing:config',
   RHYTHM_SETTINGS: 'games:rhythm:settings',
+  RHYTHM_SOURCE: 'games:rhythm:source',
+  RHYTHM_SCORES: 'games:rhythm:scores',
   SURVIVOR_BEST_SCORE: 'games:survivor:best-score',
   SURVIVOR_SOUND: 'games:survivor:sound',
   // docs

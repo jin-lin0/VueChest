@@ -16,6 +16,35 @@ export interface StreamChatParams {
   signal?: AbortSignal
   /** OpenRouter 触发模型降级时，同步最终实际使用的模型。 */
   onModelResolved?: (model: string) => void
+  mode?: 'normal' | 'edit' | 'regenerate'
+  replaceFromMessageId?: number
+  onPersisted?: (result: {
+    userMessageId: number | null
+    assistantMessageId: number | null
+    title: string
+  }) => void
+}
+
+export class ChatStreamError extends Error {
+  code: string
+
+  constructor(message: string, code = 'AI_STREAM_ERROR') {
+    super(message)
+    this.name = 'ChatStreamError'
+    this.code = code
+  }
+}
+
+interface StreamPayload {
+  model?: unknown
+  error?: unknown
+  code?: unknown
+  choices?: Array<{ delta?: { content?: unknown } }>
+  persisted?: {
+    userMessageId?: unknown
+    assistantMessageId?: unknown
+    title?: unknown
+  }
 }
 
 const DEFAULT_MAX_TOKENS = 4096
@@ -32,6 +61,9 @@ export function useChatStream() {
       temperature = DEFAULT_TEMPERATURE,
       signal,
       onModelResolved,
+      mode = 'normal',
+      replaceFromMessageId,
+      onPersisted,
     } = params
 
     const token = getAuthToken()
@@ -41,17 +73,28 @@ export function useChatStream() {
     const response = await fetch(`${API_BASE}/api/ai-chat/chat`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ conversationId, provider, model, messages, maxTokens, temperature }),
+      body: JSON.stringify({
+        conversationId,
+        provider,
+        model,
+        messages,
+        maxTokens,
+        temperature,
+        mode,
+        replaceFromMessageId,
+      }),
       signal,
     })
 
     if (!response.ok) {
       let msg = `请求失败: ${response.status}`
+      let code = 'AI_REQUEST_FAILED'
       try {
         const j = await response.json()
         msg = j?.error || msg
+        code = j?.code || code
       } catch {}
-      throw new Error(msg)
+      throw new ChatStreamError(msg, code)
     }
 
     const reader = response.body?.getReader()
@@ -81,14 +124,34 @@ export function useChatStream() {
             break
           }
 
+          let json: StreamPayload
           try {
-            const json = JSON.parse(data)
-            if (typeof json?.model === 'string') onModelResolved?.(json.model)
-            const delta = json?.choices?.[0]?.delta?.content
-            if (delta) {
-              yield delta
-            }
-          } catch {}
+            json = JSON.parse(data)
+          } catch {
+            continue
+          }
+          if (json?.error) {
+            throw new ChatStreamError(
+              String(json.error),
+              typeof json.code === 'string' ? json.code : 'AI_STREAM_ERROR',
+            )
+          }
+          if (typeof json.model === 'string') onModelResolved?.(json.model)
+          if (json.persisted) {
+            onPersisted?.({
+              userMessageId:
+                typeof json.persisted.userMessageId === 'number'
+                  ? json.persisted.userMessageId
+                  : null,
+              assistantMessageId:
+                typeof json.persisted.assistantMessageId === 'number'
+                  ? json.persisted.assistantMessageId
+                  : null,
+              title: typeof json.persisted.title === 'string' ? json.persisted.title : '新对话',
+            })
+          }
+          const delta = json?.choices?.[0]?.delta?.content
+          if (typeof delta === 'string' && delta) yield delta
         }
       }
     } finally {

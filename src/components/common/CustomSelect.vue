@@ -5,7 +5,22 @@
     :style="props.width ? { width: props.width } : undefined"
     ref="selectRef"
   >
-    <div class="select-trigger" @click="toggleDropdown" :class="{ active: isOpen }">
+    <div
+      :id="`${selectId}-trigger`"
+      ref="triggerRef"
+      class="select-trigger"
+      :class="{ active: isOpen }"
+      role="combobox"
+      :tabindex="disabled ? -1 : 0"
+      aria-haspopup="listbox"
+      :aria-expanded="isOpen"
+      :aria-controls="`${selectId}-listbox`"
+      :aria-activedescendant="isOpen ? activeOptionId : undefined"
+      :aria-disabled="disabled"
+      :title="selectedOption?.label || placeholder"
+      @click="toggleDropdown"
+      @keydown="handleTriggerKeydown"
+    >
       <span class="trigger-content">
         <span class="trigger-icon" v-if="selectedOption?.icon">{{ selectedOption.icon }}</span>
         <span class="trigger-text">{{ selectedOption?.label || placeholder }}</span>
@@ -39,22 +54,33 @@
               placeholder="搜索..."
               class="search-input"
               ref="searchInput"
+              aria-label="搜索选项"
               @click.stop
+              @keydown="handleSearchKeydown"
             />
           </div>
           <div
+            :id="`${selectId}-listbox`"
             class="dropdown-options vc-scrollbar vc-scrollbar--thin"
             :class="{ 'has-search': searchable }"
+            role="listbox"
+            :aria-labelledby="`${selectId}-trigger`"
           >
             <div
-              v-for="option in filteredOptions"
+              v-for="(option, index) in filteredOptions"
+              :id="`${selectId}-option-${index}`"
               :key="option.value"
               class="option-item"
               :class="{
                 selected: model === option.value,
                 disabled: option.disabled,
+                'keyboard-active': activeIndex === index,
               }"
+              role="option"
+              :aria-selected="model === option.value"
+              :aria-disabled="option.disabled || undefined"
               @click="selectOption(option)"
+              @mouseenter="activeIndex = index"
             >
               <span class="option-icon" v-if="option.icon">{{ option.icon }}</span>
               <slot name="option" :option="option" :selected="model === option.value">
@@ -72,7 +98,7 @@
                 </span>
               </slot>
             </div>
-            <div class="no-options" v-if="filteredOptions.length === 0">暂无选项</div>
+            <div class="no-options" v-if="filteredOptions.length === 0" role="status">暂无选项</div>
           </div>
         </div>
       </Transition>
@@ -81,7 +107,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted, nextTick, watch, watchEffect } from 'vue'
+import { ref, computed, onUnmounted, nextTick, useId, watch, watchEffect } from 'vue'
+import { getHorizontalDropdownLayout } from './custom-select-layout'
 
 export interface SelectOption {
   value: string | number
@@ -118,11 +145,14 @@ const emit = defineEmits<{
   change: [value: string | number]
 }>()
 
+const selectId = useId()
 const selectRef = ref<HTMLElement>()
+const triggerRef = ref<HTMLElement>()
 const searchInput = ref<HTMLInputElement>()
 const dropdownRef = ref<HTMLElement>()
 const isOpen = ref(false)
 const searchQuery = ref('')
+const activeIndex = ref(-1)
 // 下拉面板用 Teleport 送到 body，按触发器坐标 fixed 定位，避免被 overflow:auto 的弹窗裁切
 const dropdownStyle = ref<Record<string, string>>({})
 
@@ -140,14 +170,114 @@ const filteredOptions = computed(() => {
   )
 })
 
+const activeOptionId = computed(() =>
+  activeIndex.value >= 0 ? `${selectId}-option-${activeIndex.value}` : undefined,
+)
+
+function findEnabledIndex(start: number, direction: 1 | -1) {
+  const options = filteredOptions.value
+  if (!options.length) return -1
+
+  for (let step = 0; step < options.length; step += 1) {
+    const index = (start + step * direction + options.length) % options.length
+    if (!options[index].disabled) return index
+  }
+  return -1
+}
+
+function resetActiveIndex(preferLast = false) {
+  const selectedIndex = filteredOptions.value.findIndex(
+    (option) => option.value === model.value && !option.disabled,
+  )
+  if (selectedIndex >= 0) {
+    activeIndex.value = selectedIndex
+    return
+  }
+  const start = preferLast ? filteredOptions.value.length - 1 : 0
+  activeIndex.value = findEnabledIndex(start, preferLast ? -1 : 1)
+}
+
+function openDropdown(preferLast = false) {
+  if (props.disabled) return
+  isOpen.value = true
+  resetActiveIndex(preferLast)
+  if (props.searchable) nextTick(() => searchInput.value?.focus())
+}
+
+function closeDropdown(restoreFocus = false) {
+  isOpen.value = false
+  searchQuery.value = ''
+  activeIndex.value = -1
+  if (restoreFocus) nextTick(() => triggerRef.value?.focus())
+}
+
 const toggleDropdown = () => {
   if (props.disabled) return
-  isOpen.value = !isOpen.value
-  if (isOpen.value && props.searchable) {
-    nextTick(() => {
-      searchInput.value?.focus()
-    })
+  if (isOpen.value) closeDropdown()
+  else openDropdown()
+}
+
+function moveActiveOption(direction: 1 | -1) {
+  if (!isOpen.value) {
+    openDropdown(direction === -1)
+    return
   }
+  const start =
+    activeIndex.value < 0
+      ? direction === 1
+        ? 0
+        : filteredOptions.value.length - 1
+      : activeIndex.value + direction
+  activeIndex.value = findEnabledIndex(start, direction)
+}
+
+function selectActiveOption() {
+  const option = filteredOptions.value[activeIndex.value]
+  if (option) selectOption(option)
+}
+
+function handleKeyboard(event: KeyboardEvent) {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    moveActiveOption(event.key === 'ArrowDown' ? 1 : -1)
+    return true
+  }
+  if (event.key === 'Home' || event.key === 'End') {
+    if (!isOpen.value) return false
+    event.preventDefault()
+    const preferLast = event.key === 'End'
+    activeIndex.value = findEnabledIndex(
+      preferLast ? filteredOptions.value.length - 1 : 0,
+      preferLast ? -1 : 1,
+    )
+    return true
+  }
+  if (event.key === 'Escape' && isOpen.value) {
+    event.preventDefault()
+    closeDropdown(true)
+    return true
+  }
+  if (event.key === 'Enter' && isOpen.value) {
+    event.preventDefault()
+    selectActiveOption()
+    return true
+  }
+  return false
+}
+
+function handleTriggerKeydown(event: KeyboardEvent) {
+  if (handleKeyboard(event)) return
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    if (isOpen.value) selectActiveOption()
+    else openDropdown()
+  } else if (event.key === 'Tab') {
+    closeDropdown()
+  }
+}
+
+function handleSearchKeydown(event: KeyboardEvent) {
+  handleKeyboard(event)
 }
 
 // 根据触发器位置计算下拉面板 fixed 定位；底部空间不足时自动上翻
@@ -155,7 +285,13 @@ function positionDropdown() {
   const el = selectRef.value
   if (!el) return
   const r = el.getBoundingClientRect()
-  const width = r.width
+  const viewportPadding = 8
+  const { left, width } = getHorizontalDropdownLayout(
+    r.left,
+    r.width,
+    window.innerWidth,
+    viewportPadding,
+  )
   let top = r.bottom + 8
   const dd = dropdownRef.value
   if (dd) {
@@ -167,23 +303,21 @@ function positionDropdown() {
   dropdownStyle.value = {
     position: 'fixed',
     top: `${top}px`,
-    left: `${r.left}px`,
+    left: `${left}px`,
     width: `${width}px`,
   }
 }
 
-const selectOption = (option: SelectOption) => {
+function selectOption(option: SelectOption) {
   if (option.disabled) return
   model.value = option.value
   emit('change', option.value)
-  isOpen.value = false
-  searchQuery.value = ''
+  closeDropdown(true)
 }
 
 const handleClickOutside = (event: MouseEvent) => {
   if (selectRef.value && !selectRef.value.contains(event.target as Node)) {
-    isOpen.value = false
-    searchQuery.value = ''
+    closeDropdown()
   }
 }
 
@@ -202,6 +336,8 @@ watch(isOpen, (val) => {
   }
 })
 
+watch(filteredOptions, () => resetActiveIndex())
+
 watchEffect(() => {
   if (props.defaultFirst && model.value == null && props.options.length > 0) {
     model.value = (props.options.find((o) => !o.disabled) ?? props.options[0]).value
@@ -218,7 +354,9 @@ onUnmounted(() => {
 <style scoped>
 .custom-select {
   position: relative;
-  min-width: 150px;
+  box-sizing: border-box;
+  min-width: min(150px, 100%);
+  max-width: 100%;
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
@@ -247,6 +385,12 @@ onUnmounted(() => {
 .select-trigger.active {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.select-trigger:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
 }
 
 .custom-select.disabled .select-trigger {
@@ -383,7 +527,8 @@ onUnmounted(() => {
   position: relative;
 }
 
-.option-item:hover {
+.option-item:hover,
+.option-item.keyboard-active {
   background: linear-gradient(135deg, var(--accent-bg) 0%, var(--accent-light) 100%);
 }
 
@@ -392,7 +537,8 @@ onUnmounted(() => {
   color: white;
 }
 
-.option-item.selected:hover {
+.option-item.selected:hover,
+.option-item.selected.keyboard-active {
   background: var(--gradient-primary);
 }
 

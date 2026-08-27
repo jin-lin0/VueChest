@@ -4,7 +4,9 @@ import { useRouter } from 'vue-router'
 import { api } from '@/lib/request'
 import { getStorage, setStorage, removeStorage } from '@/lib/storage'
 import { copyToClipboard, downloadFile } from '@/utils'
-import { Tooltip, Collapse } from '@/components'
+import { Tooltip, Collapse, CustomSelect, MarkdownView } from '@/components'
+import { useBilibiliAnalysis } from './composables/useBilibiliAnalysis'
+import type { ExtractResult, VideoInfo } from './types'
 
 const STORAGE_KEY_BILI_SESSDATA = 'bili_sessdata'
 
@@ -12,45 +14,6 @@ const router = useRouter()
 function goBack() {
   router.push('/')
 }
-
-interface PageInfo {
-  cid: number
-  page: number
-  part: string
-  duration: number
-}
-interface VideoInfo {
-  bvid: string
-  title: string
-  pages: PageInfo[]
-}
-interface SingleResult {
-  title: string
-  bvid: string
-  all: false
-  page?: number
-  part?: string
-  lan?: string
-  lanDoc?: string
-  text?: string
-  timed?: string
-  count?: number
-}
-interface PageSub extends PageInfo {
-  lan?: string
-  lanDoc?: string
-  text?: string
-  timed?: string
-  count?: number
-  error?: string
-}
-interface AllResult {
-  title: string
-  bvid: string
-  all: true
-  pages: PageSub[]
-}
-type ExtractResult = SingleResult | AllResult
 
 const url = ref('')
 const sessdata = ref(getStorage<string>(STORAGE_KEY_BILI_SESSDATA) ?? '')
@@ -70,6 +33,27 @@ const result = ref<ExtractResult | null>(null)
 
 const showTimestamps = ref(false)
 const copied = ref(false)
+const {
+  analysisProvider,
+  analysisModel,
+  analysisType,
+  customPrompt,
+  analyzing,
+  analysisError,
+  analysisDone,
+  analysisTotal,
+  analysisResults,
+  analysisProviderOptions,
+  analysisModelOptions,
+  selectAnalysisProvider,
+  runAnalysis,
+  cancelAnalysis,
+  copyAnalysis,
+  exportAnalysisMarkdown,
+  exportAnalysisJson,
+  continueInChat,
+  resetAnalysis,
+} = useBilibiliAnalysis(result, onCopied)
 
 // 修改链接后清空已解析状态，避免拿到旧视频的分P列表
 watch(url, () => {
@@ -77,6 +61,7 @@ watch(url, () => {
   result.value = null
   infoError.value = ''
   subError.value = ''
+  resetAnalysis()
 })
 
 const singleResult = computed(() => (result.value && !result.value.all ? result.value : null))
@@ -144,6 +129,7 @@ async function extractSubtitle() {
       sessdata: sessdata.value.trim() || undefined,
     })
     result.value = res.data
+    resetAnalysis()
   } catch (e) {
     subError.value = e instanceof Error ? e.message : '字幕获取失败，请稍后重试'
   } finally {
@@ -394,6 +380,84 @@ function exportAllTxt() {
         </div>
         <textarea v-if="!p.error" class="output" readonly :value="pickText(p)" />
       </div>
+    </section>
+
+    <section v-if="result" class="card analysis-card">
+      <div class="result-head">
+        <div>
+          <h2 class="video-title">AI 内容分析</h2>
+          <p class="muted">支持长字幕分块、多分P并行、缓存和继续追问。</p>
+        </div>
+        <span v-if="analyzing" class="tag">{{ analysisDone }}/{{ analysisTotal }}</span>
+      </div>
+
+      <div class="analysis-models">
+        <CustomSelect
+          v-model="analysisProvider"
+          :options="analysisProviderOptions"
+          block
+          @change="selectAnalysisProvider"
+        />
+        <CustomSelect v-model="analysisModel" :options="analysisModelOptions" searchable block />
+      </div>
+
+      <div class="analysis-types" role="group" aria-label="分析类型">
+        <button :class="{ active: analysisType === 'overview' }" @click="analysisType = 'overview'">
+          摘要·章节·观点
+        </button>
+        <button
+          :class="{ active: analysisType === 'translate' }"
+          @click="analysisType = 'translate'"
+        >
+          翻译成中文
+        </button>
+        <button :class="{ active: analysisType === 'custom' }" @click="analysisType = 'custom'">
+          自定义
+        </button>
+      </div>
+
+      <textarea
+        v-if="analysisType === 'custom'"
+        v-model="customPrompt"
+        class="custom-prompt"
+        maxlength="1000"
+        placeholder="例如：提取所有产品需求、争议观点和可验证的数据"
+      />
+
+      <div class="analysis-actions">
+        <button v-if="!analyzing" class="btn" @click="runAnalysis">开始分析</button>
+        <button v-else class="btn cancel" @click="cancelAnalysis">取消分析</button>
+        <button v-if="analysisResults.length" class="ghost" @click="copyAnalysis">
+          {{ copied ? '已复制 ✓' : '复制分析' }}
+        </button>
+        <button v-if="analysisResults.length" class="ghost" @click="exportAnalysisMarkdown">
+          导出 Markdown
+        </button>
+        <button v-if="analysisResults.length" class="ghost" @click="exportAnalysisJson">
+          导出 JSON
+        </button>
+      </div>
+      <div v-if="analyzing" class="analysis-progress">
+        <i :style="{ width: `${analysisTotal ? (analysisDone / analysisTotal) * 100 : 0}%` }"></i>
+      </div>
+      <p v-if="analysisError" class="error">
+        {{ analysisError }}
+        <button v-if="!analyzing" class="retry" @click="runAnalysis">重试</button>
+      </p>
+
+      <article v-for="item in analysisResults" :key="item.id" class="analysis-result">
+        <header>
+          <div>
+            <strong>{{ item.title }}</strong>
+            <small>{{ item.model }} · {{ item.chunkCount }} 个分块</small>
+          </div>
+          <div class="actions">
+            <span v-if="item.cached" class="tag">缓存</span>
+            <button class="ghost" @click="continueInChat(item)">继续追问</button>
+          </div>
+        </header>
+        <MarkdownView :content="item.content" />
+      </article>
     </section>
   </div>
 </template>
@@ -670,5 +734,99 @@ h1 {
   resize: vertical;
   outline: none;
   font-family: var(--font-sans);
+}
+
+.analysis-models {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(240px, 1.3fr);
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.analysis-types,
+.analysis-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.analysis-types button {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.analysis-types button.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+}
+
+.custom-prompt {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 90px;
+  margin-top: 0.8rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.btn.cancel {
+  background: var(--danger);
+}
+
+.analysis-progress {
+  height: 5px;
+  margin-top: 0.8rem;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--bg-subtle);
+}
+
+.analysis-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.analysis-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-page);
+}
+
+.analysis-result header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.analysis-result header > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.analysis-result small {
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .analysis-models {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

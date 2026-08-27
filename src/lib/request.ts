@@ -7,13 +7,13 @@ export function getAuthToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
 }
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
   message?: string
   error?: string
   code?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 class ApiError extends Error {
@@ -28,13 +28,14 @@ class ApiError extends Error {
 
 interface RequestConfig {
   method?: string
-  body?: any
+  body?: unknown
   headers?: Record<string, string>
   auth?: boolean
+  signal?: AbortSignal
 }
 
-async function request<T = any>(path: string, config: RequestConfig = {}): Promise<T> {
-  const { method = 'GET', body, headers = {}, auth = true } = config
+async function request<T = unknown>(path: string, config: RequestConfig = {}): Promise<T> {
+  const { method = 'GET', body, headers = {}, auth = true, signal } = config
 
   const fetchHeaders: Record<string, string> = { ...headers }
 
@@ -45,7 +46,7 @@ async function request<T = any>(path: string, config: RequestConfig = {}): Promi
     }
   }
 
-  const fetchConfig: RequestInit = { method, headers: fetchHeaders }
+  const fetchConfig: RequestInit = { method, headers: fetchHeaders, signal }
 
   if (body !== undefined && body !== null) {
     fetchHeaders['Content-Type'] = 'application/json'
@@ -70,16 +71,16 @@ async function request<T = any>(path: string, config: RequestConfig = {}): Promi
 }
 
 const api = {
-  get<T = any>(path: string, config?: RequestConfig) {
+  get<T = unknown>(path: string, config?: RequestConfig) {
     return request<T>(path, { ...config, method: 'GET' })
   },
-  post<T = any>(path: string, body?: any, config?: RequestConfig) {
+  post<T = unknown>(path: string, body?: unknown, config?: RequestConfig) {
     return request<T>(path, { ...config, method: 'POST', body })
   },
-  put<T = any>(path: string, body?: any, config?: RequestConfig) {
+  put<T = unknown>(path: string, body?: unknown, config?: RequestConfig) {
     return request<T>(path, { ...config, method: 'PUT', body })
   },
-  delete<T = any>(path: string, config?: RequestConfig) {
+  delete<T = unknown>(path: string, config?: RequestConfig) {
     return request<T>(path, { ...config, method: 'DELETE' })
   },
 }

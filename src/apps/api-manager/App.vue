@@ -1,5 +1,25 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Braces,
+  Check,
+  Copy,
+  Download,
+  ExternalLink,
+  GripVertical,
+  Layers3,
+  Play,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  Upload,
+  Variable,
+  Workflow,
+  X,
+} from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import CopyButton from '@/components/common/CopyButton.vue'
 import CustomSelect, { type SelectOption } from '@/components/common/CustomSelect.vue'
@@ -10,11 +30,28 @@ import { useConfirm } from '@/composables/useConfirm'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { getStorage, setStorage } from '@/lib/storage'
 import type { ApiItem } from './defaults'
+import { importApiDocument } from './importers'
+import {
+  applyAuth,
+  extractResponseVariables,
+  resolvedHeaders,
+  type AuthConfig,
+  type ExtractionRule,
+} from './collection-runner'
+import {
+  createRuntimeVariableContext,
+  findVariableReferences,
+  isRequestUrlTemplate,
+  mergeRuntimeVariables,
+  requestsForCollection,
+  toggleSelection,
+  upsertCollectionRequest,
+  type RuntimeVariableRecord,
+} from './collection-workspace'
 import {
   buildCurlCommand,
   buildRequestUrl,
   formatBytes,
-  getEnabledHeaders,
   inferApiAccess,
   evaluateAssertions,
   resolveVariables,
@@ -49,7 +86,7 @@ interface RequestHistoryItem {
 }
 
 type CatalogScope = 'all' | 'featured' | 'pinned' | 'recent'
-type RequestTab = 'params' | 'headers' | 'body' | 'tests'
+type RequestTab = 'params' | 'headers' | 'body' | 'tests' | 'extract'
 type ResponseTab = 'preview' | 'headers' | 'tests'
 
 interface ApiEnvironment {
@@ -73,7 +110,55 @@ interface SavedRequest {
   headers: RequestHeader[]
   body: string
   assertions: AssertionRule[]
+  auth?: AuthConfig
+  extractions?: ExtractionRule[]
+  retryCount?: number
+  timeoutMs?: number
   createdAt: string
+}
+
+interface AuthDraft {
+  type: AuthConfig['type']
+  token: string
+  name: string
+  value: string
+  location: 'header' | 'query'
+  username: string
+  password: string
+}
+
+interface CollectionRunResult {
+  id: string
+  name: string
+  status?: number
+  time: number
+  ok: boolean
+  testsPassed: number
+  testsTotal: number
+  error?: string
+}
+
+interface CollectionRuntimeVariable {
+  key: string
+  value: string
+  sourceRequestId: string
+  sourceRequestName: string
+}
+
+interface SavedRequestRun {
+  result: CollectionRunResult
+  extracted: Array<{ variable: string; value: string }>
+}
+
+type WorkspaceStepTab = 'request' | 'extract' | 'assertions'
+type WorkspacePickerTab = 'catalog' | 'saved' | 'custom'
+
+interface WorkspaceCustomRequestDraft {
+  name: string
+  method: ApiItem['method']
+  url: string
+  category: string
+  description: string
 }
 
 const LEGACY_USER_APIS_KEY = 'userApis'
@@ -118,7 +203,45 @@ const showWorkspaceManager = ref(false)
 const newEnvironmentName = ref('')
 const newCollectionName = ref('')
 const saveRequestName = ref('')
+const editingSavedRequestId = ref<string | null>(null)
 const workspaceFileRef = ref<HTMLInputElement | null>(null)
+const definitionFileRef = ref<HTMLInputElement | null>(null)
+const authDraft = ref<AuthDraft>({
+  type: 'none',
+  token: '',
+  name: 'X-API-Key',
+  value: '',
+  location: 'header',
+  username: '',
+  password: '',
+})
+const extractionRules = ref<ExtractionRule[]>([])
+const retryCount = ref(0)
+const requestTimeoutMs = ref(REQUEST_TIMEOUT_MS)
+const collectionRunning = ref(false)
+const collectionResults = ref<CollectionRunResult[]>([])
+const collectionRuntimeVariables = ref<CollectionRuntimeVariable[]>([])
+const selectedWorkspaceRequestId = ref<string | null>(null)
+const workspaceStepTab = ref<WorkspaceStepTab>('extract')
+const runningRequestId = ref<string | null>(null)
+const showNewCollectionInput = ref(false)
+const draggedWorkspaceRequestId = ref<string | null>(null)
+const collectionContextMenu = ref<{ collectionId: string; x: number; y: number } | null>(null)
+const showWorkspaceRequestPicker = ref(false)
+const workspacePickerTab = ref<WorkspacePickerTab>('catalog')
+const workspacePickerSearch = ref('')
+const workspacePickerMethod = ref<string | number>('all')
+const workspaceSelectedApiIds = ref<Array<string | number>>([])
+const workspaceSelectedSavedIds = ref<string[]>([])
+const workspaceCustomErrors = ref<Record<string, string>>({})
+const blankWorkspaceCustomRequest = (): WorkspaceCustomRequestDraft => ({
+  name: '',
+  method: 'GET',
+  url: '',
+  category: '自定义',
+  description: '',
+})
+const workspaceCustomRequest = ref<WorkspaceCustomRequestDraft>(blankWorkspaceCustomRequest())
 
 const showAddForm = ref(false)
 const editingId = ref<string | number | null>(null)
@@ -140,6 +263,10 @@ const methodOptions: SelectOption[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].
   value,
   label: value,
 }))
+const workspaceMethodOptions: SelectOption[] = [
+  { value: 'all', label: '全部方法' },
+  ...methodOptions,
+]
 const typeOptions: SelectOption[] = [
   { value: 'string', label: '字符串' },
   { value: 'number', label: '数字' },
@@ -158,6 +285,16 @@ const assertionTypeOptions: SelectOption[] = [
   { value: 'status', label: '状态码等于' },
   { value: 'time', label: '响应耗时小于' },
   { value: 'body-includes', label: '响应包含文本' },
+]
+const requestAuthOptions: SelectOption[] = [
+  { value: 'none', label: '无鉴权' },
+  { value: 'bearer', label: 'Bearer Token' },
+  { value: 'api-key', label: 'API Key' },
+  { value: 'basic', label: 'Basic Auth' },
+]
+const apiKeyLocationOptions: SelectOption[] = [
+  { value: 'header', label: 'Header' },
+  { value: 'query', label: 'Query 参数' },
 ]
 
 onMounted(async () => {
@@ -209,9 +346,34 @@ watch(activeEnvironmentId, (value) =>
 watch(collections, (value) => setStorage(STORAGE_KEYS.API_MANAGER_COLLECTIONS, value), {
   deep: true,
 })
-watch(activeCollectionId, (value) => setStorage(STORAGE_KEYS.API_MANAGER_ACTIVE_COLLECTION, value))
+watch(activeCollectionId, (value, previous) => {
+  setStorage(STORAGE_KEYS.API_MANAGER_ACTIVE_COLLECTION, value)
+  if (value !== previous) {
+    collectionResults.value = []
+    collectionRuntimeVariables.value = []
+    selectedWorkspaceRequestId.value =
+      requestsForCollection(savedRequests.value, value)[0]?.id || null
+    const editing = savedRequests.value.find((item) => item.id === editingSavedRequestId.value)
+    if (editing && editing.collectionId !== value) {
+      editingSavedRequestId.value = null
+      saveRequestName.value = ''
+    }
+  }
+})
 watch(savedRequests, (value) => setStorage(STORAGE_KEYS.API_MANAGER_SAVED_REQUESTS, value), {
   deep: true,
+})
+watch(showWorkspaceManager, (visible) => {
+  if (!visible) {
+    showWorkspaceRequestPicker.value = false
+    collectionContextMenu.value = null
+    return
+  }
+  const selectedExists = activeCollectionRequests.value.some(
+    (item) => item.id === selectedWorkspaceRequestId.value,
+  )
+  if (!selectedExists)
+    selectedWorkspaceRequestId.value = activeCollectionRequests.value[0]?.id || null
 })
 
 const systemApis = computed(() =>
@@ -279,8 +441,66 @@ const activeVariables = computed(() => activeEnvironment.value?.variables || [])
 const environmentOptions = computed<SelectOption[]>(() =>
   environments.value.map((item) => ({ value: item.id, label: item.name })),
 )
-const collectionOptions = computed<SelectOption[]>(() =>
-  collections.value.map((item) => ({ value: item.id, label: item.name })),
+const activeCollection = computed(
+  () =>
+    collections.value.find((item) => item.id === activeCollectionId.value) || collections.value[0],
+)
+const activeCollectionRequests = computed(() =>
+  requestsForCollection(savedRequests.value, activeCollectionId.value),
+)
+const editingSavedRequest = computed(() =>
+  savedRequests.value.find((item) => item.id === editingSavedRequestId.value),
+)
+const selectedWorkspaceRequest = computed(() =>
+  activeCollectionRequests.value.find((item) => item.id === selectedWorkspaceRequestId.value),
+)
+const selectedWorkspaceApi = computed(() =>
+  apis.value.find((item) => item.id === selectedWorkspaceRequest.value?.apiId),
+)
+const workspaceRuntimeVariables = computed<CollectionRuntimeVariable[]>(() => {
+  if (collectionRuntimeVariables.value.length) return collectionRuntimeVariables.value
+  const declared = new Map<string, CollectionRuntimeVariable>()
+  for (const request of activeCollectionRequests.value) {
+    for (const rule of request.extractions || []) {
+      if (!rule.enabled || !rule.variable.trim()) continue
+      declared.set(rule.variable, {
+        key: rule.variable,
+        value: '',
+        sourceRequestId: request.id,
+        sourceRequestName: request.name,
+      })
+    }
+  }
+  return [...declared.values()]
+})
+const workspaceCatalogApis = computed(() => {
+  const query = workspacePickerSearch.value.trim().toLowerCase()
+  return apis.value.filter((api) => {
+    if (workspacePickerMethod.value !== 'all' && api.method !== workspacePickerMethod.value)
+      return false
+    if (!query) return true
+    return [api.name, api.url, api.category, api.description]
+      .join(' ')
+      .toLowerCase()
+      .includes(query)
+  })
+})
+const workspaceReusableRequests = computed(() => {
+  const query = workspacePickerSearch.value.trim().toLowerCase()
+  return savedRequests.value.filter((saved) => {
+    if (saved.collectionId === activeCollectionId.value) return false
+    const api = apis.value.find((item) => item.id === saved.apiId)
+    if (!query) return true
+    return [saved.name, api?.url || '', api?.method || '', api?.category || '']
+      .join(' ')
+      .toLowerCase()
+      .includes(query)
+  })
+})
+const workspacePickerSelectionCount = computed(() =>
+  workspacePickerTab.value === 'catalog'
+    ? workspaceSelectedApiIds.value.length
+    : workspaceSelectedSavedIds.value.length,
 )
 const currentUrl = computed(() =>
   selectedApi.value
@@ -319,6 +539,40 @@ function createHeader(name = '', value = ''): RequestHeader {
   return { id: crypto.randomUUID(), name, value, enabled: true }
 }
 
+function currentAuthConfig(): AuthConfig {
+  if (authDraft.value.type === 'bearer') {
+    return { type: 'bearer', token: authDraft.value.token }
+  }
+  if (authDraft.value.type === 'api-key') {
+    return {
+      type: 'api-key',
+      name: authDraft.value.name,
+      value: authDraft.value.value,
+      location: authDraft.value.location,
+    }
+  }
+  if (authDraft.value.type === 'basic') {
+    return {
+      type: 'basic',
+      username: authDraft.value.username,
+      password: authDraft.value.password,
+    }
+  }
+  return { type: 'none' }
+}
+
+function loadAuthConfig(auth?: AuthConfig) {
+  authDraft.value = {
+    type: auth?.type || 'none',
+    token: auth?.type === 'bearer' ? auth.token : '',
+    name: auth?.type === 'api-key' ? auth.name : 'X-API-Key',
+    value: auth?.type === 'api-key' ? auth.value : '',
+    location: auth?.type === 'api-key' ? auth.location : 'header',
+    username: auth?.type === 'basic' ? auth.username : '',
+    password: auth?.type === 'basic' ? auth.password : '',
+  }
+}
+
 function resetRequest(api: ApiItem) {
   if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
   paramValues.value = Object.fromEntries(
@@ -334,12 +588,18 @@ function resetRequest(api: ApiItem) {
     { id: crypto.randomUUID(), type: 'status', expected: '200', enabled: true },
     { id: crypto.randomUUID(), type: 'time', expected: '2000', enabled: false },
   ]
+  loadAuthConfig()
+  extractionRules.value = []
+  retryCount.value = 0
+  requestTimeoutMs.value = REQUEST_TIMEOUT_MS
   error.value = null
   validationMessage.value = null
 }
 
 function selectApi(api: ApiItem) {
   showAddForm.value = false
+  editingSavedRequestId.value = null
+  saveRequestName.value = ''
   selectedId.value = api.id
   recentIds.value = [api.id, ...recentIds.value.filter((id) => id !== api.id)].slice(0, 12)
   resetRequest(api)
@@ -437,19 +697,24 @@ async function executeApi() {
   const controller = new AbortController()
   activeController.value = controller
   let timedOut = false
-  const timeoutId = window.setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, REQUEST_TIMEOUT_MS)
+  const timeoutId = window.setTimeout(
+    () => {
+      timedOut = true
+      controller.abort()
+    },
+    Math.min(120_000, Math.max(1000, requestTimeoutMs.value)),
+  )
   const startedAt = performance.now()
 
   try {
-    const headers = Object.fromEntries(
-      Object.entries(getEnabledHeaders(requestHeaders.value)).map(([name, value]) => [
-        name,
-        resolveVariables(value, activeVariables.value),
-      ]),
+    const baseHeaders = resolvedHeaders(requestHeaders.value, activeVariables.value)
+    const authenticated = applyAuth(
+      currentUrl.value,
+      baseHeaders,
+      currentAuthConfig(),
+      activeVariables.value,
     )
+    const headers = authenticated.headers
     const hasContentType = Object.keys(headers).some(
       (name) => name.toLowerCase() === 'content-type',
     )
@@ -457,12 +722,23 @@ async function executeApi() {
     const hasBody = api.method !== 'GET' && resolvedBody.trim() !== ''
     if (hasBody && !hasContentType) headers['Content-Type'] = 'application/json'
 
-    const result = await fetch(currentUrl.value, {
-      method: api.method,
-      headers,
-      body: hasBody ? resolvedBody : undefined,
-      signal: controller.signal,
-    })
+    let result: Response | null = null
+    const attempts = Math.min(3, Math.max(0, retryCount.value)) + 1
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        result = await fetch(authenticated.url, {
+          method: api.method,
+          headers,
+          body: hasBody ? resolvedBody : undefined,
+          signal: controller.signal,
+        })
+        if (result.status < 500 || attempt === attempts - 1) break
+        await result.body?.cancel()
+      } catch (reason) {
+        if (attempt === attempts - 1 || controller.signal.aborted) throw reason
+      }
+    }
+    if (!result) throw new Error('请求未返回响应')
     const contentType = result.headers.get('content-type') ?? ''
     const parsed = await parseBody(result, contentType)
     const time = Math.round(performance.now() - startedAt)
@@ -485,6 +761,9 @@ async function executeApi() {
       time,
       body: assertionBody,
     })
+    const extracted = extractResponseVariables(parsed.data, extractionRules.value)
+    for (const item of extracted) upsertEnvironmentVariable(item.variable, item.value, true)
+    if (extracted.length) notify('success', `已提取 ${extracted.length} 个环境变量`)
     addHistory({
       apiId: api.id,
       apiName: api.name,
@@ -496,7 +775,7 @@ async function executeApi() {
   } catch (reason) {
     const time = Math.round(performance.now() - startedAt)
     const message = timedOut
-      ? `请求超过 ${REQUEST_TIMEOUT_MS / 1000} 秒，已自动取消`
+      ? `请求超过 ${Math.round(requestTimeoutMs.value / 1000)} 秒，已自动取消`
       : reason instanceof DOMException && reason.name === 'AbortError'
         ? '请求已取消'
         : reason instanceof TypeError
@@ -698,6 +977,25 @@ function removeEnvironmentVariable(id: string) {
   )
 }
 
+function upsertEnvironmentVariable(key: string, value: string, overwrite: boolean) {
+  if (!activeEnvironment.value || !key.trim()) return 'skipped'
+  const normalized = key.trim()
+  const existing = activeEnvironment.value.variables.find((item) => item.key === normalized)
+  if (existing) {
+    if (!overwrite && existing.value !== value) return 'conflict'
+    existing.value = value
+    existing.enabled = true
+    return 'updated'
+  }
+  activeEnvironment.value.variables.push({
+    id: crypto.randomUUID(),
+    key: normalized,
+    value,
+    enabled: true,
+  })
+  return 'created'
+}
+
 function addCollection() {
   const name = newCollectionName.value.trim()
   if (!name) return
@@ -710,6 +1008,28 @@ function addCollection() {
   collections.value.push(collection)
   activeCollectionId.value = collection.id
   newCollectionName.value = ''
+  showNewCollectionInput.value = false
+}
+
+function selectWorkspaceCollection(id: string) {
+  activeCollectionId.value = id
+  workspaceStepTab.value = 'extract'
+  collectionContextMenu.value = null
+}
+
+function collectionRequestCount(id: string) {
+  return savedRequests.value.filter((item) => item.collectionId === id).length
+}
+
+function createWorkspaceCollection() {
+  if (!newCollectionName.value.trim())
+    newCollectionName.value = `新集合 ${collections.value.length + 1}`
+  addCollection()
+}
+
+function cancelWorkspaceCollectionCreation() {
+  newCollectionName.value = ''
+  showNewCollectionInput.value = false
 }
 
 function removeCollection(id: string) {
@@ -717,6 +1037,28 @@ function removeCollection(id: string) {
   collections.value = collections.value.filter((item) => item.id !== id)
   savedRequests.value = savedRequests.value.filter((item) => item.collectionId !== id)
   if (activeCollectionId.value === id) activeCollectionId.value = collections.value[0].id
+}
+
+async function confirmRemoveCollection(id: string) {
+  collectionContextMenu.value = null
+  if (collections.value.length <= 1) {
+    notify('info', '至少保留一个集合')
+    return
+  }
+  const collection = collections.value.find((item) => item.id === id)
+  if (!collection) return
+  const ok = await confirm(`删除集合「${collection.name}」及其中的全部请求？`)
+  if (ok) removeCollection(id)
+}
+
+function openCollectionContextMenu(event: MouseEvent, collectionId: string) {
+  const width = 180
+  const height = 84
+  collectionContextMenu.value = {
+    collectionId,
+    x: Math.min(event.clientX, window.innerWidth - width - 8),
+    y: Math.min(event.clientY, window.innerHeight - height - 8),
+  }
 }
 
 function addAssertion() {
@@ -733,22 +1075,191 @@ function removeAssertion(id: string) {
   assertionResults.value = assertionResults.value.filter((item) => item.id !== id)
 }
 
-function saveCurrentRequest() {
-  if (!selectedApi.value) return
-  const name = saveRequestName.value.trim() || `${selectedApi.value.name} 副本`
-  savedRequests.value.unshift({
+function addExtractionRule() {
+  extractionRules.value.push({
     id: crypto.randomUUID(),
+    path: '$.data.token',
+    variable: 'token',
+    enabled: true,
+  })
+}
+
+function removeExtractionRule(id: string) {
+  extractionRules.value = extractionRules.value.filter((item) => item.id !== id)
+}
+
+function persistCurrentRequest(asCopy: boolean): SavedRequest | undefined {
+  if (!selectedApi.value) return undefined
+  const existing = asCopy ? undefined : editingSavedRequest.value
+  const name = saveRequestName.value.trim() || existing?.name || selectedApi.value.name
+  const saved: SavedRequest = {
+    id: existing?.id || crypto.randomUUID(),
     name,
-    collectionId: activeCollectionId.value || collections.value[0].id,
+    collectionId: existing?.collectionId || activeCollectionId.value || collections.value[0].id,
     apiId: selectedApi.value.id,
     paramValues: { ...paramValues.value },
     headers: requestHeaders.value.map((item) => ({ ...item })),
     body: requestBody.value,
     assertions: assertions.value.map((item) => ({ ...item })),
+    auth: currentAuthConfig(),
+    extractions: extractionRules.value.map((item) => ({ ...item })),
+    retryCount: retryCount.value,
+    timeoutMs: requestTimeoutMs.value,
+    createdAt: existing?.createdAt || new Date().toISOString(),
+  }
+  savedRequests.value = upsertCollectionRequest(savedRequests.value, saved)
+  editingSavedRequestId.value = saved.id
+  activeCollectionId.value = saved.collectionId
+  saveRequestName.value = saved.name
+  notify('success', existing ? `已更新请求「${name}」` : `已保存请求「${name}」`)
+  return saved
+}
+
+function saveCurrentRequest() {
+  persistCurrentRequest(false)
+}
+
+function saveCurrentRequestAsCopy() {
+  persistCurrentRequest(true)
+}
+
+function createSavedRequestFromApi(
+  api: ApiItem,
+  collectionId = activeCollectionId.value,
+  name = api.name,
+): SavedRequest {
+  return {
+    id: crypto.randomUUID(),
+    name,
+    collectionId,
+    apiId: api.id,
+    paramValues: Object.fromEntries(api.params.map((param) => [param.name, param.defaultValue])),
+    headers: [createHeader('Accept', '*/*')],
+    body: api.method === 'GET' ? '' : '{\n  \n}',
+    assertions: [
+      { id: crypto.randomUUID(), type: 'status', expected: '200', enabled: true },
+      { id: crypto.randomUUID(), type: 'time', expected: '2000', enabled: false },
+    ],
+    auth: { type: 'none' },
+    extractions: [],
+    retryCount: 0,
+    timeoutMs: REQUEST_TIMEOUT_MS,
     createdAt: new Date().toISOString(),
-  })
-  saveRequestName.value = ''
-  notify('success', `已保存请求「${name}」`)
+  }
+}
+
+function appendWorkspaceRequests(requests: SavedRequest[]) {
+  if (!requests.length) return
+  savedRequests.value = [...savedRequests.value, ...requests]
+  selectedWorkspaceRequestId.value = requests[0].id
+  workspaceStepTab.value = 'request'
+  collectionResults.value = []
+  collectionRuntimeVariables.value = []
+  showWorkspaceRequestPicker.value = false
+}
+
+function openWorkspaceRequestPicker(tab: WorkspacePickerTab = 'catalog') {
+  workspacePickerTab.value = tab
+  workspacePickerSearch.value = ''
+  workspacePickerMethod.value = 'all'
+  workspaceSelectedApiIds.value = []
+  workspaceSelectedSavedIds.value = []
+  workspaceCustomErrors.value = {}
+  workspaceCustomRequest.value = blankWorkspaceCustomRequest()
+  showWorkspaceRequestPicker.value = true
+}
+
+function selectWorkspacePickerTab(tab: WorkspacePickerTab) {
+  workspacePickerTab.value = tab
+  workspacePickerSearch.value = ''
+}
+
+function handleWorkspacePickerKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape') return
+  event.preventDefault()
+  event.stopPropagation()
+  showWorkspaceRequestPicker.value = false
+}
+
+function toggleWorkspaceApiSelection(id: string | number) {
+  workspaceSelectedApiIds.value = toggleSelection(workspaceSelectedApiIds.value, id)
+}
+
+function toggleWorkspaceSavedSelection(id: string) {
+  workspaceSelectedSavedIds.value = toggleSelection(workspaceSelectedSavedIds.value, id)
+}
+
+function addSelectedCatalogRequests() {
+  const requests = workspaceSelectedApiIds.value
+    .map((id) => apis.value.find((api) => api.id === id))
+    .filter((api): api is ApiItem => Boolean(api))
+    .map((api) => createSavedRequestFromApi(api))
+  appendWorkspaceRequests(requests)
+  notify('success', `已向「${activeCollection.value?.name}」添加 ${requests.length} 个请求`)
+}
+
+function cloneSavedRequestToActiveCollection(saved: SavedRequest): SavedRequest {
+  return {
+    ...saved,
+    id: crypto.randomUUID(),
+    collectionId: activeCollectionId.value,
+    paramValues: { ...saved.paramValues },
+    headers: saved.headers.map((header) => ({ ...header, id: crypto.randomUUID() })),
+    assertions: saved.assertions.map((rule) => ({ ...rule, id: crypto.randomUUID() })),
+    extractions: (saved.extractions || []).map((rule) => ({
+      ...rule,
+      id: crypto.randomUUID(),
+    })),
+    auth: saved.auth ? { ...saved.auth } : { type: 'none' },
+    createdAt: new Date().toISOString(),
+  }
+}
+
+function addSelectedSavedRequests() {
+  const requests = workspaceSelectedSavedIds.value
+    .map((id) => savedRequests.value.find((saved) => saved.id === id))
+    .filter((saved): saved is SavedRequest => Boolean(saved))
+    .map(cloneSavedRequestToActiveCollection)
+  appendWorkspaceRequests(requests)
+  notify('success', `已复制 ${requests.length} 个已配置请求`)
+}
+
+function collectionNameForSavedRequest(saved: SavedRequest) {
+  return (
+    collections.value.find((collection) => collection.id === saved.collectionId)?.name || '未知集合'
+  )
+}
+
+function createWorkspaceCustomRequest() {
+  const draft = workspaceCustomRequest.value
+  const errors: Record<string, string> = {}
+  const name = draft.name.trim()
+  const url = draft.url.trim()
+  if (!name) errors.name = '请输入请求名称'
+  if (!url) errors.url = '请输入请求地址'
+  else if (!isRequestUrlTemplate(url)) {
+    errors.url = '使用 http(s):// 或 {{baseUrl}} 开头'
+  }
+  workspaceCustomErrors.value = errors
+  if (Object.keys(errors).length) return
+
+  const api: ApiItem = {
+    id: crypto.randomUUID(),
+    name,
+    url,
+    method: draft.method,
+    category: draft.category.trim() || '自定义',
+    description: draft.description.trim() || '从 API 工作区快速创建',
+    params: [],
+    auth: 'none',
+    cors: 'unknown',
+    userCreated: true,
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  }
+  userApis.value.push(api)
+  appendWorkspaceRequests([createSavedRequestFromApi(api)])
+  notify('success', `已创建并添加请求「${name}」`)
 }
 
 function openSavedRequest(saved: SavedRequest) {
@@ -757,16 +1268,150 @@ function openSavedRequest(saved: SavedRequest) {
     notify('warning', '原始 API 已不存在')
     return
   }
+  activeCollectionId.value = saved.collectionId
   selectApi(api)
+  editingSavedRequestId.value = saved.id
+  saveRequestName.value = saved.name
   paramValues.value = { ...saved.paramValues }
   requestHeaders.value = saved.headers.map((item) => ({ ...item }))
   requestBody.value = saved.body
   assertions.value = saved.assertions.map((item) => ({ ...item }))
+  loadAuthConfig(saved.auth)
+  extractionRules.value = (saved.extractions || []).map((item) => ({ ...item }))
+  retryCount.value = saved.retryCount || 0
+  requestTimeoutMs.value = saved.timeoutMs || REQUEST_TIMEOUT_MS
   showWorkspaceManager.value = false
 }
 
 function removeSavedRequest(id: string) {
   savedRequests.value = savedRequests.value.filter((item) => item.id !== id)
+  collectionResults.value = collectionResults.value.filter((item) => item.id !== id)
+  if (selectedWorkspaceRequestId.value === id) {
+    selectedWorkspaceRequestId.value = activeCollectionRequests.value[0]?.id || null
+  }
+  if (editingSavedRequestId.value === id) {
+    editingSavedRequestId.value = null
+    saveRequestName.value = ''
+  }
+}
+
+function moveSavedRequest(saved: SavedRequest, direction: -1 | 1) {
+  const collectionItems = savedRequests.value.filter(
+    (item) => item.collectionId === saved.collectionId,
+  )
+  const position = collectionItems.findIndex((item) => item.id === saved.id)
+  const target = collectionItems[position + direction]
+  if (!target) return
+  const fromIndex = savedRequests.value.findIndex((item) => item.id === saved.id)
+  const targetIndex = savedRequests.value.findIndex((item) => item.id === target.id)
+  ;[savedRequests.value[fromIndex], savedRequests.value[targetIndex]] = [
+    savedRequests.value[targetIndex],
+    savedRequests.value[fromIndex],
+  ]
+}
+
+function dropWorkspaceRequest(target: SavedRequest) {
+  const dragged = activeCollectionRequests.value.find(
+    (item) => item.id === draggedWorkspaceRequestId.value,
+  )
+  draggedWorkspaceRequestId.value = null
+  if (!dragged || dragged.id === target.id) return
+
+  const fromIndex = savedRequests.value.findIndex((item) => item.id === dragged.id)
+  const targetIndex = savedRequests.value.findIndex((item) => item.id === target.id)
+  const next = [...savedRequests.value]
+  const [moved] = next.splice(fromIndex, 1)
+  next.splice(targetIndex, 0, moved)
+  savedRequests.value = next
+}
+
+function apiForSavedRequest(saved: SavedRequest) {
+  return apis.value.find((item) => item.id === saved.apiId)
+}
+
+function authVariableValues(auth?: AuthConfig) {
+  if (!auth || auth.type === 'none') return []
+  if (auth.type === 'bearer') return [auth.token]
+  if (auth.type === 'api-key') return [auth.name, auth.value]
+  return [auth.username, auth.password]
+}
+
+function requestVariableReferences(saved: SavedRequest) {
+  const api = apiForSavedRequest(saved)
+  return findVariableReferences([
+    api?.url || '',
+    ...Object.values(saved.paramValues),
+    ...saved.headers.flatMap((header) => [header.name, header.value]),
+    saved.body,
+    ...authVariableValues(saved.auth),
+  ])
+}
+
+function connectorVariables(saved: SavedRequest, next?: SavedRequest) {
+  if (!next) return []
+  const nextInputs = new Set(requestVariableReferences(next))
+  return (saved.extractions || []).filter(
+    (rule) => rule.enabled && rule.variable && nextInputs.has(rule.variable),
+  )
+}
+
+function variableSource(saved: SavedRequest, variable: string) {
+  const currentIndex = activeCollectionRequests.value.findIndex((item) => item.id === saved.id)
+  let source: SavedRequest | undefined
+  for (let index = currentIndex - 1; index >= 0; index -= 1) {
+    const candidate = activeCollectionRequests.value[index]
+    if ((candidate.extractions || []).some((rule) => rule.enabled && rule.variable === variable)) {
+      source = candidate
+      break
+    }
+  }
+  if (source) return source.name
+  if (activeVariables.value.some((item) => item.enabled && item.key === variable)) return '环境'
+  return '未定义'
+}
+
+function addWorkspaceExtractionRule() {
+  const saved = selectedWorkspaceRequest.value
+  if (!saved) return
+  if (!saved.extractions) saved.extractions = []
+  saved.extractions.push({
+    id: crypto.randomUUID(),
+    path: '$.data.token',
+    variable: 'token',
+    enabled: true,
+  })
+}
+
+function removeWorkspaceExtractionRule(id: string) {
+  const saved = selectedWorkspaceRequest.value
+  if (!saved) return
+  saved.extractions = (saved.extractions || []).filter((item) => item.id !== id)
+}
+
+function addWorkspaceAssertion() {
+  selectedWorkspaceRequest.value?.assertions.push({
+    id: crypto.randomUUID(),
+    type: 'status',
+    expected: '200',
+    enabled: true,
+  })
+}
+
+function removeWorkspaceAssertion(id: string) {
+  const saved = selectedWorkspaceRequest.value
+  if (!saved) return
+  saved.assertions = saved.assertions.filter((item) => item.id !== id)
+}
+
+function saveWorkspace() {
+  setStorage(STORAGE_KEYS.API_MANAGER_COLLECTIONS, collections.value)
+  setStorage(STORAGE_KEYS.API_MANAGER_SAVED_REQUESTS, savedRequests.value)
+  notify('success', `已保存集合「${activeCollection.value?.name || ''}」`)
+}
+
+function createEnvironmentFromWorkspace() {
+  newEnvironmentName.value = `环境 ${environments.value.length + 1}`
+  addEnvironment()
 }
 
 function exportWorkspace() {
@@ -821,6 +1466,206 @@ function importWorkspace(event: Event) {
   ;(event.target as HTMLInputElement).value = ''
 }
 
+function importApiDefinition(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const imported = importApiDocument(String(reader.result || ''))
+      const collection: ApiCollection = {
+        id: crypto.randomUUID(),
+        name: imported.name.slice(0, 40),
+        color: '#2563eb',
+      }
+      collections.value.push(collection)
+      activeCollectionId.value = collection.id
+      for (const request of imported.requests) {
+        userApis.value.push(request.api)
+        savedRequests.value.push({
+          id: crypto.randomUUID(),
+          name: request.name,
+          collectionId: collection.id,
+          apiId: request.api.id,
+          paramValues: Object.fromEntries(
+            request.api.params.map((param) => [param.name, param.defaultValue]),
+          ),
+          headers: request.headers,
+          body: request.body,
+          assertions: [{ id: crypto.randomUUID(), type: 'status', expected: '200', enabled: true }],
+          auth: { type: 'none' },
+          extractions: [],
+          retryCount: 0,
+          timeoutMs: REQUEST_TIMEOUT_MS,
+          createdAt: new Date().toISOString(),
+        })
+      }
+      let conflicts = 0
+      for (const variable of imported.variables) {
+        if (upsertEnvironmentVariable(variable.key, variable.value, false) === 'conflict') {
+          conflicts += 1
+        }
+      }
+      notify(
+        conflicts ? 'warning' : 'success',
+        `已导入 ${imported.requests.length} 个请求${conflicts ? `，跳过 ${conflicts} 个变量冲突` : ''}`,
+      )
+    } catch (reason) {
+      notify('error', reason instanceof Error ? reason.message : 'API 文档导入失败')
+    }
+  }
+  reader.readAsText(file)
+  input.value = ''
+}
+
+async function runSavedRequest(
+  saved: SavedRequest,
+  variables: RuntimeVariableRecord[],
+): Promise<SavedRequestRun> {
+  const api = apis.value.find((item) => item.id === saved.apiId)
+  if (!api) {
+    return {
+      result: {
+        id: saved.id,
+        name: saved.name,
+        time: 0,
+        ok: false,
+        testsPassed: 0,
+        testsTotal: 0,
+        error: '原始 API 已不存在',
+      },
+      extracted: [],
+    }
+  }
+
+  const rawUrl = resolveVariables(buildRequestUrl(api, saved.paramValues), variables)
+  const baseHeaders = resolvedHeaders(saved.headers, variables)
+  const authenticated = applyAuth(rawUrl, baseHeaders, saved.auth || { type: 'none' }, variables)
+  const body = resolveVariables(saved.body, variables)
+  const startedAt = performance.now()
+  try {
+    let response: Response | null = null
+    const attempts = Math.min(3, Math.max(0, saved.retryCount || 0)) + 1
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        response = await fetch(authenticated.url, {
+          method: api.method,
+          headers: authenticated.headers,
+          body: api.method !== 'GET' && body.trim() ? body : undefined,
+          signal: AbortSignal.timeout(saved.timeoutMs || REQUEST_TIMEOUT_MS),
+        })
+        if (response.status < 500 || attempt === attempts - 1) break
+        await response.body?.cancel()
+      } catch (reason) {
+        if (attempt === attempts - 1) throw reason
+      }
+    }
+    if (!response) throw new Error('请求没有返回响应')
+    const text = await response.text()
+    let data: unknown = text
+    try {
+      data = JSON.parse(text)
+    } catch {}
+    const elapsed = Math.round(performance.now() - startedAt)
+    const tests = evaluateAssertions(saved.assertions, {
+      status: response.status,
+      time: elapsed,
+      body: text,
+    })
+    const extracted = extractResponseVariables(data, saved.extractions || [])
+    return {
+      result: {
+        id: saved.id,
+        name: saved.name,
+        status: response.status,
+        time: elapsed,
+        ok: response.ok && tests.every((item) => item.passed),
+        testsPassed: tests.filter((item) => item.passed).length,
+        testsTotal: tests.length,
+      },
+      extracted,
+    }
+  } catch (reason) {
+    return {
+      result: {
+        id: saved.id,
+        name: saved.name,
+        time: Math.round(performance.now() - startedAt),
+        ok: false,
+        testsPassed: 0,
+        testsTotal: saved.assertions.filter((item) => item.enabled).length,
+        error: reason instanceof Error ? reason.message : '请求失败',
+      },
+      extracted: [],
+    }
+  }
+}
+
+async function runActiveCollection() {
+  const requests = activeCollectionRequests.value
+  if (collectionRunning.value) return
+  if (!requests.length) {
+    notify('info', `集合「${activeCollection.value?.name || '当前集合'}」还没有请求`)
+    return
+  }
+  collectionRunning.value = true
+  collectionResults.value = []
+  collectionRuntimeVariables.value = []
+  let runtimeContext = createRuntimeVariableContext(activeVariables.value)
+  try {
+    for (const request of requests) {
+      runningRequestId.value = request.id
+      selectedWorkspaceRequestId.value = request.id
+      const execution = await runSavedRequest(request, runtimeContext)
+      collectionResults.value.push(execution.result)
+      runtimeContext = mergeRuntimeVariables(
+        runtimeContext,
+        execution.extracted.map((item) => ({ key: item.variable, value: item.value })),
+      )
+      for (const variable of execution.extracted) {
+        const record: CollectionRuntimeVariable = {
+          key: variable.variable,
+          value: variable.value,
+          sourceRequestId: request.id,
+          sourceRequestName: request.name,
+        }
+        const index = collectionRuntimeVariables.value.findIndex(
+          (item) => item.key === variable.variable,
+        )
+        if (index >= 0) collectionRuntimeVariables.value[index] = record
+        else collectionRuntimeVariables.value.push(record)
+      }
+    }
+    const passed = collectionResults.value.filter((item) => item.ok).length
+    notify(
+      passed === requests.length ? 'success' : 'warning',
+      `集合运行完成：${passed}/${requests.length} 通过`,
+    )
+  } finally {
+    runningRequestId.value = null
+    collectionRunning.value = false
+  }
+}
+
+function exportCollectionReport() {
+  if (!collectionResults.value.length) return
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    collection: collections.value.find((item) => item.id === activeCollectionId.value)?.name,
+    results: collectionResults.value,
+    runtimeVariables: collectionRuntimeVariables.value,
+  }
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+  )
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `api-collection-report-${new Date().toISOString().slice(0, 10)}.json`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 async function clearHistory() {
   if (!requestHistory.value.length) return
   const ok = await confirm('确定清空全部请求历史吗？')
@@ -855,31 +1700,63 @@ onBeforeUnmount(() => {
 <template>
   <div class="api-workbench">
     <header class="topbar">
-      <button
-        class="icon-button back-button"
-        type="button"
-        aria-label="返回首页"
-        @click="router.push('/')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-      </button>
-
-      <div class="brand-lockup" role="banner">
-        <span class="brand-mark">A</span>
-        <span><strong>API LAB</strong><small>发现 · 调试 · 复用</small></span>
+      <div class="topbar-leading">
+        <button
+          class="icon-button back-button"
+          type="button"
+          aria-label="返回首页"
+          @click="router.push('/')"
+        >
+          <ArrowLeft :size="19" />
+        </button>
+        <div class="topbar-title">
+          <strong>API 工作台</strong>
+          <span>接口调试与流程编排</span>
+        </div>
       </div>
 
       <div class="topbar-actions">
-        <span class="catalog-health"><i></i>{{ apis.length }} 个接口已载入</span>
         <div class="environment-switcher" title="当前请求环境">
-          <span>ENV</span>
-          <CustomSelect v-model="activeEnvironmentId" :options="environmentOptions" size="sm" />
+          <span>环境</span>
+          <CustomSelect
+            v-model="activeEnvironmentId"
+            :options="environmentOptions"
+            size="sm"
+            width="116px"
+          />
         </div>
-        <button class="secondary-button compact" type="button" @click="showWorkspaceManager = true">
-          工作区 · {{ savedRequests.length }}
+        <button
+          class="workspace-entry"
+          type="button"
+          title="打开工作区"
+          @click="showWorkspaceManager = true"
+        >
+          <span class="workspace-entry-icon"><Workflow :size="17" /></span>
+          <span>
+            <strong>工作区</strong>
+            <small>{{ collections.length }} 个集合 · {{ savedRequests.length }} 个请求</small>
+          </span>
+          <ArrowRight :size="15" />
         </button>
-        <button class="primary-button compact" type="button" @click="showAddFormPanel">
-          <span aria-hidden="true">＋</span> 添加 API
+        <button
+          class="toolbar-action import-action"
+          type="button"
+          title="导入 OpenAPI / Postman"
+          @click="definitionFileRef?.click()"
+        >
+          <Upload :size="16" />
+          <span>导入定义</span>
+        </button>
+        <input
+          ref="definitionFileRef"
+          type="file"
+          accept="application/json,.json,.yaml,.yml"
+          hidden
+          @change="importApiDefinition"
+        />
+        <button class="toolbar-primary" type="button" title="新建 API" @click="showAddFormPanel">
+          <Plus :size="16" />
+          <span>新建 API</span>
         </button>
       </div>
     </header>
@@ -1283,7 +2160,16 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div class="endpoint-actions">
-              <button type="button" @click="saveCurrentRequest">保存请求</button>
+              <button type="button" @click="saveCurrentRequest">
+                {{
+                  editingSavedRequest
+                    ? `更新「${editingSavedRequest.name}」`
+                    : `保存到「${activeCollection?.name || '默认集合'}」`
+                }}
+              </button>
+              <button v-if="editingSavedRequest" type="button" @click="saveCurrentRequestAsCopy">
+                另存为副本
+              </button>
               <a
                 v-if="selectedApi.docsUrl"
                 :href="selectedApi.docsUrl"
@@ -1354,6 +2240,13 @@ onBeforeUnmount(() => {
                 >
                   Tests <span>{{ assertions.length }}</span>
                 </button>
+                <button
+                  :class="{ active: requestTab === 'extract' }"
+                  type="button"
+                  @click="requestTab = 'extract'"
+                >
+                  提取 <span>{{ extractionRules.length }}</span>
+                </button>
               </div>
 
               <div class="request-config vc-scrollbar vc-scrollbar--thin">
@@ -1398,6 +2291,38 @@ onBeforeUnmount(() => {
                   <button class="add-table-row" type="button" @click="addRequestHeader">
                     ＋ 添加 Header
                   </button>
+                  <div class="auth-editor">
+                    <strong>鉴权</strong>
+                    <CustomSelect
+                      v-model="authDraft.type"
+                      :options="requestAuthOptions"
+                      size="sm"
+                      block
+                    />
+                    <input
+                      v-if="authDraft.type === 'bearer'"
+                      v-model="authDraft.token"
+                      type="password"
+                      placeholder="Token 或 {{token}}"
+                    />
+                    <template v-else-if="authDraft.type === 'api-key'">
+                      <CustomSelect
+                        v-model="authDraft.location"
+                        :options="apiKeyLocationOptions"
+                        size="sm"
+                      />
+                      <input v-model="authDraft.name" type="text" placeholder="X-API-Key" />
+                      <input
+                        v-model="authDraft.value"
+                        type="password"
+                        placeholder="值或 {{apiKey}}"
+                      />
+                    </template>
+                    <template v-else-if="authDraft.type === 'basic'">
+                      <input v-model="authDraft.username" type="text" placeholder="用户名" />
+                      <input v-model="authDraft.password" type="password" placeholder="密码" />
+                    </template>
+                  </div>
                   <p class="security-note">敏感 Header 只用于本次页面会话，不会写入请求历史。</p>
                 </div>
 
@@ -1412,7 +2337,7 @@ onBeforeUnmount(() => {
                     aria-label="请求 Body"
                   ></textarea>
                 </div>
-                <div v-else class="assertion-editor">
+                <div v-else-if="requestTab === 'tests'" class="assertion-editor">
                   <div class="assertion-head">
                     <span>启用</span><span>断言</span><span>期望值</span><span></span>
                   </div>
@@ -1440,13 +2365,66 @@ onBeforeUnmount(() => {
                   <button class="add-table-row" type="button" @click="addAssertion">
                     ＋ 添加断言
                   </button>
-                  <p class="security-note">
-                    每次请求完成后自动执行，用于快速验证状态、性能和响应内容。
+                  <p class="security-note">每次请求完成后自动验证状态、性能和响应内容。</p>
+                </div>
+                <div v-else class="extraction-editor standalone">
+                  <div class="extraction-intro">
+                    <strong>把响应字段传给下一个请求</strong>
+                    <p>
+                      例如提取 <code>$.data.token</code> 为 <code>token</code>，后续请求中使用
+                      <code v-pre>{{ token }}</code
+                      >。
+                    </p>
+                  </div>
+                  <div v-for="rule in extractionRules" :key="rule.id" class="extraction-row">
+                    <label class="row-check" title="启用提取规则">
+                      <input v-model="rule.enabled" type="checkbox" /><span></span>
+                    </label>
+                    <input
+                      v-model="rule.path"
+                      type="text"
+                      aria-label="JSONPath"
+                      placeholder="$.data.token"
+                    />
+                    <input
+                      v-model="rule.variable"
+                      type="text"
+                      aria-label="变量名"
+                      placeholder="token"
+                    />
+                    <button
+                      type="button"
+                      aria-label="删除提取规则"
+                      @click="removeExtractionRule(rule.id)"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <button class="add-table-row" type="button" @click="addExtractionRule">
+                    ＋ 添加提取规则
+                  </button>
+                  <p v-if="!extractionRules.length" class="config-empty compact">
+                    仅在需要把一个请求的响应传给后续请求时配置。
                   </p>
                 </div>
               </div>
 
               <p v-if="validationMessage" class="form-banner error">{{ validationMessage }}</p>
+              <div class="request-policy">
+                <label
+                  >失败重试 <input v-model.number="retryCount" type="number" min="0" max="3"
+                /></label>
+                <label>
+                  超时(ms)
+                  <input
+                    v-model.number="requestTimeoutMs"
+                    type="number"
+                    min="1000"
+                    max="120000"
+                    step="1000"
+                  />
+                </label>
+              </div>
               <div class="request-actions">
                 <button v-if="!isLoading" class="send-button" type="button" @click="executeApi">
                   <span>▶</span> 发送请求</button
@@ -1455,7 +2433,7 @@ onBeforeUnmount(() => {
                 ><span
                   ><i :class="{ running: isLoading }"></i
                   >{{
-                    isLoading ? '正在等待目标服务响应…' : `超时限制 ${REQUEST_TIMEOUT_MS / 1000}s`
+                    isLoading ? '正在等待目标服务响应…' : `超时限制 ${requestTimeoutMs / 1000}s`
                   }}</span
                 >
               </div>
@@ -1597,121 +2575,748 @@ onBeforeUnmount(() => {
       </section>
     </main>
 
-    <Modal v-model:open="showWorkspaceManager" title="API 工作区" width="min(920px, 94vw)">
-      <div class="workspace-manager">
-        <section class="manager-section environment-manager">
-          <div class="manager-heading">
-            <div>
-              <h3>环境变量</h3>
-              <p>
-                在 URL、Header 或 Body 中使用 <code v-pre>{{ variable }}</code
-                >。
-              </p>
-            </div>
+    <Modal
+      v-model:open="showWorkspaceManager"
+      class="collection-workspace-modal"
+      width="min(1440px, calc(100vw - 32px))"
+      :show-close="false"
+      :style="{
+        '--vc-modal-body-pad': '0',
+        '--vc-modal-header-pad': '0',
+        '--vc-modal-max-h': 'calc(100vh - 32px)',
+        '--vc-modal-radius': '14px',
+      }"
+    >
+      <template #header>
+        <div class="flow-workspace-topbar">
+          <div class="flow-brand">
+            <span><Workflow :size="18" /></span>
+            <strong>API LAB</strong>
           </div>
-          <div class="manager-toolbar">
-            <CustomSelect v-model="activeEnvironmentId" :options="environmentOptions" size="sm" />
-            <input
-              v-model="newEnvironmentName"
-              type="text"
-              placeholder="新环境名称"
-              @keydown.enter="addEnvironment"
-            />
-            <button type="button" @click="addEnvironment">新建环境</button>
+          <div v-if="activeCollection" class="flow-collection-title">
+            <input v-model="activeCollection.name" aria-label="集合名称" />
+            <span>{{ activeCollectionRequests.length }} 个请求</span>
             <button
-              v-if="environments.length > 1"
-              class="danger-text"
+              v-if="collections.length > 1"
               type="button"
-              @click="removeEnvironment(activeEnvironmentId)"
+              aria-label="删除当前集合"
+              title="删除当前集合"
+              @click="confirmRemoveCollection(activeCollectionId)"
             >
-              删除环境
+              <Trash2 :size="16" />
             </button>
           </div>
-          <div class="variable-table">
-            <div class="variable-head">
-              <span>启用</span><span>变量名</span><span>值</span><span></span>
-            </div>
-            <div
-              v-for="variable in activeEnvironment?.variables || []"
-              :key="variable.id"
-              class="variable-row"
+          <div class="flow-topbar-actions">
+            <CustomSelect
+              v-model="activeEnvironmentId"
+              :options="environmentOptions"
+              size="sm"
+              width="150px"
+            />
+            <button class="flow-secondary-action" type="button" @click="saveWorkspace">
+              <Save :size="15" /> 保存
+            </button>
+            <button
+              class="flow-run-action"
+              type="button"
+              :disabled="collectionRunning || !activeCollectionRequests.length"
+              @click="runActiveCollection"
             >
-              <label class="row-check"
-                ><input v-model="variable.enabled" type="checkbox" /><span></span
-              ></label>
-              <input v-model="variable.key" type="text" placeholder="baseUrl" />
-              <input v-model="variable.value" type="text" placeholder="https://api.example.com" />
-              <button type="button" @click="removeEnvironmentVariable(variable.id)">×</button>
-            </div>
-            <button class="add-table-row" type="button" @click="addEnvironmentVariable">
-              ＋ 添加变量
+              <Play :size="15" fill="currentColor" />
+              {{ collectionRunning ? '运行中' : '运行流程' }}
+            </button>
+            <button
+              class="flow-close-action"
+              type="button"
+              aria-label="关闭集合工作区"
+              @click="showWorkspaceManager = false"
+            >
+              <X :size="19" />
             </button>
           </div>
-        </section>
+        </div>
+      </template>
 
-        <section class="manager-section collection-manager">
-          <div class="manager-heading">
-            <div>
-              <h3>请求集合</h3>
-              <p>保存当前参数、Header、Body 与断言。</p>
-            </div>
+      <div class="flow-workspace-shell">
+        <aside class="flow-collection-sidebar">
+          <div class="flow-sidebar-heading">
+            <span>集合</span>
+            <button type="button" aria-label="新建集合" @click="showNewCollectionInput = true">
+              <Plus :size="16" />
+            </button>
           </div>
-          <div class="manager-toolbar">
-            <CustomSelect v-model="activeCollectionId" :options="collectionOptions" size="sm" />
+          <form
+            v-if="showNewCollectionInput"
+            class="flow-new-collection"
+            @submit.prevent="createWorkspaceCollection"
+          >
             <input
               v-model="newCollectionName"
               type="text"
-              placeholder="新集合名称"
-              @keydown.enter="addCollection"
+              aria-label="新集合名称"
+              placeholder="集合名称"
+              autofocus
+              @keydown.esc="cancelWorkspaceCollectionCreation"
             />
-            <button type="button" @click="addCollection">新建集合</button>
+            <button type="submit" aria-label="创建集合"><Check :size="15" /></button>
             <button
-              v-if="collections.length > 1"
-              class="danger-text"
+              class="cancel"
               type="button"
-              @click="removeCollection(activeCollectionId)"
+              aria-label="取消新建集合"
+              @click="cancelWorkspaceCollectionCreation"
             >
-              删除集合
+              <X :size="15" />
             </button>
-          </div>
-          <div class="save-current-row">
-            <input v-model="saveRequestName" type="text" placeholder="当前请求名称" />
-            <button type="button" :disabled="!selectedApi" @click="saveCurrentRequest">
-              保存当前请求
+          </form>
+          <nav class="flow-collection-list" aria-label="请求集合">
+            <button
+              v-for="collection in collections"
+              :key="collection.id"
+              type="button"
+              :class="{ active: collection.id === activeCollectionId }"
+              @click="selectWorkspaceCollection(collection.id)"
+              @contextmenu.prevent="openCollectionContextMenu($event, collection.id)"
+            >
+              <Layers3 :size="15" />
+              <span>{{ collection.name }}</span>
+              <b>{{ collectionRequestCount(collection.id) }}</b>
             </button>
+          </nav>
+          <div class="flow-sidebar-footer">
+            <button type="button" @click="exportWorkspace"><Download :size="15" /> 导出</button>
+            <button type="button" @click="workspaceFileRef?.click()">
+              <Upload :size="15" /> 导入
+            </button>
+            <input
+              ref="workspaceFileRef"
+              type="file"
+              accept="application/json,.json"
+              hidden
+              @change="importWorkspace"
+            />
           </div>
-          <div class="manager-saved-list">
-            <div v-for="saved in savedRequests" :key="saved.id">
-              <span
-                class="saved-color"
-                :style="{
-                  background: collections.find((item) => item.id === saved.collectionId)?.color,
-                }"
-              ></span>
-              <span
-                ><strong>{{ saved.name }}</strong
-                ><small>{{ new Date(saved.createdAt).toLocaleString() }}</small></span
-              >
-              <button type="button" @click="openSavedRequest(saved)">打开</button>
-              <button type="button" class="danger-text" @click="removeSavedRequest(saved.id)">
-                删除
+        </aside>
+
+        <main class="flow-editor-main">
+          <header class="flow-editor-heading">
+            <div>
+              <strong>请求流程</strong>
+              <span v-if="collectionResults.length">
+                {{ collectionResults.filter((item) => item.ok).length }}/{{
+                  collectionResults.length
+                }}
+                通过
+              </span>
+            </div>
+            <div>
+              <button v-if="collectionResults.length" type="button" @click="exportCollectionReport">
+                <Download :size="14" /> 报告
+              </button>
+              <button type="button" @click="openWorkspaceRequestPicker()">
+                <Plus :size="14" /> 添加请求
               </button>
             </div>
-            <p v-if="!savedRequests.length">还没有保存请求。</p>
-          </div>
-        </section>
+          </header>
 
-        <footer class="manager-footer">
-          <button type="button" @click="exportWorkspace">导出工作区</button>
-          <button type="button" @click="workspaceFileRef?.click()">导入工作区</button>
-          <input
-            ref="workspaceFileRef"
-            type="file"
-            accept="application/json,.json"
-            hidden
-            @change="importWorkspace"
-          />
-        </footer>
+          <section class="flow-canvas" aria-label="集合请求流程">
+            <div v-if="activeCollectionRequests.length" class="flow-stage-track">
+              <template v-for="(saved, index) in activeCollectionRequests" :key="saved.id">
+                <article
+                  class="flow-stage"
+                  :class="{
+                    selected: saved.id === selectedWorkspaceRequestId,
+                    running: saved.id === runningRequestId,
+                    failed: collectionResults.find((item) => item.id === saved.id && !item.ok),
+                  }"
+                  draggable="true"
+                  @click="selectedWorkspaceRequestId = saved.id"
+                  @dragstart="draggedWorkspaceRequestId = saved.id"
+                  @dragend="draggedWorkspaceRequestId = null"
+                  @dragover.prevent
+                  @drop.prevent="dropWorkspaceRequest(saved)"
+                >
+                  <header>
+                    <button
+                      class="flow-drag-handle"
+                      type="button"
+                      :aria-label="'拖动请求 ' + saved.name"
+                      @keydown.up.prevent="moveSavedRequest(saved, -1)"
+                      @keydown.down.prevent="moveSavedRequest(saved, 1)"
+                    >
+                      <GripVertical :size="16" />
+                    </button>
+                    <span class="flow-stage-number">{{ index + 1 }}</span>
+                    <span
+                      class="method-badge"
+                      :class="
+                        'method-' + (apiForSavedRequest(saved)?.method.toLowerCase() || 'get')
+                      "
+                    >
+                      {{ apiForSavedRequest(saved)?.method || 'API' }}
+                    </span>
+                    <strong>{{ saved.name }}</strong>
+                    <span
+                      v-if="collectionResults.find((item) => item.id === saved.id)"
+                      class="flow-stage-status"
+                      :class="{
+                        success: collectionResults.find((item) => item.id === saved.id)?.ok,
+                      }"
+                    >
+                      {{ collectionResults.find((item) => item.id === saved.id)?.status || 'ERR' }}
+                    </span>
+                    <button
+                      type="button"
+                      :aria-label="'删除请求 ' + saved.name"
+                      @click.stop="removeSavedRequest(saved.id)"
+                    >
+                      <Trash2 :size="14" />
+                    </button>
+                  </header>
+                  <code>{{ apiForSavedRequest(saved)?.url || '原始 API 已不存在' }}</code>
+                  <div class="flow-stage-variables">
+                    <div>
+                      <span>输入</span>
+                      <template v-if="requestVariableReferences(saved).length">
+                        <b v-for="variable in requestVariableReferences(saved)" :key="variable">
+                          <Variable :size="12" />{{ variable }}
+                          <small>{{ variableSource(saved, variable) }}</small>
+                        </b>
+                      </template>
+                      <em v-else>—</em>
+                    </div>
+                    <div>
+                      <span>输出</span>
+                      <template
+                        v-if="(saved.extractions || []).filter((item) => item.enabled).length"
+                      >
+                        <b
+                          v-for="rule in (saved.extractions || []).filter((item) => item.enabled)"
+                          :key="rule.id"
+                          class="output"
+                        >
+                          <Braces :size="12" />{{ rule.variable || '未命名' }}
+                        </b>
+                      </template>
+                      <em v-else>—</em>
+                    </div>
+                  </div>
+                </article>
+
+                <div v-if="index < activeCollectionRequests.length - 1" class="flow-connector">
+                  <span
+                    v-for="rule in connectorVariables(saved, activeCollectionRequests[index + 1])"
+                    :key="rule.id"
+                  >
+                    {{ rule.variable }}
+                  </span>
+                  <ArrowRight :size="18" />
+                </div>
+              </template>
+            </div>
+            <div v-else class="flow-empty-state">
+              <Workflow :size="30" />
+              <strong>这个集合还没有请求</strong>
+              <button type="button" @click="openWorkspaceRequestPicker()">
+                <Plus :size="15" /> 添加请求
+              </button>
+            </div>
+          </section>
+
+          <section v-if="selectedWorkspaceRequest" class="flow-step-inspector">
+            <header>
+              <div>
+                <span
+                  class="method-badge"
+                  :class="'method-' + (selectedWorkspaceApi?.method.toLowerCase() || 'get')"
+                >
+                  {{ selectedWorkspaceApi?.method || 'API' }}
+                </span>
+                <input v-model="selectedWorkspaceRequest.name" aria-label="请求步骤名称" />
+              </div>
+              <button type="button" @click="openSavedRequest(selectedWorkspaceRequest)">
+                <ExternalLink :size="14" /> 完整编辑
+              </button>
+            </header>
+            <nav class="flow-inspector-tabs" aria-label="请求步骤配置">
+              <button
+                type="button"
+                :class="{ active: workspaceStepTab === 'request' }"
+                @click="workspaceStepTab = 'request'"
+              >
+                请求
+              </button>
+              <button
+                type="button"
+                :class="{ active: workspaceStepTab === 'extract' }"
+                @click="workspaceStepTab = 'extract'"
+              >
+                提取 <span>{{ selectedWorkspaceRequest.extractions?.length || 0 }}</span>
+              </button>
+              <button
+                type="button"
+                :class="{ active: workspaceStepTab === 'assertions' }"
+                @click="workspaceStepTab = 'assertions'"
+              >
+                断言 <span>{{ selectedWorkspaceRequest.assertions.length }}</span>
+              </button>
+            </nav>
+
+            <div v-if="workspaceStepTab === 'request'" class="flow-request-summary">
+              <div>
+                <span>URL</span><code>{{ selectedWorkspaceApi?.url }}</code>
+              </div>
+              <div>
+                <span>使用变量</span>
+                <b
+                  v-for="variable in requestVariableReferences(selectedWorkspaceRequest)"
+                  :key="variable"
+                >
+                  <span v-pre>{{</span>{{ variable }}<span v-pre>}}</span>
+                  <small>来自{{ variableSource(selectedWorkspaceRequest, variable) }}</small>
+                </b>
+                <em v-if="!requestVariableReferences(selectedWorkspaceRequest).length">无</em>
+              </div>
+            </div>
+
+            <div v-else-if="workspaceStepTab === 'extract'" class="flow-rule-editor">
+              <div class="flow-rule-head">
+                <span>启用</span><span>响应字段</span><span></span><span>本次运行变量</span
+                ><span></span>
+              </div>
+              <div
+                v-for="rule in selectedWorkspaceRequest.extractions || []"
+                :key="rule.id"
+                class="flow-rule-row"
+              >
+                <label class="row-check">
+                  <input v-model="rule.enabled" type="checkbox" /><span></span>
+                </label>
+                <input
+                  v-model="rule.path"
+                  type="text"
+                  aria-label="响应字段"
+                  placeholder="$.data.token"
+                />
+                <ArrowRight :size="16" />
+                <input
+                  v-model="rule.variable"
+                  type="text"
+                  aria-label="变量名"
+                  placeholder="token"
+                />
+                <button
+                  type="button"
+                  aria-label="删除提取规则"
+                  @click="removeWorkspaceExtractionRule(rule.id)"
+                >
+                  <Trash2 :size="15" />
+                </button>
+              </div>
+              <button class="flow-add-rule" type="button" @click="addWorkspaceExtractionRule">
+                <Plus :size="15" /> 添加提取规则
+              </button>
+            </div>
+
+            <div v-else class="flow-rule-editor assertion-mode">
+              <div class="flow-rule-head assertion">
+                <span>启用</span><span>断言</span><span>期望值</span><span></span>
+              </div>
+              <div
+                v-for="rule in selectedWorkspaceRequest.assertions"
+                :key="rule.id"
+                class="flow-rule-row assertion"
+              >
+                <label class="row-check">
+                  <input v-model="rule.enabled" type="checkbox" /><span></span>
+                </label>
+                <CustomSelect v-model="rule.type" :options="assertionTypeOptions" size="sm" block />
+                <input v-model="rule.expected" type="text" aria-label="断言期望值" />
+                <button
+                  type="button"
+                  aria-label="删除断言"
+                  @click="removeWorkspaceAssertion(rule.id)"
+                >
+                  <Trash2 :size="15" />
+                </button>
+              </div>
+              <button class="flow-add-rule" type="button" @click="addWorkspaceAssertion">
+                <Plus :size="15" /> 添加断言
+              </button>
+            </div>
+          </section>
+        </main>
+
+        <aside class="flow-variable-sidebar">
+          <section>
+            <header>
+              <div><Variable :size="15" /><strong>本次运行</strong></div>
+              <span>{{ workspaceRuntimeVariables.length }}</span>
+            </header>
+            <div v-if="workspaceRuntimeVariables.length" class="flow-runtime-list">
+              <div v-for="variable in workspaceRuntimeVariables" :key="variable.key">
+                <span>V</span>
+                <div>
+                  <strong>{{ variable.key }}</strong>
+                  <small>来自 {{ variable.sourceRequestName }}</small>
+                  <code>{{ variable.value || '运行后可见' }}</code>
+                </div>
+              </div>
+            </div>
+            <p v-else class="flow-variable-empty">请求输出会出现在这里</p>
+          </section>
+
+          <section class="flow-environment-section">
+            <header>
+              <div><Braces :size="15" /><strong>环境</strong></div>
+              <div>
+                <button type="button" aria-label="新建环境" @click="createEnvironmentFromWorkspace">
+                  <Plus :size="14" />
+                </button>
+                <button
+                  v-if="environments.length > 1"
+                  type="button"
+                  aria-label="删除当前环境"
+                  @click="removeEnvironment(activeEnvironmentId)"
+                >
+                  <Trash2 :size="14" />
+                </button>
+              </div>
+            </header>
+            <div class="flow-environment-list">
+              <div v-for="variable in activeEnvironment?.variables || []" :key="variable.id">
+                <label class="row-check">
+                  <input v-model="variable.enabled" type="checkbox" /><span></span>
+                </label>
+                <input
+                  v-model="variable.key"
+                  type="text"
+                  aria-label="环境变量名"
+                  placeholder="baseUrl"
+                />
+                <input
+                  v-model="variable.value"
+                  type="text"
+                  aria-label="环境变量值"
+                  placeholder="值"
+                />
+                <button
+                  type="button"
+                  aria-label="删除环境变量"
+                  @click="removeEnvironmentVariable(variable.id)"
+                >
+                  <X :size="13" />
+                </button>
+              </div>
+              <button type="button" @click="addEnvironmentVariable">
+                <Plus :size="14" /> 添加变量
+              </button>
+            </div>
+          </section>
+        </aside>
+
+        <template v-if="collectionContextMenu">
+          <button
+            class="collection-context-dismiss"
+            type="button"
+            aria-label="关闭集合菜单"
+            @click="collectionContextMenu = null"
+            @contextmenu.prevent="collectionContextMenu = null"
+          ></button>
+          <div
+            class="collection-context-menu"
+            role="menu"
+            :style="{
+              left: collectionContextMenu.x + 'px',
+              top: collectionContextMenu.y + 'px',
+            }"
+          >
+            <strong>{{
+              collections.find((item) => item.id === collectionContextMenu?.collectionId)?.name
+            }}</strong>
+            <button
+              type="button"
+              role="menuitem"
+              :disabled="collections.length <= 1"
+              @click="confirmRemoveCollection(collectionContextMenu.collectionId)"
+            >
+              <Trash2 :size="15" /> 删除集合
+            </button>
+          </div>
+        </template>
+
+        <Transition name="request-picker">
+          <div
+            v-if="showWorkspaceRequestPicker"
+            class="workspace-request-picker-layer"
+            @click.self="showWorkspaceRequestPicker = false"
+            @keydown.capture="handleWorkspacePickerKeydown"
+          >
+            <section
+              class="workspace-request-picker"
+              role="dialog"
+              aria-modal="false"
+              aria-labelledby="workspace-request-picker-title"
+            >
+              <header class="request-picker-header">
+                <div>
+                  <span><Plus :size="17" /></span>
+                  <div>
+                    <h2 id="workspace-request-picker-title">添加请求</h2>
+                    <p>添加到「{{ activeCollection?.name }}」</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-label="关闭请求选择器"
+                  @click="showWorkspaceRequestPicker = false"
+                >
+                  <X :size="19" />
+                </button>
+              </header>
+
+              <nav class="request-picker-tabs" role="tablist" aria-label="请求来源">
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="workspacePickerTab === 'catalog'"
+                  :class="{ active: workspacePickerTab === 'catalog' }"
+                  @click="selectWorkspacePickerTab('catalog')"
+                >
+                  API 目录
+                  <span>{{ apis.length }}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="workspacePickerTab === 'saved'"
+                  :class="{ active: workspacePickerTab === 'saved' }"
+                  @click="selectWorkspacePickerTab('saved')"
+                >
+                  已保存请求
+                  <span>{{ workspaceReusableRequests.length }}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  :aria-selected="workspacePickerTab === 'custom'"
+                  :class="{ active: workspacePickerTab === 'custom' }"
+                  @click="selectWorkspacePickerTab('custom')"
+                >
+                  自定义请求
+                </button>
+              </nav>
+
+              <div
+                v-if="workspacePickerTab !== 'custom'"
+                class="request-picker-toolbar"
+                :class="{ 'saved-only': workspacePickerTab === 'saved' }"
+              >
+                <label>
+                  <Search :size="16" />
+                  <input
+                    v-model="workspacePickerSearch"
+                    type="search"
+                    autofocus
+                    :placeholder="
+                      workspacePickerTab === 'catalog'
+                        ? '搜索 API 名称、分类或 URL'
+                        : '搜索已保存请求'
+                    "
+                  />
+                </label>
+                <CustomSelect
+                  v-if="workspacePickerTab === 'catalog'"
+                  v-model="workspacePickerMethod"
+                  :options="workspaceMethodOptions"
+                  size="sm"
+                  width="142px"
+                />
+              </div>
+
+              <div v-if="workspacePickerTab === 'catalog'" class="request-picker-body">
+                <div class="request-picker-result-meta">
+                  <span>{{ workspaceCatalogApis.length }} 个可用 API</span>
+                  <button
+                    v-if="workspaceSelectedApiIds.length"
+                    type="button"
+                    @click="workspaceSelectedApiIds = []"
+                  >
+                    清空选择
+                  </button>
+                </div>
+                <div class="request-source-list vc-scrollbar vc-scrollbar--thin">
+                  <button
+                    v-for="api in workspaceCatalogApis"
+                    :key="api.id"
+                    type="button"
+                    :class="{ selected: workspaceSelectedApiIds.includes(api.id) }"
+                    :aria-pressed="workspaceSelectedApiIds.includes(api.id)"
+                    @click="toggleWorkspaceApiSelection(api.id)"
+                  >
+                    <span class="request-source-check">
+                      <Check v-if="workspaceSelectedApiIds.includes(api.id)" :size="14" />
+                    </span>
+                    <span class="method-chip" :class="api.method.toLowerCase()">{{
+                      api.method
+                    }}</span>
+                    <span class="request-source-copy">
+                      <strong>{{ api.name }}</strong>
+                      <code>{{ api.url }}</code>
+                    </span>
+                    <span class="request-source-meta">
+                      <small>{{ api.category }}</small>
+                      <b
+                        v-if="
+                          activeCollectionRequests.filter((item) => item.apiId === api.id).length
+                        "
+                      >
+                        已有
+                        {{
+                          activeCollectionRequests.filter((item) => item.apiId === api.id).length
+                        }}
+                      </b>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div v-else-if="workspacePickerTab === 'saved'" class="request-picker-body">
+                <div class="request-picker-result-meta">
+                  <span>{{ workspaceReusableRequests.length }} 个可复用请求</span>
+                  <button
+                    v-if="workspaceSelectedSavedIds.length"
+                    type="button"
+                    @click="workspaceSelectedSavedIds = []"
+                  >
+                    清空选择
+                  </button>
+                </div>
+                <div
+                  v-if="workspaceReusableRequests.length"
+                  class="request-source-list saved-sources vc-scrollbar vc-scrollbar--thin"
+                >
+                  <button
+                    v-for="saved in workspaceReusableRequests"
+                    :key="saved.id"
+                    type="button"
+                    :class="{ selected: workspaceSelectedSavedIds.includes(saved.id) }"
+                    :aria-pressed="workspaceSelectedSavedIds.includes(saved.id)"
+                    @click="toggleWorkspaceSavedSelection(saved.id)"
+                  >
+                    <span class="request-source-check">
+                      <Check v-if="workspaceSelectedSavedIds.includes(saved.id)" :size="14" />
+                    </span>
+                    <span
+                      class="method-chip"
+                      :class="apiForSavedRequest(saved)?.method.toLowerCase()"
+                    >
+                      {{ apiForSavedRequest(saved)?.method || 'API' }}
+                    </span>
+                    <span class="request-source-copy">
+                      <strong>{{ saved.name }}</strong>
+                      <code>{{ apiForSavedRequest(saved)?.url || '原始 API 已不存在' }}</code>
+                    </span>
+                    <span class="request-source-meta">
+                      <small>{{ collectionNameForSavedRequest(saved) }}</small>
+                      <b>{{ saved.extractions?.length || 0 }} 提取</b>
+                    </span>
+                  </button>
+                </div>
+                <div v-else class="request-picker-empty">
+                  <Copy :size="26" />
+                  <strong>没有其他集合里的已保存请求</strong>
+                </div>
+              </div>
+
+              <form
+                v-else
+                class="workspace-custom-request-form"
+                @submit.prevent="createWorkspaceCustomRequest"
+              >
+                <div class="custom-request-heading">
+                  <div>
+                    <strong>快速创建</strong>
+                    <p>创建后会同时保存到 API 目录和当前集合。</p>
+                  </div>
+                </div>
+                <label>
+                  <span>请求名称 <b>*</b></span>
+                  <input
+                    v-model="workspaceCustomRequest.name"
+                    type="text"
+                    placeholder="例如：获取当前用户"
+                  />
+                  <small v-if="workspaceCustomErrors.name">{{ workspaceCustomErrors.name }}</small>
+                </label>
+                <div class="custom-request-url-row">
+                  <label>
+                    <span>方法</span>
+                    <CustomSelect
+                      v-model="workspaceCustomRequest.method"
+                      :options="methodOptions"
+                      size="sm"
+                      block
+                    />
+                  </label>
+                  <label>
+                    <span>请求地址 <b>*</b></span>
+                    <input
+                      v-model="workspaceCustomRequest.url"
+                      type="text"
+                      placeholder="https://api.example.com/users"
+                    />
+                    <small v-if="workspaceCustomErrors.url">{{ workspaceCustomErrors.url }}</small>
+                  </label>
+                </div>
+                <label>
+                  <span>分类</span>
+                  <input
+                    v-model="workspaceCustomRequest.category"
+                    type="text"
+                    placeholder="自定义"
+                  />
+                </label>
+                <label>
+                  <span>用途说明</span>
+                  <textarea
+                    v-model="workspaceCustomRequest.description"
+                    rows="4"
+                    placeholder="这个请求会完成什么任务？"
+                  ></textarea>
+                </label>
+                <footer>
+                  <button
+                    type="button"
+                    @click="workspaceCustomRequest = blankWorkspaceCustomRequest()"
+                  >
+                    重置
+                  </button>
+                  <button class="primary" type="submit"><Plus :size="15" /> 创建并添加</button>
+                </footer>
+              </form>
+
+              <footer v-if="workspacePickerTab !== 'custom'" class="request-picker-footer">
+                <span>已选择 {{ workspacePickerSelectionCount }} 个</span>
+                <div>
+                  <button type="button" @click="showWorkspaceRequestPicker = false">取消</button>
+                  <button
+                    class="primary"
+                    type="button"
+                    :disabled="!workspacePickerSelectionCount"
+                    @click="
+                      workspacePickerTab === 'catalog'
+                        ? addSelectedCatalogRequests()
+                        : addSelectedSavedRequests()
+                    "
+                  >
+                    <Plus :size="15" />
+                    添加 {{ workspacePickerSelectionCount || '' }}
+                  </button>
+                </div>
+              </footer>
+            </section>
+          </div>
+        </Transition>
       </div>
     </Modal>
 
