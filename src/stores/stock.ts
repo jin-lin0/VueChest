@@ -5,11 +5,7 @@ import { STORAGE_KEYS } from '@/config'
 import { formatDate } from '@/utils'
 import { api } from '@/lib/request'
 import { buildTechnicalSnapshot, type TechnicalSnapshot } from '@/apps/stock/research'
-import {
-  positionMetrics,
-  type StockPosition,
-  type PositionMetrics,
-} from '@/apps/stock/portfolio'
+import { positionMetrics, type StockPosition, type PositionMetrics } from '@/apps/stock/portfolio'
 
 export interface FavoriteStock {
   code: string
@@ -48,6 +44,27 @@ export interface KlineData {
   high: string
   low: string
   volume: string
+}
+
+export type KlinePeriod = 'day' | 'week' | 'month'
+
+export const KLINE_HISTORY_COUNTS: Record<KlinePeriod, number> = {
+  day: 2000,
+  week: 1000,
+  month: 360,
+}
+
+export function normalizeKlineRows(value: unknown): KlineData[] {
+  if (!Array.isArray(value)) return []
+  const rows = new Map<string, KlineData>()
+  for (const item of value) {
+    if (!Array.isArray(item) || item.length < 6) continue
+    const [date, open, close, high, low, volume] = item.map(String)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+    if (![open, close, high, low, volume].every((entry) => Number.isFinite(Number(entry)))) continue
+    rows.set(date, { date, open, close, high, low, volume })
+  }
+  return [...rows.values()].sort((a, b) => a.date.localeCompare(b.date))
 }
 
 export interface SearchResult {
@@ -151,6 +168,7 @@ export const useStockStore = defineStore('stock', () => {
   const result = ref<StockResult | null>(null)
   const klineResult = ref<KlineData | null>(null)
   const klineChartData = ref<KlineData[]>([])
+  const isKlineLoading = ref(false)
   const favorites = ref<FavoriteStock[]>(
     getStorage<FavoriteStock[]>(STORAGE_KEYS.STOCK_FAVORITES, []) || [],
   )
@@ -294,7 +312,11 @@ export const useStockStore = defineStore('stock', () => {
     if (changed) setStorage(STORAGE_KEYS.STOCK_ALERTS, alerts.value)
   }
 
-  const loadStock = async (code: string, type: 'day' | 'week' | 'month' = 'day', count = 250) => {
+  const loadStock = async (
+    code: string,
+    type: KlinePeriod = 'day',
+    count = KLINE_HISTORY_COUNTS[type],
+  ) => {
     stockCode.value = code
     isLoading.value = true
     error.value = ''
@@ -314,6 +336,26 @@ export const useStockStore = defineStore('stock', () => {
       error.value = reason instanceof Error ? reason.message : '查询失败，请稍后重试'
     } finally {
       isLoading.value = false
+    }
+  }
+
+  let klineRequestId = 0
+  const loadKline = async (
+    code: string,
+    type: KlinePeriod = 'day',
+    count = KLINE_HISTORY_COUNTS[type],
+  ) => {
+    const requestId = ++klineRequestId
+    isKlineLoading.value = true
+    try {
+      const data = await fetchKlineData(code, type, count)
+      if (requestId !== klineRequestId || stockCode.value !== code) return false
+      klineChartData.value = data
+      klineResult.value = data.at(-1) || null
+      refreshTechnicalSnapshot()
+      return true
+    } finally {
+      if (requestId === klineRequestId) isKlineLoading.value = false
     }
   }
 
@@ -556,8 +598,8 @@ export const useStockStore = defineStore('stock', () => {
 
   const fetchKlineData = async (
     code: string,
-    type: 'day' | 'week' | 'month' = 'day',
-    count: number = 30,
+    type: KlinePeriod = 'day',
+    count: number = KLINE_HISTORY_COUNTS[type],
   ): Promise<KlineData[]> => {
     const symbol = toSymbol(code)
     const url = `https://web.ifzq.gtimg.cn/appstock/app/kline/kline?param=${symbol},${type},,,${count},&qfq=1`
@@ -573,15 +615,7 @@ export const useStockStore = defineStore('stock', () => {
       throw new Error('未找到K线数据')
     }
 
-    const klineArray = data.data[symbol][type]
-    return klineArray.map((item: string[]) => ({
-      date: item[0],
-      open: item[1],
-      close: item[2],
-      high: item[3],
-      low: item[4],
-      volume: item[5],
-    }))
+    return normalizeKlineRows(data.data[symbol][type])
   }
 
   const queryStockByDate = async () => {
@@ -607,7 +641,7 @@ export const useStockStore = defineStore('stock', () => {
     klineChartData.value = []
 
     try {
-      const klineData = await fetchKlineData(code, 'day', 120)
+      const klineData = await fetchKlineData(code, 'day', KLINE_HISTORY_COUNTS.day)
       const foundIndex = klineData.findIndex((item) => item.date === selectedDate.value)
 
       if (foundIndex !== -1) {
@@ -658,6 +692,7 @@ export const useStockStore = defineStore('stock', () => {
     result,
     klineResult,
     klineChartData,
+    isKlineLoading,
     favorites,
     favoritesData,
     isFavoritesLoading,
@@ -697,6 +732,7 @@ export const useStockStore = defineStore('stock', () => {
     fetchMarketOverview,
     fetchResearchData,
     loadStock,
+    loadKline,
     refreshTechnicalSnapshot,
     addAlert,
     removeAlert,

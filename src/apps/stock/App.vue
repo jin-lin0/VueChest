@@ -3,15 +3,15 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import StockChart from './components/StockChart.vue'
+import PortfolioPanel from './components/PortfolioPanel.vue'
 import ResearchLineChart, { type ResearchSeries } from './components/ResearchLineChart.vue'
-import { useStockStore, type KlineData, type PriceAlert } from '@/stores/stock'
+import { useStockStore, type KlineData, type KlinePeriod, type PriceAlert } from '@/stores/stock'
 import { STOCK_COLORS } from './config'
 import { debounce } from '@/utils'
 import { formatLargeNumber } from './research'
 import {
   correlation,
   normalizePerformance,
-  portfolioTotals,
   runMaBacktest,
   type BacktestResult,
   type CompareSeries,
@@ -31,8 +31,6 @@ type ResearchPanel =
   | 'financials'
   | 'notices'
   | 'journal'
-type KlinePeriod = 'day' | 'week' | 'month'
-
 const router = useRouter()
 const stock = useStockStore()
 const { addToast } = useToast()
@@ -43,8 +41,6 @@ const activeKline = ref<KlineData | null>(null)
 const noteDraft = ref('')
 const alertDirection = ref<PriceAlert['direction']>('above')
 const alertTarget = ref<number | null>(null)
-const positionShares = ref<number | null>(null)
-const positionCost = ref<number | null>(null)
 const compareSelection = ref<string[]>([])
 const compareSeries = ref<CompareSeries[]>([])
 const compareCorrelation = ref<Record<string, number | null>>({})
@@ -62,10 +58,16 @@ const isUp = computed(() => changePercent.value >= 0)
 const displayKline = computed(() => activeKline.value ?? stock.klineResult)
 const latestFinancial = computed(() => stock.financials[0] ?? null)
 const currentAlerts = computed(() => stock.alerts.filter((item) => item.code === stock.stockCode))
-const portfolioSummary = computed(() => portfolioTotals(stock.portfolioPositionMetrics))
+const klineCoverage = computed(() => {
+  const first = stock.klineChartData[0]?.date
+  const last = stock.klineChartData.at(-1)?.date
+  return first && last ? `${first} 至 ${last} · ${stock.klineChartData.length} 根` : ''
+})
 const compareCandidates = computed(() => {
   const items = [...stock.favorites, ...stock.recentStocks, ...stock.positions]
-  return [...new Map(items.map((item) => [item.code, { code: item.code, name: item.name }])).values()]
+  return [
+    ...new Map(items.map((item) => [item.code, { code: item.code, name: item.name }])).values(),
+  ]
 })
 const latestNoticeSignals = computed(() => extractNoticeSignals(stock.notices))
 
@@ -100,14 +102,20 @@ const financialChartSeries = computed<ResearchSeries[]>(() => {
       color: '#0f766e',
       points: rows
         .filter((item) => item.revenue != null)
-        .map((item) => ({ date: item.reportDate, value: Number((item.revenue! / 1e8).toFixed(2)) })),
+        .map((item) => ({
+          date: item.reportDate,
+          value: Number((item.revenue! / 1e8).toFixed(2)),
+        })),
     },
     {
       name: '归母净利润（亿）',
       color: '#7c3aed',
       points: rows
         .filter((item) => item.netProfit != null)
-        .map((item) => ({ date: item.reportDate, value: Number((item.netProfit! / 1e8).toFixed(2)) })),
+        .map((item) => ({
+          date: item.reportDate,
+          value: Number((item.netProfit! / 1e8).toFixed(2)),
+        })),
     },
   ]
 })
@@ -125,6 +133,7 @@ const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number
   { id: 'notices', label: '公司公告', count: () => stock.notices.length },
   { id: 'journal', label: '研究笔记', count: () => currentAlerts.value.length },
 ]
+const panelNeedsStock = (panel: ResearchPanel) => panel !== 'overview' && panel !== 'portfolio'
 
 const debouncedSearch = debounce(() => {
   if (stock.searchQuery.trim()) stock.searchStocks(stock.searchQuery)
@@ -147,12 +156,16 @@ function hideSearchResults() {
   }, 160)
 }
 
-async function openStock(code: string) {
+async function openStock(code: string, preservePanel = activePanel.value === 'portfolio') {
   activeKline.value = null
-  activePanel.value = 'overview'
-  await stock.loadStock(code, activePeriod.value, 250)
+  if (!preservePanel) activePanel.value = 'overview'
+  await stock.loadStock(code, activePeriod.value)
   noteDraft.value = stock.getResearchNote(code)
   if (stock.result) alertTarget.value = Number(stock.result.close)
+}
+
+async function openPositionResearch(code: string) {
+  await openStock(code, false)
 }
 
 async function chooseSearchResult(item: { code: string; name: string; market: string }) {
@@ -175,7 +188,12 @@ async function runSearch() {
 async function changePeriod(period: KlinePeriod) {
   activePeriod.value = period
   activeKline.value = null
-  if (stock.stockCode) await openStock(stock.stockCode)
+  if (!stock.stockCode) return
+  try {
+    await stock.loadKline(stock.stockCode, period)
+  } catch (error) {
+    addToast('error', error instanceof Error ? error.message : 'K 线数据加载失败')
+  }
 }
 
 async function queryByDate(date: Date | null) {
@@ -208,18 +226,6 @@ function createAlert() {
     target: alertTarget.value,
   })
   addToast('success', '价格提醒已创建，将在刷新行情时检查')
-}
-
-function savePosition() {
-  if (!stock.result || !positionShares.value || !positionCost.value) return
-  if (positionShares.value <= 0 || positionCost.value <= 0) return
-  stock.upsertPosition({
-    code: stock.stockCode,
-    name: stock.result.name,
-    shares: positionShares.value,
-    costPrice: positionCost.value,
-  })
-  addToast('success', '模拟持仓已保存')
 }
 
 function toggleCompare(code: string) {
@@ -303,7 +309,11 @@ async function copyResearchCard() {
 }
 
 onMounted(() => {
-  void Promise.all([stock.fetchMarketOverview(), stock.fetchFavoritesData(), stock.fetchPortfolioData()])
+  void Promise.all([
+    stock.fetchMarketOverview(),
+    stock.fetchFavoritesData(),
+    stock.fetchPortfolioData(),
+  ])
   portfolioRefreshTimer = setInterval(() => void stock.fetchPortfolioData(), 60_000)
 })
 onUnmounted(() => {
@@ -463,7 +473,23 @@ onUnmounted(() => {
           <button @click="stock.error = ''">×</button>
         </div>
 
-        <div v-if="!stock.result && !stock.isLoading" class="welcome-state compact-empty">
+        <nav class="research-tabs workspace-tabs" aria-label="工作台视图">
+          <button
+            v-for="item in panelItems"
+            :key="item.id"
+            type="button"
+            :class="{ active: activePanel === item.id }"
+            :disabled="panelNeedsStock(item.id) && !stock.result"
+            :title="panelNeedsStock(item.id) && !stock.result ? '请先选择一只股票' : ''"
+            @click="activePanel = item.id"
+          >
+            {{ item.label }} <small v-if="item.count">{{ item.count() }}</small>
+          </button>
+        </nav>
+
+        <PortfolioPanel v-if="activePanel === 'portfolio'" @open-stock="openPositionResearch" />
+
+        <div v-else-if="!stock.result && !stock.isLoading" class="welcome-state compact-empty">
           <div class="empty-heading">
             <h2>未选择股票</h2>
             <p>从左侧搜索股票名称或代码。</p>
@@ -534,28 +560,21 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <nav class="research-tabs" aria-label="研究视图">
-            <button
-              v-for="item in panelItems"
-              :key="item.id"
-              type="button"
-              :class="{ active: activePanel === item.id }"
-              @click="activePanel = item.id"
-            >
-              {{ item.label }} <small v-if="item.count">{{ item.count() }}</small>
-            </button>
-          </nav>
-
           <section v-if="activePanel === 'overview'" class="panel-stack">
             <article class="workspace-card chart-card">
               <header class="card-header">
-                <div><h2>价格趋势</h2></div>
+                <div>
+                  <h2>价格趋势</h2>
+                  <p v-if="stock.isKlineLoading">正在加载历史数据…</p>
+                  <p v-else-if="klineCoverage">{{ klineCoverage }}</p>
+                </div>
                 <div class="chart-controls">
                   <div class="period-switch">
                     <button
                       v-for="period in ['day', 'week', 'month'] as KlinePeriod[]"
                       :key="period"
                       :class="{ active: activePeriod === period }"
+                      :disabled="stock.isKlineLoading"
                       @click="changePeriod(period)"
                     >
                       {{ period === 'day' ? '日线' : period === 'week' ? '周线' : '月线' }}
@@ -609,10 +628,13 @@ onUnmounted(() => {
                     <h2>研判结论</h2>
                     <p>基于技术、估值、财务与公告信号的执行化输出</p>
                   </div>
-                  <span class="decision-badge" :class="researchDecision.tone">{{ researchDecision.label }}</span>
+                  <span class="decision-badge" :class="researchDecision.tone">{{
+                    researchDecision.label
+                  }}</span>
                 </header>
                 <div class="decision-score">
-                  <strong>{{ researchDecision.score }}</strong><span>/100</span>
+                  <strong>{{ researchDecision.score }}</strong
+                  ><span>/100</span>
                   <small>置信度 {{ researchDecision.confidence }}</small>
                 </div>
                 <div class="decision-metrics">
@@ -622,12 +644,16 @@ onUnmounted(() => {
                   </span>
                 </div>
                 <div v-if="researchDecision.highlights.length" class="decision-highlights">
-                  <span v-for="item in researchDecision.highlights" :key="`h-${item}`">{{ item }}</span>
+                  <span v-for="item in researchDecision.highlights" :key="`h-${item}`">{{
+                    item
+                  }}</span>
                 </div>
                 <div v-if="researchDecision.watchItems.length" class="decision-block">
                   <h3>关键触发</h3>
                   <ul>
-                    <li v-for="item in researchDecision.watchItems" :key="`w-${item}`">{{ item }}</li>
+                    <li v-for="item in researchDecision.watchItems" :key="`w-${item}`">
+                      {{ item }}
+                    </li>
                   </ul>
                 </div>
                 <div v-if="researchDecision.risks.length" class="decision-block">
@@ -783,50 +809,136 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <section v-else-if="activePanel === 'portfolio'" class="portfolio-panel">
-            <div class="portfolio-summary-grid">
-              <article><small>模拟总成本</small><strong>{{ formatLargeNumber(portfolioSummary.cost) }}</strong></article>
-              <article><small>当前市值</small><strong>{{ formatLargeNumber(portfolioSummary.marketValue) }}</strong></article>
-              <article :class="portfolioSummary.profit >= 0 ? 'up' : 'down'"><small>浮动盈亏</small><strong>{{ formatLargeNumber(portfolioSummary.profit) }}</strong><b>{{ formatPercent(portfolioSummary.profitPercent) }}</b></article>
-              <article><small>已获取行情</small><strong>{{ portfolioSummary.priced }}/{{ stock.positions.length }}</strong></article>
+          <section
+            v-else-if="activePanel === 'compare'"
+            class="workspace-card full-panel compare-panel"
+          >
+            <header class="panel-heading">
+              <div>
+                <h2>多股票对比</h2>
+                <p>将最近 250 个交易日归一化为 100，比较收益、波动与相关性。</p>
+              </div>
+              <button
+                :disabled="compareLoading || compareSelection.length < 2"
+                @click="runComparison"
+              >
+                {{ compareLoading ? '加载中…' : '开始对比' }}
+              </button>
+            </header>
+            <div class="compare-picker">
+              <button
+                v-for="item in compareCandidates"
+                :key="item.code"
+                :class="{ active: compareSelection.includes(item.code) }"
+                @click="toggleCompare(item.code)"
+              >
+                <strong>{{ item.name }}</strong
+                ><small>{{ item.code }}</small>
+              </button>
             </div>
-            <div class="portfolio-layout">
-              <article class="workspace-card position-form-card">
-                <header class="card-header"><div><h2>记录模拟持仓</h2><p>{{ stock.result.name }} · {{ stock.stockCode }}</p></div></header>
-                <label><span>持有数量</span><input v-model.number="positionShares" type="number" min="1" step="100" placeholder="100" /></label>
-                <label><span>成本价</span><input v-model.number="positionCost" type="number" min="0.01" step="0.01" :placeholder="formatPrice(currentPrice)" /></label>
-                <button type="button" :disabled="!positionShares || !positionCost" @click="savePosition">保存持仓</button>
-                <p>仅保存在本机，用于研究和复盘，不连接交易账户。</p>
-              </article>
-              <article class="workspace-card position-list-card">
-                <header class="card-header"><div><h2>持仓明细</h2></div><button @click="stock.fetchPortfolioData">刷新行情</button></header>
-                <div v-if="stock.portfolioPositionMetrics.length" class="position-table-wrap">
-                  <table class="position-table">
-                    <thead><tr><th>股票</th><th>数量</th><th>成本价</th><th>现价</th><th>市值</th><th>盈亏</th><th></th></tr></thead>
-                    <tbody><tr v-for="item in stock.portfolioPositionMetrics" :key="item.id">
-                      <td><strong>{{ item.name }}</strong><small>{{ item.code }}</small></td><td>{{ item.shares.toLocaleString() }}</td><td>{{ formatPrice(item.costPrice) }}</td><td>{{ formatPrice(item.currentPrice) }}</td><td>{{ formatLargeNumber(item.marketValue) }}</td><td :class="Number(item.profit) >= 0 ? 'up' : 'down'"><strong>{{ formatLargeNumber(item.profit) }}</strong><small>{{ formatPercent(item.profitPercent) }}</small></td><td><button aria-label="删除持仓" @click="stock.removePosition(item.id)">×</button></td>
-                    </tr></tbody>
-                  </table>
-                </div>
-                <div v-else class="panel-empty small">还没有模拟持仓</div>
+            <ResearchLineChart
+              v-if="compareChartSeries.length"
+              :series="compareChartSeries"
+              :height="330"
+            />
+            <div v-if="compareSeries.length" class="compare-metrics">
+              <article v-for="(item, index) in compareSeries" :key="item.code">
+                <i :style="{ background: compareChartSeries[index]?.color }"></i
+                ><span
+                  ><strong>{{ item.name }}</strong
+                  ><small>{{ item.code }}</small></span
+                ><span
+                  ><small>区间收益</small
+                  ><b :class="item.changePercent >= 0 ? 'up' : 'down'">{{
+                    formatPercent(item.changePercent)
+                  }}</b></span
+                ><span
+                  ><small>年化波动</small><b>{{ formatPercent(item.volatility) }}</b></span
+                ><span v-if="index > 0"
+                  ><small>与 {{ compareSeries[0].name }} 相关性</small
+                  ><b>{{ compareCorrelation[item.code] ?? '--' }}</b></span
+                >
               </article>
             </div>
-          </section>
-
-          <section v-else-if="activePanel === 'compare'" class="workspace-card full-panel compare-panel">
-            <header class="panel-heading"><div><h2>多股票对比</h2><p>将最近 250 个交易日归一化为 100，比较收益、波动与相关性。</p></div><button :disabled="compareLoading || compareSelection.length < 2" @click="runComparison">{{ compareLoading ? '加载中…' : '开始对比' }}</button></header>
-            <div class="compare-picker"><button v-for="item in compareCandidates" :key="item.code" :class="{ active: compareSelection.includes(item.code) }" @click="toggleCompare(item.code)"><strong>{{ item.name }}</strong><small>{{ item.code }}</small></button></div>
-            <ResearchLineChart v-if="compareChartSeries.length" :series="compareChartSeries" :height="330" />
-            <div v-if="compareSeries.length" class="compare-metrics"><article v-for="(item, index) in compareSeries" :key="item.code"><i :style="{ background: compareChartSeries[index]?.color }"></i><span><strong>{{ item.name }}</strong><small>{{ item.code }}</small></span><span><small>区间收益</small><b :class="item.changePercent >= 0 ? 'up' : 'down'">{{ formatPercent(item.changePercent) }}</b></span><span><small>年化波动</small><b>{{ formatPercent(item.volatility) }}</b></span><span v-if="index > 0"><small>与 {{ compareSeries[0].name }} 相关性</small><b>{{ compareCorrelation[item.code] ?? '--' }}</b></span></article></div>
             <div v-else class="panel-empty">选择 2–4 只自选或最近研究的股票</div>
           </section>
 
-          <section v-else-if="activePanel === 'backtest'" class="workspace-card full-panel backtest-panel">
-            <header class="panel-heading"><div><h2>均线策略回测</h2><p>短均线上穿长均线买入、下穿卖出，含双边 0.03% 费用。</p></div></header>
-            <div class="backtest-form"><label><span>短均线</span><input v-model.number="backtestShort" type="number" min="2" max="60" /></label><label><span>长均线</span><input v-model.number="backtestLong" type="number" min="3" max="120" /></label><label><span>初始资金</span><input v-model.number="backtestCapital" type="number" min="1000" step="1000" /></label><button @click="runBacktest">运行回测</button></div>
-            <template v-if="backtestResult"><div class="backtest-metrics"><article><small>策略收益</small><strong :class="backtestResult.totalReturn >= 0 ? 'up' : 'down'">{{ formatPercent(backtestResult.totalReturn) }}</strong></article><article><small>同期持有</small><strong :class="backtestResult.benchmarkReturn >= 0 ? 'up' : 'down'">{{ formatPercent(backtestResult.benchmarkReturn) }}</strong></article><article><small>最大回撤</small><strong class="down">{{ formatPercent(backtestResult.maxDrawdown) }}</strong></article><article><small>交易胜率</small><strong>{{ formatPercent(backtestResult.winRate) }}</strong></article><article><small>交易次数</small><strong>{{ backtestResult.trades.length }}</strong></article></div><ResearchLineChart :series="backtestChartSeries" :height="300" /><div class="trade-list"><div v-for="trade in backtestResult.trades.slice().reverse().slice(0, 12)" :key="`${trade.buyDate}-${trade.sellDate}`"><span><small>买入</small><strong>{{ trade.buyDate }} · ¥{{ formatPrice(trade.buyPrice) }}</strong></span><span><small>卖出</small><strong>{{ trade.sellDate }} · ¥{{ formatPrice(trade.sellPrice) }}</strong></span><b :class="trade.returnPercent >= 0 ? 'up' : 'down'">{{ formatPercent(trade.returnPercent) }}</b></div></div></template>
+          <section
+            v-else-if="activePanel === 'backtest'"
+            class="workspace-card full-panel backtest-panel"
+          >
+            <header class="panel-heading">
+              <div>
+                <h2>均线策略回测</h2>
+                <p>短均线上穿长均线买入、下穿卖出，含双边 0.03% 费用。</p>
+              </div>
+            </header>
+            <div class="backtest-form">
+              <label
+                ><span>短均线</span
+                ><input v-model.number="backtestShort" type="number" min="2" max="60" /></label
+              ><label
+                ><span>长均线</span
+                ><input v-model.number="backtestLong" type="number" min="3" max="120" /></label
+              ><label
+                ><span>初始资金</span
+                ><input
+                  v-model.number="backtestCapital"
+                  type="number"
+                  min="1000"
+                  step="1000" /></label
+              ><button @click="runBacktest">运行回测</button>
+            </div>
+            <template v-if="backtestResult"
+              ><div class="backtest-metrics">
+                <article>
+                  <small>策略收益</small
+                  ><strong :class="backtestResult.totalReturn >= 0 ? 'up' : 'down'">{{
+                    formatPercent(backtestResult.totalReturn)
+                  }}</strong>
+                </article>
+                <article>
+                  <small>同期持有</small
+                  ><strong :class="backtestResult.benchmarkReturn >= 0 ? 'up' : 'down'">{{
+                    formatPercent(backtestResult.benchmarkReturn)
+                  }}</strong>
+                </article>
+                <article>
+                  <small>最大回撤</small
+                  ><strong class="down">{{ formatPercent(backtestResult.maxDrawdown) }}</strong>
+                </article>
+                <article>
+                  <small>交易胜率</small
+                  ><strong>{{ formatPercent(backtestResult.winRate) }}</strong>
+                </article>
+                <article>
+                  <small>交易次数</small><strong>{{ backtestResult.trades.length }}</strong>
+                </article>
+              </div>
+              <ResearchLineChart :series="backtestChartSeries" :height="300" />
+              <div class="trade-list">
+                <div
+                  v-for="trade in backtestResult.trades.slice().reverse().slice(0, 12)"
+                  :key="`${trade.buyDate}-${trade.sellDate}`"
+                >
+                  <span
+                    ><small>买入</small
+                    ><strong>{{ trade.buyDate }} · ¥{{ formatPrice(trade.buyPrice) }}</strong></span
+                  ><span
+                    ><small>卖出</small
+                    ><strong
+                      >{{ trade.sellDate }} · ¥{{ formatPrice(trade.sellPrice) }}</strong
+                    ></span
+                  ><b :class="trade.returnPercent >= 0 ? 'up' : 'down'">{{
+                    formatPercent(trade.returnPercent)
+                  }}</b>
+                </div>
+              </div></template
+            >
             <div v-else class="panel-empty">使用当前股票已加载的 K 线进行回测</div>
-            <p class="backtest-note">回测仅验证历史规则表现，不代表未来收益；未计入滑点、涨跌停和无法成交等现实约束。</p>
+            <p class="backtest-note">
+              回测仅验证历史规则表现，不代表未来收益；未计入滑点、涨跌停和无法成交等现实约束。
+            </p>
           </section>
 
           <section v-else-if="activePanel === 'financials'" class="workspace-card full-panel">
@@ -837,7 +949,11 @@ onUnmounted(() => {
               </div>
               <span>数据源：东方财富</span>
             </header>
-            <ResearchLineChart v-if="financialChartSeries.some((item) => item.points.length)" :series="financialChartSeries" :height="280" />
+            <ResearchLineChart
+              v-if="financialChartSeries.some((item) => item.points.length)"
+              :series="financialChartSeries"
+              :height="280"
+            />
             <div v-if="stock.financials.length" class="financial-table-wrap">
               <table class="financial-table">
                 <thead>
@@ -1666,6 +1782,10 @@ onUnmounted(() => {
   color: #fff;
   box-shadow: 0 5px 16px rgba(15, 118, 110, 0.22);
 }
+.research-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
 .research-tabs small {
   margin-left: 4px;
   opacity: 0.7;
@@ -1689,6 +1809,11 @@ onUnmounted(() => {
 .panel-heading h2 {
   margin-top: 3px;
   font-size: 18px;
+}
+.chart-card .card-header p {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
 }
 .card-header button {
   border: 0;
@@ -1721,6 +1846,10 @@ onUnmounted(() => {
 .period-switch button.active {
   background: #0f766e;
   color: #fff;
+}
+.period-switch button:disabled {
+  cursor: wait;
+  opacity: 0.5;
 }
 .chart-controls :deep(.dp__main) {
   width: 130px;
@@ -2229,14 +2358,170 @@ onUnmounted(() => {
   color: var(--text-muted);
   cursor: pointer;
 }
-.portfolio-panel { display: grid; gap: 14px; }
-.portfolio-summary-grid,.backtest-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
-.portfolio-summary-grid article,.backtest-metrics article { display: flex; min-height: 82px; flex-direction: column; justify-content: center; padding: 14px 16px; border: 1px solid var(--border-light); border-radius: 15px; background: var(--bg-card); box-shadow: var(--shadow-sm); }
-.portfolio-summary-grid small,.backtest-metrics small { color: var(--text-muted); font-size: 10px; }.portfolio-summary-grid strong,.backtest-metrics strong { margin-top: 4px; font-size: 20px; }.portfolio-summary-grid b { font-size: 10px; }
-.portfolio-layout { display: grid; grid-template-columns: 280px minmax(0,1fr); gap: 14px; }.position-form-card { display: flex; flex-direction: column; gap: 12px; }.position-form-card .card-header p { color: var(--text-muted); font-size: 10px; }.position-form-card label { display: flex; flex-direction: column; gap: 5px; color: var(--text-secondary); font-size: 10px; }.position-form-card input,.backtest-form input { box-sizing: border-box; width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--border-light); border-radius: 9px; outline: 0; background: var(--bg-page); color: var(--text-primary); }.position-form-card > button,.panel-heading > button,.backtest-form > button { min-height: 38px; border: 0; border-radius: 9px; background: #0f766e; color: #fff; cursor: pointer; font-weight: 800; }.position-form-card > button:disabled,.panel-heading > button:disabled { cursor: not-allowed; opacity: .45; }.position-form-card > p,.backtest-note { color: var(--text-muted); font-size: 9px; line-height: 1.6; }
-.position-table-wrap { overflow: auto; margin-top: 12px; }.position-table { width: 100%; border-collapse: collapse; white-space: nowrap; }.position-table th,.position-table td { padding: 11px 9px; border-bottom: 1px solid var(--border-light); text-align: right; font-size: 10px; }.position-table th { color: var(--text-muted); font-size: 9px; }.position-table th:first-child,.position-table td:first-child { text-align: left; }.position-table td:first-child,.position-table td:nth-last-child(2) { display: table-cell; }.position-table td:first-child strong,.position-table td:first-child small,.position-table td:nth-last-child(2) strong,.position-table td:nth-last-child(2) small { display: block; }.position-table small { color: var(--text-muted); }.position-table button { border: 0; background: transparent; color: var(--text-muted); cursor: pointer; }
-.compare-panel .panel-heading button { padding: 8px 14px; }.compare-picker { display: flex; flex-wrap: wrap; gap: 7px; margin: 16px 0 12px; }.compare-picker button { display: flex; flex-direction: column; padding: 8px 11px; border: 1px solid var(--border-light); border-radius: 9px; background: var(--bg-page); color: var(--text-primary); cursor: pointer; text-align: left; }.compare-picker button.active { border-color: #0f766e; background: color-mix(in srgb,#0f766e 10%,var(--bg-card)); }.compare-picker small { color: var(--text-muted); font-size: 9px; }.compare-metrics { display: grid; gap: 7px; margin-top: 10px; }.compare-metrics article { display: grid; grid-template-columns: 6px minmax(120px,1fr) repeat(3,minmax(100px,.6fr)); align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border-light); border-radius: 10px; }.compare-metrics i { width: 6px; height: 34px; border-radius: 99px; }.compare-metrics span { display: flex; flex-direction: column; }.compare-metrics small { color: var(--text-muted); font-size: 9px; }.compare-metrics b { font-size: 12px; }
-.backtest-form { display: grid; grid-template-columns: repeat(3,minmax(100px,1fr)) auto; align-items: end; gap: 8px; margin: 16px 0; }.backtest-form label { display: flex; flex-direction: column; gap: 5px; color: var(--text-secondary); font-size: 9px; }.backtest-form > button { padding: 0 16px; }.backtest-metrics { grid-template-columns: repeat(5,minmax(0,1fr)); margin-bottom: 12px; }.trade-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; margin-top: 12px; }.trade-list > div { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--border-light); border-radius: 10px; }.trade-list span { display: flex; flex-direction: column; }.trade-list small { color: var(--text-muted); font-size: 8px; }.trade-list strong,.trade-list b { font-size: 10px; }.backtest-note { margin-top: 12px; text-align: center; }
+.backtest-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.backtest-metrics article {
+  display: flex;
+  min-height: 82px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 15px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+.backtest-metrics small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.backtest-metrics strong {
+  margin-top: 4px;
+  font-size: 20px;
+}
+.backtest-form input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  outline: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+.panel-heading > button,
+.backtest-form > button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  background: #0f766e;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+}
+.panel-heading > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.backtest-note {
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.6;
+}
+.compare-panel .panel-heading button {
+  padding: 8px 14px;
+}
+.compare-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 16px 0 12px;
+}
+.compare-picker button {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+.compare-picker button.active {
+  border-color: #0f766e;
+  background: color-mix(in srgb, #0f766e 10%, var(--bg-card));
+}
+.compare-picker small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+.compare-metrics {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+.compare-metrics article {
+  display: grid;
+  grid-template-columns: 6px minmax(120px, 1fr) repeat(3, minmax(100px, 0.6fr));
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+}
+.compare-metrics i {
+  width: 6px;
+  height: 34px;
+  border-radius: 99px;
+}
+.compare-metrics span {
+  display: flex;
+  flex-direction: column;
+}
+.compare-metrics small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+.compare-metrics b {
+  font-size: 12px;
+}
+.backtest-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(100px, 1fr)) auto;
+  align-items: end;
+  gap: 8px;
+  margin: 16px 0;
+}
+.backtest-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 9px;
+}
+.backtest-form > button {
+  padding: 0 16px;
+}
+.backtest-metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+.trade-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px;
+}
+.trade-list > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+}
+.trade-list span {
+  display: flex;
+  flex-direction: column;
+}
+.trade-list small {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+.trade-list strong,
+.trade-list b {
+  font-size: 10px;
+}
+.backtest-note {
+  margin-top: 12px;
+  text-align: center;
+}
 
 .research-source-error {
   margin: 12px 0;
@@ -2362,13 +2647,24 @@ onUnmounted(() => {
   .journal-grid {
     grid-template-columns: 1fr;
   }
-  .portfolio-summary-grid,.backtest-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .portfolio-layout { grid-template-columns: 1fr; }
-  .backtest-form { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .backtest-form > button { min-height: 38px; }
-  .compare-metrics { overflow-x: auto; }
-  .compare-metrics article { min-width: 660px; }
-  .trade-list { grid-template-columns: 1fr; }
+  .backtest-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .backtest-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .backtest-form > button {
+    min-height: 38px;
+  }
+  .compare-metrics {
+    overflow-x: auto;
+  }
+  .compare-metrics article {
+    min-width: 660px;
+  }
+  .trade-list {
+    grid-template-columns: 1fr;
+  }
   .candle-inspector {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2451,8 +2747,12 @@ onUnmounted(() => {
     grid-column: 1/-1;
     padding: 10px;
   }
-  .portfolio-summary-grid,.backtest-metrics { grid-template-columns: 1fr 1fr; }
-  .backtest-form { grid-template-columns: 1fr; }
+  .backtest-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .backtest-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 820px) {

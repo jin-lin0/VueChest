@@ -12,6 +12,8 @@ import type { IChartApi, ISeriesApi, ISeriesMarkersPluginApi, Time } from 'light
 import type { KlineData } from '@/stores/stock'
 import { STOCK_COLORS } from '../config'
 import { sma } from '../research'
+import { minimumBarSpacing, recentLogicalRange } from '../chart-range'
+import { formatChartDate, formatChartTick } from '../chart-date'
 
 // 平台注入的主题对象（opt-in）：CSS 变量管不到 lightweight-charts 的 JS 上色，
 // 所以图表背景/文字/网格必须读 isDark 主动重绘。拿不到时降级为浅色。
@@ -70,9 +72,20 @@ const initChart = () => {
     },
     width: chartContainer.value.clientWidth,
     height: 460,
+    localization: {
+      locale: 'zh-CN',
+      dateFormat: 'yyyy-MM-dd',
+      timeFormatter: formatChartDate,
+    },
     timeScale: {
       timeVisible: false,
       secondsVisible: false,
+      rightOffset: 0,
+      minBarSpacing: 2,
+      maxBarSpacing: 40,
+      fixLeftEdge: true,
+      fixRightEdge: true,
+      tickMarkFormatter: formatChartTick,
     },
   })
 
@@ -132,6 +145,10 @@ const handleClick = (param: { time?: Time }) => {
 const updateChart = () => {
   if (!candlestickSeries) return
   if (!props.data.length) {
+    if (markersPlugin) {
+      markersPlugin.detach()
+      markersPlugin = null
+    }
     candlestickSeries.setData([])
     volumeSeries?.setData([])
     ma5Series?.setData([])
@@ -168,14 +185,25 @@ const updateChart = () => {
   ma10Series?.setData(toLine(10))
   ma20Series?.setData(toLine(20))
 
-  if (!props.selectedDate) chart?.timeScale().fitContent()
+  if (markersPlugin) {
+    markersPlugin.detach()
+    markersPlugin = null
+  }
+
+  chart?.applyOptions({
+    timeScale: {
+      minBarSpacing: minimumBarSpacing(chartContainer.value?.clientWidth || 0, chartData.length),
+    },
+  })
+
+  if (!props.selectedDate) {
+    const range = recentLogicalRange(chartData.length)
+    if (range) chart?.timeScale().setVisibleLogicalRange(range)
+  }
 
   if (props.selectedDate && chart && candlestickSeries) {
     const selectedIndex = props.data.findIndex((item) => item.date === props.selectedDate)
     if (selectedIndex !== -1) {
-      if (markersPlugin) {
-        markersPlugin.detach()
-      }
       markersPlugin = createSeriesMarkers(candlestickSeries, [
         {
           time: chartData[selectedIndex].time,
