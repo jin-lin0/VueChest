@@ -6,28 +6,54 @@ import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { COMMAND_PALETTE_EVENT } from '@/lib/command-palette'
+import { getStorage, setStorage } from '@/lib/storage'
+import { useToast } from '@/composables/useToast'
+import { loadBuiltinAppCommandProviders } from '@/apps/app-commands'
+import type { AppCommandOutcome, AppCommandProvider } from '@/lib/app-command'
 
 interface CommandItem {
   id: string
-  type: 'app' | 'navigation'
+  type: 'app' | 'navigation' | 'action'
   label: string
   description: string
   icon: string
   route?: string
-  action?: () => void
+  action?: () => AppCommandOutcome | void | Promise<AppCommandOutcome | void>
   appKey?: string
   keywords: string
+  kindLabel?: string
+  priority?: number
+  disabledReason?: () => string | null
 }
+
+const RECENT_ACTIONS_KEY = 'command-palette:recent-actions'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const marketStore = useMarketStore()
 const workspaceStore = useWorkspaceStore()
+const { addToast } = useToast()
+const appCommandProviders = ref<AppCommandProvider[]>([])
 
 const isOpen = ref(false)
 const query = ref('')
 const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
+const commandCatalogVersion = ref(0)
+const recentActionIds = ref<string[]>(getStorage<string[]>(RECENT_ACTIONS_KEY, []) || [])
+let commandProvidersPromise: Promise<AppCommandProvider[]> | null = null
+
+async function ensureCommandProviders() {
+  if (appCommandProviders.value.length) return
+  commandProvidersPromise ||= loadBuiltinAppCommandProviders()
+  try {
+    appCommandProviders.value = await commandProvidersPromise
+    commandCatalogVersion.value += 1
+  } catch {
+    commandProvidersPromise = null
+    addToast('error', 'App 快捷操作加载失败')
+  }
+}
 
 const appCommands = computed<CommandItem[]>(() => [
   ...APP_MODULES.filter((app) => !app.devOnly || import.meta.env.DEV).map((app) => ({
@@ -202,7 +228,28 @@ const dataCommands = computed<CommandItem[]>(() =>
   })),
 )
 
+const appActionCommands = computed<CommandItem[]>(() => {
+  // App 内的动态命令（如流水线预设）需要在每次打开面板时重新读取。
+  void commandCatalogVersion.value
+  return appCommandProviders.value.flatMap((provider) =>
+    provider.commands().map((command) => ({
+      id: `action-${provider.appKey}-${command.id}`,
+      type: 'action' as const,
+      label: command.label,
+      description: command.description,
+      icon: command.icon,
+      appKey: provider.appKey,
+      keywords: `${provider.appName} ${command.label} ${command.description} ${(command.keywords || []).join(' ')}`,
+      kindLabel: provider.appName,
+      priority: command.priority || 0,
+      disabledReason: command.disabledReason,
+      action: () => command.execute({ router }),
+    })),
+  )
+})
+
 const allCommands = computed(() => [
+  ...appActionCommands.value,
   ...appCommands.value,
   ...marketCommands.value,
   ...workspaceCommands.value,
@@ -214,7 +261,18 @@ const results = computed(() => {
   const text = query.value.trim().toLowerCase()
   if (text) {
     return allCommands.value
-      .filter((item) => `${item.label} ${item.description} ${item.keywords}`.toLowerCase().includes(text))
+      .map((item) => {
+        const label = item.label.toLowerCase()
+        const haystack = `${item.label} ${item.description} ${item.keywords}`.toLowerCase()
+        const tokens = text.split(/\s+/).filter(Boolean)
+        if (!tokens.every((token) => haystack.includes(token))) return { item, score: -1 }
+        const score =
+          label === text ? 1000 : label.startsWith(text) ? 800 : label.includes(text) ? 600 : 300
+        return { item, score: score + (item.priority || 0) }
+      })
+      .filter((entry) => entry.score >= 0)
+      .sort((a, b) => b.score - a.score)
+      .map((entry) => entry.item)
       .slice(0, 14)
   }
 
@@ -225,10 +283,21 @@ const results = computed(() => {
   const apps = [...appCommands.value].sort((a, b) => {
     return (recent.get(a.appKey || '') ?? 999) - (recent.get(b.appKey || '') ?? 999)
   })
-  return [...apps.slice(0, 9), ...navigationCommands.value].slice(0, 14)
+  const recentActions = new Map(recentActionIds.value.map((id, index) => [id, index]))
+  const actions = [...appActionCommands.value].sort((a, b) => {
+    const recentA = recentActions.get(a.id)
+    const recentB = recentActions.get(b.id)
+    if (recentA !== undefined || recentB !== undefined) {
+      return (recentA ?? 999) - (recentB ?? 999)
+    }
+    return (b.priority || 0) - (a.priority || 0)
+  })
+  return [...actions.slice(0, 4), ...apps.slice(0, 6), ...navigationCommands.value].slice(0, 14)
 })
 
 const open = (initialQuery = '') => {
+  commandCatalogVersion.value += 1
+  void ensureCommandProviders()
   query.value = initialQuery
   selectedIndex.value = 0
   isOpen.value = true
@@ -241,12 +310,32 @@ const close = () => {
   query.value = ''
 }
 
-const execute = (item: CommandItem | undefined) => {
+const execute = async (item: CommandItem | undefined) => {
   if (!item) return
+  const disabledReason = item.disabledReason?.()
+  if (disabledReason) {
+    addToast('info', disabledReason)
+    return
+  }
   if (item.appKey) workspaceStore.recordRecent(item.appKey)
+  if (item.type === 'action') {
+    recentActionIds.value = [
+      item.id,
+      ...recentActionIds.value.filter((id) => id !== item.id),
+    ].slice(0, 12)
+    setStorage(RECENT_ACTIONS_KEY, recentActionIds.value)
+  }
   close()
-  if (item.action) item.action()
-  else if (item.route) router.push(item.route)
+  try {
+    if (item.action) {
+      const outcome = await item.action()
+      if (outcome?.message) addToast(outcome.type || 'success', outcome.message)
+    } else if (item.route) {
+      await router.push(item.route)
+    }
+  } catch (error) {
+    addToast('error', error instanceof Error ? error.message : '命令执行失败')
+  }
 }
 
 const handleOpenEvent = (event: Event) => {
@@ -273,7 +362,7 @@ const handleKeydown = (event: KeyboardEvent) => {
     selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
   } else if (event.key === 'Enter') {
     event.preventDefault()
-    execute(results.value[selectedIndex.value])
+    void execute(results.value[selectedIndex.value])
   }
 }
 
@@ -303,7 +392,7 @@ onUnmounted(() => {
               ref="inputRef"
               v-model="query"
               type="text"
-              placeholder="搜索应用或页面…"
+              placeholder="搜索应用、页面或操作…"
               autocomplete="off"
               aria-label="搜索命令"
             />
@@ -311,12 +400,13 @@ onUnmounted(() => {
           </div>
 
           <div class="palette-results">
-            <p class="palette-heading">{{ query ? '搜索结果' : '快速打开' }}</p>
+            <p class="palette-heading">{{ query ? '搜索结果' : '快捷操作与最近使用' }}</p>
             <button
               v-for="(item, index) in results"
               :key="item.id"
               class="palette-item"
-              :class="{ selected: selectedIndex === index }"
+              :class="{ selected: selectedIndex === index, disabled: item.disabledReason?.() }"
+              :aria-disabled="Boolean(item.disabledReason?.())"
               @mouseenter="selectedIndex = index"
               @click="execute(item)"
             >
@@ -325,7 +415,15 @@ onUnmounted(() => {
                 <strong>{{ item.label }}</strong>
                 <small>{{ item.description }}</small>
               </span>
-              <span class="item-kind">{{ item.type === 'app' ? '应用' : '页面' }}</span>
+              <span class="item-kind">
+                {{
+                  item.type === 'action'
+                    ? item.kindLabel || '操作'
+                    : item.type === 'app'
+                      ? '应用'
+                      : '页面'
+                }}
+              </span>
             </button>
 
             <div v-if="results.length === 0" class="palette-empty">
@@ -336,7 +434,7 @@ onUnmounted(() => {
 
           <footer class="palette-footer">
             <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
-            <span><kbd>↵</kbd> 打开</span>
+            <span><kbd>↵</kbd> 打开 / 执行</span>
             <span class="palette-count">{{ results.length }} 项</span>
           </footer>
         </section>
@@ -444,6 +542,11 @@ kbd {
   background: color-mix(in srgb, var(--accent, #667eea) 11%, var(--bg-hover));
 }
 
+.palette-item.disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .item-icon {
   display: grid;
   width: 38px;
@@ -523,7 +626,9 @@ kbd {
 
 .palette-enter-active .palette-panel,
 .palette-leave-active .palette-panel {
-  transition: transform 0.18s ease, opacity 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
 }
 
 .palette-enter-from,

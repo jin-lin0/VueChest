@@ -677,6 +677,27 @@ export const useMusicStore = defineStore('music', () => {
     }
   }
 
+  const playRandom = async (): Promise<Song | null> => {
+    let source = playlist.value.length
+      ? playlist.value
+      : favorites.value.length
+        ? favorites.value
+        : playHistory.value
+
+    if (!source.length) {
+      await fetchDiscover()
+      source = newSongs.value
+    }
+    if (!source.length) return null
+
+    const alternatives = source.filter((song) => song.id !== activeSong.value?.id)
+    const candidates = alternatives.length ? alternatives : source
+    const song = candidates[Math.floor(Math.random() * candidates.length)]
+    if (!song) return null
+    const played = await playSong(song, source)
+    return played ? song : null
+  }
+
   const fetchPlaylistCats = async () => {
     if (playlistCats.value.length > 0) return
     try {
@@ -943,6 +964,7 @@ export const useMusicStore = defineStore('music', () => {
     playSong,
     // new methods
     fetchDiscover,
+    playRandom,
     fetchPlaylistCats,
     fetchCatPlaylists,
     fetchSearchSuggest,

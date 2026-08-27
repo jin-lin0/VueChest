@@ -6,6 +6,7 @@ import { APP_MODULES } from '@/config'
 import type { AppModule } from '@/config'
 import type { WorkspaceItem } from '@/stores/workspace'
 import { useAuthStore } from '@/stores/auth'
+import { useCloudSyncStore } from '@/stores/cloudSync'
 import { useMarketStore } from '@/stores/market'
 import { useWorkspaceStore } from '@/stores/workspace'
 import LoginDropdown from '@/components/business/LoginDropdown.vue'
@@ -13,6 +14,7 @@ import Modal from '@/components/common/Modal.vue'
 import { useTheme } from '@/composables/useTheme'
 import { useConfirm } from '@/composables/useConfirm'
 import { openCommandPalette } from '@/lib/command-palette'
+import { resolveCloudSyncStatus } from '@/lib/cloud-sync-status'
 import { exportAllData, importAllData } from '@/lib/storage'
 
 defineOptions({ name: 'WorkspaceHomeView' })
@@ -43,6 +45,7 @@ interface WorkspaceContextMenuState {
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const cloudSyncStore = useCloudSyncStore()
 const marketStore = useMarketStore()
 const workspaceStore = useWorkspaceStore()
 const { isDark, toggleTheme } = useTheme()
@@ -96,9 +99,7 @@ const displayItems = computed<DisplayItem[]>(() => {
     .map((item) => ({ ...item, app: appMap.value.get(item.appKey) }))
     .filter((item): item is WorkspaceItem & { app: LaunchableApp } => !!item.app)
     .filter(
-      (item) =>
-        !text ||
-        `${item.app.name} ${item.app.description}`.toLowerCase().includes(text),
+      (item) => !text || `${item.app.name} ${item.app.description}`.toLowerCase().includes(text),
     )
 })
 
@@ -109,11 +110,24 @@ const managerApps = computed(() => {
   )
 })
 
+const cloudSyncStatus = computed(() =>
+  resolveCloudSyncStatus({
+    authenticated: authStore.isAuthenticated,
+    selectedCount: cloudSyncStore.selection.length,
+    selectiveSyncing: cloudSyncStore.isSyncing,
+    remoteUpdatedAt: cloudSyncStore.remoteUpdatedAt,
+    workspaceSelected: cloudSyncStore.selectedSet.has('workspace'),
+    workspaceSyncState: workspaceStore.syncState,
+    workspaceLastSyncedAt: workspaceStore.lastSyncedAt,
+  }),
+)
 const syncLabel = computed(() => {
-  if (!authStore.isAuthenticated) return '本地保存'
-  if (workspaceStore.syncState === 'syncing') return '正在同步'
-  if (workspaceStore.syncState === 'error') return '同步失败，点击重试'
-  return '已同步到云端'
+  if (cloudSyncStatus.value === 'local') return '本地保存'
+  if (cloudSyncStatus.value === 'disabled') return '未启用云同步'
+  if (cloudSyncStatus.value === 'pending') return `${cloudSyncStore.selection.length} 类待首次同步`
+  if (cloudSyncStatus.value === 'syncing') return '正在同步所选数据'
+  if (cloudSyncStatus.value === 'error') return '同步异常，查看设置'
+  return `云同步 · ${cloudSyncStore.selection.length} 类`
 })
 const commandShortcut =
   typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘ K' : 'Ctrl K'
@@ -131,7 +145,7 @@ const launchApp = (app: LaunchableApp) => {
 
 const reorderItems = (items: DisplayItem[]) => {
   if (normalizedQuery.value) return
-  workspaceStore.setActiveItems(items.map(({ app: _app, ...item }) => item))
+  workspaceStore.setActiveItems(items.map((item) => ({ appKey: item.appKey })))
 }
 
 const openContextMenu = (event: MouseEvent, appKey: string) => {
@@ -227,8 +241,12 @@ const deleteCurrentWorkspace = async () => {
   showWorkspaceEditor.value = false
 }
 
-const retrySync = () => {
-  if (authStore.user?.id) workspaceStore.syncWithServer(authStore.user.id)
+const openSyncSettings = () => {
+  if (authStore.isAuthenticated) {
+    router.push('/settings/account')
+  } else {
+    router.push({ path: '/login', query: { redirect: '/settings/account' } })
+  }
 }
 
 const selectWorkspaceFromSettings = (event: Event) => {
@@ -275,7 +293,12 @@ const handleExport = async () => {
 const handleImport = async () => {
   try {
     const data = JSON.parse(importText.value)
-    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0) {
+    if (
+      !data ||
+      typeof data !== 'object' ||
+      Array.isArray(data) ||
+      Object.keys(data).length === 0
+    ) {
       importStatus.value = '请选择有效且非空的 VueChest 备份文件'
       return
     }
@@ -332,7 +355,12 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
     </div>
 
     <header class="topbar">
-      <button class="brand" type="button" aria-label="VueChest 数据管理入口" @click="handleLogoClick">
+      <button
+        class="brand"
+        type="button"
+        aria-label="VueChest 数据管理入口"
+        @click="handleLogoClick"
+      >
         <span class="brand-mark">⚡</span>
         <span class="brand-copy">
           <strong>应用中心</strong>
@@ -348,13 +376,26 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
       </div>
 
       <nav class="top-actions" aria-label="全局导航">
-        <button class="icon-action" title="全局设置" aria-label="全局设置" @click="showGlobalSettings = true">
+        <button
+          class="icon-action"
+          title="全局设置"
+          aria-label="全局设置"
+          @click="showGlobalSettings = true"
+        >
           ⚙
         </button>
-        <button class="icon-action" :title="isDark ? '切换亮色模式' : '切换暗色模式'" @click="toggleTheme">
+        <button
+          class="icon-action"
+          :title="isDark ? '切换亮色模式' : '切换暗色模式'"
+          @click="toggleTheme"
+        >
           {{ isDark ? '☀' : '◐' }}
         </button>
-        <button class="text-action market-action" aria-label="应用市场" @click="router.push('/market')">
+        <button
+          class="text-action market-action"
+          aria-label="应用市场"
+          @click="router.push('/market')"
+        >
           <span class="market-label-full">应用市场</span>
           <span class="market-label-short">市场</span>
         </button>
@@ -429,8 +470,17 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
             >
               <div class="card-topline">
                 <div class="card-controls">
-                  <button class="drag-handle" title="拖动排序" aria-label="拖动排序" @click.stop>⠿</button>
-                  <button class="card-menu" title="更多操作" aria-label="更多操作" @click="openContextMenu($event, element.appKey)">•••</button>
+                  <button class="drag-handle" title="拖动排序" aria-label="拖动排序" @click.stop>
+                    ⠿
+                  </button>
+                  <button
+                    class="card-menu"
+                    title="更多操作"
+                    aria-label="更多操作"
+                    @click="openContextMenu($event, element.appKey)"
+                  >
+                    •••
+                  </button>
                 </div>
               </div>
               <div class="card-main">
@@ -449,7 +499,13 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
         <div v-else class="empty-workspace">
           <span class="empty-symbol">＋</span>
           <h3>{{ normalizedQuery ? '没有匹配的应用' : '这个工作区还是空的' }}</h3>
-          <p>{{ normalizedQuery ? '换个关键词试试，或使用全局搜索。' : '从已安装应用中挑选一些放进来。' }}</p>
+          <p>
+            {{
+              normalizedQuery
+                ? '换个关键词试试，或使用全局搜索。'
+                : '从已安装应用中挑选一些放进来。'
+            }}
+          </p>
           <button v-if="normalizedQuery" @click="query = ''">清除筛选</button>
           <button v-else @click="showAppManager = true">添加应用</button>
         </div>
@@ -457,8 +513,16 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
     </main>
 
     <footer class="page-footer">
-      <span>{{ workspaceStore.activeWorkspace?.items.length || 0 }} 个应用 · {{ workspaceStore.config.workspaces.length }} 个工作区</span>
-      <button class="sync-status" :class="workspaceStore.syncState" @click="retrySync">
+      <span
+        >{{ workspaceStore.activeWorkspace?.items.length || 0 }} 个应用 ·
+        {{ workspaceStore.config.workspaces.length }} 个工作区</span
+      >
+      <button
+        class="sync-status"
+        :class="cloudSyncStatus"
+        :title="authStore.isAuthenticated ? '管理选择性云同步' : '登录后启用选择性云同步'"
+        @click="openSyncSettings"
+      >
         <span></span>{{ syncLabel }}
       </button>
     </footer>
@@ -565,7 +629,11 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
             :value="workspaceStore.config.activeWorkspaceId"
             @change="selectWorkspaceFromSettings"
           >
-            <option v-for="space in workspaceStore.config.workspaces" :key="space.id" :value="space.id">
+            <option
+              v-for="space in workspaceStore.config.workspaces"
+              :key="space.id"
+              :value="space.id"
+            >
               {{ space.icon }} {{ space.name }}
             </option>
           </select>
@@ -584,7 +652,10 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
     <Modal v-model:open="showAppManager" title="整理当前工作区" width="min(720px, 94vw)">
       <div class="manager-toolbar">
         <div>
-          <strong>{{ workspaceStore.activeWorkspace?.icon }} {{ workspaceStore.activeWorkspace?.name }}</strong>
+          <strong
+            >{{ workspaceStore.activeWorkspace?.icon }}
+            {{ workspaceStore.activeWorkspace?.name }}</strong
+          >
           <small>选择要显示在这个工作区的应用</small>
         </div>
         <input v-model="appManagerQuery" type="search" placeholder="搜索已安装应用" />
@@ -619,7 +690,13 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
         </label>
         <label class="name-field">
           <span>名称</span>
-          <input v-model="workspaceName" type="text" maxlength="20" placeholder="例如：学习、开发、娱乐" autofocus />
+          <input
+            v-model="workspaceName"
+            type="text"
+            maxlength="20"
+            placeholder="例如：学习、开发、娱乐"
+            autofocus
+          />
         </label>
         <div class="workspace-form-actions">
           <button
@@ -753,7 +830,11 @@ onUnmounted(() => document.removeEventListener('click', closeContextMenu))
   opacity: 0.1;
   background-image:
     linear-gradient(color-mix(in srgb, var(--text-secondary) 9%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--text-secondary) 9%, transparent) 1px, transparent 1px);
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--text-secondary) 9%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 38px 38px;
   mask-image: linear-gradient(to bottom, black, transparent 72%);
 }
@@ -1159,7 +1240,10 @@ kbd {
   cursor: pointer;
   animation: card-in 0.42s both;
   animation-delay: calc(var(--card-order) * 35ms);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .app-card::before {
@@ -1333,6 +1417,10 @@ kbd {
   cursor: pointer;
 }
 
+.sync-status:hover {
+  color: var(--text-primary);
+}
+
 .sync-status span {
   width: 7px;
   height: 7px;
@@ -1347,6 +1435,15 @@ kbd {
 .sync-status.syncing span {
   background: #e8a317;
   animation: pulse 0.9s infinite alternate;
+}
+
+.sync-status.pending span {
+  background: #e8a317;
+}
+
+.sync-status.disabled span,
+.sync-status.local span {
+  background: #9aa5b1;
 }
 
 .sync-status.error span {

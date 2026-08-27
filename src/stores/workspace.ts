@@ -204,6 +204,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const initialized = ref(false)
   const syncState = ref<WorkspaceSyncState>('local')
   const lastSyncedAt = ref<number | null>(null)
+  const cloudSyncEnabled = ref(true)
   let syncTimer: ReturnType<typeof setTimeout> | null = null
 
   const storageKey = (userId: number | null) =>
@@ -242,13 +243,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   function scheduleCloudSync() {
-    if (ownerId.value === null) return
+    if (ownerId.value === null || !cloudSyncEnabled.value) return
     if (syncTimer) clearTimeout(syncTimer)
     syncTimer = setTimeout(() => void pushToServer(), 800)
   }
 
-  async function pushToServer() {
-    if (ownerId.value === null) return false
+  async function pushToServer(force = false) {
+    if (ownerId.value === null || (!cloudSyncEnabled.value && !force)) return false
     if (config.value.layoutUpdatedAt <= 0) {
       config.value.layoutUpdatedAt = Date.now()
       saveLocal()
@@ -265,16 +266,20 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  async function syncWithServer(userId: number) {
+  function bindUserConfig(userId: number) {
     init()
     if (syncTimer) clearTimeout(syncTimer)
+    if (ownerId.value === userId) return
 
-    if (ownerId.value !== userId) {
-      const saved = getStorage<WorkspaceConfig>(storageKey(userId))
-      if (saved) config.value = normalizeConfig(saved)
-      ownerId.value = userId
-      setStorage(storageKey(userId), clone(config.value))
-    }
+    const saved = getStorage<WorkspaceConfig>(storageKey(userId))
+    if (saved) config.value = normalizeConfig(saved)
+    ownerId.value = userId
+    setStorage(storageKey(userId), clone(config.value))
+  }
+
+  async function syncWithServer(userId: number) {
+    bindUserConfig(userId)
+    cloudSyncEnabled.value = true
 
     syncState.value = 'syncing'
     try {
@@ -307,6 +312,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     } catch {
       syncState.value = 'error'
     }
+  }
+
+  function switchToUser(userId: number) {
+    bindUserConfig(userId)
+    cloudSyncEnabled.value = false
+    syncState.value = 'local'
+    lastSyncedAt.value = null
+  }
+
+  function setCloudSyncEnabled(enabled: boolean) {
+    cloudSyncEnabled.value = enabled
+    if (!enabled && syncTimer) clearTimeout(syncTimer)
+    if (!enabled) syncState.value = 'local'
   }
 
   async function fetchCloudWorkspace(): Promise<WorkspaceCloudConfig | null> {
@@ -342,6 +360,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (ownerId.value === null) return
     if (syncTimer) clearTimeout(syncTimer)
     ownerId.value = null
+    cloudSyncEnabled.value = true
     config.value = normalizeConfig(getStorage<WorkspaceConfig>(storageKey(null)))
     syncState.value = 'local'
     lastSyncedAt.value = null
@@ -405,7 +424,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     ].slice(0, 100)
     const workspace: WorkspaceDefinition = {
       id: createId(),
-      name: String(template.name || '导入的工作区').trim().slice(0, 20),
+      name: String(template.name || '导入的工作区')
+        .trim()
+        .slice(0, 20),
       icon: String(template.icon || '◫').slice(0, 8),
       items: appKeys.map((appKey) => ({ appKey })),
     }
@@ -496,9 +517,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     initialized,
     syncState,
     lastSyncedAt,
+    cloudSyncEnabled,
     activeWorkspace,
     init,
     syncWithServer,
+    switchToUser,
+    setCloudSyncEnabled,
     fetchCloudWorkspace,
     downloadCloudWorkspace,
     deleteCloudWorkspace,

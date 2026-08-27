@@ -8,6 +8,7 @@ import CommandPalette from '@/components/business/CommandPalette.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { registerToastHost } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { useCloudSyncStore } from '@/stores/cloudSync'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { recordGameLaunchFromRoute } from '@/apps/game-center/profile'
 
@@ -15,15 +16,35 @@ const router = useRouter()
 const MusicPlayer = defineAsyncComponent(() => import('@/components/business/MusicPlayer.vue'))
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
+const cloudSyncStore = useCloudSyncStore()
 const isRouteLoading = ref(false)
+let syncUserRequest = 0
 
 workspaceStore.init()
 
 watch(
   () => authStore.user?.id,
-  (userId) => {
-    if (userId) void workspaceStore.syncWithServer(userId)
-    else workspaceStore.switchToGuest()
+  async (userId) => {
+    const requestId = ++syncUserRequest
+    if (!userId) {
+      workspaceStore.switchToGuest()
+      return
+    }
+
+    // 先读取账号保存的同步选择，再决定是否拉取工作区，避免用户取消某一类别后
+    // 下一台设备仍在登录时自动覆盖本地数据。旧后端没有 /sync 时继续沿用工作区同步。
+    try {
+      await cloudSyncStore.fetchRemote()
+    } catch {
+      /* 保留本机同步选择 */
+    }
+    if (requestId !== syncUserRequest) return
+
+    if (cloudSyncStore.selection.includes('workspace')) {
+      await workspaceStore.syncWithServer(userId)
+    } else {
+      workspaceStore.switchToUser(userId)
+    }
   },
   { immediate: true },
 )
