@@ -17,6 +17,8 @@ export interface ApiItem {
   createdAt?: string
   pinned?: boolean
   userCreated?: boolean
+  /** 是否展示在 API 目录；工作区专用请求会设为 false。 */
+  catalogVisible?: boolean
   docsUrl?: string
   auth?: 'none' | 'optional' | 'api-key'
   cors?: 'supported' | 'unknown'

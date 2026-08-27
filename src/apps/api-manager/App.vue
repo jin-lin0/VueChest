@@ -30,6 +30,7 @@ import { useConfirm } from '@/composables/useConfirm'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { getStorage, setStorage } from '@/lib/storage'
 import type { ApiItem } from './defaults'
+import { parseCurlCommand, type ParsedCurlRequest } from './curl-importer'
 import { importApiDocument } from './importers'
 import {
   applyAuth,
@@ -171,6 +172,7 @@ interface SavedRequestRun {
 type WorkspaceStepTab = 'request' | 'response' | 'extract' | 'assertions'
 type WorkspaceResponseSection = 'body' | 'headers'
 type WorkspacePickerTab = 'catalog' | 'saved' | 'custom'
+type WorkspaceCustomMode = 'form' | 'curl'
 
 interface WorkspaceCustomRequestDraft {
   name: string
@@ -178,6 +180,7 @@ interface WorkspaceCustomRequestDraft {
   url: string
   category: string
   description: string
+  addToCatalog: boolean
 }
 
 const LEGACY_USER_APIS_KEY = 'userApis'
@@ -254,12 +257,16 @@ const workspacePickerMethod = ref<string | number>('all')
 const workspaceSelectedApiIds = ref<Array<string | number>>([])
 const workspaceSelectedSavedIds = ref<string[]>([])
 const workspaceCustomErrors = ref<Record<string, string>>({})
+const workspaceCustomMode = ref<WorkspaceCustomMode>('form')
+const workspaceCurlCommand = ref('')
+const workspaceCurlError = ref('')
 const blankWorkspaceCustomRequest = (): WorkspaceCustomRequestDraft => ({
   name: '',
   method: 'GET',
   url: '',
   category: '自定义',
   description: '',
+  addToCatalog: false,
 })
 const workspaceCustomRequest = ref<WorkspaceCustomRequestDraft>(blankWorkspaceCustomRequest())
 
@@ -404,20 +411,21 @@ const systemApis = computed(() =>
   })),
 )
 const apis = computed<ApiItem[]>(() => [...systemApis.value, ...userApis.value])
+const catalogApis = computed(() => apis.value.filter((api) => api.catalogVisible !== false))
 const selectedApi = computed(() => apis.value.find((api) => api.id === selectedId.value) ?? null)
-const featuredApis = computed(() => apis.value.filter((api) => api.featured).slice(0, 6))
-const pinnedCount = computed(() => apis.value.filter((api) => api.pinned).length)
+const featuredApis = computed(() => catalogApis.value.filter((api) => api.featured).slice(0, 6))
+const pinnedCount = computed(() => catalogApis.value.filter((api) => api.pinned).length)
 
 const categoryCounts = computed(() => {
   const counts = new Map<string, number>()
-  for (const api of apis.value) counts.set(api.category, (counts.get(api.category) ?? 0) + 1)
+  for (const api of catalogApis.value) counts.set(api.category, (counts.get(api.category) ?? 0) + 1)
   return counts
 })
 const categories = computed(() =>
   [...categoryCounts.value.keys()].sort((a, b) => a.localeCompare(b)),
 )
 const categoryOptions = computed<SelectOption[]>(() => [
-  { value: 'all', label: `全部分类 · ${apis.value.length}` },
+  { value: 'all', label: `全部分类 · ${catalogApis.value.length}` },
   ...categories.value.map((category) => ({
     value: category,
     label: `${category} · ${categoryCounts.value.get(category) ?? 0}`,
@@ -428,7 +436,7 @@ const filteredApis = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   const recentOrder = new Map(recentIds.value.map((id, index) => [id, index]))
 
-  return apis.value
+  return catalogApis.value
     .filter((api) => {
       if (selectedCategory.value !== 'all' && api.category !== selectedCategory.value) return false
       if (catalogScope.value === 'featured' && !api.featured) return false
@@ -511,7 +519,7 @@ const workspaceRuntimeVariables = computed<CollectionRuntimeVariable[]>(() => {
 })
 const workspaceCatalogApis = computed(() => {
   const query = workspacePickerSearch.value.trim().toLowerCase()
-  return apis.value.filter((api) => {
+  return catalogApis.value.filter((api) => {
     if (workspacePickerMethod.value !== 'all' && api.method !== workspacePickerMethod.value)
       return false
     if (!query) return true
@@ -538,6 +546,14 @@ const workspacePickerSelectionCount = computed(() =>
     ? workspaceSelectedApiIds.value.length
     : workspaceSelectedSavedIds.value.length,
 )
+const workspaceCurlPreview = computed<ParsedCurlRequest | null>(() => {
+  if (!workspaceCurlCommand.value.trim()) return null
+  try {
+    return parseCurlCommand(workspaceCurlCommand.value)
+  } catch {
+    return null
+  }
+})
 const currentUrl = computed(() =>
   selectedApi.value
     ? resolveVariables(buildRequestUrl(selectedApi.value, paramValues.value), activeVariables.value)
@@ -1068,10 +1084,18 @@ function cancelWorkspaceCollectionCreation() {
   showNewCollectionInput.value = false
 }
 
+function removeUnreferencedWorkspaceApis() {
+  const referencedApiIds = new Set(savedRequests.value.map((request) => request.apiId))
+  userApis.value = userApis.value.filter(
+    (api) => api.catalogVisible !== false || referencedApiIds.has(api.id),
+  )
+}
+
 function removeCollection(id: string) {
   if (collections.value.length <= 1) return
   collections.value = collections.value.filter((item) => item.id !== id)
   savedRequests.value = savedRequests.value.filter((item) => item.collectionId !== id)
+  removeUnreferencedWorkspaceApis()
   if (activeCollectionId.value === id) activeCollectionId.value = collections.value[0].id
 }
 
@@ -1194,20 +1218,33 @@ function appendWorkspaceRequests(requests: SavedRequest[]) {
   showWorkspaceRequestPicker.value = false
 }
 
+function resetWorkspaceCustomRequest() {
+  workspaceCustomRequest.value = blankWorkspaceCustomRequest()
+  workspaceCustomErrors.value = {}
+  workspaceCurlCommand.value = ''
+  workspaceCurlError.value = ''
+}
+
 function openWorkspaceRequestPicker(tab: WorkspacePickerTab = 'catalog') {
   workspacePickerTab.value = tab
   workspacePickerSearch.value = ''
   workspacePickerMethod.value = 'all'
   workspaceSelectedApiIds.value = []
   workspaceSelectedSavedIds.value = []
-  workspaceCustomErrors.value = {}
-  workspaceCustomRequest.value = blankWorkspaceCustomRequest()
+  workspaceCustomMode.value = 'form'
+  resetWorkspaceCustomRequest()
   showWorkspaceRequestPicker.value = true
 }
 
 function selectWorkspacePickerTab(tab: WorkspacePickerTab) {
   workspacePickerTab.value = tab
   workspacePickerSearch.value = ''
+}
+
+function selectWorkspaceCustomMode(mode: WorkspaceCustomMode) {
+  workspaceCustomMode.value = mode
+  workspaceCustomErrors.value = {}
+  workspaceCurlError.value = ''
 }
 
 function handleWorkspacePickerKeydown(event: KeyboardEvent) {
@@ -1266,6 +1303,17 @@ function collectionNameForSavedRequest(saved: SavedRequest) {
   )
 }
 
+function addCreatedWorkspaceRequest(api: ApiItem, saved = createSavedRequestFromApi(api)) {
+  userApis.value.push(api)
+  appendWorkspaceRequests([saved])
+  notify(
+    'success',
+    api.catalogVisible === false
+      ? '已添加工作区请求「' + api.name + '」'
+      : '已添加请求「' + api.name + '」，并保存到 API 目录',
+  )
+}
+
 function createWorkspaceCustomRequest() {
   const draft = workspaceCustomRequest.value
   const errors: Record<string, string> = {}
@@ -1290,12 +1338,44 @@ function createWorkspaceCustomRequest() {
     auth: 'none',
     cors: 'unknown',
     userCreated: true,
+    catalogVisible: draft.addToCatalog,
     createdAt: new Date().toISOString(),
     pinned: false,
   }
-  userApis.value.push(api)
-  appendWorkspaceRequests([createSavedRequestFromApi(api)])
-  notify('success', `已创建并添加请求「${name}」`)
+  addCreatedWorkspaceRequest(api)
+}
+
+function createWorkspaceCurlRequest() {
+  workspaceCurlError.value = ''
+  let parsed: ParsedCurlRequest
+  try {
+    parsed = parseCurlCommand(workspaceCurlCommand.value)
+  } catch (reason) {
+    workspaceCurlError.value = reason instanceof Error ? reason.message : '无法解析 cURL 命令'
+    return
+  }
+
+  const draft = workspaceCustomRequest.value
+  const api: ApiItem = {
+    id: crypto.randomUUID(),
+    name: draft.name.trim() || parsed.suggestedName,
+    url: parsed.url,
+    method: parsed.method,
+    category: draft.category.trim() || '自定义',
+    description: '从 cURL 导入',
+    params: [],
+    auth: 'none',
+    cors: 'unknown',
+    userCreated: true,
+    catalogVisible: draft.addToCatalog,
+    createdAt: new Date().toISOString(),
+    pinned: false,
+  }
+  const saved = createSavedRequestFromApi(api)
+  saved.headers = parsed.headers.map((header) => createHeader(header.name, header.value))
+  saved.body = parsed.body
+  if (parsed.basicAuth) saved.auth = { type: 'basic', ...parsed.basicAuth }
+  addCreatedWorkspaceRequest(api, saved)
 }
 
 function openSavedRequest(saved: SavedRequest) {
@@ -1321,6 +1401,7 @@ function openSavedRequest(saved: SavedRequest) {
 
 function removeSavedRequest(id: string) {
   savedRequests.value = savedRequests.value.filter((item) => item.id !== id)
+  removeUnreferencedWorkspaceApis()
   collectionResults.value = collectionResults.value.filter((item) => item.id !== id)
   if (selectedWorkspaceRequestId.value === id) {
     selectedWorkspaceRequestId.value = activeCollectionRequests.value[0]?.id || null
@@ -2003,7 +2084,7 @@ onBeforeUnmount(() => {
         <div v-if="!selectedApi && !showAddForm" class="overview-screen">
           <section class="stats-strip" aria-label="API 目录统计">
             <div>
-              <span>接口总数</span><strong>{{ apis.length }}</strong
+              <span>接口总数</span><strong>{{ catalogApis.length }}</strong
               ><small>系统 + 自定义</small>
             </div>
             <div>
@@ -3413,7 +3494,7 @@ onBeforeUnmount(() => {
                   @click="selectWorkspacePickerTab('catalog')"
                 >
                   API 目录
-                  <span>{{ apis.length }}</span>
+                  <span>{{ catalogApis.length }}</span>
                 </button>
                 <button
                   type="button"
@@ -3561,67 +3642,144 @@ onBeforeUnmount(() => {
               <form
                 v-else
                 class="workspace-custom-request-form"
-                @submit.prevent="createWorkspaceCustomRequest"
+                @submit.prevent="
+                  workspaceCustomMode === 'form'
+                    ? createWorkspaceCustomRequest()
+                    : createWorkspaceCurlRequest()
+                "
               >
                 <div class="custom-request-heading">
                   <div>
                     <strong>快速创建</strong>
-                    <p>创建后会同时保存到 API 目录和当前集合。</p>
+                    <p>手动配置请求，或者粘贴现成的 cURL。</p>
                   </div>
+                  <nav class="custom-request-mode" aria-label="自定义请求创建方式">
+                    <button
+                      type="button"
+                      :class="{ active: workspaceCustomMode === 'form' }"
+                      @click="selectWorkspaceCustomMode('form')"
+                    >
+                      手动配置
+                    </button>
+                    <button
+                      type="button"
+                      :class="{ active: workspaceCustomMode === 'curl' }"
+                      @click="selectWorkspaceCustomMode('curl')"
+                    >
+                      导入 cURL
+                    </button>
+                  </nav>
                 </div>
-                <label>
-                  <span>请求名称 <b>*</b></span>
-                  <input
-                    v-model="workspaceCustomRequest.name"
-                    type="text"
-                    placeholder="例如：获取当前用户"
-                  />
-                  <small v-if="workspaceCustomErrors.name">{{ workspaceCustomErrors.name }}</small>
-                </label>
-                <div class="custom-request-url-row">
+
+                <template v-if="workspaceCustomMode === 'form'">
                   <label>
-                    <span>方法</span>
-                    <CustomSelect
-                      v-model="workspaceCustomRequest.method"
-                      :options="methodOptions"
-                      size="sm"
-                      block
-                    />
-                  </label>
-                  <label>
-                    <span>请求地址 <b>*</b></span>
+                    <span>请求名称 <b>*</b></span>
                     <input
-                      v-model="workspaceCustomRequest.url"
+                      v-model="workspaceCustomRequest.name"
                       type="text"
-                      placeholder="https://api.example.com/users"
+                      placeholder="例如：获取当前用户"
                     />
-                    <small v-if="workspaceCustomErrors.url">{{ workspaceCustomErrors.url }}</small>
+                    <small v-if="workspaceCustomErrors.name">{{
+                      workspaceCustomErrors.name
+                    }}</small>
                   </label>
-                </div>
-                <label>
-                  <span>分类</span>
-                  <input
-                    v-model="workspaceCustomRequest.category"
-                    type="text"
-                    placeholder="自定义"
-                  />
-                </label>
-                <label>
-                  <span>用途说明</span>
-                  <textarea
-                    v-model="workspaceCustomRequest.description"
-                    rows="4"
-                    placeholder="这个请求会完成什么任务？"
-                  ></textarea>
+                  <div class="custom-request-url-row">
+                    <label>
+                      <span>方法</span>
+                      <CustomSelect
+                        v-model="workspaceCustomRequest.method"
+                        :options="methodOptions"
+                        size="sm"
+                        block
+                      />
+                    </label>
+                    <label>
+                      <span>请求地址 <b>*</b></span>
+                      <input
+                        v-model="workspaceCustomRequest.url"
+                        type="text"
+                        placeholder="https://api.example.com/users"
+                      />
+                      <small v-if="workspaceCustomErrors.url">{{
+                        workspaceCustomErrors.url
+                      }}</small>
+                    </label>
+                  </div>
+                  <label>
+                    <span>分类</span>
+                    <input
+                      v-model="workspaceCustomRequest.category"
+                      type="text"
+                      placeholder="自定义"
+                    />
+                  </label>
+                  <label>
+                    <span>用途说明</span>
+                    <textarea
+                      v-model="workspaceCustomRequest.description"
+                      rows="4"
+                      placeholder="这个请求会完成什么任务？"
+                    ></textarea>
+                  </label>
+                </template>
+
+                <template v-else>
+                  <label class="curl-command-field">
+                    <span>cURL 命令 <b>*</b></span>
+                    <textarea
+                      v-model="workspaceCurlCommand"
+                      rows="8"
+                      spellcheck="false"
+                      placeholder="curl 'https://api.example.com/users' -H 'Authorization: Bearer ...'"
+                      @input="workspaceCurlError = ''"
+                    ></textarea>
+                    <small v-if="workspaceCurlError">{{ workspaceCurlError }}</small>
+                  </label>
+                  <div v-if="workspaceCurlPreview" class="curl-import-preview">
+                    <span class="method-chip" :class="workspaceCurlPreview.method.toLowerCase()">{{
+                      workspaceCurlPreview.method
+                    }}</span>
+                    <code>{{ workspaceCurlPreview.url }}</code>
+                    <small>
+                      {{ workspaceCurlPreview.headers.length }} Headers ·
+                      {{ workspaceCurlPreview.basicAuth ? 'Basic Auth ·' : '' }}
+                      {{ workspaceCurlPreview.body ? '包含请求体' : '无请求体' }}
+                    </small>
+                  </div>
+                  <div class="curl-meta-row">
+                    <label>
+                      <span>请求名称</span>
+                      <input
+                        v-model="workspaceCustomRequest.name"
+                        type="text"
+                        :placeholder="workspaceCurlPreview?.suggestedName || '自动生成'"
+                      />
+                    </label>
+                    <label>
+                      <span>分类</span>
+                      <input
+                        v-model="workspaceCustomRequest.category"
+                        type="text"
+                        placeholder="自定义"
+                      />
+                    </label>
+                  </div>
+                </template>
+
+                <label class="catalog-save-option">
+                  <input v-model="workspaceCustomRequest.addToCatalog" type="checkbox" />
+                  <span></span>
+                  <div>
+                    <strong>同时添加到 API 目录</strong>
+                    <small>关闭时只在当前工作区和复用请求中可见</small>
+                  </div>
                 </label>
                 <footer>
-                  <button
-                    type="button"
-                    @click="workspaceCustomRequest = blankWorkspaceCustomRequest()"
-                  >
-                    重置
+                  <button type="button" @click="resetWorkspaceCustomRequest">重置</button>
+                  <button class="primary" type="submit">
+                    <Plus :size="15" />
+                    {{ workspaceCustomMode === 'form' ? '创建并添加' : '导入并添加' }}
                   </button>
-                  <button class="primary" type="submit"><Plus :size="15" /> 创建并添加</button>
                 </footer>
               </form>
 
