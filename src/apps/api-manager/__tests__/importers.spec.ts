@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { importApiDocument } from '../importers'
-import { applyAuth, extractResponseVariables, getJsonPath } from '../collection-runner'
+import {
+  applyAuth,
+  evaluateResponseExtractions,
+  extractResponseVariables,
+  getJsonPath,
+} from '../collection-runner'
 
 describe('API document import', () => {
   it('imports OpenAPI 3 operations and examples', () => {
@@ -78,5 +83,39 @@ describe('collection variables and auth', () => {
         { id: '1', path: '$.data.token', variable: 'accessToken', enabled: true },
       ]),
     ).toEqual([{ variable: 'accessToken', value: 'abc' }])
+  })
+
+  it('保留每条提取规则的运行结果和失败原因', () => {
+    expect(
+      evaluateResponseExtractions({ data: { token: 'abc' } }, [
+        { id: 'success', path: '$.data.token', variable: 'accessToken', enabled: true },
+        { id: 'missing', path: '$.data.user.id', variable: 'userId', enabled: true },
+        { id: 'invalid', path: '', variable: 'emptyPath', enabled: true },
+        { id: 'disabled', path: '$.data.token', variable: 'ignored', enabled: false },
+      ]),
+    ).toEqual([
+      {
+        id: 'success',
+        path: '$.data.token',
+        variable: 'accessToken',
+        passed: true,
+        value: 'abc',
+        detail: '提取成功',
+      },
+      {
+        id: 'missing',
+        path: '$.data.user.id',
+        variable: 'userId',
+        passed: false,
+        detail: '响应中未找到 $.data.user.id',
+      },
+      {
+        id: 'invalid',
+        path: '',
+        variable: 'emptyPath',
+        passed: false,
+        detail: '请填写响应字段',
+      },
+    ])
   })
 })

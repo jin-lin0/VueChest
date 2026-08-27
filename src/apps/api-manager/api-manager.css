@@ -4259,6 +4259,226 @@ svg {
   font-style: normal;
 }
 
+.flow-inline-pairs {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 6px;
+}
+
+.flow-inline-pairs code {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(100px, 0.35fr) minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: var(--bg-subtle);
+  overflow-wrap: anywhere;
+}
+
+.flow-inline-pairs code strong {
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.flow-request-summary > .flow-request-body-row {
+  align-items: flex-start;
+}
+
+.flow-request-body-row pre {
+  min-width: 0;
+  max-height: 170px;
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #111a2b;
+  color: #d4e0f7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.flow-config-hint {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(84, 68, 232, 0.06);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.flow-response-result {
+  min-height: 0;
+  padding: 12px 16px 18px;
+}
+
+.flow-result-metrics {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.flow-result-metrics > span:not(.status-pill) {
+  padding-left: 10px;
+  border-left: 1px solid var(--border-light);
+}
+
+.flow-result-toolbar {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 5px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.flow-result-toolbar > div {
+  display: flex;
+  align-self: stretch;
+  gap: 16px;
+}
+
+.flow-result-toolbar > div > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flow-result-toolbar > div > button.active {
+  border-bottom-color: var(--lab-violet);
+  color: var(--lab-violet);
+}
+
+.flow-result-toolbar button span {
+  font-size: 10px;
+}
+
+.flow-result-toolbar :deep(.copy-btn) {
+  padding: 4px 8px;
+}
+
+.flow-response-body {
+  max-height: 260px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 13px 14px;
+  border-radius: 9px;
+  background: #111a2b;
+  color: #d4e0f7;
+  font:
+    12px/1.65 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.flow-response-headers {
+  display: grid;
+  max-height: 250px;
+  overflow: auto;
+  margin-top: 8px;
+}
+
+.flow-response-headers > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 9px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 12px;
+}
+
+.flow-response-headers strong {
+  color: var(--text-primary);
+}
+
+.flow-response-headers code {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.flow-response-headers p,
+.flow-result-empty {
+  margin: 0;
+  padding: 24px 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.flow-result-warning {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: rgba(213, 139, 33, 0.09);
+  color: var(--lab-amber);
+  font-size: 11px;
+}
+
+.flow-result-error,
+.flow-result-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 10px;
+  padding: 16px;
+  border-radius: 9px;
+  background: var(--bg-subtle);
+}
+
+.flow-result-error {
+  background: var(--danger-bg);
+}
+
+.flow-result-error > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 900;
+}
+
+.flow-result-error strong {
+  color: var(--danger);
+}
+
+.flow-result-error p,
+.flow-result-placeholder p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.flow-result-placeholder {
+  color: var(--lab-violet);
+}
+
+.flow-result-placeholder strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
 .flow-rule-editor {
   padding: 12px 16px 18px;
 }
@@ -4322,6 +4542,93 @@ svg {
   font-weight: 700;
 }
 
+.flow-rule-run-results {
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+}
+
+.flow-rule-run-results > header {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  background: var(--bg-subtle);
+}
+
+.flow-rule-run-results > header strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.flow-rule-run-results > header span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.flow-rule-run-results > div {
+  display: grid;
+  grid-template-columns: 25px minmax(140px, 0.7fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-top: 1px solid var(--border-light);
+}
+
+.flow-rule-run-results > div > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.flow-rule-run-results > div.passed > span {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.flow-rule-run-results > div.failed > span {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.flow-rule-run-results > div > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.flow-rule-run-results strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.flow-rule-run-results small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.flow-rule-run-results code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-rule-run-results > p {
+  margin: 0;
+  padding: 14px 11px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .flow-variable-sidebar {
   min-height: 0;
   overflow: auto;
@@ -4360,6 +4667,58 @@ svg {
   background: var(--bg-card);
   color: var(--text-muted);
   font-size: 11px;
+}
+
+.flow-run-overview > header > span.failed {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.flow-overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  padding: 0 12px 9px;
+}
+
+.flow-overview-metrics > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+
+.flow-overview-metrics span {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.flow-overview-metrics strong {
+  color: var(--success);
+  font-size: 13px;
+}
+
+.flow-overview-metrics strong.failed {
+  color: var(--danger);
+}
+
+.flow-final-result-button {
+  display: flex;
+  width: calc(100% - 24px);
+  height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 12px 12px;
+  padding: 0 9px;
+  border: 1px solid rgba(84, 68, 232, 0.22);
+  border-radius: 8px;
+  background: rgba(84, 68, 232, 0.06);
+  color: var(--lab-violet);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .flow-runtime-list {

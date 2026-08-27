@@ -33,9 +33,11 @@ import type { ApiItem } from './defaults'
 import { importApiDocument } from './importers'
 import {
   applyAuth,
+  evaluateResponseExtractions,
   extractResponseVariables,
   resolvedHeaders,
   type AuthConfig,
+  type ExtractionResult,
   type ExtractionRule,
 } from './collection-runner'
 import {
@@ -131,10 +133,26 @@ interface CollectionRunResult {
   id: string
   name: string
   status?: number
+  statusText?: string
   time: number
   ok: boolean
   testsPassed: number
   testsTotal: number
+  request: {
+    method: ApiItem['method']
+    url: string
+    headers: Record<string, string>
+    body: string
+  }
+  response?: {
+    headers: Record<string, string>
+    body: string
+    contentType: string
+    size: number
+    truncated: boolean
+  }
+  assertions: AssertionResult[]
+  extractions: ExtractionResult[]
   error?: string
 }
 
@@ -150,7 +168,8 @@ interface SavedRequestRun {
   extracted: Array<{ variable: string; value: string }>
 }
 
-type WorkspaceStepTab = 'request' | 'extract' | 'assertions'
+type WorkspaceStepTab = 'request' | 'response' | 'extract' | 'assertions'
+type WorkspaceResponseSection = 'body' | 'headers'
 type WorkspacePickerTab = 'catalog' | 'saved' | 'custom'
 
 interface WorkspaceCustomRequestDraft {
@@ -222,7 +241,8 @@ const collectionRunning = ref(false)
 const collectionResults = ref<CollectionRunResult[]>([])
 const collectionRuntimeVariables = ref<CollectionRuntimeVariable[]>([])
 const selectedWorkspaceRequestId = ref<string | null>(null)
-const workspaceStepTab = ref<WorkspaceStepTab>('extract')
+const workspaceStepTab = ref<WorkspaceStepTab>('request')
+const workspaceResponseSection = ref<WorkspaceResponseSection>('body')
 const runningRequestId = ref<string | null>(null)
 const showNewCollectionInput = ref(false)
 const draggedWorkspaceRequestId = ref<string | null>(null)
@@ -457,6 +477,22 @@ const selectedWorkspaceRequest = computed(() =>
 const selectedWorkspaceApi = computed(() =>
   apis.value.find((item) => item.id === selectedWorkspaceRequest.value?.apiId),
 )
+const selectedWorkspaceResult = computed(() =>
+  collectionResults.value.find((item) => item.id === selectedWorkspaceRequestId.value),
+)
+const finalCollectionResult = computed(() => collectionResults.value.at(-1))
+const collectionTotalTime = computed(() =>
+  collectionResults.value.reduce((total, item) => total + item.time, 0),
+)
+const selectedWorkspaceResponseBody = computed(() => {
+  const body = selectedWorkspaceResult.value?.response?.body || ''
+  if (!body) return ''
+  try {
+    return JSON.stringify(JSON.parse(body), null, 2)
+  } catch {
+    return body
+  }
+})
 const workspaceRuntimeVariables = computed<CollectionRuntimeVariable[]>(() => {
   if (collectionRuntimeVariables.value.length) return collectionRuntimeVariables.value
   const declared = new Map<string, CollectionRuntimeVariable>()
@@ -1013,7 +1049,7 @@ function addCollection() {
 
 function selectWorkspaceCollection(id: string) {
   activeCollectionId.value = id
-  workspaceStepTab.value = 'extract'
+  workspaceStepTab.value = 'request'
   collectionContextMenu.value = null
 }
 
@@ -1329,6 +1365,20 @@ function apiForSavedRequest(saved: SavedRequest) {
   return apis.value.find((item) => item.id === saved.apiId)
 }
 
+function selectWorkspaceStep(id: string) {
+  selectedWorkspaceRequestId.value = id
+  workspaceResponseSection.value = 'body'
+  workspaceStepTab.value = collectionResults.value.some((item) => item.id === id)
+    ? 'response'
+    : 'request'
+}
+
+function showFinalCollectionResponse() {
+  const result = finalCollectionResult.value
+  if (!result) return
+  selectWorkspaceStep(result.id)
+}
+
 function authVariableValues(auth?: AuthConfig) {
   if (!auth || auth.type === 'none') return []
   if (auth.type === 'bearer') return [auth.token]
@@ -1533,18 +1583,39 @@ async function runSavedRequest(
         ok: false,
         testsPassed: 0,
         testsTotal: 0,
+        request: { method: 'GET', url: '', headers: {}, body: '' },
+        assertions: [],
+        extractions: [],
         error: '原始 API 已不存在',
       },
       extracted: [],
     }
   }
 
-  const rawUrl = resolveVariables(buildRequestUrl(api, saved.paramValues), variables)
-  const baseHeaders = resolvedHeaders(saved.headers, variables)
-  const authenticated = applyAuth(rawUrl, baseHeaders, saved.auth || { type: 'none' }, variables)
-  const body = resolveVariables(saved.body, variables)
   const startedAt = performance.now()
+  let requestSnapshot: CollectionRunResult['request'] = {
+    method: api.method,
+    url: api.url,
+    headers: {},
+    body: '',
+  }
   try {
+    const rawUrl = resolveVariables(buildRequestUrl(api, saved.paramValues), variables)
+    const baseHeaders = resolvedHeaders(saved.headers, variables)
+    const authenticated = applyAuth(rawUrl, baseHeaders, saved.auth || { type: 'none' }, variables)
+    const body = resolveVariables(saved.body, variables)
+    const hasBody = api.method !== 'GET' && body.trim() !== ''
+    const hasContentType = Object.keys(authenticated.headers).some(
+      (name) => name.toLowerCase() === 'content-type',
+    )
+    if (hasBody && !hasContentType) authenticated.headers['Content-Type'] = 'application/json'
+    requestSnapshot = {
+      method: api.method,
+      url: authenticated.url,
+      headers: { ...authenticated.headers },
+      body: hasBody ? body : '',
+    }
+
     let response: Response | null = null
     const attempts = Math.min(3, Math.max(0, saved.retryCount || 0)) + 1
     for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -1552,7 +1623,7 @@ async function runSavedRequest(
         response = await fetch(authenticated.url, {
           method: api.method,
           headers: authenticated.headers,
-          body: api.method !== 'GET' && body.trim() ? body : undefined,
+          body: hasBody ? body : undefined,
           signal: AbortSignal.timeout(saved.timeoutMs || REQUEST_TIMEOUT_MS),
         })
         if (response.status < 500 || attempt === attempts - 1) break
@@ -1562,7 +1633,27 @@ async function runSavedRequest(
       }
     }
     if (!response) throw new Error('请求没有返回响应')
-    const text = await response.text()
+    const contentType = response.headers.get('content-type') || ''
+    const responseHeaders: Record<string, string> = {}
+    response.headers.forEach((value, name) => {
+      responseHeaders[name] = value
+    })
+
+    let text = ''
+    let previewBody = ''
+    let size = 0
+    let truncated = false
+    if (contentType.startsWith('image/') || contentType.includes('application/octet-stream')) {
+      const binary = await response.arrayBuffer()
+      size = binary.byteLength
+      previewBody = `[二进制响应 · ${contentType || '未知类型'} · ${formatBytes(size)}]`
+    } else {
+      text = await response.text()
+      const encoded = new TextEncoder().encode(text)
+      size = encoded.byteLength
+      truncated = size > MAX_PREVIEW_BYTES
+      previewBody = truncated ? new TextDecoder().decode(encoded.slice(0, MAX_PREVIEW_BYTES)) : text
+    }
     let data: unknown = text
     try {
       data = JSON.parse(text)
@@ -1573,20 +1664,45 @@ async function runSavedRequest(
       time: elapsed,
       body: text,
     })
-    const extracted = extractResponseVariables(data, saved.extractions || [])
+    const extractionResults = evaluateResponseExtractions(data, saved.extractions || [])
+    const extracted = extractionResults
+      .filter(
+        (item): item is ExtractionResult & { value: string } =>
+          item.passed && item.value !== undefined,
+      )
+      .map((item) => ({ variable: item.variable, value: item.value }))
     return {
       result: {
         id: saved.id,
         name: saved.name,
         status: response.status,
+        statusText: response.statusText,
         time: elapsed,
         ok: response.ok && tests.every((item) => item.passed),
         testsPassed: tests.filter((item) => item.passed).length,
         testsTotal: tests.length,
+        request: requestSnapshot,
+        response: {
+          headers: responseHeaders,
+          body: previewBody,
+          contentType,
+          size,
+          truncated,
+        },
+        assertions: tests,
+        extractions: extractionResults,
       },
       extracted,
     }
   } catch (reason) {
+    const message =
+      reason instanceof DOMException && reason.name === 'TimeoutError'
+        ? `请求超过 ${Math.round((saved.timeoutMs || REQUEST_TIMEOUT_MS) / 1000)} 秒，已自动取消`
+        : reason instanceof TypeError
+          ? '浏览器未能完成请求，请检查网络、URL 与目标服务的 CORS 配置'
+          : reason instanceof Error
+            ? reason.message
+            : '请求失败'
     return {
       result: {
         id: saved.id,
@@ -1595,7 +1711,10 @@ async function runSavedRequest(
         ok: false,
         testsPassed: 0,
         testsTotal: saved.assertions.filter((item) => item.enabled).length,
-        error: reason instanceof Error ? reason.message : '请求失败',
+        request: requestSnapshot,
+        assertions: [],
+        extractions: [],
+        error: message,
       },
       extracted: [],
     }
@@ -1619,6 +1738,8 @@ async function runActiveCollection() {
       selectedWorkspaceRequestId.value = request.id
       const execution = await runSavedRequest(request, runtimeContext)
       collectionResults.value.push(execution.result)
+      workspaceStepTab.value = 'response'
+      workspaceResponseSection.value = 'body'
       runtimeContext = mergeRuntimeVariables(
         runtimeContext,
         execution.extracted.map((item) => ({ key: item.variable, value: item.value })),
@@ -1653,6 +1774,11 @@ function exportCollectionReport() {
   const payload = {
     exportedAt: new Date().toISOString(),
     collection: collections.value.find((item) => item.id === activeCollectionId.value)?.name,
+    summary: {
+      passed: collectionResults.value.filter((item) => item.ok).length,
+      total: collectionResults.value.length,
+      time: collectionTotalTime.value,
+    },
     results: collectionResults.value,
     runtimeVariables: collectionRuntimeVariables.value,
   }
@@ -2729,7 +2855,7 @@ onBeforeUnmount(() => {
                     failed: collectionResults.find((item) => item.id === saved.id && !item.ok),
                   }"
                   draggable="true"
-                  @click="selectedWorkspaceRequestId = saved.id"
+                  @click="selectWorkspaceStep(saved.id)"
                   @dragstart="draggedWorkspaceRequestId = saved.id"
                   @dragend="draggedWorkspaceRequestId = null"
                   @dragover.prevent
@@ -2763,6 +2889,7 @@ onBeforeUnmount(() => {
                       }"
                     >
                       {{ collectionResults.find((item) => item.id === saved.id)?.status || 'ERR' }}
+                      · {{ collectionResults.find((item) => item.id === saved.id)?.time }}ms
                     </span>
                     <button
                       type="button"
@@ -2837,13 +2964,23 @@ onBeforeUnmount(() => {
                 <ExternalLink :size="14" /> 完整编辑
               </button>
             </header>
-            <nav class="flow-inspector-tabs" aria-label="请求步骤配置">
+            <nav class="flow-inspector-tabs" aria-label="请求步骤详情">
               <button
                 type="button"
                 :class="{ active: workspaceStepTab === 'request' }"
                 @click="workspaceStepTab = 'request'"
               >
                 请求
+              </button>
+              <button
+                type="button"
+                :class="{ active: workspaceStepTab === 'response' }"
+                @click="workspaceStepTab = 'response'"
+              >
+                响应
+                <span v-if="selectedWorkspaceResult">{{
+                  selectedWorkspaceResult.status || 'ERR'
+                }}</span>
               </button>
               <button
                 type="button"
@@ -2863,7 +3000,10 @@ onBeforeUnmount(() => {
 
             <div v-if="workspaceStepTab === 'request'" class="flow-request-summary">
               <div>
-                <span>URL</span><code>{{ selectedWorkspaceApi?.url }}</code>
+                <span>实际 URL</span
+                ><code>{{
+                  selectedWorkspaceResult?.request.url || selectedWorkspaceApi?.url
+                }}</code>
               </div>
               <div>
                 <span>使用变量</span>
@@ -2875,6 +3015,119 @@ onBeforeUnmount(() => {
                   <small>来自{{ variableSource(selectedWorkspaceRequest, variable) }}</small>
                 </b>
                 <em v-if="!requestVariableReferences(selectedWorkspaceRequest).length">无</em>
+              </div>
+              <div v-if="selectedWorkspaceResult">
+                <span>请求头</span>
+                <div
+                  v-if="Object.keys(selectedWorkspaceResult.request.headers).length"
+                  class="flow-inline-pairs"
+                >
+                  <code v-for="(value, name) in selectedWorkspaceResult.request.headers" :key="name"
+                    ><strong>{{ name }}</strong
+                    >{{ value }}</code
+                  >
+                </div>
+                <em v-else>无</em>
+              </div>
+              <div v-if="selectedWorkspaceResult?.request.body" class="flow-request-body-row">
+                <span>请求体</span>
+                <pre><code>{{ selectedWorkspaceResult.request.body }}</code></pre>
+              </div>
+              <p v-if="!selectedWorkspaceResult" class="flow-config-hint">
+                当前显示请求模板。运行流程后会显示变量替换和鉴权处理后的实际请求。
+              </p>
+            </div>
+
+            <div v-else-if="workspaceStepTab === 'response'" class="flow-response-result">
+              <div v-if="selectedWorkspaceResult" class="flow-result-metrics">
+                <span
+                  class="status-pill"
+                  :class="
+                    selectedWorkspaceResult.status
+                      ? getStatusTone(selectedWorkspaceResult.status)
+                      : 'danger'
+                  "
+                >
+                  <i></i>{{ selectedWorkspaceResult.status || 'ERR' }}
+                  {{ selectedWorkspaceResult.statusText || '' }}
+                </span>
+                <span>{{ selectedWorkspaceResult.time }} ms</span>
+                <span>{{ formatBytes(selectedWorkspaceResult.response?.size) }}</span>
+                <span>
+                  断言 {{ selectedWorkspaceResult.testsPassed }}/{{
+                    selectedWorkspaceResult.testsTotal
+                  }}
+                </span>
+              </div>
+
+              <div v-if="selectedWorkspaceResult?.error" class="flow-result-error">
+                <span>!</span>
+                <div>
+                  <strong>请求没有完成</strong>
+                  <p>{{ selectedWorkspaceResult.error }}</p>
+                </div>
+              </div>
+
+              <template v-else-if="selectedWorkspaceResult?.response">
+                <div class="flow-result-toolbar">
+                  <div>
+                    <button
+                      type="button"
+                      :class="{ active: workspaceResponseSection === 'body' }"
+                      @click="workspaceResponseSection = 'body'"
+                    >
+                      响应体
+                    </button>
+                    <button
+                      type="button"
+                      :class="{ active: workspaceResponseSection === 'headers' }"
+                      @click="workspaceResponseSection = 'headers'"
+                    >
+                      Headers
+                      <span>{{
+                        Object.keys(selectedWorkspaceResult.response.headers).length
+                      }}</span>
+                    </button>
+                  </div>
+                  <CopyButton
+                    v-if="workspaceResponseSection === 'body' && selectedWorkspaceResponseBody"
+                    :text="selectedWorkspaceResponseBody"
+                    label="复制响应"
+                    :icon="false"
+                    variant="mini"
+                  />
+                </div>
+                <div v-if="selectedWorkspaceResult.response.truncated" class="flow-result-warning">
+                  响应超过 512 KB，本面板和报告仅保留前 512 KB；断言与提取仍基于完整响应执行。
+                </div>
+                <pre
+                  v-if="workspaceResponseSection === 'body' && selectedWorkspaceResponseBody"
+                  class="flow-response-body"
+                ><code>{{ selectedWorkspaceResponseBody }}</code></pre>
+                <div
+                  v-else-if="workspaceResponseSection === 'headers'"
+                  class="flow-response-headers"
+                >
+                  <div
+                    v-for="(value, name) in selectedWorkspaceResult.response.headers"
+                    :key="name"
+                  >
+                    <strong>{{ name }}</strong
+                    ><code>{{ value }}</code>
+                  </div>
+                  <p v-if="!Object.keys(selectedWorkspaceResult.response.headers).length">
+                    响应没有返回 Header。
+                  </p>
+                </div>
+                <div v-else class="flow-result-empty">响应体为空</div>
+              </template>
+
+              <div v-else class="flow-result-placeholder">
+                <Workflow :size="24" />
+                <div>
+                  <strong>还没有运行结果</strong>
+                  <p>点击“运行流程”后，这里会显示该步骤的真实响应。</p>
+                </div>
               </div>
             </div>
 
@@ -2915,6 +3168,29 @@ onBeforeUnmount(() => {
               <button class="flow-add-rule" type="button" @click="addWorkspaceExtractionRule">
                 <Plus :size="15" /> 添加提取规则
               </button>
+              <section v-if="selectedWorkspaceResult" class="flow-rule-run-results">
+                <header>
+                  <strong>本次提取</strong>
+                  <span
+                    >{{
+                      selectedWorkspaceResult.extractions.filter((item) => item.passed).length
+                    }}/{{ selectedWorkspaceResult.extractions.length }} 成功</span
+                  >
+                </header>
+                <div
+                  v-for="item in selectedWorkspaceResult.extractions"
+                  :key="item.id"
+                  :class="item.passed ? 'passed' : 'failed'"
+                >
+                  <span>{{ item.passed ? '✓' : '×' }}</span>
+                  <div>
+                    <strong>{{ item.variable || '未命名变量' }}</strong>
+                    <small>{{ item.path || '未填写响应字段' }} · {{ item.detail }}</small>
+                  </div>
+                  <code v-if="item.passed">{{ item.value }}</code>
+                </div>
+                <p v-if="!selectedWorkspaceResult.extractions.length">没有启用的提取规则。</p>
+              </section>
             </div>
 
             <div v-else class="flow-rule-editor assertion-mode">
@@ -2942,11 +3218,65 @@ onBeforeUnmount(() => {
               <button class="flow-add-rule" type="button" @click="addWorkspaceAssertion">
                 <Plus :size="15" /> 添加断言
               </button>
+              <section v-if="selectedWorkspaceResult" class="flow-rule-run-results">
+                <header>
+                  <strong>本次断言</strong>
+                  <span
+                    >{{ selectedWorkspaceResult.testsPassed }}/{{
+                      selectedWorkspaceResult.testsTotal
+                    }}
+                    通过</span
+                  >
+                </header>
+                <div
+                  v-for="item in selectedWorkspaceResult.assertions"
+                  :key="item.id"
+                  :class="item.passed ? 'passed' : 'failed'"
+                >
+                  <span>{{ item.passed ? '✓' : '×' }}</span>
+                  <div>
+                    <strong>{{ item.label }}</strong
+                    ><small>{{ item.detail }}</small>
+                  </div>
+                </div>
+                <p v-if="!selectedWorkspaceResult.assertions.length">没有启用的断言。</p>
+              </section>
             </div>
           </section>
         </main>
 
         <aside class="flow-variable-sidebar">
+          <section v-if="collectionResults.length" class="flow-run-overview">
+            <header>
+              <div><Check :size="15" /><strong>运行结果</strong></div>
+              <span
+                :class="{
+                  failed: collectionResults.some((item) => !item.ok),
+                }"
+                >{{ collectionResults.filter((item) => item.ok).length }}/{{
+                  collectionResults.length
+                }}</span
+              >
+            </header>
+            <div class="flow-overview-metrics">
+              <div>
+                <span>总耗时</span><strong>{{ collectionTotalTime }} ms</strong>
+              </div>
+              <div>
+                <span>最终状态</span
+                ><strong :class="{ failed: !finalCollectionResult?.ok }">{{
+                  finalCollectionResult?.status || 'ERR'
+                }}</strong>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="flow-final-result-button"
+              @click="showFinalCollectionResponse"
+            >
+              查看最终响应 <ArrowRight :size="14" />
+            </button>
+          </section>
           <section>
             <header>
               <div><Variable :size="15" /><strong>本次运行</strong></div>

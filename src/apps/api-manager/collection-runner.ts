@@ -13,6 +13,15 @@ export interface ExtractionRule {
   enabled: boolean
 }
 
+export interface ExtractionResult {
+  id: string
+  path: string
+  variable: string
+  passed: boolean
+  value?: string
+  detail: string
+}
+
 export function applyAuth(
   url: string,
   headers: Record<string, string>,
@@ -55,18 +64,59 @@ export function getJsonPath(value: unknown, path: string): unknown {
   return current
 }
 
-export function extractResponseVariables(data: unknown, rules: ExtractionRule[]) {
+function serializeExtractedValue(value: unknown): string {
+  if (typeof value === 'string') return value
+  return JSON.stringify(value)
+}
+
+export function evaluateResponseExtractions(
+  data: unknown,
+  rules: ExtractionRule[],
+): ExtractionResult[] {
   return rules
-    .filter((rule) => rule.enabled && rule.variable.trim() && rule.path.trim())
-    .map((rule) => ({
-      variable: rule.variable.trim(),
-      value: getJsonPath(data, rule.path),
-    }))
-    .filter((item) => item.value !== undefined)
-    .map((item) => ({
-      variable: item.variable,
-      value: typeof item.value === 'string' ? item.value : JSON.stringify(item.value),
-    }))
+    .filter((rule) => rule.enabled)
+    .map((rule) => {
+      const path = rule.path.trim()
+      const variable = rule.variable.trim()
+      if (!path || !variable) {
+        return {
+          id: rule.id,
+          path,
+          variable,
+          passed: false,
+          detail: !path ? '请填写响应字段' : '请填写变量名',
+        }
+      }
+
+      const value = getJsonPath(data, path)
+      if (value === undefined) {
+        return {
+          id: rule.id,
+          path,
+          variable,
+          passed: false,
+          detail: `响应中未找到 ${path}`,
+        }
+      }
+
+      return {
+        id: rule.id,
+        path,
+        variable,
+        passed: true,
+        value: serializeExtractedValue(value),
+        detail: '提取成功',
+      }
+    })
+}
+
+export function extractResponseVariables(data: unknown, rules: ExtractionRule[]) {
+  return evaluateResponseExtractions(data, rules)
+    .filter(
+      (item): item is ExtractionResult & { value: string } =>
+        item.passed && item.value !== undefined,
+    )
+    .map((item) => ({ variable: item.variable, value: item.value }))
 }
 
 export function resolvedHeaders(headers: RequestHeader[], variables: EnvironmentVariable[]) {
