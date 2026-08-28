@@ -5,83 +5,37 @@ import { STORAGE_KEYS } from '@/config'
 import { api } from '@/lib/request'
 import { musicApi } from '@/lib/musicApi'
 import { useAuthStore } from '@/stores/auth'
+import {
+  formatMusicDuration as formatDuration,
+  parseLyrics,
+  parseMetingSong,
+  parseMusicAlbum as parseAlbum,
+  parseMusicArtist as parseArtist,
+  parseMusicPlaylist as parsePlaylist,
+  parseNeteaseSong,
+} from './music-parsers'
+import type {
+  Album,
+  Artist,
+  FavoriteGroup,
+  HotSearch,
+  LyricLine,
+  Playlist,
+  SearchSuggest,
+  Song,
+} from './music-types'
 
-export interface Song {
-  id: string
-  name: string
-  artists: string
-  album: string
-  coverUrl: string
-  url: string
-  server: string
-  duration?: number
-  fee?: number
-  mvId?: number
-  sq?: boolean
-  artistId?: string
-  albumId?: string
-}
-
-export interface Artist {
-  id: string
-  name: string
-  picUrl: string
-  musicSize?: number
-  albumSize?: number
-  briefDesc?: string
-}
-
-export interface Album {
-  id: string
-  name: string
-  picUrl: string
-  artist?: string
-  publishTime?: number
-  size?: number
-  description?: string
-  company?: string
-}
-
-export interface SuggestItem {
-  id: string
-  name: string
-  extra?: string
-  picUrl?: string
-}
-
-export interface SearchSuggest {
-  songs: SuggestItem[]
-  artists: SuggestItem[]
-  albums: SuggestItem[]
-}
-
-export interface HotSearch {
-  searchWord: string
-  score: number
-  iconUrl?: string
-  content?: string
-}
-
-export interface FavoriteGroup {
-  id: number
-  name: string
-  isDefault: boolean
-  songs: Song[]
-}
-
-export interface LyricLine {
-  time: number
-  text: string
-}
-
-export interface Playlist {
-  id: string
-  name: string
-  coverUrl: string
-  trackCount: number
-  description: string
-  server: string
-}
+export type {
+  Album,
+  Artist,
+  FavoriteGroup,
+  HotSearch,
+  LyricLine,
+  Playlist,
+  SearchSuggest,
+  Song,
+  SuggestItem,
+} from './music-types'
 
 export const useMusicStore = defineStore('music', () => {
   const searchQuery = ref('')
@@ -218,85 +172,6 @@ export const useMusicStore = defineStore('music', () => {
     saveSearchHistory()
   }
 
-  // 从 url 字段提取歌曲 ID
-  const extractId = (url: string): string => {
-    const match = url.match(/[?&]id=(\d+)/)
-    return match ? match[1] : ''
-  }
-
-  // 解析 meting-api 返回的数据（包含 url）
-  const parseMetingSong = (raw: Record<string, unknown>): Song => {
-    const apiUrl = (raw.url as string) || ''
-    return {
-      id: extractId(apiUrl),
-      name: (raw.title as string) || '未知',
-      artists: (raw.author as string) || '未知',
-      album: (raw.album as string) || '未知',
-      coverUrl: (raw.pic as string) || '',
-      url: apiUrl,
-      server: 'netease',
-    }
-  }
-
-  // 解析网易云搜索结果（兼容 ar/artists、al/album、dt/duration 多种字段）
-  const parseNeteaseSong = (song: Record<string, unknown>): Song => {
-    const artists =
-      (song.ar as Record<string, unknown>[]) || (song.artists as Record<string, unknown>[]) || []
-    const album =
-      (song.al as Record<string, unknown>) || (song.album as Record<string, unknown>) || {}
-    const firstArtistId = artists[0]?.id
-    return {
-      id: String(song.id),
-      name: (song.name as string) || '未知',
-      artists: artists.map((a) => a.name as string).join(' / ') || '未知',
-      album: (album.name as string) || '未知',
-      coverUrl: (album.picUrl as string) || '',
-      url: '',
-      server: 'netease',
-      duration: (song.dt as number) ?? (song.duration as number) ?? undefined,
-      fee: song.fee as number | undefined,
-      mvId: (song.mv as number) ?? (song.mvid as number) ?? undefined,
-      sq: !!song.sq,
-      artistId: firstArtistId != null ? String(firstArtistId) : undefined,
-      albumId: album.id != null ? String(album.id) : undefined,
-    }
-  }
-
-  // 解析歌单（兼容 coverImgUrl/picUrl）
-  const parsePlaylist = (raw: Record<string, unknown>): Playlist => ({
-    id: String(raw.id),
-    name: (raw.name as string) || '未知歌单',
-    coverUrl: (raw.coverImgUrl as string) || (raw.picUrl as string) || '',
-    trackCount: (raw.trackCount as number) || 0,
-    description: (raw.description as string) || '',
-    server: 'netease',
-  })
-
-  // 解析专辑
-  const parseAlbum = (raw: Record<string, unknown>): Album => {
-    const artist = raw.artist as Record<string, unknown> | undefined
-    return {
-      id: String(raw.id),
-      name: (raw.name as string) || '未知专辑',
-      picUrl: (raw.picUrl as string) || '',
-      artist: (artist?.name as string) || undefined,
-      publishTime: raw.publishTime as number | undefined,
-      size: raw.size as number | undefined,
-      description: raw.description as string | undefined,
-      company: raw.company as string | undefined,
-    }
-  }
-
-  // 解析歌手（top_artists / artist_list 共用）
-  const parseArtist = (raw: Record<string, unknown>): Artist => ({
-    id: String(raw.id),
-    name: (raw.name as string) || '未知歌手',
-    picUrl: (raw.picUrl as string) || '',
-    musicSize: raw.musicSize as number | undefined,
-    albumSize: raw.albumSize as number | undefined,
-    briefDesc: raw.briefDesc as string | undefined,
-  })
-
   const searchSongs = async (keyword: string) => {
     const q = keyword.trim()
     if (!q) return
@@ -342,22 +217,6 @@ export const useMusicStore = defineStore('music', () => {
     } catch {
       lyrics.value = []
     }
-  }
-
-  const parseLyrics = (raw: string): LyricLine[] => {
-    const lines: LyricLine[] = []
-    for (const line of raw.split('\n')) {
-      const match = line.match(/^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/)
-      if (match) {
-        const m = parseInt(match[1])
-        const s = parseInt(match[2])
-        const ms = parseInt(match[3])
-        const time = m * 60 + s + ms / (match[3].length === 3 ? 1000 : 100)
-        const text = match[4].trim()
-        if (text) lines.push({ time, text })
-      }
-    }
-    return lines
   }
 
   const playSong = async (song: Song, list?: Song[]) => {
@@ -894,13 +753,6 @@ export const useMusicStore = defineStore('music', () => {
     } finally {
       isLoadingSimi.value = false
     }
-  }
-
-  const formatDuration = (ms: number): string => {
-    const totalSec = Math.floor(ms / 1000)
-    const min = Math.floor(totalSec / 60)
-    const sec = totalSec % 60
-    return `${min}:${String(sec).padStart(2, '0')}`
   }
 
   return {

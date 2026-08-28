@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import { APP_MODULES } from '@/config'
@@ -331,13 +331,33 @@ const handleReset = async () => {
   setTimeout(() => window.location.reload(), 700)
 }
 
-onMounted(() => {
-  marketStore.refreshInstalledMeta()
+let documentClickListenerActive = false
+
+function attachDocumentClickListener() {
+  if (documentClickListenerActive) return
   document.addEventListener('click', closeContextMenu)
+  documentClickListenerActive = true
+}
+
+function detachDocumentClickListener() {
+  if (!documentClickListenerActive) return
+  document.removeEventListener('click', closeContextMenu)
+  documentClickListenerActive = false
+}
+
+onMounted(() => marketStore.refreshInstalledMeta())
+
+onActivated(() => {
+  attachDocumentClickListener()
   openRequestedPanel(route.query.panel)
 })
 
-onUnmounted(() => document.removeEventListener('click', closeContextMenu))
+onDeactivated(() => {
+  closeContextMenu()
+  detachDocumentClickListener()
+})
+
+onUnmounted(detachDocumentClickListener)
 </script>
 
 <template>

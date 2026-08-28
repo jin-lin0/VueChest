@@ -31,6 +31,10 @@ watch(
       return
     }
 
+    // auth 已在应用挂载前完成初始化。先同步恢复该用户的本地工作区，确保首页首帧
+    // 不会短暂渲染访客默认顺序；云端选择与较新布局随后在后台对账。
+    workspaceStore.switchToUser(userId)
+
     // 先读取账号保存的同步选择，再决定是否拉取工作区，避免用户取消某一类别后
     // 下一台设备仍在登录时自动覆盖本地数据。旧后端没有 /sync 时继续沿用工作区同步。
     try {
@@ -85,7 +89,9 @@ router.afterEach((to) => {
              浏览器返回（popstate）时，离开阶段的 transition 会永久卡死，导致新组件（如首页）永远不挂载，
              页面只剩白屏（/rhythm、/music 等路由尤为触发）。改用默认模式即可彻底规避。 -->
         <transition name="fade">
-          <component :is="Component" />
+          <KeepAlive include="WorkspaceHomeView">
+            <component :is="Component" />
+          </KeepAlive>
         </transition>
       </RouterView>
     </main>
@@ -129,10 +135,12 @@ body {
 }
 
 .app-main {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 button,
@@ -152,6 +160,16 @@ textarea {
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
+}
+
+/* 默认 transition 会让新旧页面短暂同时占据普通文档流，导致返回首页时被离开页
+   挤出正确位置。离开页改为覆盖淡出，新页面从首帧开始负责布局。 */
+.fade-leave-active {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  pointer-events: none;
 }
 
 .fade-enter-from,

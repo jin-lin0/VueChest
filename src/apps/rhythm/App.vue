@@ -2,14 +2,17 @@
 // 音游主界面：选曲/分析 → 校验节拍 → 生成谱面 → 游玩。
 // 分析与校验区保留下来是有意的：自动谱面质量依赖 BPM/offset 正确，
 // 出问题时需要能当场听出来并手动纠正。
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { analyze, gridAlignment, type AnalyzeResult } from './core/analyze'
 import { AudioClock } from './core/clock'
 import { Metronome } from './core/metronome'
 import { OnsetClicker } from './core/onset-clicker'
 import { generateBeatmap, beatmapDensity, difficultyLabel, type Beatmap } from './core/beatmap'
-import { loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from './core/settings'
+import {
+  DIFFICULTY_PRESETS,
+  useRhythmSettings,
+} from './composables/useRhythmSettings'
 import PlayView from './components/PlayView.vue'
 import { musicApi } from '@/lib/musicApi'
 import { recordGameResult } from '@/apps/game-center/profile'
@@ -120,31 +123,22 @@ const currentSongScores = computed(() =>
   scoresForSong(rhythmScores.value, songTitle.value).slice(0, 5),
 )
 
-/**
- * 谱面与手感参数。
- *
- * 初值全部来自统一 IndexedDB 存档（缺失/损坏时回落到 DEFAULT_SETTINGS），
- * 改动后会自动写回——延迟校准这类设备特有值刷新就丢的话，
- * 玩家每次都得重新校准，设置项等于白做。
- * 默认值定义在 core/settings.ts，那里是唯一真相。
- */
-const saved = loadSettings()
-
-const quantizeDivision = ref(saved.quantizeDivision)
-/** 音符从出现到判定线的时间（秒）。越小下落越快 */
-const noteSpeed = ref(saved.noteSpeed)
-/** 目标密度（音符/秒）——直接控制难度，比调绝对阈值直观 */
-const targetDensity = ref(saved.targetDensity)
-/** 双押比例：强度最高的这个比例出同时两键 */
-const chordRatio = ref(saved.chordRatio)
-/** 律动骨架偏置：整拍强度倍率 */
-const beatBias = ref(saved.beatBias)
-/** 是否生成长按条 */
-const holdEnabled = ref(saved.holdEnabled)
-/** 长按的 RMS 门槛（分位数） */
-const holdRmsPercentile = ref(saved.holdRmsPercentile)
-/** 玩家延迟校准（毫秒） */
-const userOffset = ref(saved.userOffset)
+const {
+  quantizeDivision,
+  noteSpeed,
+  targetDensity,
+  chordRatio,
+  beatBias,
+  holdEnabled,
+  holdRmsPercentile,
+  userOffset,
+  activePreset,
+  showAdvanced,
+  resetSettings,
+  applyPreset,
+  markCustom,
+  selectQuantizeDivision,
+} = useRhythmSettings()
 
 const beatmapInfo = computed(() => {
   if (!beatmap.value) return null
@@ -606,86 +600,6 @@ const busy = computed(() => ['fetching', 'decoding', 'analyzing'].includes(stage
  * 各档的密度参考商业音游：Easy 约 1.5/s、Normal 2.5/s、
  * Hard 4/s、Master 5.5/s。双押与长按随难度递增。
  */
-const DIFFICULTY_PRESETS = [
-  { key: 'easy', label: 'EASY', density: 1.5, chord: 0.05, hold: 0.2, division: 1 },
-  { key: 'normal', label: 'NORMAL', density: 2.5, chord: 0.15, hold: 0.25, division: 2 },
-  { key: 'hard', label: 'HARD', density: 4.0, chord: 0.25, hold: 0.3, division: 2 },
-  { key: 'master', label: 'MASTER', density: 5.5, chord: 0.35, hold: 0.35, division: 4 },
-] as const
-
-const activePreset = ref<string>(saved.preset)
-
-/**
- * 参数变化即自动存档。
- *
- * 不做「保存」按钮：这些是滑块调出来的手感值，玩家的心智模型是
- * "调完就生效"，多一步保存只会让人以为没生效。
- * 不加防抖：写入是同步的但量极小（一个百来字节的 JSON），
- * 拖滑块最多触发几十次，比一次重排都便宜。
- */
-watch(
-  [
-    noteSpeed,
-    userOffset,
-    activePreset,
-    targetDensity,
-    chordRatio,
-    beatBias,
-    holdEnabled,
-    holdRmsPercentile,
-    quantizeDivision,
-  ],
-  () => {
-    saveSettings({
-      noteSpeed: noteSpeed.value,
-      userOffset: userOffset.value,
-      preset: activePreset.value,
-      targetDensity: targetDensity.value,
-      chordRatio: chordRatio.value,
-      beatBias: beatBias.value,
-      holdEnabled: holdEnabled.value,
-      holdRmsPercentile: holdRmsPercentile.value,
-      quantizeDivision: quantizeDivision.value,
-    })
-  },
-)
-
-/** 恢复出厂设置：调坏了总得有条退路 */
-function resetSettings() {
-  clearSettings()
-  const d = DEFAULT_SETTINGS
-  noteSpeed.value = d.noteSpeed
-  userOffset.value = d.userOffset
-  activePreset.value = d.preset
-  targetDensity.value = d.targetDensity
-  chordRatio.value = d.chordRatio
-  beatBias.value = d.beatBias
-  holdEnabled.value = d.holdEnabled
-  holdRmsPercentile.value = d.holdRmsPercentile
-  quantizeDivision.value = d.quantizeDivision
-}
-
-function applyPreset(p: (typeof DIFFICULTY_PRESETS)[number]) {
-  activePreset.value = p.key
-  targetDensity.value = p.density
-  chordRatio.value = p.chord
-  holdRmsPercentile.value = p.hold
-  quantizeDivision.value = p.division
-}
-
-/** 手动改任一参数就脱离预设——否则高亮会误导 */
-function markCustom() {
-  activePreset.value = 'custom'
-}
-
-function selectQuantizeDivision(value: 1 | 2 | 4) {
-  quantizeDivision.value = value
-  markCustom()
-}
-
-/** 高级参数面板的展开状态 */
-const showAdvanced = ref(false)
-
 onMounted(async () => {
   if (!document.querySelector('link[data-rhythm-font]')) {
     const preconnect = document.createElement('link')

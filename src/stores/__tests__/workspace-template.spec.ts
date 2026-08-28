@@ -180,4 +180,46 @@ describe('workspace templates', () => {
 
     expect(store.activeWorkspace?.items).toEqual([{ appKey: 'builtin:1' }, { appKey: 'market:42' }])
   })
+
+  it('switches to the signed-in local workspace synchronously before cloud reconciliation', () => {
+    mocks.storage.set('workspace-config:guest', {
+      version: 1,
+      activeWorkspaceId: 'guest',
+      workspaces: [
+        { id: 'guest', name: '访客工作台', icon: 'G', items: [{ appKey: 'builtin:1' }] },
+      ],
+      recentApps: [],
+      knownApps: ['builtin:1'],
+      preferences: {
+        showWorkspaceBar: true,
+        showAppDescriptions: true,
+        cardDensity: 'standard',
+      },
+      layoutUpdatedAt: 1,
+    })
+    mocks.storage.set('workspace-config:7', {
+      version: 1,
+      activeWorkspaceId: 'user',
+      workspaces: [
+        { id: 'user', name: '用户工作台', icon: 'U', items: [{ appKey: 'market:42' }] },
+      ],
+      recentApps: [],
+      knownApps: ['market:42'],
+      preferences: {
+        showWorkspaceBar: true,
+        showAppDescriptions: true,
+        cardDensity: 'standard',
+      },
+      layoutUpdatedAt: 2,
+    })
+
+    const store = useWorkspaceStore()
+    store.init()
+    expect(store.activeWorkspace?.items[0]?.appKey).toBe('builtin:1')
+
+    store.switchToUser(7)
+
+    expect(store.ownerId).toBe(7)
+    expect(store.activeWorkspace?.items[0]?.appKey).toBe('market:42')
+  })
 })

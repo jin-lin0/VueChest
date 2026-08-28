@@ -570,6 +570,7 @@ import { useRouter } from 'vue-router'
 import * as THREE from 'three'
 import { ArrowLeft, ArrowRight, Gauge, Lock, Octagon, PackageOpen, Pause, Zap } from '@lucide/vue'
 import { formatClock } from '@/utils/common'
+import { useTrackedEffects } from '@/composables/useTrackedEffects'
 import {
   RACING_CARS,
   RACING_DRIFT,
@@ -627,7 +628,6 @@ import {
   tickCombo,
   type ChampionshipEntry,
   type DriftLevel,
-  type ItemId,
 } from './rules'
 import {
   loadRacingSave,
@@ -642,6 +642,18 @@ import {
 import { GhostRecorder, interpolateGhost, loadGhost, saveGhost, type GhostLap } from './ghost'
 import { loadTrackEnvironment, loadTrackProps, preloadRaceAssets } from './assets'
 import { recordGameResult } from '@/apps/game-center/profile'
+import { useRacingGamepads } from './composables/useRacingGamepads'
+import {
+  DRIFT_LEVEL_LABELS,
+  ITEM_LABELS,
+  LIVERY_LABELS,
+  MEDAL_LABELS,
+  carTrait,
+  formatLap,
+  formatRaceDelta as formatDelta,
+  itemLabel,
+  liveryOptionsFor,
+} from './presentation'
 
 const router = useRouter()
 const gameContainer = ref<HTMLDivElement>()
@@ -706,73 +718,10 @@ const nitroPercent = computed(() => {
   return Math.min(100, (player1Data.nitro / capacity) * 100)
 })
 const driftLevelName = computed<DriftLevel>(() => driftLevel(player1Data.driftCharge))
-const driftLevelLabel = computed(
-  () => ({ none: '', good: 'GOOD', great: 'GREAT', perfect: 'PERFECT' })[driftLevelName.value],
-)
-const medalLabel = computed(
-  () => ({ none: '未获奖牌', bronze: '铜牌', silver: '银牌', gold: '金牌' })[earnedMedal.value],
-)
-const ITEM_LABELS: Record<ItemId, string> = {
-  nitro: '涡轮冲刺',
-  shield: '护盾',
-  missile: '追踪导弹',
-  magnet: '磁铁',
-  oil: '油渍',
-  roadblock: '路障',
-  jammer: '干扰器',
-}
-const LIVERY_LABELS: Record<string, string> = {
-  duotone: '基础双色',
-  sandstorm: '沙暴车漆',
-  glacier: '冰川车漆',
-  'champion-metal': '冠军金属',
-  'champion-stripe': '冠军条纹与称号',
-}
-const LIVERY_UNLOCK_HINTS: Record<LiveryId, string> = {
-  classic: '默认可用',
-  duotone: '获得任意一枚奖牌后解锁',
-  sandstorm: '任意三条固定赛道获得铜牌后解锁',
-  glacier: '任意三条固定赛道获得银牌后解锁',
-  'champion-metal': '任意三条固定赛道获得金牌后解锁',
-  'champion-stripe': '赢得一次三站锦标赛后解锁',
-}
+const driftLevelLabel = computed(() => DRIFT_LEVEL_LABELS[driftLevelName.value])
+const medalLabel = computed(() => MEDAL_LABELS[earnedMedal.value])
 const liveryOptions = computed(() =>
-  [
-    {
-      id: 'classic' as LiveryId,
-      label: '经典',
-      paint: `linear-gradient(135deg, ${currentCar.value.color}, #23293a)`,
-    },
-    {
-      id: 'duotone' as LiveryId,
-      label: '双色',
-      paint: 'linear-gradient(135deg, #fff2cf 50%, #273c75 50%)',
-    },
-    {
-      id: 'sandstorm' as LiveryId,
-      label: '沙暴',
-      paint: 'linear-gradient(135deg, #f2a65a 50%, #693f2f 50%)',
-    },
-    {
-      id: 'glacier' as LiveryId,
-      label: '冰川',
-      paint: 'linear-gradient(135deg, #c9f7ff 50%, #5577ff 50%)',
-    },
-    {
-      id: 'champion-metal' as LiveryId,
-      label: '冠军',
-      paint: 'linear-gradient(135deg, #ffe27a 50%, #8f6b18 50%)',
-    },
-    {
-      id: 'champion-stripe' as LiveryId,
-      label: '条纹',
-      paint: 'linear-gradient(135deg, #fff4d6 38%, #e43f5a 38% 58%, #273c75 58%)',
-    },
-  ].map((item) => ({
-    ...item,
-    unlocked: racingSave.value.unlockedLiveries.includes(item.id),
-    unlockHint: LIVERY_UNLOCK_HINTS[item.id],
-  })),
+  liveryOptionsFor(currentCar.value, racingSave.value.unlockedLiveries),
 )
 const heldItemLabel = computed(() =>
   player1Data.heldItem ? ITEM_LABELS[player1Data.heldItem] : '等待拾取',
@@ -785,26 +734,11 @@ const showTouchControls = computed(
     (racingSettings.touchControls === 'auto' && coarsePointer),
 )
 
-/** 圈速格式化：mm:ss.d（比 formatClock 多一位小数，竞速更需要） */
-function formatLap(t: number): string {
-  if (t <= 0) return '00:00.0'
-  const m = Math.floor(t / 60)
-  const s = t % 60
-  return `${String(m).padStart(2, '0')}:${s < 10 ? '0' : ''}${s.toFixed(1)}`
-}
-
 const cars = RACING_CARS
 
 // 计算当前选择的车辆
 const currentCar = computed(() => getCarById(selectedCar.value) || cars[0])
 const currentCar2 = computed(() => getCarById(selectedCar2.value) || cars[1])
-
-/** 车辆定位标签：极速 / 操控 / 均衡 */
-function carTrait(car: RacingCar): string {
-  if (car.speed >= 190) return '极速型'
-  if (car.handling >= 85) return '操控型'
-  return '均衡型'
-}
 
 function openRaceSetup() {
   raceConfig.localPlayers = gameMode.value === 'multi' ? 2 : 1
@@ -866,14 +800,6 @@ function applySettings(value: RacingSettings) {
     racingSettings.engineVolume,
     racingSettings.effectsVolume,
   )
-}
-
-function formatDelta(value: number): string {
-  return `${Math.abs(value).toFixed(2)}s`
-}
-
-function itemLabel(item: ItemId | null): string {
-  return item ? ITEM_LABELS[item] : '等待拾取'
 }
 
 function racerRankFor(data: PlayerData): number {
@@ -1056,74 +982,22 @@ function canCaptureStartThrottle(): boolean {
   return raceGoAt > 0 && performance.now() <= raceGoAt + currentCar.value.perfectStartWindow * 1000
 }
 
-interface GamepadControlState {
-  left: boolean
-  right: boolean
-  gas: boolean
-  brake: boolean
-  action: boolean
-}
-
-const gamepadControls = reactive<[GamepadControlState, GamepadControlState]>([
-  { left: false, right: false, gas: false, brake: false, action: false },
-  { left: false, right: false, gas: false, brake: false, action: false },
-])
-const previousGamepadButtons = new Map<
-  number,
-  { action: boolean; reset: boolean; pause: boolean }
->()
-
-function clearGamepadControl(index: number) {
-  Object.assign(gamepadControls[index], {
-    left: false,
-    right: false,
-    gas: false,
-    brake: false,
-    action: false,
-  })
-}
-
-function pollGamepads() {
-  if (!navigator.getGamepads) return
-  const connected = Array.from(navigator.getGamepads())
-    .filter((pad): pad is Gamepad => Boolean(pad))
-    .slice(0, 2)
-  for (let playerIndex = 0; playerIndex < 2; playerIndex++) {
-    const pad = connected[playerIndex]
-    if (!pad) {
-      clearGamepadControl(playerIndex)
-      continue
-    }
-    const axisX = Math.abs(pad.axes[0] ?? 0) > 0.18 ? (pad.axes[0] ?? 0) : 0
-    const state = gamepadControls[playerIndex]
-    state.left = axisX < -0.12 || Boolean(pad.buttons[14]?.pressed)
-    state.right = axisX > 0.12 || Boolean(pad.buttons[15]?.pressed)
-    state.gas = (pad.buttons[7]?.value ?? 0) > 0.12
-    state.brake = (pad.buttons[6]?.value ?? 0) > 0.12
-    state.action = Boolean(pad.buttons[0]?.pressed)
-
-    const previous = previousGamepadButtons.get(pad.index) ?? {
-      action: false,
-      reset: false,
-      pause: false,
-    }
-    const reset = Boolean(pad.buttons[1]?.pressed)
-    const pause = Boolean(pad.buttons[9]?.pressed)
-    const player = playerIndex + 1
-    if (state.action && !previous.action) onActionPress(player)
-    if (reset && !previous.reset && gameState.value === 'playing') {
-      resetRacer(player === 1 ? player1Data : player2Data, player === 1 ? car1 : car2)
-    }
-    if (pause && !previous.pause) {
-      if (gameState.value === 'playing') pauseGame()
-      else if (gameState.value === 'paused') resumeGame()
-    }
-    if (state.gas && canCaptureStartThrottle() && firstThrottleAt === null && playerIndex === 0) {
+const { gamepadControls, pollGamepads } = useRacingGamepads({
+  onAction: onActionPress,
+  onReset(player) {
+    if (gameState.value !== 'playing') return
+    resetRacer(player === 1 ? player1Data : player2Data, player === 1 ? car1 : car2)
+  },
+  onPauseToggle() {
+    if (gameState.value === 'playing') pauseGame()
+    else if (gameState.value === 'paused') resumeGame()
+  },
+  onGasStart(player) {
+    if (player === 1 && canCaptureStartThrottle() && firstThrottleAt === null) {
       firstThrottleAt = performance.now()
     }
-    previousGamepadButtons.set(pad.index, { action: state.action, reset, pause })
-  }
-}
+  },
+})
 
 // Three.js 变量
 let scene: THREE.Scene
@@ -1168,25 +1042,7 @@ let lastCrashSoundAt = -10
 let cleanSegment = true
 const nearMissCooldown = new WeakMap<PlayerData, number>()
 
-// 统一跟踪定时器 / 动画帧，组件卸载时集中清理，避免泄漏
-const trackedIntervals: ReturnType<typeof setInterval>[] = []
-const trackedTimeouts: ReturnType<typeof setTimeout>[] = []
-const trackedRafs: number[] = []
-function trackInterval(fn: () => void, ms: number): ReturnType<typeof setInterval> {
-  const id = setInterval(fn, ms)
-  trackedIntervals.push(id)
-  return id
-}
-function trackTimeout(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
-  const id = setTimeout(fn, ms)
-  trackedTimeouts.push(id)
-  return id
-}
-function trackRaf(cb: FrameRequestCallback): number {
-  const id = requestAnimationFrame(cb)
-  trackedRafs.push(id)
-  return id
-}
+const { trackInterval, trackTimeout, trackRaf, clearTrackedEffects } = useTrackedEffects()
 let magnetActive = false
 let magnetPlayerData: PlayerData | null = null
 let shieldActive = false
@@ -2946,12 +2802,7 @@ onUnmounted(() => {
     cancelAnimationFrame(animationId)
   }
   // 清理所有被跟踪的定时器 / 动画帧（磁铁、护盾、氮气、连击、导弹、倒计时等）
-  trackedIntervals.forEach((id) => clearInterval(id))
-  trackedTimeouts.forEach((id) => clearTimeout(id))
-  trackedRafs.forEach((id) => cancelAnimationFrame(id))
-  trackedIntervals.length = 0
-  trackedTimeouts.length = 0
-  trackedRafs.length = 0
+  clearTrackedEffects()
   racingAudio.dispose()
   particles?.dispose()
   if (scene) {
