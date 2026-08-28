@@ -9,7 +9,6 @@ defineOptions({ name: 'CronTool' })
 const { addToast } = useToast()
 
 const cronInput = ref('0 0 * * *')
-const error = ref('')
 
 // 兼容契约约定的 parseExpression(expr) 调用形式。
 // 项目实际安装的 cron-parser 为 v5，已无具名 parseExpression 导出，
@@ -18,11 +17,10 @@ function parseExpression(expr: string): CronExpression {
   return CronExpressionParser.parse(expr, { currentDate: new Date() })
 }
 
-const parsed = computed<Date[] | null>(() => {
+const parsedState = computed<{ dates: Date[] | null; error: string }>(() => {
   const v = cronInput.value.trim()
   if (!v) {
-    error.value = ''
-    return null
+    return { dates: null, error: '' }
   }
   try {
     const expr = parseExpression(v)
@@ -33,13 +31,16 @@ const parsed = computed<Date[] | null>(() => {
       out.push(d.toDate())
       if (++i >= 5) break
     }
-    error.value = ''
-    return out
+    return { dates: out, error: '' }
   } catch (e) {
-    error.value = 'Cron 解析失败：' + (e instanceof Error ? e.message : String(e))
-    return null
+    return {
+      dates: null,
+      error: 'Cron 解析失败：' + (e instanceof Error ? e.message : String(e)),
+    }
   }
 })
+const parsed = computed(() => parsedState.value.dates)
+const error = computed(() => parsedState.value.error)
 
 // 下一个执行时间（随输入变化）
 const nextOne = computed<string | null>(() => {

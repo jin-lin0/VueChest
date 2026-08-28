@@ -9,6 +9,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+defineOptions({ name: 'VcSkeleton' })
+
 const props = withDefaults(
   defineProps<{
     width?: string | number

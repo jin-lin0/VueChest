@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import type { UserInfo } from '@/stores/auth'
+
+interface AdminMenuItem {
+  path: string
+  name: string
+  icon: string
+}
 
 defineProps<{
   collapsed: boolean
   mobile?: boolean
-  menuItems: any[]
-  user: any
+  menuItems: AdminMenuItem[]
+  user: UserInfo | null
   isDark: boolean
   roleLabel: string
 }>()

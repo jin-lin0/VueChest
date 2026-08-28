@@ -5,7 +5,6 @@ import { MarkdownView, Skeleton } from '@/components'
 import type {
   KnowledgeAtom,
   IndexData,
-  TagItem,
   GraphNode,
   GraphEdge,
   KnowledgeBundle,

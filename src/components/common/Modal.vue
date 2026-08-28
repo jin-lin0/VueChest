@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useOverlay } from '../../composables/useOverlay'
-defineOptions({ inheritAttrs: false })
+defineOptions({ name: 'VcModal', inheritAttrs: false })
 
 const props = withDefaults(
   defineProps<{

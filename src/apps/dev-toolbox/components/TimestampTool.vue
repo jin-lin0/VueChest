@@ -31,16 +31,21 @@ const tsUnitOptions: SelectOption[] = [
   { value: 's', label: '秒 (s)' },
   { value: 'ms', label: '毫秒 (ms)' },
 ]
-const tsError = ref('')
-const tsResult = computed(() => {
+interface TimestampResult {
+  local: string
+  utc: string
+  iso: string
+  sec: number
+  ms: number
+}
+
+const tsState = computed<{ result: TimestampResult | null; error: string }>(() => {
   const v = tsInput.value.trim()
   if (!v) {
-    tsError.value = ''
-    return null
+    return { result: null, error: '' }
   }
   if (!/^\d+$/.test(v)) {
-    tsError.value = '请输入纯数字时间戳'
-    return null
+    return { result: null, error: '请输入纯数字时间戳' }
   }
   let ms: number
   if (tsUnit.value === 's') ms = Number(v) * 1000
@@ -48,36 +53,40 @@ const tsResult = computed(() => {
   else ms = v.length <= 10 ? Number(v) * 1000 : Number(v)
   const d = new Date(ms)
   if (isNaN(d.getTime())) {
-    tsError.value = '时间戳超出可表示范围'
-    return null
+    return { result: null, error: '时间戳超出可表示范围' }
   }
-  tsError.value = ''
   return {
-    local: fmt(d.getTime(), 'local'),
-    utc: fmt(d.getTime(), 'utc'),
-    iso: d.toISOString(),
-    sec: Math.floor(d.getTime() / 1000),
-    ms: d.getTime(),
+    result: {
+      local: fmt(d.getTime(), 'local'),
+      utc: fmt(d.getTime(), 'utc'),
+      iso: d.toISOString(),
+      sec: Math.floor(d.getTime() / 1000),
+      ms: d.getTime(),
+    },
+    error: '',
   }
 })
+const tsResult = computed(() => tsState.value.result)
+const tsError = computed(() => tsState.value.error)
 
 /* 日期 -> 时间戳 */
 const dateInput = ref('')
-const dateError = ref('')
-const dateResult = computed(() => {
+const dateState = computed<{ result: { ms: number; sec: number } | null; error: string }>(() => {
   const v = dateInput.value
   if (!v) {
-    dateError.value = ''
-    return null
+    return { result: null, error: '' }
   }
   const d = new Date(v)
   if (isNaN(d.getTime())) {
-    dateError.value = '无效的日期时间'
-    return null
+    return { result: null, error: '无效的日期时间' }
   }
-  dateError.value = ''
-  return { ms: d.getTime(), sec: Math.floor(d.getTime() / 1000) }
+  return {
+    result: { ms: d.getTime(), sec: Math.floor(d.getTime() / 1000) },
+    error: '',
+  }
 })
+const dateResult = computed(() => dateState.value.result)
+const dateError = computed(() => dateState.value.error)
 
 function fmt(ms: number, kind: 'local' | 'utc'): string {
   const d = new Date(ms)

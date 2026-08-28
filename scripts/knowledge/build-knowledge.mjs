@@ -5,7 +5,7 @@
 // research-plan.md 此前为冗余预聚合/可读导出，前端从不 fetch，已全部移除（数据均可从 atoms 重算）。
 //
 // 用法：node scripts/knowledge/build-knowledge.mjs
-import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getR2, uploadFile, listObjects } from './r2-kb.mjs'

@@ -22,6 +22,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+defineOptions({ name: 'VcCollapse' })
+
 const props = withDefaults(
   defineProps<{
     /** 受控模式：展开状态（v-model） */

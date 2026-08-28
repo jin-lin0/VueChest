@@ -41,8 +41,6 @@ const srcTzOptions: SelectOption[] = [
   ...TARGETS.map((t) => ({ value: t.tz, label: t.label })),
 ]
 
-const error = ref('')
-
 // 计算某时区在给定瞬间的 UTC 偏移（分钟），可处理夏令时
 function getOffsetMinutes(tz: string, date: Date): number {
   const dtf = new Intl.DateTimeFormat('en-US', {
@@ -75,48 +73,44 @@ function tzWallToUtc(wall: string, tz: string): number {
   return guess
 }
 
-const utcMs = computed<number | null>(() => {
-  error.value = ''
+const utcState = computed<{ value: number | null; error: string }>(() => {
   if (mode.value === 'timestamp') {
     const v = tsInput.value.trim()
-    if (!v) return null
+    if (!v) return { value: null, error: '' }
     if (!/^\d+$/.test(v)) {
-      error.value = '时间戳需为纯数字'
-      return null
+      return { value: null, error: '时间戳需为纯数字' }
     }
     let ms: number
     if (tsUnit.value === 's') ms = Number(v) * 1000
     else if (tsUnit.value === 'ms') ms = Number(v)
     else ms = v.length <= 10 ? Number(v) * 1000 : Number(v)
     if (isNaN(ms)) {
-      error.value = '时间戳超出可表示范围'
-      return null
+      return { value: null, error: '时间戳超出可表示范围' }
     }
-    return ms
+    return { value: ms, error: '' }
   }
   // datetime 模式
   const v = dtInput.value
-  if (!v) return null
+  if (!v) return { value: null, error: '' }
   if (srcTz.value === LOCAL) {
     const d = new Date(v)
     if (isNaN(d.getTime())) {
-      error.value = '无效的日期时间'
-      return null
+      return { value: null, error: '无效的日期时间' }
     }
-    return d.getTime()
+    return { value: d.getTime(), error: '' }
   }
   try {
     const ms = tzWallToUtc(v, srcTz.value)
     if (isNaN(ms)) {
-      error.value = '无法解析该时区时间'
-      return null
+      return { value: null, error: '无法解析该时区时间' }
     }
-    return ms
+    return { value: ms, error: '' }
   } catch {
-    error.value = '无法解析该时区时间'
-    return null
+    return { value: null, error: '无法解析该时区时间' }
   }
 })
+const utcMs = computed(() => utcState.value.value)
+const error = computed(() => utcState.value.error)
 
 function fmtInTz(ms: number, tz: string): string {
   return new Intl.DateTimeFormat('zh-CN', {

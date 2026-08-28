@@ -14,30 +14,46 @@ const startInput = ref('')
 const endInput = ref('')
 const targetInput = ref('')
 
-const diffError = ref('')
-const cdError = ref('')
+interface DurationParts {
+  days: number
+  hours: number
+  minutes: number
+  seconds: number
+}
+
+interface DiffResult extends DurationParts {
+  totalSec: number
+  isNeg: boolean
+}
+
+interface CountdownResult extends DurationParts {
+  expired: boolean
+}
 
 // (a) 两段 datetime-local 相减
-const diff = computed(() => {
-  diffError.value = ''
-  if (!startInput.value || !endInput.value) return null
+const diffState = computed<{ result: DiffResult | null; error: string }>(() => {
+  if (!startInput.value || !endInput.value) return { result: null, error: '' }
   const a = new Date(startInput.value).getTime()
   const b = new Date(endInput.value).getTime()
   if (isNaN(a) || isNaN(b)) {
-    diffError.value = '请选择有效的起止时间'
-    return null
+    return { result: null, error: '请选择有效的起止时间' }
   }
   const absMs = Math.abs(b - a)
   const totalSec = Math.floor(absMs / 1000)
   return {
-    days: Math.floor(totalSec / 86400),
-    hours: Math.floor((totalSec % 86400) / 3600),
-    minutes: Math.floor((totalSec % 3600) / 60),
-    seconds: totalSec % 60,
-    totalSec,
-    isNeg: b < a,
+    result: {
+      days: Math.floor(totalSec / 86400),
+      hours: Math.floor((totalSec % 86400) / 3600),
+      minutes: Math.floor((totalSec % 3600) / 60),
+      seconds: totalSec % 60,
+      totalSec,
+      isNeg: b < a,
+    },
+    error: '',
   }
 })
+const diff = computed(() => diffState.value.result)
+const diffError = computed(() => diffState.value.error)
 
 // (b) 倒计时：每秒刷新
 const now = ref(Date.now())
@@ -48,28 +64,31 @@ onUnmounted(() => {
   clearInterval(timer)
 })
 
-const countdown = computed(() => {
-  cdError.value = ''
+const countdownState = computed<{ result: CountdownResult | null; error: string }>(() => {
   const v = targetInput.value
-  if (!v) return null
+  if (!v) return { result: null, error: '' }
   const t = new Date(v).getTime()
   if (isNaN(t)) {
-    cdError.value = '请选择有效的目标时间'
-    return null
+    return { result: null, error: '请选择有效的目标时间' }
   }
   const diffMs = t - now.value
   const expired = diffMs <= 0
   const totalSec = Math.floor(Math.abs(diffMs) / 1000)
   return {
-    days: Math.floor(totalSec / 86400),
-    hours: Math.floor((totalSec % 86400) / 3600),
-    minutes: Math.floor((totalSec % 3600) / 60),
-    seconds: totalSec % 60,
-    expired,
+    result: {
+      days: Math.floor(totalSec / 86400),
+      hours: Math.floor((totalSec % 86400) / 3600),
+      minutes: Math.floor((totalSec % 3600) / 60),
+      seconds: totalSec % 60,
+      expired,
+    },
+    error: '',
   }
 })
+const countdown = computed(() => countdownState.value.result)
+const cdError = computed(() => countdownState.value.error)
 
-function segText(d: { days: number; hours: number; minutes: number; seconds: number }): string {
+function segText(d: DurationParts): string {
   return `${d.days}天 ${d.hours}时 ${d.minutes}分 ${d.seconds}秒`
 }
 

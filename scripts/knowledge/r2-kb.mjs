@@ -2,7 +2,7 @@
 // 复用 VueChestServer 的 R2 凭证与 @aws-sdk（不向前端仓库引入 aws-sdk 依赖）。
 // 未配置 R2 环境变量时 getR2() 返回 null，调用方据此跳过上传（便于离线开发）。
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
-import { join, resolve, dirname } from 'node:path'
+import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 

@@ -100,8 +100,10 @@ pnpm preview
 ### 代码检查 / 格式化
 
 ```sh
-pnpm lint      # eslint . --fix
-pnpm format    # prettier --write src/
+pnpm lint      # 只检查 ESLint，不修改文件
+pnpm lint:fix  # 自动修复可安全处理的 ESLint 问题
+pnpm format    # 使用 Prettier 格式化 src/
+pnpm check     # 完整质量检查：lint、测试、文档校验、主应用与市场应用构建预算
 ```
 
 ## 环境变量

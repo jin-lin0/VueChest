@@ -1,5 +1,5 @@
 import { execSync } from 'child_process'
-import { readdirSync, existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync } from 'fs'
+import { readdirSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 

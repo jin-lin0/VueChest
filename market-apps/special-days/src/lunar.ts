@@ -19,7 +19,7 @@ export function lunarToSolar(y: number, m: number, d: number): LunarDate {
   return { year: solar.getYear(), month: solar.getMonth(), day: solar.getDay() }
 }
 
-export function getLunarMonthName(month: number, _leap: boolean = false): string {
+export function getLunarMonthName(month: number, leap = false): string {
   const names = [
     '',
     '正月',
@@ -35,7 +35,8 @@ export function getLunarMonthName(month: number, _leap: boolean = false): string
     '冬月',
     '腊月',
   ]
-  return names[month] || `${month}月`
+  const name = names[month] || `${month}月`
+  return leap ? `闰${name}` : name
 }
 
 export function getLunarDayName(day: number): string {

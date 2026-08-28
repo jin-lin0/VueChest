@@ -1,11 +1,20 @@
 // 共享存储层——通过主应用的 global 桥梁读写 IndexedDB 缓存
 // 确保与 Home / 主应用共享同一份数据
 
-const win = window as any
+interface VueChestStorage {
+  getStorage<T>(key: string, defaultValue?: T): T | null
+  setStorage(key: string, value: unknown): void
+}
+
+interface VueChestRuntime {
+  storage?: VueChestStorage
+}
+
+const runtimeWindow = window as typeof window & { __VueChest__?: VueChestRuntime }
 
 export function getStorage<T>(key: string, defaultValue?: T): T | null {
-  if (win.__VueChest__?.storage) {
-    return win.__VueChest__.storage.getStorage(key, defaultValue)
+  if (runtimeWindow.__VueChest__?.storage) {
+    return runtimeWindow.__VueChest__.storage.getStorage(key, defaultValue)
   }
   try {
     const raw = localStorage.getItem(key)
@@ -17,8 +26,8 @@ export function getStorage<T>(key: string, defaultValue?: T): T | null {
 }
 
 export function setStorage(key: string, value: unknown): void {
-  if (win.__VueChest__?.storage) {
-    win.__VueChest__.storage.setStorage(key, value)
+  if (runtimeWindow.__VueChest__?.storage) {
+    runtimeWindow.__VueChest__.storage.setStorage(key, value)
     return
   }
   try {
@@ -28,10 +37,13 @@ export function setStorage(key: string, value: unknown): void {
   }
 }
 
-export function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {
+export function debounce<TArgs extends unknown[]>(
+  fn: (...args: TArgs) => void,
+  delay: number,
+): (...args: TArgs) => void {
   let timer: ReturnType<typeof setTimeout>
-  return ((...args: any[]) => {
+  return (...args: TArgs) => {
     clearTimeout(timer)
     timer = setTimeout(() => fn(...args), delay)
-  }) as T
+  }
 }
