@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils'
+import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from '@/utils/lunar'
 import { getStorage } from '@/lib/storage'
 
 const MS_PER_DAY = 86400000

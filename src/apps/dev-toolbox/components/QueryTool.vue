@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 
@@ -85,14 +85,26 @@ parse()
       <div class="row" v-for="seg in segments" :key="seg.key">
         <span class="k seg-key">{{ seg.key }}</span>
         <code class="mono v seg-val">{{ seg.value }}</code>
-        <CopyButton :text="seg.value" variant="mini" :toast="addToast" :success-text="`已复制${seg.key}`" />
+        <CopyButton
+          :text="seg.value"
+          variant="mini"
+          :toast="addToast"
+          :success-text="`已复制${seg.key}`"
+        />
       </div>
     </div>
 
     <section class="card">
       <div class="card-title">
         Query 参数（{{ params.length }} 项）
-        <CopyButton :text="rebuilt" variant="mini" label="复制重组串" :disabled="!rebuilt" :toast="addToast" success-text="已复制查询串" />
+        <CopyButton
+          :text="rebuilt"
+          variant="mini"
+          label="复制重组串"
+          :disabled="!rebuilt"
+          :toast="addToast"
+          success-text="已复制查询串"
+        />
       </div>
       <table v-if="params.length" class="tbl">
         <thead>
@@ -106,7 +118,14 @@ parse()
           <tr v-for="(p, i) in params" :key="i">
             <td class="mono">{{ p.key }}</td>
             <td class="mono">{{ p.value }}</td>
-            <td><CopyButton :text="p.value" variant="mini" :toast="addToast" success-text="已复制参数值" /></td>
+            <td>
+              <CopyButton
+                :text="p.value"
+                variant="mini"
+                :toast="addToast"
+                success-text="已复制参数值"
+              />
+            </td>
           </tr>
         </tbody>
       </table>

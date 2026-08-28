@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 
@@ -70,7 +70,7 @@ function clearAll() {
         {{
           mode === 'encode'
             ? '转义 &lt; &gt; &amp; " \' 为命名实体'
-            : '还原命名实体与 &#num; / &#xhex;'
+            : '还原命名实体与 \u0026#num; / \u0026#xhex;'
         }}
       </span>
       <div class="tb-group push-right">

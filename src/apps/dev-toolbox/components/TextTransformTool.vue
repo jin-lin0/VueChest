@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import type { Plugin } from 'prettier'
-import { downloadFile, debounce } from '@/utils'
+import { downloadFile, debounce } from '@/utils/common'
 import { Modal, CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
@@ -546,8 +546,8 @@ function downloadOutput() {
         <p class="tt-desc">
           函数体接收 <code>input</code>（输入框的原始字符串），用 <code>return</code> 返回结果。
           如需按 JSON 处理可在函数内 <code>JSON.parse(input)</code>。返回字符串则原样输出，
-          返回对象/数组则自动格式化高亮。可用 <code>import</code> 引入第三方包。 按
-          <kbd>⌘S</kbd> / <kbd>Ctrl+S</kbd> 格式化代码。
+          返回对象/数组则自动格式化高亮。可用 <code>import</code> 引入第三方包。 按 <kbd>⌘S</kbd> /
+          <kbd>Ctrl+S</kbd> 格式化代码。
         </p>
 
         <div class="tt-row">
@@ -600,7 +600,13 @@ function downloadOutput() {
         </div>
       </div>
       <template #footer>
-        <CopyButton :text="editRuleCode" variant="btn" label="复制代码" success-text="已复制函数代码" :toast="addToast" />
+        <CopyButton
+          :text="editRuleCode"
+          variant="btn"
+          label="复制代码"
+          success-text="已复制函数代码"
+          :toast="addToast"
+        />
         <button class="btn" @click="closeEditModal">取消</button>
         <button class="btn primary" :disabled="!editRuleName.trim()" @click="saveEditRule">
           保存修改

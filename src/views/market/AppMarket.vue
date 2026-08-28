@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
 import { Skeleton, EmptyState } from '@/components'
-import { formatFileSize } from '@/utils'
+import { formatFileSize } from '@/utils/common'
 import { api } from '@/lib/request'
 
 const router = useRouter()

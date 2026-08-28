@@ -6,9 +6,18 @@ import type { AppCommandProvider } from '@/lib/app-command'
  * 也不会因为全局命令面板而把所有 App 的 store 和实现拉进首屏。
  */
 export async function loadBuiltinAppCommandProviders(): Promise<AppCommandProvider[]> {
-  const [music, devToolbox] = await Promise.all([
+  const [music, devToolbox, stock, interview, apiManager] = await Promise.all([
     import('./music/commands'),
     import('./dev-toolbox/commands'),
+    import('./stock/commands'),
+    import('./interview/commands'),
+    import('./api-manager/commands'),
   ])
-  return [music.useMusicCommandProvider(), devToolbox.useDevToolboxCommandProvider()]
+  return [
+    music.useMusicCommandProvider(),
+    devToolbox.useDevToolboxCommandProvider(),
+    stock.useStockCommandProvider(),
+    interview.useInterviewCommandProvider(),
+    apiManager.useApiManagerCommandProvider(),
+  ]
 }

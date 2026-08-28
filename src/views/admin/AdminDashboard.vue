@@ -85,7 +85,10 @@
           <div v-for="c in geo.countries" :key="c.country" class="geo-row">
             <span class="geo-name">{{ c.country }}</span>
             <div class="geo-bar-wrap">
-              <div class="geo-bar" :style="{ width: geoBarWidth(c.total, geo.countries[0].total) }"></div>
+              <div
+                class="geo-bar"
+                :style="{ width: geoBarWidth(c.total, geo.countries[0].total) }"
+              ></div>
             </div>
             <span class="geo-total">{{ c.total }}</span>
           </div>
@@ -96,7 +99,10 @@
           <div v-for="c in geo.cities" :key="c.city" class="geo-row">
             <span class="geo-name">{{ c.city }}</span>
             <div class="geo-bar-wrap">
-              <div class="geo-bar" :style="{ width: geoBarWidth(c.total, geo.cities[0].total) }"></div>
+              <div
+                class="geo-bar"
+                :style="{ width: geoBarWidth(c.total, geo.cities[0].total) }"
+              ></div>
             </div>
             <span class="geo-total">{{ c.total }}</span>
           </div>
@@ -111,7 +117,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/lib/request'
-import { roleText } from '@/utils'
+import { roleText } from '@/utils/common'
 
 const authStore = useAuthStore()
 

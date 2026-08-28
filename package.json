@@ -9,10 +9,11 @@
   "scripts": {
     "dev": "node scripts/knowledge/generate-doc-catalog.mjs --write && vite",
     "dev:prod": "node scripts/knowledge/generate-doc-catalog.mjs --write && vite --mode production",
-    "build": "run-s docs:catalog type-check build-only build:budget",
+    "build": "run-s docs:catalog type-check build-only build:budget build:routes",
     "preview": "vite preview",
     "build-only": "vite build",
     "build:budget": "node scripts/check-bundle-budget.mjs",
+    "build:routes": "node scripts/check-route-budget.mjs",
     "type-check": "vue-tsc --build",
     "test": "vitest run",
     "test:watch": "vitest",

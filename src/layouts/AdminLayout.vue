@@ -70,7 +70,7 @@ import { api } from '@/lib/request'
 import { useTheme } from '@/composables/useTheme'
 import { Toast, Drawer } from '@/components'
 import AdminSidebar from './AdminSidebar.vue'
-import { roleText } from '@/utils'
+import { roleText } from '@/utils/common'
 
 const router = useRouter()
 const route = useRoute()

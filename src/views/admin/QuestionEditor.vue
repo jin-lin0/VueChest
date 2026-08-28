@@ -90,23 +90,23 @@
           <span>答案 (Markdown) <span class="required">*</span></span>
           <span v-if="errors.answer" class="error-text">{{ errors.answer }}</span>
         </div>
-        <MdEditor v-model="formData.answer" :toolbars="toolbars" language="zh-CN" />
+        <QuestionMarkdownEditor v-model="formData.answer" :toolbars="toolbars" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { MdEditor, type ToolbarNames } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
+import type { ToolbarNames } from 'md-editor-v3'
 import { CustomSelect, type SelectOption } from '@/components'
 import type { Question, Category, Difficulty } from '@/types/interview'
 import { api } from '@/lib/request'
 
 const router = useRouter()
 const route = useRoute()
+const QuestionMarkdownEditor = defineAsyncComponent(() => import('./QuestionMarkdownEditor.vue'))
 
 const questionId = computed(() => route.params.id as string | undefined)
 const isEdit = computed(() => !!questionId.value)

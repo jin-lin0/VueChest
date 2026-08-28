@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 
@@ -96,7 +96,12 @@ function clearAll() {
         >逐字符查看「字符 / 码点 (U+XXXX) / UTF-8 字节」，并可反向由码点查字符。</span
       >
       <div class="tb-group push-right">
-        <CopyButton :text="tableText" variant="btn" success-text="已复制字符列表" :toast="addToast" />
+        <CopyButton
+          :text="tableText"
+          variant="btn"
+          success-text="已复制字符列表"
+          :toast="addToast"
+        />
         <button class="btn ghost" @click="clearAll">清空</button>
       </div>
     </div>

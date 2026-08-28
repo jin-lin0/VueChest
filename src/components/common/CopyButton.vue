@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { copyToClipboard } from '@/utils'
+import { copyToClipboard } from '@/utils/clipboard'
 import Toast from './Toast.vue'
 
 type ToastType = 'success' | 'error' | 'warning' | 'info'

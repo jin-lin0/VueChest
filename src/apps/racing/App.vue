@@ -569,7 +569,7 @@ import { ref, onMounted, onUnmounted, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as THREE from 'three'
 import { ArrowLeft, ArrowRight, Gauge, Lock, Octagon, PackageOpen, Pause, Zap } from '@lucide/vue'
-import { formatClock } from '@/utils'
+import { formatClock } from '@/utils/common'
 import {
   RACING_CARS,
   RACING_DRIFT,
@@ -577,7 +577,6 @@ import {
   RACING_SCORE,
   RACING_PHYSICS,
   RACING_CAMERA,
-  RACING_AI,
   type RacingCar,
 } from './config'
 import { getCarById, cycleCar, renderSplitScreenView } from './utils'
@@ -606,7 +605,6 @@ import { createPlayerData, isRacerActive, resetPlayerData, type PlayerData } fro
 import RaceSetup from './components/RaceSetup.vue'
 import RacingSettingsPanel from './components/RacingSettingsPanel.vue'
 import {
-  MODE_LABELS,
   TRACKS,
   getMedal,
   normalizeRaceConfig,
@@ -1009,14 +1007,6 @@ function onCarTouchEnd(e: TouchEvent, player: number) {
   }
 }
 
-// 技能系统
-const skills = reactive([
-  { id: 1, name: '氮气加速', icon: '🚀', cooldown: 0, duration: 3, maxCooldown: 10 },
-  { id: 2, name: '磁铁吸附', icon: '🧲', cooldown: 0, duration: 5, maxCooldown: 15 },
-  { id: 3, name: '护盾', icon: '🛡️', cooldown: 0, duration: 4, maxCooldown: 12 },
-  { id: 4, name: '导弹', icon: '🎯', cooldown: 0, duration: 0, maxCooldown: 8 },
-])
-
 // 玩家数据（PlayerData 类型与工厂已抽到 ./types）
 const player1Data = reactive<PlayerData>(createPlayerData())
 const player2Data = reactive<PlayerData>(createPlayerData())
@@ -1153,7 +1143,6 @@ const ghostRecorder = new GhostRecorder()
 let raceGoAt = 0
 let firstThrottleAt: number | null = null
 let burnoutUntil = 0
-let lastRecordedLapStart = 0
 const checkpointSplits: number[] = []
 const deployedObstacles: {
   mesh: THREE.Mesh
@@ -1169,7 +1158,6 @@ let collectibles: Collectible[] = []
 let gates: CheckpointGate[] = []
 let aiCars: AICarState[] = []
 let particles: ParticleSystem | null = null
-let comboResetTimer: ReturnType<typeof setTimeout> | null = null
 
 // 相机状态（平滑跟随 + 碰撞震动）
 const camPos = new THREE.Vector3()
@@ -1204,8 +1192,6 @@ let magnetPlayerData: PlayerData | null = null
 let shieldActive = false
 let shieldMesh: THREE.Mesh | null = null
 let shieldPlayerData: PlayerData | null = null
-let boostActive = false
-let boostPlayerData: PlayerData | null = null
 // 漂移相关常量见 RACING_DRIFT（config.ts）
 // 漂移痕迹
 const tireMarks: { mesh: THREE.Mesh; opacity: number; createdAt: number }[] = []
@@ -1737,47 +1723,6 @@ function updateAIItems(delta: number) {
     }
     ai.data.heldItem = null
   })
-}
-
-function useSkill(player: number, index: number) {
-  if (gameState.value !== 'playing') return
-  const skill = skills[index]
-  if (skill.cooldown > 0) return
-  skill.cooldown = skill.maxCooldown
-  skillsUsed.value++
-  const playerData = player === 1 ? player1Data : player2Data
-
-  switch (skill.id) {
-    case 1:
-      // 氮气加速 - 临时提高最大速度 + 尾焰 + 音效
-      boostActive = true
-      boostPlayerData = playerData
-      playerData.speed += RACING_SCORE.NITRO_SPEED_BONUS
-      racingAudio.nitro()
-      if (player === 1) {
-        boosting.value = true
-        if (nitroFlame1) nitroFlame1.visible = true
-      }
-      trackTimeout(() => {
-        boostActive = false
-        boostPlayerData = null
-        playerData.speed = Math.min(playerData.speed, getCarMaxSpeed(player))
-        if (player === 1) {
-          boosting.value = false
-          if (nitroFlame1) nitroFlame1.visible = false
-        }
-      }, skill.duration * 1000)
-      break
-    case 2:
-      activateMagnet(playerData, skill.duration)
-      break
-    case 3:
-      activateShield(playerData, skill.duration)
-      break
-    case 4:
-      launchMissile(player)
-      break
-  }
 }
 
 function launchMissile(player: number) {
@@ -2365,7 +2310,6 @@ function updatePlayer(
       }
       ghostRecorder.reset()
       playerData.nitro = 40
-      lastRecordedLapStart = gameTime.value
     }
 
     if (
@@ -2663,8 +2607,6 @@ function startGame() {
   rank.value = 1
   previousRank.value = 1
   boosting.value = false
-  boostActive = false
-  boostPlayerData = null
   magnetActive = false
   magnetPlayerData = null
   shieldActive = false
@@ -2685,17 +2627,12 @@ function startGame() {
   firstThrottleAt = null
   burnoutUntil = 0
   ghostRecorder.reset()
-  lastRecordedLapStart = 0
   for (const obstacle of deployedObstacles) {
     obstacle.mesh.removeFromParent()
     obstacle.mesh.geometry.dispose()
     ;(obstacle.mesh.material as THREE.Material).dispose()
   }
   deployedObstacles.length = 0
-
-  skills.forEach((skill) => {
-    skill.cooldown = 0
-  })
 
   // 清理上一局的漂移痕迹：逐条移除并 dispose 材质（共享几何体保留复用，
   // 不能让它被 initScene 的 disposeObject 释放掉）
@@ -2784,12 +2721,6 @@ function gameLoop() {
     const comboState = tickCombo({ value: combo.value, idle: comboIdle.value }, delta)
     combo.value = comboState.value
     comboIdle.value = comboState.idle
-
-    skills.forEach((skill) => {
-      if (skill.cooldown > 0) {
-        skill.cooldown = Math.max(0, skill.cooldown - delta)
-      }
-    })
 
     // 更新漂移痕迹
     updateTireMarks()

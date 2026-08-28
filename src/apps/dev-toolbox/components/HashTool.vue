@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
-// @ts-ignore spark-md5 未提供类型声明，运行期由依赖提供
+// @ts-expect-error spark-md5 未提供类型声明，运行期由依赖提供
 import SparkMD5 from 'spark-md5'
 
 defineOptions({ name: 'HashTool' })
@@ -182,7 +182,13 @@ function clearAll() {
       <div v-for="r in resultRows" :key="r.key" class="result-row">
         <span class="res-label">{{ r.label }}</span>
         <code class="mono res-value">{{ r.value }}</code>
-        <CopyButton :text="r.value" variant="mini" success-text="已复制结果" :disabled="r.value === '—'" :toast="addToast" />
+        <CopyButton
+          :text="r.value"
+          variant="mini"
+          success-text="已复制结果"
+          :disabled="r.value === '—'"
+          :toast="addToast"
+        />
       </div>
     </section>
   </div>

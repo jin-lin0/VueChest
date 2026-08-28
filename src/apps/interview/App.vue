@@ -553,7 +553,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { CustomSelect, EmptyState, MarkdownView, Skeleton, type SelectOption } from '@/components'
 import { useToast } from '@/composables/useToast'
 import { STORAGE_KEYS } from '@/config/storage-keys'
@@ -561,7 +561,7 @@ import { api } from '@/lib/request'
 import { getStorage, setStorage } from '@/lib/storage'
 import { useAuthStore } from '@/stores'
 import type { Category, Question } from '@/types/interview'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { QUESTION_PAGE_SIZE } from './config'
 import {
   calculateLearningStats,
@@ -588,6 +588,7 @@ type QuestionListResponse = {
 }
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const { addToast } = useToast()
 const pageSize = QUESTION_PAGE_SIZE
@@ -955,15 +956,36 @@ const getStatusLabel = (status: LearningStatus | null) =>
 const goBack = () => router.push('/')
 const goDocs = () => router.push({ path: '/docs', query: { doc: 'niuke' } })
 
+let routeCommandsReady = false
+let handledRouteCommand = ''
+async function applyRouteCommand() {
+  if (!routeCommandsReady) return
+  const practice = typeof route.query.practice === 'string' ? route.query.practice : ''
+  const commandKey = `${practice}|${String(route.query.command || '')}`
+  if (!practice || commandKey === handledRouteCommand) return
+  handledRouteCommand = commandKey
+  if (practice === 'continue') await continueLastQuestion()
+  else if (['all', 'unpracticed', 'review', 'favorite'].includes(practice)) {
+    await startPractice(practice as PracticeMode)
+  }
+}
+
 watch([selectedCategory, selectedDifficulty, selectedStatus], () => {
   currentPage.value = 1
   void fetchQuestions()
 })
 
-onMounted(() => {
+onMounted(async () => {
   loadLearningState()
-  void Promise.all([fetchCategories(), fetchQuestions()])
+  await Promise.all([fetchCategories(), fetchQuestions()])
+  routeCommandsReady = true
+  await applyRouteCommand()
 })
+
+watch(
+  () => [route.query.practice, route.query.command],
+  () => void applyRouteCommand(),
+)
 </script>
 
 <style scoped src="./interview.css"></style>

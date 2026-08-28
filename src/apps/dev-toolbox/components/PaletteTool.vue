@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { rgbToHex } from '@/utils'
+import { rgbToHex } from '@/utils/devtoolbox'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 import { useFileDrop } from '../composables/useFileDrop'
@@ -126,7 +126,6 @@ function extract(img: HTMLImageElement) {
     addToast('info', error.value)
   }
 }
-
 </script>
 
 <template>
@@ -173,7 +172,12 @@ function extract(img: HTMLImageElement) {
             <span class="mono hex">{{ c.hex }}</span>
             <span class="mono rgb">rgb({{ c.rgb[0] }}, {{ c.rgb[1] }}, {{ c.rgb[2] }})</span>
             <span class="mono cnt">×{{ c.count }}</span>
-            <CopyButton :text="c.hex" variant="mini" :toast="addToast" :success-text="`已复制 ${c.hex}`" />
+            <CopyButton
+              :text="c.hex"
+              variant="mini"
+              :toast="addToast"
+              :success-text="`已复制 ${c.hex}`"
+            />
           </li>
         </ul>
       </section>

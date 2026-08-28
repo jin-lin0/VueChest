@@ -1,25 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import draggable from 'vuedraggable'
-import StockChart from './components/StockChart.vue'
-import PortfolioPanel from './components/PortfolioPanel.vue'
-import ResearchLineChart, { type ResearchSeries } from './components/ResearchLineChart.vue'
-import { useStockStore, type KlineData, type KlinePeriod, type PriceAlert } from '@/stores/stock'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useStockStore, type KlinePeriod } from '@/stores/stock'
 import { STOCK_COLORS } from './config'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { formatLargeNumber } from './research'
-import {
-  correlation,
-  normalizePerformance,
-  runMaBacktest,
-  type BacktestResult,
-  type CompareSeries,
-} from './portfolio'
 import { buildResearchDecision, extractNoticeSignals, type DecisionSummary } from './decision'
 import { useToast } from '@/composables/useToast'
-import { VueDatePicker } from '@vuepic/vue-datepicker'
-import '@vuepic/vue-datepicker/dist/main.css'
 
 defineOptions({ name: 'StockResearchWorkspace' })
 
@@ -32,43 +19,27 @@ type ResearchPanel =
   | 'notices'
   | 'journal'
 const router = useRouter()
+const route = useRoute()
 const stock = useStockStore()
 const { addToast } = useToast()
+const Draggable = defineAsyncComponent(() => import('vuedraggable'))
+const OverviewPanel = defineAsyncComponent(() => import('./components/OverviewPanel.vue'))
+const PortfolioPanel = defineAsyncComponent(() => import('./components/PortfolioPanel.vue'))
+const ComparePanel = defineAsyncComponent(() => import('./components/ComparePanel.vue'))
+const BacktestPanel = defineAsyncComponent(() => import('./components/BacktestPanel.vue'))
+const FinancialsPanel = defineAsyncComponent(() => import('./components/FinancialsPanel.vue'))
+const NoticesPanel = defineAsyncComponent(() => import('./components/NoticesPanel.vue'))
+const JournalPanel = defineAsyncComponent(() => import('./components/JournalPanel.vue'))
 
 const activePanel = ref<ResearchPanel>('overview')
 const activePeriod = ref<KlinePeriod>('day')
-const activeKline = ref<KlineData | null>(null)
-const noteDraft = ref('')
-const alertDirection = ref<PriceAlert['direction']>('above')
-const alertTarget = ref<number | null>(null)
-const compareSelection = ref<string[]>([])
-const compareSeries = ref<CompareSeries[]>([])
-const compareCorrelation = ref<Record<string, number | null>>({})
-const compareLoading = ref(false)
-const backtestShort = ref(5)
-const backtestLong = ref(20)
-const backtestCapital = ref(100_000)
-const backtestResult = ref<BacktestResult | null>(null)
 let portfolioRefreshTimer: ReturnType<typeof setInterval> | null = null
 
 const quote = computed(() => stock.researchSummary)
 const currentPrice = computed(() => quote.value?.price ?? Number(stock.result?.close || 0))
 const changePercent = computed(() => quote.value?.changePercent ?? 0)
 const isUp = computed(() => changePercent.value >= 0)
-const displayKline = computed(() => activeKline.value ?? stock.klineResult)
 const latestFinancial = computed(() => stock.financials[0] ?? null)
-const currentAlerts = computed(() => stock.alerts.filter((item) => item.code === stock.stockCode))
-const klineCoverage = computed(() => {
-  const first = stock.klineChartData[0]?.date
-  const last = stock.klineChartData.at(-1)?.date
-  return first && last ? `${first} 至 ${last} · ${stock.klineChartData.length} 根` : ''
-})
-const compareCandidates = computed(() => {
-  const items = [...stock.favorites, ...stock.recentStocks, ...stock.positions]
-  return [
-    ...new Map(items.map((item) => [item.code, { code: item.code, name: item.name }])).values(),
-  ]
-})
 const latestNoticeSignals = computed(() => extractNoticeSignals(stock.notices))
 
 const researchDecision = computed<DecisionSummary>(() =>
@@ -86,54 +57,21 @@ const researchDecision = computed<DecisionSummary>(() =>
   }),
 )
 
-const compareChartSeries = computed<ResearchSeries[]>(() => {
-  const colors = ['#0f766e', '#7c3aed', '#dc2626', '#d97706']
-  return compareSeries.value.map((item, index) => ({
-    name: item.name,
-    color: colors[index % colors.length],
-    points: item.points,
-  }))
-})
-const financialChartSeries = computed<ResearchSeries[]>(() => {
-  const rows = [...stock.financials].reverse()
-  return [
-    {
-      name: '营业收入（亿）',
-      color: '#0f766e',
-      points: rows
-        .filter((item) => item.revenue != null)
-        .map((item) => ({
-          date: item.reportDate,
-          value: Number((item.revenue! / 1e8).toFixed(2)),
-        })),
-    },
-    {
-      name: '归母净利润（亿）',
-      color: '#7c3aed',
-      points: rows
-        .filter((item) => item.netProfit != null)
-        .map((item) => ({
-          date: item.reportDate,
-          value: Number((item.netProfit! / 1e8).toFixed(2)),
-        })),
-    },
-  ]
-})
-const backtestChartSeries = computed<ResearchSeries[]>(() =>
-  backtestResult.value
-    ? [{ name: '策略权益', color: '#0f766e', points: backtestResult.value.equity }]
-    : [],
-)
 const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number }> = [
   { id: 'overview', label: '行情研判' },
   { id: 'portfolio', label: '模拟持仓', count: () => stock.positions.length },
-  { id: 'compare', label: '股票对比', count: () => compareSelection.value.length },
+  { id: 'compare', label: '股票对比' },
   { id: 'backtest', label: '策略回测' },
   { id: 'financials', label: '财务质量', count: () => stock.financials.length },
   { id: 'notices', label: '公司公告', count: () => stock.notices.length },
-  { id: 'journal', label: '研究笔记', count: () => currentAlerts.value.length },
+  {
+    id: 'journal',
+    label: '研究笔记',
+    count: () => stock.alerts.filter((item) => item.code === stock.stockCode).length,
+  },
 ]
 const panelNeedsStock = (panel: ResearchPanel) => panel !== 'overview' && panel !== 'portfolio'
+const panelIds = new Set<ResearchPanel>(panelItems.map((item) => item.id))
 
 const debouncedSearch = debounce(() => {
   if (stock.searchQuery.trim()) stock.searchStocks(stock.searchQuery)
@@ -157,15 +95,33 @@ function hideSearchResults() {
 }
 
 async function openStock(code: string, preservePanel = activePanel.value === 'portfolio') {
-  activeKline.value = null
   if (!preservePanel) activePanel.value = 'overview'
   await stock.loadStock(code, activePeriod.value)
-  noteDraft.value = stock.getResearchNote(code)
-  if (stock.result) alertTarget.value = Number(stock.result.close)
 }
 
 async function openPositionResearch(code: string) {
   await openStock(code, false)
+}
+
+let routeCommandsReady = false
+let handledRouteCommand = ''
+async function applyRouteCommand() {
+  if (!routeCommandsReady) return
+  const code = typeof route.query.code === 'string' ? route.query.code : ''
+  const requestedPanel =
+    typeof route.query.panel === 'string' && panelIds.has(route.query.panel as ResearchPanel)
+      ? (route.query.panel as ResearchPanel)
+      : null
+  const commandKey = `${code}|${requestedPanel || ''}|${String(route.query.command || '')}`
+  if ((!code && !requestedPanel) || commandKey === handledRouteCommand) return
+  handledRouteCommand = commandKey
+
+  if (/^\d{6}$/.test(code)) {
+    await openStock(code, requestedPanel === 'portfolio')
+  }
+  if (requestedPanel && (!panelNeedsStock(requestedPanel) || stock.result)) {
+    activePanel.value = requestedPanel
+  }
 }
 
 async function chooseSearchResult(item: { code: string; name: string; market: string }) {
@@ -185,100 +141,8 @@ async function runSearch() {
   if (stock.searchResults[0]) await chooseSearchResult(stock.searchResults[0])
 }
 
-async function changePeriod(period: KlinePeriod) {
-  activePeriod.value = period
-  activeKline.value = null
-  if (!stock.stockCode) return
-  try {
-    await stock.loadKline(stock.stockCode, period)
-  } catch (error) {
-    addToast('error', error instanceof Error ? error.message : 'K 线数据加载失败')
-  }
-}
-
-async function queryByDate(date: Date | null) {
-  if (!date || !stock.stockCode) return
-  stock.selectedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-  await stock.queryStockByDate()
-  activeKline.value = stock.klineResult
-}
-
-function onCandleClick(data: KlineData) {
-  activeKline.value = data
-}
-
 function onWatchlistDrag() {
   stock.reorderFavorites(stock.favoritesData.map((item) => ({ code: item.code, name: item.name })))
-}
-
-function saveNote() {
-  if (!stock.stockCode) return
-  stock.setResearchNote(stock.stockCode, noteDraft.value)
-  addToast('success', '研究笔记已保存')
-}
-
-function createAlert() {
-  if (!stock.result || !alertTarget.value || alertTarget.value <= 0) return
-  stock.addAlert({
-    code: stock.stockCode,
-    name: stock.result.name,
-    direction: alertDirection.value,
-    target: alertTarget.value,
-  })
-  addToast('success', '价格提醒已创建，将在刷新行情时检查')
-}
-
-function toggleCompare(code: string) {
-  if (compareSelection.value.includes(code)) {
-    compareSelection.value = compareSelection.value.filter((item) => item !== code)
-    return
-  }
-  if (compareSelection.value.length >= 4) {
-    addToast('warning', '最多同时对比 4 只股票')
-    return
-  }
-  compareSelection.value.push(code)
-}
-
-async function runComparison() {
-  if (compareSelection.value.length < 2) {
-    addToast('warning', '请至少选择 2 只股票')
-    return
-  }
-  compareLoading.value = true
-  try {
-    const rows = await Promise.all(
-      compareSelection.value.map(async (code) => ({
-        code,
-        data: await stock.fetchKlineData(code, 'day', 250),
-      })),
-    )
-    compareSeries.value = rows.map((row) => {
-      const item = compareCandidates.value.find((candidate) => candidate.code === row.code)
-      return normalizePerformance(row.code, item?.name || row.code, row.data)
-    })
-    const base = rows[0]
-    compareCorrelation.value = Object.fromEntries(
-      rows.slice(1).map((row) => [row.code, correlation(base.data, row.data)]),
-    )
-  } catch (error) {
-    addToast('error', error instanceof Error ? error.message : '股票对比加载失败')
-  } finally {
-    compareLoading.value = false
-  }
-}
-
-function runBacktest() {
-  try {
-    backtestResult.value = runMaBacktest(
-      stock.klineChartData,
-      Number(backtestShort.value),
-      Number(backtestLong.value),
-      Number(backtestCapital.value),
-    )
-  } catch (error) {
-    addToast('error', error instanceof Error ? error.message : '回测失败')
-  }
 }
 
 async function copyResearchCard() {
@@ -308,17 +172,24 @@ async function copyResearchCard() {
   addToast('success', '研究卡片已复制')
 }
 
-onMounted(() => {
-  void Promise.all([
+onMounted(async () => {
+  await Promise.all([
     stock.fetchMarketOverview(),
     stock.fetchFavoritesData(),
     stock.fetchPortfolioData(),
   ])
+  routeCommandsReady = true
+  await applyRouteCommand()
   portfolioRefreshTimer = setInterval(() => void stock.fetchPortfolioData(), 60_000)
 })
 onUnmounted(() => {
   if (portfolioRefreshTimer) clearInterval(portfolioRefreshTimer)
 })
+
+watch(
+  () => [route.query.code, route.query.panel, route.query.command],
+  () => void applyRouteCommand(),
+)
 </script>
 
 <template>
@@ -425,7 +296,7 @@ onUnmounted(() => {
             </button>
           </div>
           <div v-if="stock.isFavoritesLoading" class="watch-loading">正在刷新行情…</div>
-          <draggable
+          <Draggable
             v-else-if="stock.favoritesData.length"
             v-model="stock.favoritesData"
             item-key="code"
@@ -458,7 +329,7 @@ onUnmounted(() => {
                 </button>
               </article>
             </template>
-          </draggable>
+          </Draggable>
           <div v-else class="watch-empty">
             <span>☆</span>
             <p>研究股票后加入自选，持续观察变化。</p>
@@ -560,519 +431,22 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <section v-if="activePanel === 'overview'" class="panel-stack">
-            <article class="workspace-card chart-card">
-              <header class="card-header">
-                <div>
-                  <h2>价格趋势</h2>
-                  <p v-if="stock.isKlineLoading">正在加载历史数据…</p>
-                  <p v-else-if="klineCoverage">{{ klineCoverage }}</p>
-                </div>
-                <div class="chart-controls">
-                  <div class="period-switch">
-                    <button
-                      v-for="period in ['day', 'week', 'month'] as KlinePeriod[]"
-                      :key="period"
-                      :class="{ active: activePeriod === period }"
-                      :disabled="stock.isKlineLoading"
-                      @click="changePeriod(period)"
-                    >
-                      {{ period === 'day' ? '日线' : period === 'week' ? '周线' : '月线' }}
-                    </button>
-                  </div>
-                  <VueDatePicker
-                    :model-value="null"
-                    :enable-time-picker="false"
-                    :max-date="new Date()"
-                    placeholder="定位交易日"
-                    auto-apply
-                    :clearable="false"
-                    @update:model-value="queryByDate"
-                  />
-                </div>
-              </header>
-              <StockChart
-                :data="stock.klineChartData"
-                :selected-date="activeKline?.date || ''"
-                @candle-click="onCandleClick"
-              />
-              <div v-if="displayKline" class="candle-inspector">
-                <span
-                  ><small>{{ displayKline.date }}</small
-                  ><strong>选中交易日</strong></span
-                >
-                <span
-                  ><small>开盘</small><strong>{{ formatPrice(displayKline.open) }}</strong></span
-                >
-                <span
-                  ><small>收盘</small><strong>{{ formatPrice(displayKline.close) }}</strong></span
-                >
-                <span
-                  ><small>最高 / 最低</small
-                  ><strong
-                    >{{ formatPrice(displayKline.high) }} /
-                    {{ formatPrice(displayKline.low) }}</strong
-                  ></span
-                >
-                <span
-                  ><small>成交量</small
-                  ><strong>{{ formatLargeNumber(Number(displayKline.volume)) }}</strong></span
-                >
-              </div>
-            </article>
+          <OverviewPanel
+            v-if="activePanel === 'overview'"
+            v-model:period="activePeriod"
+            :decision="researchDecision"
+            @open-panel="activePanel = $event"
+          />
 
-            <div class="analysis-grid">
-              <article class="workspace-card decision-card">
-                <header class="card-header">
-                  <div>
-                    <h2>研判结论</h2>
-                    <p>基于技术、估值、财务与公告信号的执行化输出</p>
-                  </div>
-                  <span class="decision-badge" :class="researchDecision.tone">{{
-                    researchDecision.label
-                  }}</span>
-                </header>
-                <div class="decision-score">
-                  <strong>{{ researchDecision.score }}</strong
-                  ><span>/100</span>
-                  <small>置信度 {{ researchDecision.confidence }}</small>
-                </div>
-                <div class="decision-metrics">
-                  <span>数据覆盖率：{{ researchDecision.dataCoverage }}%</span>
-                  <span v-if="researchDecision.missingData.length">
-                    缺失项：{{ researchDecision.missingData.join(' · ') }}
-                  </span>
-                </div>
-                <div v-if="researchDecision.highlights.length" class="decision-highlights">
-                  <span v-for="item in researchDecision.highlights" :key="`h-${item}`">{{
-                    item
-                  }}</span>
-                </div>
-                <div v-if="researchDecision.watchItems.length" class="decision-block">
-                  <h3>关键触发</h3>
-                  <ul>
-                    <li v-for="item in researchDecision.watchItems" :key="`w-${item}`">
-                      {{ item }}
-                    </li>
-                  </ul>
-                </div>
-                <div v-if="researchDecision.risks.length" class="decision-block">
-                  <h3>风险提示</h3>
-                  <ul>
-                    <li v-for="item in researchDecision.risks" :key="`r-${item}`">{{ item }}</li>
-                  </ul>
-                </div>
-                <p class="decision-action">{{ researchDecision.action }}</p>
-              </article>
+          <ComparePanel v-else-if="activePanel === 'compare'" />
 
-              <article class="workspace-card signal-card">
-                <header class="card-header">
-                  <div><h2>技术研判</h2></div>
-                </header>
-                <template v-if="stock.technicalSnapshot">
-                  <div class="score-row">
-                    <div
-                      class="score-ring"
-                      :style="{ '--score': `${stock.technicalSnapshot.score * 3.6}deg` }"
-                    >
-                      <span
-                        ><strong>{{ stock.technicalSnapshot.score }}</strong
-                        ><small>/ 100</small></span
-                      >
-                    </div>
-                    <div class="trend-copy">
-                      <strong :class="stock.technicalSnapshot.trend">{{
-                        stock.technicalSnapshot.trendLabel
-                      }}</strong>
-                      <p>基于均线结构、RSI 与 MACD 的规则化快照，不预测未来涨跌。</p>
-                    </div>
-                  </div>
-                  <div class="signal-list">
-                    <div
-                      v-for="signal in stock.technicalSnapshot.signals"
-                      :key="signal.label"
-                      :class="signal.tone"
-                    >
-                      <i></i
-                      ><span
-                        ><strong>{{ signal.label }}</strong
-                        ><small>{{ signal.detail }}</small></span
-                      >
-                    </div>
-                  </div>
-                </template>
-              </article>
+          <BacktestPanel v-else-if="activePanel === 'backtest'" />
 
-              <article class="workspace-card metric-card">
-                <header class="card-header">
-                  <div><h2>交易与估值</h2></div>
-                </header>
-                <div class="metric-grid">
-                  <span
-                    ><small>市盈率 PE</small><strong>{{ formatPrice(quote?.pe) }}</strong></span
-                  >
-                  <span
-                    ><small>市净率 PB</small><strong>{{ formatPrice(quote?.pb) }}</strong></span
-                  >
-                  <span
-                    ><small>换手率</small
-                    ><strong>{{ formatPercent(quote?.turnover) }}</strong></span
-                  >
-                  <span
-                    ><small>振幅</small><strong>{{ formatPercent(quote?.amplitude) }}</strong></span
-                  >
-                  <span
-                    ><small>量比</small><strong>{{ formatPrice(quote?.volumeRatio) }}</strong></span
-                  >
-                  <span
-                    ><small>总市值</small
-                    ><strong>{{ formatLargeNumber(quote?.totalMarketCap) }}</strong></span
-                  >
-                  <span
-                    ><small>20 日动量</small
-                    ><strong>{{ formatPercent(stock.technicalSnapshot?.momentum20) }}</strong></span
-                  >
-                  <span
-                    ><small>年化波动</small
-                    ><strong>{{
-                      formatPercent(stock.technicalSnapshot?.volatility20)
-                    }}</strong></span
-                  >
-                </div>
-                <div v-if="stock.technicalSnapshot" class="support-bar">
-                  <span
-                    ><small>20 日支撑</small
-                    ><strong>{{ formatPrice(stock.technicalSnapshot.support) }}</strong></span
-                  >
-                  <i></i>
-                  <span
-                    ><small>20 日压力</small
-                    ><strong>{{ formatPrice(stock.technicalSnapshot.resistance) }}</strong></span
-                  >
-                </div>
-              </article>
+          <FinancialsPanel v-else-if="activePanel === 'financials'" />
 
-              <article v-if="latestFinancial" class="workspace-card finance-preview">
-                <header class="card-header">
-                  <div><h2>财务质量</h2></div>
-                  <button @click="activePanel = 'financials'">查看全部 →</button>
-                </header>
-                <div class="report-title">
-                  <strong>{{ latestFinancial.reportName }}</strong
-                  ><small>{{ latestFinancial.reportDate }}</small>
-                </div>
-                <div class="quality-grid">
-                  <span
-                    ><small>营业收入</small
-                    ><strong>{{ formatLargeNumber(latestFinancial.revenue) }}</strong
-                    ><b :class="Number(latestFinancial.revenueGrowth) >= 0 ? 'up' : 'down'">{{
-                      formatPercent(latestFinancial.revenueGrowth)
-                    }}</b></span
-                  >
-                  <span
-                    ><small>归母净利润</small
-                    ><strong>{{ formatLargeNumber(latestFinancial.netProfit) }}</strong
-                    ><b :class="Number(latestFinancial.netProfitGrowth) >= 0 ? 'up' : 'down'">{{
-                      formatPercent(latestFinancial.netProfitGrowth)
-                    }}</b></span
-                  >
-                  <span
-                    ><small>ROE</small
-                    ><strong>{{ formatPercent(latestFinancial.roe) }}</strong></span
-                  >
-                  <span
-                    ><small>毛利率</small
-                    ><strong>{{ formatPercent(latestFinancial.grossMargin) }}</strong></span
-                  >
-                </div>
-              </article>
+          <NoticesPanel v-else-if="activePanel === 'notices'" />
 
-              <article class="workspace-card notice-preview">
-                <header class="card-header">
-                  <div><h2>最新公告</h2></div>
-                  <button @click="activePanel = 'notices'">查看全部 →</button>
-                </header>
-                <a
-                  v-for="notice in stock.notices.slice(0, 4)"
-                  :key="notice.id"
-                  :href="notice.url"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span
-                    ><b>{{ notice.category }}</b
-                    ><strong>{{ notice.title }}</strong></span
-                  ><small>{{ notice.date }} ↗</small>
-                </a>
-                <p v-if="!stock.notices.length" class="card-empty">暂无公告数据</p>
-              </article>
-            </div>
-          </section>
-
-          <section
-            v-else-if="activePanel === 'compare'"
-            class="workspace-card full-panel compare-panel"
-          >
-            <header class="panel-heading">
-              <div>
-                <h2>多股票对比</h2>
-                <p>将最近 250 个交易日归一化为 100，比较收益、波动与相关性。</p>
-              </div>
-              <button
-                :disabled="compareLoading || compareSelection.length < 2"
-                @click="runComparison"
-              >
-                {{ compareLoading ? '加载中…' : '开始对比' }}
-              </button>
-            </header>
-            <div class="compare-picker">
-              <button
-                v-for="item in compareCandidates"
-                :key="item.code"
-                :class="{ active: compareSelection.includes(item.code) }"
-                @click="toggleCompare(item.code)"
-              >
-                <strong>{{ item.name }}</strong
-                ><small>{{ item.code }}</small>
-              </button>
-            </div>
-            <ResearchLineChart
-              v-if="compareChartSeries.length"
-              :series="compareChartSeries"
-              :height="330"
-            />
-            <div v-if="compareSeries.length" class="compare-metrics">
-              <article v-for="(item, index) in compareSeries" :key="item.code">
-                <i :style="{ background: compareChartSeries[index]?.color }"></i
-                ><span
-                  ><strong>{{ item.name }}</strong
-                  ><small>{{ item.code }}</small></span
-                ><span
-                  ><small>区间收益</small
-                  ><b :class="item.changePercent >= 0 ? 'up' : 'down'">{{
-                    formatPercent(item.changePercent)
-                  }}</b></span
-                ><span
-                  ><small>年化波动</small><b>{{ formatPercent(item.volatility) }}</b></span
-                ><span v-if="index > 0"
-                  ><small>与 {{ compareSeries[0].name }} 相关性</small
-                  ><b>{{ compareCorrelation[item.code] ?? '--' }}</b></span
-                >
-              </article>
-            </div>
-            <div v-else class="panel-empty">选择 2–4 只自选或最近研究的股票</div>
-          </section>
-
-          <section
-            v-else-if="activePanel === 'backtest'"
-            class="workspace-card full-panel backtest-panel"
-          >
-            <header class="panel-heading">
-              <div>
-                <h2>均线策略回测</h2>
-                <p>短均线上穿长均线买入、下穿卖出，含双边 0.03% 费用。</p>
-              </div>
-            </header>
-            <div class="backtest-form">
-              <label
-                ><span>短均线</span
-                ><input v-model.number="backtestShort" type="number" min="2" max="60" /></label
-              ><label
-                ><span>长均线</span
-                ><input v-model.number="backtestLong" type="number" min="3" max="120" /></label
-              ><label
-                ><span>初始资金</span
-                ><input
-                  v-model.number="backtestCapital"
-                  type="number"
-                  min="1000"
-                  step="1000" /></label
-              ><button @click="runBacktest">运行回测</button>
-            </div>
-            <template v-if="backtestResult"
-              ><div class="backtest-metrics">
-                <article>
-                  <small>策略收益</small
-                  ><strong :class="backtestResult.totalReturn >= 0 ? 'up' : 'down'">{{
-                    formatPercent(backtestResult.totalReturn)
-                  }}</strong>
-                </article>
-                <article>
-                  <small>同期持有</small
-                  ><strong :class="backtestResult.benchmarkReturn >= 0 ? 'up' : 'down'">{{
-                    formatPercent(backtestResult.benchmarkReturn)
-                  }}</strong>
-                </article>
-                <article>
-                  <small>最大回撤</small
-                  ><strong class="down">{{ formatPercent(backtestResult.maxDrawdown) }}</strong>
-                </article>
-                <article>
-                  <small>交易胜率</small
-                  ><strong>{{ formatPercent(backtestResult.winRate) }}</strong>
-                </article>
-                <article>
-                  <small>交易次数</small><strong>{{ backtestResult.trades.length }}</strong>
-                </article>
-              </div>
-              <ResearchLineChart :series="backtestChartSeries" :height="300" />
-              <div class="trade-list">
-                <div
-                  v-for="trade in backtestResult.trades.slice().reverse().slice(0, 12)"
-                  :key="`${trade.buyDate}-${trade.sellDate}`"
-                >
-                  <span
-                    ><small>买入</small
-                    ><strong>{{ trade.buyDate }} · ¥{{ formatPrice(trade.buyPrice) }}</strong></span
-                  ><span
-                    ><small>卖出</small
-                    ><strong
-                      >{{ trade.sellDate }} · ¥{{ formatPrice(trade.sellPrice) }}</strong
-                    ></span
-                  ><b :class="trade.returnPercent >= 0 ? 'up' : 'down'">{{
-                    formatPercent(trade.returnPercent)
-                  }}</b>
-                </div>
-              </div></template
-            >
-            <div v-else class="panel-empty">使用当前股票已加载的 K 线进行回测</div>
-            <p class="backtest-note">
-              回测仅验证历史规则表现，不代表未来收益；未计入滑点、涨跌停和无法成交等现实约束。
-            </p>
-          </section>
-
-          <section v-else-if="activePanel === 'financials'" class="workspace-card full-panel">
-            <header class="panel-heading">
-              <div>
-                <h2>财务指标时间线</h2>
-                <p>对比营收、利润、盈利能力与偿债结构的变化。</p>
-              </div>
-              <span>数据源：东方财富</span>
-            </header>
-            <ResearchLineChart
-              v-if="financialChartSeries.some((item) => item.points.length)"
-              :series="financialChartSeries"
-              :height="280"
-            />
-            <div v-if="stock.financials.length" class="financial-table-wrap">
-              <table class="financial-table">
-                <thead>
-                  <tr>
-                    <th>报告期</th>
-                    <th>营业收入</th>
-                    <th>营收同比</th>
-                    <th>归母净利润</th>
-                    <th>利润同比</th>
-                    <th>EPS</th>
-                    <th>ROE</th>
-                    <th>毛利率</th>
-                    <th>负债率</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="item in stock.financials"
-                    :key="`${item.reportDate}-${item.reportName}`"
-                  >
-                    <td>
-                      <strong>{{ item.reportName }}</strong
-                      ><small>{{ item.reportDate }}</small>
-                    </td>
-                    <td>{{ formatLargeNumber(item.revenue) }}</td>
-                    <td :class="Number(item.revenueGrowth) >= 0 ? 'up' : 'down'">
-                      {{ formatPercent(item.revenueGrowth) }}
-                    </td>
-                    <td>{{ formatLargeNumber(item.netProfit) }}</td>
-                    <td :class="Number(item.netProfitGrowth) >= 0 ? 'up' : 'down'">
-                      {{ formatPercent(item.netProfitGrowth) }}
-                    </td>
-                    <td>{{ formatPrice(item.eps) }}</td>
-                    <td>{{ formatPercent(item.roe) }}</td>
-                    <td>{{ formatPercent(item.grossMargin) }}</td>
-                    <td>{{ formatPercent(item.debtRatio) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div v-else class="panel-empty">财务数据暂不可用</div>
-          </section>
-
-          <section v-else-if="activePanel === 'notices'" class="workspace-card full-panel">
-            <header class="panel-heading">
-              <div>
-                <h2>公司公告</h2>
-                <p>优先阅读财报、业绩预告、重大事项和治理变化。</p>
-              </div>
-              <span>{{ stock.notices.length }} 条</span>
-            </header>
-            <div v-if="stock.notices.length" class="notice-list">
-              <a
-                v-for="notice in stock.notices"
-                :key="notice.id"
-                :href="notice.url"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <time>{{ notice.date }}</time
-                ><b>{{ notice.category }}</b
-                ><strong>{{ notice.title }}</strong
-                ><span>打开原文 ↗</span>
-              </a>
-            </div>
-            <div v-else class="panel-empty">暂无公告数据</div>
-          </section>
-
-          <section v-else class="journal-grid">
-            <article class="workspace-card note-card">
-              <header class="card-header">
-                <div><h2>研究笔记</h2></div>
-                <button @click="saveNote">保存笔记</button>
-              </header>
-              <textarea
-                v-model="noteDraft"
-                rows="16"
-                placeholder="记录投资逻辑、关键假设、证伪条件、计划观察的指标……"
-              ></textarea>
-              <p>建议写下“为什么关注”和“什么情况说明判断错了”，方便日后复盘。</p>
-            </article>
-            <article class="workspace-card alert-card">
-              <header class="card-header">
-                <div><h2>价格提醒</h2></div>
-              </header>
-              <div class="alert-form">
-                <select v-model="alertDirection">
-                  <option value="above">价格高于</option>
-                  <option value="below">价格低于</option>
-                </select>
-                <input v-model.number="alertTarget" type="number" min="0.01" step="0.01" />
-                <button @click="createAlert">创建提醒</button>
-              </div>
-              <div v-if="currentAlerts.length" class="alert-list">
-                <div
-                  v-for="alert in currentAlerts"
-                  :key="alert.id"
-                  :class="{ triggered: alert.triggeredAt, disabled: !alert.enabled }"
-                >
-                  <button class="alert-toggle" @click="stock.toggleAlert(alert.id)"><i></i></button>
-                  <span
-                    ><strong
-                      >{{ alert.direction === 'above' ? '突破' : '跌破' }} ¥{{
-                        formatPrice(alert.target)
-                      }}</strong
-                    ><small>{{
-                      alert.triggeredAt
-                        ? `已于 ${new Date(alert.triggeredAt).toLocaleString()} 触发`
-                        : alert.enabled
-                          ? '等待刷新行情时检查'
-                          : '已暂停'
-                    }}</small></span
-                  >
-                  <button class="alert-remove" @click="stock.removeAlert(alert.id)">×</button>
-                </div>
-              </div>
-              <div v-else class="panel-empty small">还没有价格提醒</div>
-            </article>
-          </section>
+          <JournalPanel v-else />
 
           <p v-if="stock.researchError" class="research-source-error">{{ stock.researchError }}</p>
           <footer class="research-disclaimer">
@@ -1790,739 +1164,6 @@ onUnmounted(() => {
   margin-left: 4px;
   opacity: 0.7;
 }
-.panel-stack {
-  display: grid;
-  gap: 14px;
-}
-.workspace-card {
-  border-radius: 20px;
-  padding: 20px;
-}
-.card-header,
-.panel-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-}
-.card-header h2,
-.panel-heading h2 {
-  margin-top: 3px;
-  font-size: 18px;
-}
-.chart-card .card-header p {
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.card-header button {
-  border: 0;
-  background: transparent;
-  color: #0f766e;
-  cursor: pointer;
-  font-weight: 800;
-}
-.chart-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.period-switch {
-  display: flex;
-  padding: 3px;
-  border: 1px solid var(--border-light);
-  border-radius: 9px;
-  background: var(--bg-page);
-}
-.period-switch button {
-  padding: 5px 9px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 11px;
-}
-.period-switch button.active {
-  background: #0f766e;
-  color: #fff;
-}
-.period-switch button:disabled {
-  cursor: wait;
-  opacity: 0.5;
-}
-.chart-controls :deep(.dp__main) {
-  width: 130px;
-}
-.chart-controls :deep(.dp__input) {
-  height: 34px;
-  border-radius: 9px;
-  font-size: 11px;
-  background: var(--bg-page);
-  color: var(--text-primary);
-  border-color: var(--border-light);
-}
-.candle-inspector {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--bg-subtle);
-}
-.candle-inspector span {
-  display: flex;
-  flex-direction: column;
-  padding-left: 10px;
-  border-left: 1px solid var(--border-light);
-}
-.candle-inspector small {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.candle-inspector strong {
-  font-size: 12px;
-}
-.analysis-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-.score-row {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  align-items: center;
-  gap: 20px;
-  margin: 18px 0;
-}
-.score-ring {
-  --score: 180deg;
-  position: relative;
-  display: grid;
-  width: 94px;
-  height: 94px;
-  place-items: center;
-  border-radius: 50%;
-  background: conic-gradient(#0f766e var(--score), var(--bg-subtle) 0);
-}
-.score-ring::before {
-  position: absolute;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--bg-card);
-  content: '';
-}
-.score-ring span {
-  position: relative;
-  display: flex;
-  align-items: baseline;
-}
-.score-ring strong {
-  font-size: 26px;
-}
-.score-ring small {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.trend-copy > strong {
-  font-size: 20px;
-}
-.trend-copy p {
-  margin-top: 5px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  line-height: 1.6;
-}
-.signal-list {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-.signal-list > div {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 11px;
-}
-.signal-list i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-.signal-list .positive i {
-  background: #0f766e;
-}
-.signal-list .negative i {
-  background: var(--danger);
-}
-.signal-list span {
-  display: flex;
-  flex-direction: column;
-}
-.signal-list strong {
-  font-size: 11px;
-}
-.signal-list small {
-  color: var(--text-muted);
-  font-size: 9px;
-}
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-top: 17px;
-}
-.metric-grid span,
-.quality-grid span {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--bg-subtle);
-}
-.metric-grid small,
-.quality-grid small {
-  color: var(--text-muted);
-  font-size: 9px;
-}
-.metric-grid strong {
-  margin-top: 3px;
-  font-size: 15px;
-}
-.support-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 10px;
-  padding: 11px 14px;
-  border: 1px dashed rgba(15, 118, 110, 0.28);
-  border-radius: 11px;
-}
-.support-bar span {
-  display: flex;
-  flex-direction: column;
-}
-.support-bar i {
-  flex: 1;
-  height: 3px;
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--stock-down), #eab308, var(--stock-up));
-}
-.support-bar small {
-  color: var(--text-muted);
-  font-size: 9px;
-}
-.support-bar strong {
-  font-size: 13px;
-}
-.report-title {
-  display: flex;
-  justify-content: space-between;
-  margin: 16px 0 9px;
-}
-.report-title small {
-  color: var(--text-muted);
-}
-.quality-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.quality-grid strong {
-  margin: 4px 0;
-  font-size: 14px;
-}
-.quality-grid b {
-  font-size: 10px;
-}
-.decision-card .card-header > div p {
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.decision-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--bg-subtle);
-  font-size: 12px;
-  font-weight: 800;
-}
-.decision-badge.bullish {
-  color: var(--stock-up);
-  border: 1px solid color-mix(in srgb, var(--stock-up) 28%, transparent);
-}
-.decision-badge.neutral {
-  color: #e8a317;
-  border: 1px solid color-mix(in srgb, #e8a317 28%, transparent);
-}
-.decision-badge.bearish {
-  color: var(--stock-down);
-  border: 1px solid color-mix(in srgb, var(--stock-down) 28%, transparent);
-}
-.decision-score {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  margin: 12px 0 10px;
-}
-.decision-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.decision-score strong {
-  font-size: 28px;
-}
-.decision-score small {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.decision-highlights {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-.decision-highlights span {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: 10px;
-}
-.decision-block {
-  margin-top: 12px;
-}
-.decision-block h3 {
-  margin-bottom: 6px;
-  font-size: 12px;
-}
-.decision-block ul {
-  margin: 0;
-  padding: 0 0 0 16px;
-  color: var(--text-secondary);
-  display: grid;
-  gap: 6px;
-}
-.decision-block li {
-  font-size: 11px;
-  line-height: 1.6;
-}
-.decision-action {
-  margin-top: 12px;
-  padding: 10px 11px;
-  border-radius: 10px;
-  background: var(--accent-bg);
-  color: var(--accent);
-  font-size: 11px;
-  line-height: 1.65;
-}
-.notice-preview a {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 11px 4px;
-  border-bottom: 1px solid var(--border-light);
-  color: var(--text-primary);
-  text-decoration: none;
-}
-.notice-preview a span {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.notice-preview a b {
-  flex: 0 0 auto;
-  padding: 3px 6px;
-  border-radius: 6px;
-  background: var(--accent-bg);
-  color: var(--accent);
-  font-size: 9px;
-}
-.notice-preview a strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-}
-.notice-preview a small {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-size: 9px;
-}
-.card-empty {
-  padding: 24px;
-  color: var(--text-muted);
-  text-align: center;
-}
-.full-panel {
-  min-height: 560px;
-}
-.panel-heading {
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--border-light);
-}
-.panel-heading p {
-  color: var(--text-secondary);
-  font-size: 11px;
-}
-.panel-heading > span {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.financial-table-wrap {
-  overflow: auto;
-  margin-top: 14px;
-}
-.financial-table {
-  width: 100%;
-  border-collapse: collapse;
-  white-space: nowrap;
-}
-.financial-table th {
-  padding: 10px;
-  color: var(--text-muted);
-  font-size: 9px;
-  text-align: right;
-}
-.financial-table th:first-child,
-.financial-table td:first-child {
-  text-align: left;
-}
-.financial-table td {
-  padding: 13px 10px;
-  border-top: 1px solid var(--border-light);
-  font-size: 11px;
-  text-align: right;
-}
-.financial-table td:first-child {
-  display: flex;
-  flex-direction: column;
-}
-.financial-table small {
-  color: var(--text-muted);
-}
-.notice-list {
-  display: grid;
-  margin-top: 10px;
-}
-.notice-list a {
-  display: grid;
-  grid-template-columns: 90px 110px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 8px;
-  border-bottom: 1px solid var(--border-light);
-  color: var(--text-primary);
-  text-decoration: none;
-}
-.notice-list time,
-.notice-list span {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.notice-list b {
-  color: #0f766e;
-  font-size: 10px;
-}
-.notice-list strong {
-  font-size: 12px;
-}
-.panel-empty {
-  display: grid;
-  min-height: 300px;
-  place-items: center;
-  color: var(--text-muted);
-}
-.panel-empty.small {
-  min-height: 120px;
-}
-.journal-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
-  gap: 14px;
-}
-.note-card textarea {
-  width: 100%;
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid var(--border-light);
-  border-radius: 14px;
-  outline: 0;
-  resize: vertical;
-  background: var(--bg-page);
-  color: var(--text-primary);
-  line-height: 1.8;
-}
-.note-card textarea:focus {
-  border-color: #0f766e;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
-}
-.note-card > p {
-  margin-top: 9px;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.alert-form {
-  display: grid;
-  grid-template-columns: 110px 1fr auto;
-  gap: 7px;
-  margin-top: 18px;
-}
-.alert-form select,
-.alert-form input {
-  min-width: 0;
-  padding: 9px;
-  border: 1px solid var(--border-light);
-  border-radius: 9px;
-  background: var(--bg-page);
-  color: var(--text-primary);
-}
-.alert-form button {
-  border: 0;
-  border-radius: 9px;
-  background: #0f766e;
-  color: white;
-  font-weight: 800;
-  cursor: pointer;
-}
-.alert-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
-}
-.alert-list > div {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 11px;
-  border: 1px solid var(--border-light);
-  border-radius: 11px;
-}
-.alert-list > div span {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.alert-list small {
-  color: var(--text-muted);
-  font-size: 9px;
-}
-.alert-toggle {
-  width: 28px;
-  height: 17px;
-  padding: 2px;
-  border: 0;
-  border-radius: 99px;
-  background: #0f766e;
-  cursor: pointer;
-}
-.alert-toggle i {
-  display: block;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: #fff;
-  transform: translateX(11px);
-}
-.alert-list .disabled .alert-toggle {
-  background: var(--border);
-}
-.alert-list .disabled .alert-toggle i {
-  transform: none;
-}
-.alert-list .triggered {
-  border-color: rgba(232, 163, 23, 0.35);
-  background: rgba(232, 163, 23, 0.07);
-}
-.alert-remove {
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.backtest-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-.backtest-metrics article {
-  display: flex;
-  min-height: 82px;
-  flex-direction: column;
-  justify-content: center;
-  padding: 14px 16px;
-  border: 1px solid var(--border-light);
-  border-radius: 15px;
-  background: var(--bg-card);
-  box-shadow: var(--shadow-sm);
-}
-.backtest-metrics small {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-.backtest-metrics strong {
-  margin-top: 4px;
-  font-size: 20px;
-}
-.backtest-form input {
-  box-sizing: border-box;
-  width: 100%;
-  height: 38px;
-  padding: 0 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 9px;
-  outline: 0;
-  background: var(--bg-page);
-  color: var(--text-primary);
-}
-.panel-heading > button,
-.backtest-form > button {
-  min-height: 38px;
-  border: 0;
-  border-radius: 9px;
-  background: #0f766e;
-  color: #fff;
-  cursor: pointer;
-  font-weight: 800;
-}
-.panel-heading > button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-.backtest-note {
-  color: var(--text-muted);
-  font-size: 9px;
-  line-height: 1.6;
-}
-.compare-panel .panel-heading button {
-  padding: 8px 14px;
-}
-.compare-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin: 16px 0 12px;
-}
-.compare-picker button {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 11px;
-  border: 1px solid var(--border-light);
-  border-radius: 9px;
-  background: var(--bg-page);
-  color: var(--text-primary);
-  cursor: pointer;
-  text-align: left;
-}
-.compare-picker button.active {
-  border-color: #0f766e;
-  background: color-mix(in srgb, #0f766e 10%, var(--bg-card));
-}
-.compare-picker small {
-  color: var(--text-muted);
-  font-size: 9px;
-}
-.compare-metrics {
-  display: grid;
-  gap: 7px;
-  margin-top: 10px;
-}
-.compare-metrics article {
-  display: grid;
-  grid-template-columns: 6px minmax(120px, 1fr) repeat(3, minmax(100px, 0.6fr));
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
-}
-.compare-metrics i {
-  width: 6px;
-  height: 34px;
-  border-radius: 99px;
-}
-.compare-metrics span {
-  display: flex;
-  flex-direction: column;
-}
-.compare-metrics small {
-  color: var(--text-muted);
-  font-size: 9px;
-}
-.compare-metrics b {
-  font-size: 12px;
-}
-.backtest-form {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(100px, 1fr)) auto;
-  align-items: end;
-  gap: 8px;
-  margin: 16px 0;
-}
-.backtest-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  color: var(--text-secondary);
-  font-size: 9px;
-}
-.backtest-form > button {
-  padding: 0 16px;
-}
-.backtest-metrics {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin-bottom: 12px;
-}
-.trade-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-  margin-top: 12px;
-}
-.trade-list > div {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
-}
-.trade-list span {
-  display: flex;
-  flex-direction: column;
-}
-.trade-list small {
-  color: var(--text-muted);
-  font-size: 8px;
-}
-.trade-list strong,
-.trade-list b {
-  font-size: 10px;
-}
-.backtest-note {
-  margin-top: 12px;
-  text-align: center;
-}
-
 .research-source-error {
   margin: 12px 0;
   color: var(--warning);
@@ -2583,9 +1224,6 @@ onUnmounted(() => {
   .research-map {
     display: none;
   }
-  .analysis-grid {
-    grid-template-columns: 1fr;
-  }
 }
 @media (max-width: 820px) {
   .research-header,
@@ -2644,40 +1282,6 @@ onUnmounted(() => {
   .research-tabs button {
     flex: 0 0 auto;
   }
-  .journal-grid {
-    grid-template-columns: 1fr;
-  }
-  .backtest-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .backtest-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .backtest-form > button {
-    min-height: 38px;
-  }
-  .compare-metrics {
-    overflow-x: auto;
-  }
-  .compare-metrics article {
-    min-width: 660px;
-  }
-  .trade-list {
-    grid-template-columns: 1fr;
-  }
-  .candle-inspector {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .metric-grid,
-  .quality-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .notice-list a {
-    grid-template-columns: 80px minmax(0, 1fr) auto;
-  }
-  .notice-list b {
-    display: none;
-  }
 }
 @media (max-width: 520px) {
   .research-header {
@@ -2705,30 +1309,6 @@ onUnmounted(() => {
   .quick-start > strong {
     display: none;
   }
-  .chart-controls {
-    align-items: flex-end;
-    flex-direction: column;
-  }
-  .analysis-grid {
-    gap: 10px;
-  }
-  .workspace-card {
-    padding: 15px;
-  }
-  .signal-list {
-    grid-template-columns: 1fr;
-  }
-  .score-row {
-    grid-template-columns: 84px 1fr;
-  }
-  .score-ring {
-    width: 78px;
-    height: 78px;
-  }
-  .score-ring::before {
-    width: 60px;
-    height: 60px;
-  }
   .quote-range {
     gap: 5px;
   }
@@ -2736,22 +1316,6 @@ onUnmounted(() => {
     padding: 8px;
     border: 1px solid var(--border-light);
     border-radius: 9px;
-  }
-  .financial-table {
-    min-width: 820px;
-  }
-  .alert-form {
-    grid-template-columns: 1fr 1fr;
-  }
-  .alert-form button {
-    grid-column: 1/-1;
-    padding: 10px;
-  }
-  .backtest-metrics {
-    grid-template-columns: 1fr 1fr;
-  }
-  .backtest-form {
-    grid-template-columns: 1fr;
   }
 }
 

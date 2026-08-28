@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 import { useRealtime } from '../composables/useRealtime'
@@ -80,7 +80,14 @@ test()
     <section class="card">
       <div class="card-title">
         正则
-        <CopyButton :text="matches.map((mm: { value: string }) => mm.value).join('\n')" variant="mini" label="复制全部匹配" :disabled="!matches.length" :toast="addToast" success-text="已复制全部匹配" />
+        <CopyButton
+          :text="matches.map((mm: { value: string }) => mm.value).join('\n')"
+          variant="mini"
+          label="复制全部匹配"
+          :disabled="!matches.length"
+          :toast="addToast"
+          success-text="已复制全部匹配"
+        />
       </div>
       <div class="regex-row">
         <span class="slash">/</span>

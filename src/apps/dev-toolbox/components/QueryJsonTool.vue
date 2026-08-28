@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { debounce, downloadFile, autoType } from '@/utils'
+import { debounce, downloadFile } from '@/utils/common'
+import { autoType } from '@/utils/devtoolbox'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'

@@ -8,7 +8,7 @@
 //   底部键位胶囊，横向位置与轨道严格对齐
 //   左下倍率、右下时间码
 import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
-import { formatClock } from '@/utils'
+import { formatClock } from '@/utils/common'
 import { Game, PREP_TIME } from '../core/game'
 import { rankOf, averageError, comboMultiplier, type JudgeStats } from '../core/judge-engine'
 import type { Beatmap } from '../core/beatmap'

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/lib/request'
 import { EmptyState } from '@/components'
-import { formatFileSize } from '@/utils'
+import { formatFileSize } from '@/utils/common'
 
 interface VersionReview {
   id: number

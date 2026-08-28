@@ -15,7 +15,7 @@ import { musicApi } from '@/lib/musicApi'
 import { recordGameResult } from '@/apps/game-center/profile'
 import { getStorage, removeStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config/storage-keys'
-import { downloadFile } from '@/utils'
+import { downloadFile } from '@/utils/common'
 import {
   loadRhythmScores,
   saveRhythmScore,

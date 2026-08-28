@@ -1,0 +1,105 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { gzipSync } from 'node:zlib'
+
+const ROOT = resolve(import.meta.dirname, '..')
+const DIST = resolve(ROOT, 'dist')
+const manifest = JSON.parse(readFileSync(resolve(DIST, '.vite/manifest.json'), 'utf8'))
+
+const routeBudgets = [
+  {
+    name: '应用中心',
+    budget: 90 * 1024,
+    resolveKey: () => 'src/views/WorkspaceHome.vue',
+  },
+  {
+    name: '股票研究工作台',
+    budget: 30 * 1024,
+    resolveKey: () =>
+      Object.keys(manifest).find((key) =>
+        manifest[key].dynamicImports?.includes('src/apps/stock/components/PortfolioPanel.vue'),
+      ),
+  },
+  {
+    name: 'API 工作台',
+    budget: 80 * 1024,
+    resolveKey: () => 'src/apps/api-manager/App.vue',
+  },
+  {
+    name: '面试题库',
+    budget: 85 * 1024,
+    resolveKey: () => 'src/apps/interview/App.vue',
+  },
+  {
+    name: '3D 赛车',
+    budget: 290 * 1024,
+    resolveKey: () => 'src/apps/racing/App.vue',
+  },
+  {
+    name: '题目编辑器',
+    budget: 70 * 1024,
+    resolveKey: () =>
+      manifest['src/views/admin/QuestionEditor.vue']
+        ? 'src/views/admin/QuestionEditor.vue'
+        : Object.keys(manifest).find((key) => key.startsWith('_QuestionEditor-')),
+  },
+]
+
+function collectStaticGraph(entryKey) {
+  const keys = new Set()
+  const visit = (key) => {
+    if (!key || keys.has(key) || !manifest[key]) return
+    keys.add(key)
+    for (const imported of manifest[key].imports || []) visit(imported)
+  }
+  visit(entryKey)
+  return keys
+}
+
+const initialGraph = collectStaticGraph('index.html')
+
+function routeSize(entryKey) {
+  const graph = collectStaticGraph(entryKey)
+  const files = new Set()
+  for (const key of graph) {
+    // 路由切换前入口公共依赖已加载，不重复计入路由增量成本。
+    if (initialGraph.has(key) && key !== entryKey) continue
+    const chunk = manifest[key]
+    if (chunk.file) files.add(chunk.file)
+    for (const css of chunk.css || []) files.add(css)
+  }
+
+  let raw = 0
+  let gzip = 0
+  for (const file of files) {
+    const content = readFileSync(resolve(DIST, file))
+    raw += content.length
+    gzip += gzipSync(content).length
+  }
+  return { raw, gzip, files: files.size }
+}
+
+const errors = []
+console.log('路由首次进入体积：')
+for (const route of routeBudgets) {
+  const key = route.resolveKey()
+  if (!key || !manifest[key]) {
+    errors.push(`${route.name} 未在构建清单中找到入口`)
+    continue
+  }
+  const size = routeSize(key)
+  console.log(
+    `- ${route.name}: ${(size.gzip / 1024).toFixed(1)} KB gzip / ${(size.raw / 1024).toFixed(1)} KB raw (${size.files} files)`,
+  )
+  if (size.gzip > route.budget) {
+    errors.push(
+      `${route.name} gzip ${(size.gzip / 1024).toFixed(1)} KB > ${(route.budget / 1024).toFixed(0)} KB`,
+    )
+  }
+}
+
+if (errors.length) {
+  errors.forEach((error) => console.error(`路由预算失败：${error}`))
+  process.exit(1)
+}
+console.log('路由体积预算通过')

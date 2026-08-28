@@ -3,7 +3,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { strToU8, zipSync } from 'fflate'
 import { CopyButton, CustomSelect, type SelectOption } from '@/components'
-import { copyToClipboard, debounce, downloadFile } from '@/utils'
+import { copyToClipboard } from '@/utils/clipboard'
+import { debounce, downloadFile } from '@/utils/common'
 import { useToast } from '@/composables/useToast'
 import { useRealtime } from '../composables/useRealtime'
 import {
@@ -732,7 +733,7 @@ function downloadBatch() {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-right:8px;
+  margin-right: 8px;
   position: relative;
 }
 

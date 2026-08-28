@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/lib/request'
 import Toast from '@/components/common/Toast.vue'
-import { roleText } from '@/utils'
+import { roleText } from '@/utils/common'
 
 const router = useRouter()
 const route = useRoute()
@@ -175,9 +175,7 @@ async function saveName() {
           </div>
         </div>
         <div class="dropdown-divider"></div>
-        <button class="dropdown-item upload-link" @click.stop="goToUpload">
-          📤 上传应用
-        </button>
+        <button class="dropdown-item upload-link" @click.stop="goToUpload">📤 上传应用</button>
         <button class="dropdown-item" @click.stop="$router.push('/developer')">
           🧑‍💻 开发者中心
         </button>

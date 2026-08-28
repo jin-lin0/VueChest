@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
@@ -122,7 +122,12 @@ function clearAll() {
       <section class="card">
         <div class="card-head">
           <span class="card-title">Header</span>
-          <CopyButton :text="headerJson" variant="mini" success-text="已复制 header" :toast="addToast" />
+          <CopyButton
+            :text="headerJson"
+            variant="mini"
+            success-text="已复制 header"
+            :toast="addToast"
+          />
         </div>
         <CodeEditor v-model="headerJson" language="json" readonly placeholder="header 将显示在此" />
       </section>
@@ -130,7 +135,12 @@ function clearAll() {
       <section class="card">
         <div class="card-head">
           <span class="card-title">Payload</span>
-          <CopyButton :text="payloadJson" variant="mini" success-text="已复制 payload" :toast="addToast" />
+          <CopyButton
+            :text="payloadJson"
+            variant="mini"
+            success-text="已复制 payload"
+            :toast="addToast"
+          />
         </div>
         <CodeEditor
           v-model="payloadJson"

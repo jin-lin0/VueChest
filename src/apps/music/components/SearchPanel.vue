@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useMusicStore } from '@/stores'
 import { Skeleton } from '@/components'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import FavoriteMenu from './FavoriteMenu.vue'
 
 defineOptions({ name: 'SearchPanel' })

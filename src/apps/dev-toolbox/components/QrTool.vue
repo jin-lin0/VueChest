@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import QRCode from 'qrcode'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 import { useRealtime } from '../composables/useRealtime'

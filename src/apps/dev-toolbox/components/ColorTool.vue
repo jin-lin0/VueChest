@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 
@@ -185,7 +185,13 @@ parse()
         >
           <div class="fmt-head">
             <span class="k">{{ f.label }}</span>
-            <CopyButton :text="f.val" variant="mini" :disabled="!f.val" :toast="addToast" :success-text="`已复制${f.label}`" />
+            <CopyButton
+              :text="f.val"
+              variant="mini"
+              :disabled="!f.val"
+              :toast="addToast"
+              :success-text="`已复制${f.label}`"
+            />
           </div>
           <code class="mono fmt-val">{{ f.val }}</code>
         </div>

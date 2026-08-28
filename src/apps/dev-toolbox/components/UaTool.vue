@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { UAParser } from 'ua-parser-js'
-import { debounce } from '@/utils'
+import { debounce } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 
@@ -58,7 +58,16 @@ parse()
     <section class="card">
       <div class="card-title">
         User-Agent 输入
-        <CopyButton :text="fields.map((f: { key: string; value: string }) => `${f.key} = ${f.value}`).join('\n')" variant="mini" label="复制全部" :disabled="!fields.length" :toast="addToast" success-text="已复制全部字段" />
+        <CopyButton
+          :text="
+            fields.map((f: { key: string; value: string }) => `${f.key} = ${f.value}`).join('\n')
+          "
+          variant="mini"
+          label="复制全部"
+          :disabled="!fields.length"
+          :toast="addToast"
+          success-text="已复制全部字段"
+        />
       </div>
       <textarea
         v-model="input"

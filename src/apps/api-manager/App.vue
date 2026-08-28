@@ -20,7 +20,7 @@ import {
   Workflow,
   X,
 } from '@lucide/vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import CopyButton from '@/components/common/CopyButton.vue'
 import CustomSelect, { type SelectOption } from '@/components/common/CustomSelect.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -189,6 +189,7 @@ const MAX_PREVIEW_BYTES = 512 * 1024
 const REQUEST_TIMEOUT_MS = 20_000
 
 const router = useRouter()
+const route = useRoute()
 const { confirm } = useConfirm()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
@@ -324,6 +325,34 @@ const apiKeyLocationOptions: SelectOption[] = [
   { value: 'query', label: 'Query 参数' },
 ]
 
+let routeCommandsReady = false
+let handledRouteCommand = ''
+async function applyRouteCommand() {
+  if (!routeCommandsReady) return
+  const requestId = typeof route.query.request === 'string' ? route.query.request : ''
+  const collectionId =
+    typeof route.query.runCollection === 'string' ? route.query.runCollection : ''
+  const commandKey = `${requestId}|${collectionId}|${String(route.query.command || '')}`
+  if ((!requestId && !collectionId) || commandKey === handledRouteCommand) return
+  handledRouteCommand = commandKey
+
+  if (requestId) {
+    const saved = savedRequests.value.find((item) => item.id === requestId)
+    if (saved) openSavedRequest(saved)
+    else notify('warning', '保存的请求已不存在')
+    return
+  }
+
+  const collection = collections.value.find((item) => item.id === collectionId)
+  if (!collection) {
+    notify('warning', '请求集合已不存在')
+    return
+  }
+  selectWorkspaceCollection(collection.id)
+  showWorkspaceManager.value = true
+  await runActiveCollection()
+}
+
 onMounted(async () => {
   const legacyUserApis = getStorage<ApiItem[]>(LEGACY_USER_APIS_KEY, []) ?? []
   const legacyPinnedIds = getStorage<(string | number)[]>(LEGACY_PINNED_IDS_KEY, []) ?? []
@@ -354,6 +383,8 @@ onMounted(async () => {
 
   defaultApis.value = (await import('./defaults')).defaultApis
   isCatalogLoading.value = false
+  routeCommandsReady = true
+  await applyRouteCommand()
 })
 
 watch(userApis, (value) => setStorage(STORAGE_KEYS.API_MANAGER_USER_APIS, value), { deep: true })
@@ -402,6 +433,10 @@ watch(showWorkspaceManager, (visible) => {
   if (!selectedExists)
     selectedWorkspaceRequestId.value = activeCollectionRequests.value[0]?.id || null
 })
+watch(
+  () => [route.query.request, route.query.runCollection, route.query.command],
+  () => void applyRouteCommand(),
+)
 
 const systemApis = computed(() =>
   defaultApis.value.map((api) => ({

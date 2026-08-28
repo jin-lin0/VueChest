@@ -157,7 +157,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CustomSelect, Modal, Toast, EmptyState, type SelectOption } from '@/components'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
-import { roleText } from '@/utils'
+import { roleText } from '@/utils/common'
 
 const { confirm } = useConfirm()
 const authStore = useAuthStore()

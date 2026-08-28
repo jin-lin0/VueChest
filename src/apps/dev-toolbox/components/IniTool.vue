@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { debounce, downloadFile } from '@/utils'
+import { debounce, downloadFile } from '@/utils/common'
 import { CopyButton } from '@/components'
 import { useToast } from '@/composables/useToast'
 import { parse as parseIni, stringify as stringifyIni } from 'ini'
