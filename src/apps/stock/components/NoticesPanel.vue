@@ -49,15 +49,15 @@ const stock = useStockStore()
   border-bottom: 1px solid var(--border-light);
 }
 .panel-heading h2 {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .panel-heading p {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .panel-heading > span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .notice-list {
   display: grid;
@@ -76,14 +76,14 @@ const stock = useStockStore()
 .notice-list time,
 .notice-list span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .notice-list b {
   color: #0f766e;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .notice-list strong {
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .panel-empty {
   display: grid;

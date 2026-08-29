@@ -104,7 +104,7 @@ function openFolderContextMenu(event: MouseEvent, node: DocItem) {
   color: var(--text-primary, #222);
   padding: var(--space-2, 8px) var(--space-3, 12px);
   border-radius: var(--radius-sm, 6px);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition-fast, 0.15s);
@@ -117,7 +117,7 @@ function openFolderContextMenu(event: MouseEvent, node: DocItem) {
 }
 .doc-caret {
   display: inline-block;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--text-muted, #999);
   transition: transform 0.18s ease;
   transform: rotate(0deg);
@@ -137,7 +137,7 @@ function openFolderContextMenu(event: MouseEvent, node: DocItem) {
   color: var(--text-secondary, #555);
   padding: var(--space-2, 8px) var(--space-3, 12px);
   border-radius: var(--radius-sm, 6px);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: var(--transition-fast, 0.15s);
   border-left: 3px solid transparent;

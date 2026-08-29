@@ -206,7 +206,7 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
   border: 1px solid var(--border);
   background: var(--bg-card);
   color: var(--text);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -222,7 +222,7 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
 }
 
 .artist-bar-title {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -258,7 +258,7 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
 }
 
 .artist-name {
-  font-size: 30px;
+  font-size: var(--font-size-6xl);
   font-weight: 800;
   color: var(--text);
   margin: 0 0 10px;
@@ -266,13 +266,13 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
 }
 
 .artist-stats {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   margin-bottom: 12px;
 }
 
 .artist-desc {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   line-height: 1.7;
   color: var(--text-secondary);
   margin: 0;
@@ -293,7 +293,7 @@ const albumYear = (album: Album): number => new Date(album.publishTime as number
   background: none;
   border: none;
   color: var(--accent-light);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   cursor: pointer;
   transition: opacity 0.2s;
 }

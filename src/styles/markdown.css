@@ -10,7 +10,7 @@
   white-space: normal;
   line-height: 1.8;
   color: var(--text-body);
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   word-break: break-word;
 }
 

@@ -86,7 +86,7 @@ const emit = defineEmits<{
 }
 .tb-search-icon {
   opacity: 0.55;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 .tb-search-input {
   flex: 1;
@@ -95,7 +95,7 @@ const emit = defineEmits<{
   outline: none;
   background: transparent;
   color: var(--text-body);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 .tb-search-input::placeholder {
   color: var(--text-muted);
@@ -105,7 +105,7 @@ const emit = defineEmits<{
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   padding: 0 0.2rem;
 }
 .tb-search-clear:hover {
@@ -114,7 +114,7 @@ const emit = defineEmits<{
 
 .tb-group-title {
   margin: 0.7rem 0.3rem 0.3rem;
-  font-size: 0.7rem;
+  font-size: var(--font-size-meta);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -134,12 +134,12 @@ const emit = defineEmits<{
   color: var(--text-secondary);
 }
 .tb-caret {
-  font-size: 0.6rem;
+  font-size: var(--font-size-caption);
   transition: transform 0.15s ease;
 }
 .tb-empty {
   margin: 0.5rem 0.4rem;
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   color: var(--text-muted);
 }
 
@@ -154,7 +154,7 @@ const emit = defineEmits<{
   color: var(--text-secondary);
   border: 1px solid transparent;
   background: transparent;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   text-align: left;
   transition: var(--transition-fast);
 }
@@ -172,7 +172,7 @@ const emit = defineEmits<{
   filter: grayscale(1) brightness(2);
 }
 .tb-tool-icon {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
 }
 .tb-tool-name {
   flex: 1;
@@ -182,7 +182,7 @@ const emit = defineEmits<{
   white-space: nowrap;
 }
 .tb-pin-dot {
-  font-size: 0.7rem;
+  font-size: var(--font-size-meta);
   opacity: 0.85;
 }
 

@@ -161,7 +161,7 @@ function onKeydown(e: KeyboardEvent) {
   padding: 12px 14px;
   box-sizing: border-box;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.6;
   tab-size: 2;
   white-space: pre-wrap;

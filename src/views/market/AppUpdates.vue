@@ -142,7 +142,7 @@ async function handleUpdate(appId: number) {
   background: var(--gradient-primary);
   background-clip: text;
   color: transparent;
-  font-size: 1.6rem;
+  font-size: var(--font-size-4xl);
   font-weight: 800;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -154,7 +154,7 @@ async function handleUpdate(appId: number) {
 .app-info small,
 .card-actions time {
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 
 .back-btn,
@@ -266,7 +266,7 @@ async function handleUpdate(appId: number) {
   place-items: center;
   border-radius: 13px;
   background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
-  font-size: 1.8rem;
+  font-size: var(--font-size-5xl);
 }
 
 .app-info {
@@ -277,7 +277,7 @@ async function handleUpdate(appId: number) {
 .release-notes {
   margin: 0.8rem 0;
   color: var(--text-secondary);
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   line-height: 1.7;
   white-space: pre-wrap;
 }
@@ -285,7 +285,7 @@ async function handleUpdate(appId: number) {
 .update-error {
   margin-bottom: 0.7rem;
   color: var(--danger);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 
 .card-actions {

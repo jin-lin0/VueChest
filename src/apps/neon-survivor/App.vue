@@ -762,7 +762,7 @@ button {
   background: rgba(7, 14, 30, 0.72);
   backdrop-filter: blur(14px);
   cursor: pointer;
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
   transition: 0.2s ease;
 }
 
@@ -785,7 +785,7 @@ button {
 .score-block span,
 .hud-label {
   color: rgba(205, 232, 244, 0.55);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -793,7 +793,7 @@ button {
 
 .mission-block strong {
   margin-top: 2px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .score-block {
@@ -807,7 +807,7 @@ button {
 
 .score-block strong {
   color: var(--cyan);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   letter-spacing: 0.08em;
   text-shadow: 0 0 16px rgba(108, 247, 255, 0.48);
 }
@@ -855,14 +855,14 @@ button {
   gap: 10px;
   margin-bottom: 7px;
   color: rgba(228, 247, 255, 0.72);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .vitals-row strong {
   color: #f5fbff;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   letter-spacing: 0.04em;
 }
 
@@ -896,7 +896,7 @@ button {
 .level-badge {
   flex: 0 0 auto;
   color: var(--cyan);
-  font-size: 16px;
+  font-size: var(--font-size-title);
   font-weight: 800;
   letter-spacing: 0.04em;
   text-shadow: 0 0 16px rgba(108, 247, 255, 0.48);
@@ -921,7 +921,7 @@ button {
 
 .dash-icon {
   color: var(--cyan);
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
   text-shadow: 0 0 14px var(--cyan);
 }
 
@@ -946,7 +946,7 @@ kbd {
   border-radius: 5px;
   color: rgba(222, 246, 255, 0.8);
   background: rgba(255, 255, 255, 0.055);
-  font: 700 9px/1 inherit;
+  font: 700 var(--font-size-caption) / 1 inherit;
   letter-spacing: 0.08em;
 }
 
@@ -964,7 +964,7 @@ kbd {
 
 .kill-mark {
   color: #ff6695;
-  font-size: 23px;
+  font-size: var(--font-size-4xl);
   font-weight: 200;
 }
 
@@ -975,13 +975,13 @@ kbd {
 }
 
 .kill-counter strong {
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .kill-counter small {
   margin-top: 3px;
   color: rgba(211, 235, 245, 0.45);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.12em;
 }
 
@@ -994,7 +994,7 @@ kbd {
   align-items: center;
   gap: 10px;
   color: rgba(218, 239, 249, 0.42);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.06em;
   transform: translateX(-50%);
   pointer-events: none;
@@ -1029,14 +1029,14 @@ kbd {
 
 .combo-display span {
   color: rgba(255, 225, 241, 0.62);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.2em;
 }
 
 .combo-display strong {
   color: #ff62ba;
-  font-size: 38px;
+  font-size: var(--font-size-8xl);
   font-style: italic;
   line-height: 1;
   text-shadow: 0 0 24px rgba(255, 73, 184, 0.58);
@@ -1059,7 +1059,7 @@ kbd {
   gap: 12px;
   margin-bottom: 7px;
   color: #ff9ce8;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.24em;
   text-shadow: 0 0 18px rgba(255, 75, 210, 0.7);
@@ -1156,7 +1156,7 @@ kbd {
 
 .nav-back {
   justify-self: start;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   letter-spacing: 0.04em;
 }
 
@@ -1170,7 +1170,7 @@ kbd {
   align-items: center;
   gap: 8px;
   color: rgba(224, 244, 252, 0.48);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.22em;
 }
@@ -1219,7 +1219,7 @@ kbd {
   border-radius: 99px;
   color: rgba(164, 241, 255, 0.72);
   background: rgba(20, 104, 125, 0.1);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.19em;
 }
@@ -1251,7 +1251,7 @@ kbd {
 .english-title {
   margin: 9px 0 0;
   color: rgba(153, 218, 239, 0.58);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.32em;
 }
@@ -1260,7 +1260,7 @@ kbd {
   max-width: 440px;
   margin: 23px 0 0;
   color: rgba(212, 233, 243, 0.63);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.8;
 }
 
@@ -1278,7 +1278,7 @@ kbd {
 
 .feature-row span {
   color: #effdff;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-weight: 800;
   line-height: 1;
 }
@@ -1286,7 +1286,7 @@ kbd {
 .feature-row small {
   margin-top: 5px;
   color: rgba(185, 218, 231, 0.43);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.12em;
 }
 
@@ -1304,7 +1304,7 @@ kbd {
   display: block;
   margin-bottom: 7px;
   color: rgba(194, 226, 239, 0.42);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.2em;
 }
@@ -1341,12 +1341,12 @@ kbd {
 }
 
 .segmented b {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .segmented small {
   color: rgba(196, 228, 239, 0.4);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
 }
 
 .launch-button {
@@ -1406,7 +1406,7 @@ kbd {
   color: #c7fbff;
   background: rgba(4, 20, 33, 0.86);
   box-shadow: 0 0 18px rgba(0, 39, 54, 0.24);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .launch-button > span:nth-child(2) {
@@ -1415,20 +1415,20 @@ kbd {
 }
 
 .launch-button b {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   letter-spacing: 0.05em;
 }
 
 .launch-button small {
   margin-top: 1px;
   color: rgba(5, 31, 43, 0.58);
-  font-size: 7px;
+  font-size: var(--font-size-caption);
   font-weight: 900;
   letter-spacing: 0.22em;
 }
 
 .launch-button > i {
-  font-size: 25px;
+  font-size: var(--font-size-4xl);
   font-style: normal;
 }
 
@@ -1438,13 +1438,13 @@ kbd {
   gap: 12px;
   margin-top: 12px;
   color: rgba(183, 214, 227, 0.36);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.14em;
 }
 
 .best-record strong {
   color: rgba(137, 239, 255, 0.68);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .hero-visual {
@@ -1659,7 +1659,7 @@ kbd {
   position: absolute;
   padding-left: 17px;
   color: rgba(167, 222, 239, 0.38);
-  font-size: 7px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.17em;
 }
@@ -1694,7 +1694,7 @@ kbd {
   padding: 17px 32px;
   border-top: 1px solid rgba(130, 202, 235, 0.08);
   color: rgba(192, 220, 232, 0.4);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 
 .menu-footer kbd {
@@ -1749,7 +1749,7 @@ kbd {
 
 .modal-kicker {
   color: rgba(119, 243, 255, 0.66);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   font-weight: 900;
   letter-spacing: 0.28em;
 }
@@ -1760,7 +1760,7 @@ kbd {
   left: 50%;
   z-index: -1;
   color: rgba(117, 239, 255, 0.05);
-  font-size: 154px;
+  font-size: var(--font-size-display-2xl);
   font-weight: 900;
   line-height: 1;
   transform: translateX(-50%);
@@ -1770,14 +1770,14 @@ kbd {
 .panel-modal h2 {
   margin: 8px 0 4px;
   color: #f2fbff;
-  font-size: 27px;
+  font-size: var(--font-size-5xl);
   letter-spacing: 0.04em;
 }
 
 .level-modal > p,
 .panel-modal > p {
   color: rgba(202, 229, 239, 0.5);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .upgrade-grid {
@@ -1850,7 +1850,7 @@ kbd {
   top: 14px;
   left: 15px;
   color: rgba(194, 228, 241, 0.2);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
 }
 
@@ -1862,7 +1862,7 @@ kbd {
   border-radius: 20px;
   color: rgba(152, 243, 255, 0.72);
   background: rgba(82, 224, 246, 0.08);
-  font-size: 7px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.12em;
 }
@@ -1892,7 +1892,7 @@ kbd {
   box-shadow:
     0 0 30px rgba(70, 229, 255, 0.08),
     inset 0 0 22px rgba(99, 237, 255, 0.05);
-  font-size: 31px;
+  font-size: var(--font-size-6xl);
   text-shadow: 0 0 18px rgba(83, 237, 255, 0.8);
 }
 
@@ -1912,14 +1912,14 @@ kbd {
 
 .upgrade-card strong {
   position: relative;
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
 }
 
 .upgrade-card > small {
   position: relative;
   margin-top: 4px;
   color: rgba(175, 216, 231, 0.38);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.08em;
 }
 
@@ -1927,7 +1927,7 @@ kbd {
   position: relative;
   margin: 18px 0;
   color: rgba(206, 231, 241, 0.62);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.55;
 }
 
@@ -1941,13 +1941,13 @@ kbd {
   padding-top: 14px;
   border-top: 1px solid rgba(143, 208, 235, 0.1);
   color: rgba(128, 238, 255, 0.58);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.13em;
 }
 
 .install-label i {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-style: normal;
 }
 
@@ -1976,7 +1976,7 @@ kbd {
   color: var(--cyan);
   background: rgba(76, 219, 255, 0.07);
   box-shadow: 0 0 35px rgba(66, 221, 255, 0.11);
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
   text-shadow: 0 0 15px var(--cyan);
 }
 
@@ -1993,7 +1993,7 @@ kbd {
   color: rgba(221, 241, 249, 0.72);
   background: rgba(255, 255, 255, 0.035);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   transition: 0.2s ease;
 }
@@ -2040,14 +2040,14 @@ kbd {
 
 .result-stats small {
   color: rgba(182, 218, 231, 0.4);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.1em;
 }
 
 .result-stats strong {
   margin-top: 3px;
   color: #dffcff;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2059,7 +2059,7 @@ kbd {
   display: block;
   margin-top: 13px;
   color: rgba(183, 215, 228, 0.28);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.12em;
 }
 
@@ -2138,7 +2138,7 @@ kbd {
   bottom: 2px;
   left: 50%;
   color: rgba(185, 224, 238, 0.34);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.15em;
   transform: translateX(-50%);
@@ -2167,13 +2167,13 @@ kbd {
 }
 
 .mobile-dash span {
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   line-height: 1;
 }
 
 .mobile-dash small {
   margin-top: 3px;
-  font-size: 7px;
+  font-size: var(--font-size-caption);
 }
 
 @keyframes orbit-spin {
@@ -2293,7 +2293,7 @@ kbd {
   }
 
   .menu-brand::after {
-    font-size: 8px;
+    font-size: var(--font-size-caption);
     content: 'VC ARCADE';
   }
 
@@ -2365,11 +2365,11 @@ kbd {
   }
 
   .score-block strong {
-    font-size: 14px;
+    font-size: var(--font-size-body);
   }
 
   .mission-block strong {
-    font-size: 10px;
+    font-size: var(--font-size-caption);
   }
 
   .combat-hud {
@@ -2392,7 +2392,7 @@ kbd {
   }
 
   .level-badge {
-    font-size: 12px;
+    font-size: var(--font-size-small);
   }
 
   .vitals-row {
@@ -2448,7 +2448,7 @@ kbd {
     height: 54px;
     margin: 0;
     border-radius: 15px;
-    font-size: 25px;
+    font-size: var(--font-size-4xl);
   }
 
   .upgrade-card strong,
@@ -2470,7 +2470,7 @@ kbd {
   }
 
   .level-number {
-    font-size: 110px;
+    font-size: var(--font-size-display-xl);
   }
 }
 
@@ -2546,12 +2546,12 @@ kbd {
 
   .english-title {
     margin-top: 4px;
-    font-size: 7px;
+    font-size: var(--font-size-caption);
   }
 
   .hero-description {
     margin-top: 10px;
-    font-size: 10px;
+    font-size: var(--font-size-caption);
     line-height: 1.55;
   }
 
@@ -2561,12 +2561,12 @@ kbd {
   }
 
   .feature-row span {
-    font-size: 14px;
+    font-size: var(--font-size-body);
   }
 
   .feature-row small {
     margin-top: 2px;
-    font-size: 7px;
+    font-size: var(--font-size-caption);
   }
 
   .difficulty-select {
@@ -2677,11 +2677,11 @@ kbd {
 
   .level-modal h2 {
     margin-top: 3px;
-    font-size: 21px;
+    font-size: var(--font-size-heading);
   }
 
   .level-modal > p {
-    font-size: 9px;
+    font-size: var(--font-size-caption);
   }
 
   .upgrade-grid {
@@ -2699,16 +2699,16 @@ kbd {
     height: 46px;
     margin: 5px 0 8px;
     border-radius: 14px;
-    font-size: 22px;
+    font-size: var(--font-size-heading);
   }
 
   .upgrade-card strong {
-    font-size: 14px;
+    font-size: var(--font-size-body);
   }
 
   .upgrade-card p {
     margin: 9px 0;
-    font-size: 9px;
+    font-size: var(--font-size-caption);
   }
 
   .install-label {

@@ -265,12 +265,12 @@ function restart() {
   transform: translateY(-2px);
 }
 .diff-label {
-  font-size: 16px;
+  font-size: var(--font-size-title);
   font-weight: 700;
   color: var(--text-primary);
 }
 .diff-desc {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--text-muted);
   text-align: center;
   line-height: 1.3;
@@ -298,15 +298,15 @@ function restart() {
   flex-shrink: 0;
 }
 .badge-title {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
 }
 .badge-sub {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   color: var(--text-muted);
 }
 .badge-divider {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   font-weight: 700;
 }

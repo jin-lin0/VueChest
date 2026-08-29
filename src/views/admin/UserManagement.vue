@@ -346,21 +346,21 @@ async function toggleStatus(u: UserItem) {
 
 .page-header h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
   color: var(--text-primary);
 }
 .page-desc {
   margin: 4px 0 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .btn-icon {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-weight: 300;
 }
 .btn-sm {
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .btn-primary {
@@ -369,7 +369,7 @@ async function toggleStatus(u: UserItem) {
   border: none;
   padding: 12px 24px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -392,7 +392,7 @@ async function toggleStatus(u: UserItem) {
   border: 1px solid var(--border-color);
   padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -406,7 +406,7 @@ async function toggleStatus(u: UserItem) {
   border: 1px solid var(--danger-bg);
   padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -431,7 +431,7 @@ async function toggleStatus(u: UserItem) {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 16px;
+  font-size: var(--font-size-title);
   pointer-events: none;
 }
 .search-input {
@@ -439,7 +439,7 @@ async function toggleStatus(u: UserItem) {
   padding: 10px 14px 10px 38px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   outline: none;
   background: var(--bg-input);
   color: var(--text-primary);
@@ -468,7 +468,7 @@ async function toggleStatus(u: UserItem) {
 .user-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-primary);
 }
 .user-table thead {
@@ -479,7 +479,7 @@ async function toggleStatus(u: UserItem) {
   padding: 14px 16px;
   color: var(--text-secondary);
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   white-space: nowrap;
   border-bottom: 1px solid var(--border-light);
 }
@@ -504,7 +504,7 @@ async function toggleStatus(u: UserItem) {
 }
 .col-date {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   white-space: nowrap;
 }
 .col-actions {
@@ -527,13 +527,13 @@ async function toggleStatus(u: UserItem) {
   justify-content: center;
   color: white;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   flex-shrink: 0;
 }
 .role-badge {
   padding: 2px 10px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 500;
 }
 .role-user {
@@ -574,7 +574,7 @@ async function toggleStatus(u: UserItem) {
   border: 1px solid var(--border-color);
   padding: 10px 20px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-primary);
@@ -588,7 +588,7 @@ async function toggleStatus(u: UserItem) {
   cursor: not-allowed;
 }
 .page-info {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
 }
 
@@ -600,7 +600,7 @@ async function toggleStatus(u: UserItem) {
   margin-bottom: 6px;
   font-weight: 500;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .required {
   color: var(--danger);
@@ -610,7 +610,7 @@ async function toggleStatus(u: UserItem) {
   padding: 10px 14px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   outline: none;
   transition: all 0.2s;
   background: var(--bg-input);

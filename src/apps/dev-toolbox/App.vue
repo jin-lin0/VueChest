@@ -724,12 +724,12 @@ function resetPins() {
 }
 .tb-title h1 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: var(--font-size-4xl);
   color: var(--text-primary);
 }
 .tb-sub {
   margin: 0.25rem 0 0;
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   color: var(--text-muted);
 }
 .back-btn {
@@ -759,7 +759,7 @@ function resetPins() {
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: var(--font-size-heading);
   line-height: 1;
 }
 .tb-menu-btn:hover {
@@ -780,7 +780,7 @@ function resetPins() {
   cursor: pointer;
   user-select: none;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 .rt-switch input {
   position: absolute;
@@ -834,7 +834,7 @@ function resetPins() {
   padding: 0.4rem 0.85rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -892,7 +892,7 @@ function resetPins() {
   color: var(--text-body);
   cursor: pointer;
   border-radius: var(--radius-xs);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 .tb-ctx-item:hover:not(:disabled) {
   background: var(--bg-subtle);
@@ -929,7 +929,7 @@ function resetPins() {
     min-width: 0;
   }
   .tb-title h1 {
-    font-size: 1.15rem;
+    font-size: var(--font-size-title-lg);
   }
   .tb-sub {
     display: none;

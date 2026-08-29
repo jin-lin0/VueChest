@@ -549,12 +549,12 @@ watch(
   line-height: 1.15;
 }
 .header-brand strong {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   letter-spacing: -0.02em;
 }
 .header-brand small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.08em;
   margin-top: 4px;
 }
@@ -575,7 +575,7 @@ watch(
   align-items: center;
   gap: 7px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .source-state i {
   width: 7px;
@@ -604,12 +604,12 @@ watch(
 .pulse-label span,
 .section-eyebrow {
   color: #0f766e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 900;
   letter-spacing: 0.15em;
 }
 .pulse-label strong {
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .index-list {
   display: grid;
@@ -625,17 +625,17 @@ watch(
 }
 .index-list span {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .index-list strong {
-  font-size: 16px;
+  font-size: var(--font-size-title);
 }
 .index-list b {
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .market-pulse > small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .index-skeleton {
   display: flex;
@@ -678,11 +678,11 @@ watch(
 }
 .search-card h2 {
   margin: 4px 0 1px;
-  font-size: 19px;
+  font-size: var(--font-size-heading);
 }
 .search-card > p {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .stock-search {
   position: relative;
@@ -698,7 +698,7 @@ watch(
 }
 .stock-search > span {
   color: #0f766e;
-  font-size: 20px;
+  font-size: var(--font-size-heading);
 }
 .stock-search input {
   min-width: 0;
@@ -760,7 +760,7 @@ watch(
   margin-bottom: 12px;
 }
 .sidebar-heading > strong {
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .sidebar-heading > small {
   color: var(--text-muted);
@@ -770,7 +770,7 @@ watch(
   background: transparent;
   color: #0f766e;
   cursor: pointer;
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
 }
 .recent-list {
   display: flex;
@@ -784,7 +784,7 @@ watch(
   background: var(--bg-page);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .recent-list button.active {
   border-color: #0f766e;
@@ -823,13 +823,13 @@ watch(
 .watch-name small,
 .watch-price small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .watch-price {
   text-align: right;
 }
 .watch-price strong {
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .watch-list article > button {
   border: 0;
@@ -844,11 +844,11 @@ watch(
 .watch-loading {
   padding: 18px 4px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   text-align: center;
 }
 .watch-empty span {
-  font-size: 25px;
+  font-size: var(--font-size-4xl);
 }
 
 .research-content {
@@ -908,7 +908,7 @@ watch(
   border: 1px solid var(--border-light);
   border-radius: 999px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .welcome-state.compact-empty {
   min-height: 520px;
@@ -917,7 +917,7 @@ watch(
   padding: 54px;
 }
 .empty-heading h2 {
-  font-size: 28px;
+  font-size: var(--font-size-5xl);
   letter-spacing: -0.03em;
 }
 .empty-heading p {
@@ -942,7 +942,7 @@ watch(
 .empty-feature-grid small {
   margin-top: 3px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .research-map {
   position: relative;
@@ -972,7 +972,7 @@ watch(
   border-radius: 24px;
   background: linear-gradient(135deg, #0f766e, #2563eb);
   color: white;
-  font-size: 30px;
+  font-size: var(--font-size-6xl);
   font-weight: 900;
   box-shadow: 0 20px 50px rgba(15, 118, 110, 0.3);
 }
@@ -1060,22 +1060,22 @@ watch(
   border-radius: 16px;
   background: linear-gradient(135deg, #0f766e, #2563eb);
   color: white;
-  font-size: 22px;
+  font-size: var(--font-size-heading);
   font-weight: 900;
 }
 .quote-code {
   color: #0f766e;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 900;
   letter-spacing: 0.12em;
 }
 .quote-identity h1 {
   margin: 1px 0;
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
 }
 .quote-identity small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .quote-price {
   display: flex;
@@ -1083,10 +1083,10 @@ watch(
   gap: 4px;
 }
 .quote-price > span {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .quote-price > strong {
-  font-size: 38px;
+  font-size: var(--font-size-8xl);
   line-height: 1;
 }
 .quote-price > b {
@@ -1094,7 +1094,7 @@ watch(
   padding: 4px 7px;
   border-radius: 7px;
   background: color-mix(in srgb, currentColor 10%, transparent);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .quote-range {
   display: grid;
@@ -1109,10 +1109,10 @@ watch(
 }
 .quote-range small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .quote-range strong {
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .quote-actions {
   justify-content: flex-end;
@@ -1126,7 +1126,7 @@ watch(
   background: var(--bg-page);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
 }
 .quote-actions button.active {
@@ -1167,13 +1167,13 @@ watch(
 .research-source-error {
   margin: 12px 0;
   color: var(--warning);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .research-disclaimer {
   margin-top: 14px;
   padding: 13px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   text-align: center;
 }
 .up {
@@ -1301,7 +1301,7 @@ watch(
     display: none;
   }
   .welcome-copy h1 {
-    font-size: 38px;
+    font-size: var(--font-size-8xl);
   }
   .quick-start {
     overflow: auto;

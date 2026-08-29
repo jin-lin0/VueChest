@@ -191,7 +191,7 @@ function restart() {
   display: inline-block;
 }
 .player-label {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
 }
 .name-input {
@@ -201,7 +201,7 @@ function restart() {
   border-radius: 8px;
   background: var(--bg-input);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   outline: none;
   box-sizing: border-box;
 }

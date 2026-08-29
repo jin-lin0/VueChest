@@ -62,7 +62,7 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-light);
 }
 .lobby-header h2 {
-  font-size: 16px;
+  font-size: var(--font-size-title);
   font-weight: 700;
 }
 .btn {
@@ -72,7 +72,7 @@ onMounted(() => {
   padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .btn:hover {
   background: var(--bg-subtle);
@@ -109,16 +109,16 @@ onMounted(() => {
 }
 
 .card-icon {
-  font-size: 48px;
+  font-size: var(--font-size-9xl);
   margin-bottom: 12px;
 }
 .card-title {
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   margin-bottom: 6px;
 }
 .card-desc {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
 }
 .card-badge {
@@ -126,7 +126,7 @@ onMounted(() => {
   margin-top: 12px;
   padding: 3px 12px;
   border-radius: 20px;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   background: var(--accent-bg);
   color: var(--accent);
@@ -139,11 +139,11 @@ onMounted(() => {
 .tips {
   text-align: center;
   padding: 16px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-muted);
 }
 .tips .small {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   margin-top: 4px;
   color: var(--text-muted);
 }

@@ -442,7 +442,7 @@ svg {
   padding: 0 7px;
   border-radius: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 850;
   letter-spacing: -0.04em;
 }
@@ -520,13 +520,13 @@ svg {
 .request-picker-header h2 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 
 .request-picker-header p {
   margin: 3px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .request-picker-header > button {
@@ -564,7 +564,7 @@ svg {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 720;
 }
 
@@ -581,7 +581,7 @@ svg {
   border-radius: 6px;
   background: var(--bg-subtle);
   color: inherit;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .request-picker-toolbar {
@@ -614,7 +614,7 @@ svg {
   outline: 0;
   background: transparent;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .request-picker-toolbar :deep(.select-trigger) {
@@ -635,14 +635,14 @@ svg {
   justify-content: space-between;
   padding: 0 20px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .request-picker-result-meta button {
   background: transparent;
   color: #6255e8;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .request-source-list {
@@ -708,7 +708,7 @@ svg {
 
 .request-source-copy strong {
   overflow: hidden;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -716,7 +716,7 @@ svg {
 .request-source-copy code {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -732,7 +732,7 @@ svg {
   max-width: 100px;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -742,7 +742,7 @@ svg {
   border-radius: 5px;
   background: var(--bg-subtle);
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 650;
 }
 
@@ -757,7 +757,7 @@ svg {
 
 .request-picker-empty strong {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .request-picker-footer {
@@ -773,7 +773,7 @@ svg {
 
 .request-picker-footer > span {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .request-picker-footer > div {
@@ -794,7 +794,7 @@ svg {
   background: var(--bg-card);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 
@@ -828,13 +828,13 @@ svg {
 
 .custom-request-heading strong {
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
 }
 
 .custom-request-heading p {
   margin: 5px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .custom-request-mode {
@@ -854,7 +854,7 @@ svg {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
 }
 
@@ -874,7 +874,7 @@ svg {
 
 .workspace-custom-request-form label > span {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 
@@ -892,7 +892,7 @@ svg {
   outline: 0;
   background: var(--bg-input);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .workspace-custom-request-form input {
@@ -914,7 +914,7 @@ svg {
 
 .workspace-custom-request-form label > small {
   color: var(--danger);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .custom-request-url-row {
@@ -931,7 +931,7 @@ svg {
   min-height: 174px;
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .curl-import-preview {
@@ -949,7 +949,7 @@ svg {
 .curl-import-preview code {
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -957,7 +957,7 @@ svg {
 .curl-import-preview small {
   grid-column: 2;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .curl-meta-row {
@@ -1029,12 +1029,12 @@ svg {
 
 .catalog-save-option strong {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .catalog-save-option small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .workspace-custom-request-form footer {

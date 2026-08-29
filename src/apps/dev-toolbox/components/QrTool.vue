@@ -98,7 +98,7 @@ generate()
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .plain {
@@ -107,7 +107,7 @@ generate()
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
   width: 100%;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
@@ -119,12 +119,12 @@ generate()
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }
 .qr-card {
@@ -164,7 +164,7 @@ generate()
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
   text-decoration: none;

@@ -119,7 +119,7 @@ const { close } = useOverlay({
 }
 .vc-modal__title {
   margin: 0;
-  font-size: var(--vc-modal-title-size, 20px);
+  font-size: var(--vc-modal-title-size, var(--font-size-heading));
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -127,7 +127,7 @@ const { close } = useOverlay({
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: var(--vc-modal-close-font, 28px);
+  font-size: var(--vc-modal-close-font, var(--font-size-5xl));
   line-height: 1;
   cursor: pointer;
   width: var(--vc-modal-close-size, 36px);
@@ -159,7 +159,9 @@ const { close } = useOverlay({
 }
 .vc-modal-enter-active .vc-modal,
 .vc-modal-leave-active .vc-modal {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 .vc-modal-enter-from,
 .vc-modal-leave-to {

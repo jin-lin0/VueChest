@@ -481,7 +481,7 @@ onUnmounted(() => {
   border-radius: 10px;
   background: linear-gradient(135deg, var(--accent, #667eea), #764ba2);
   color: white;
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
   font-weight: 800;
 }
 
@@ -492,7 +492,7 @@ onUnmounted(() => {
   outline: 0;
   background: transparent;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 
 kbd {
@@ -506,7 +506,7 @@ kbd {
   border-radius: 6px;
   background: var(--bg-hover);
   color: var(--text-secondary);
-  font: 600 11px/1 var(--font-sans);
+  font: 600 var(--font-size-meta) / 1 var(--font-sans);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
@@ -519,7 +519,7 @@ kbd {
 .palette-heading {
   padding: 5px 10px 8px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 800;
   letter-spacing: 0.12em;
 }
@@ -556,7 +556,7 @@ kbd {
   border: 1px solid var(--border-light);
   border-radius: 11px;
   background: var(--bg-card);
-  font-size: 19px;
+  font-size: var(--font-size-heading);
 }
 
 .item-copy {
@@ -568,7 +568,7 @@ kbd {
 
 .item-copy strong {
   overflow: hidden;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -576,14 +576,14 @@ kbd {
 .item-copy small {
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .item-kind {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .palette-empty {
@@ -596,7 +596,7 @@ kbd {
 }
 
 .palette-empty span {
-  font-size: 36px;
+  font-size: var(--font-size-8xl);
 }
 
 .palette-footer {
@@ -606,7 +606,7 @@ kbd {
   padding: 11px 20px;
   border-top: 1px solid var(--border-light);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .palette-footer span {

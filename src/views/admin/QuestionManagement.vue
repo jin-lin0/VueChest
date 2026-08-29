@@ -318,18 +318,18 @@ async function batchDelete() {
 
 .page-header h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
   color: var(--text-primary);
 }
 
 .page-desc {
   margin: 4px 0 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .btn-icon {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-weight: 300;
 }
 
@@ -351,7 +351,7 @@ async function batchDelete() {
 .search-icon {
   position: absolute;
   left: 12px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   opacity: 0.4;
 }
 
@@ -360,7 +360,7 @@ async function batchDelete() {
   padding: 9px 34px 9px 34px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   outline: none;
   transition: all 0.2s;
   background: var(--bg-input);
@@ -377,7 +377,7 @@ async function batchDelete() {
   right: 8px;
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   cursor: pointer;
   color: var(--text-muted);
   line-height: 1;
@@ -395,7 +395,7 @@ async function batchDelete() {
 }
 
 .batch-info {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 500;
   color: var(--accent);
   flex: 1;
@@ -407,7 +407,7 @@ async function batchDelete() {
   border: none;
   padding: 10px 22px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -432,7 +432,7 @@ async function batchDelete() {
   border: 1px solid var(--danger-bg);
   padding: 8px 16px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -444,7 +444,7 @@ async function batchDelete() {
 
 .btn-sm {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .loading-state {
@@ -509,7 +509,7 @@ async function batchDelete() {
 }
 
 .row-title {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
@@ -527,7 +527,7 @@ async function batchDelete() {
 .diff-badge {
   padding: 1px 7px;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 500;
 }
 .diff-badge.easy {
@@ -548,7 +548,7 @@ async function batchDelete() {
   border-radius: 10px;
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .row-tags {
@@ -560,10 +560,10 @@ async function batchDelete() {
   border-radius: 8px;
   background: var(--tag-bg);
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .row-tag-more {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--text-muted);
 }
 
@@ -576,7 +576,7 @@ async function batchDelete() {
 .btn-text {
   background: none;
   border: none;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 4px;
@@ -592,7 +592,7 @@ async function batchDelete() {
 .btn-text-danger {
   background: none;
   border: none;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 4px;
@@ -609,7 +609,7 @@ async function batchDelete() {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--border-light);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
 }
 
@@ -617,7 +617,7 @@ async function batchDelete() {
   margin-bottom: 10px;
 }
 .detail-section strong {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
 }
 .detail-section p {
@@ -634,7 +634,7 @@ async function batchDelete() {
 
 .answer-body {
   line-height: 1.7;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .answer-body :deep(pre) {
   background: #1f2937;
@@ -645,7 +645,7 @@ async function batchDelete() {
 }
 .answer-body :deep(code) {
   font-family: Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .answer-body :deep(p) {
   margin: 6px 0;
@@ -667,7 +667,7 @@ async function batchDelete() {
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-primary);
 }
 
@@ -692,7 +692,7 @@ async function batchDelete() {
   background: var(--bg-card);
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   transition: all 0.15s;
   color: var(--text-primary);
 }

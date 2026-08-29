@@ -175,7 +175,7 @@ function onDelete(opt: SelectOption) {
 .rl-label {
   flex: 1;
   min-width: 0;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -196,7 +196,7 @@ function onDelete(opt: SelectOption) {
   padding: 4px 8px;
   border: 1px solid var(--accent);
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
   background: var(--bg-card);
   color: var(--text-body);

@@ -222,7 +222,7 @@ onMounted(async () => {
 .load-error-text {
   margin-bottom: 0.7rem;
   color: var(--text-secondary);
-  font-size: 0.84rem;
+  font-size: var(--font-size-control);
 }
 
 .retry-btn {
@@ -245,7 +245,7 @@ onMounted(async () => {
   background: var(--bg-glass);
   color: var(--accent);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -256,7 +256,7 @@ onMounted(async () => {
   border-radius: 999px;
   background: var(--accent);
   color: white;
-  font-size: 0.7rem;
+  font-size: var(--font-size-meta);
   text-align: center;
 }
 
@@ -318,7 +318,7 @@ onMounted(async () => {
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   color: var(--accent);
   font-weight: 600;
   transition: all var(--transition);
@@ -331,7 +331,7 @@ onMounted(async () => {
 }
 
 .header-text h1 {
-  font-size: 1.6rem;
+  font-size: var(--font-size-4xl);
   font-weight: 800;
   background: linear-gradient(135deg, var(--text-primary), var(--accent), var(--accent-strong));
   -webkit-background-clip: text;
@@ -343,7 +343,7 @@ onMounted(async () => {
 }
 
 .subtitle {
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   color: var(--accent);
   font-weight: 600;
   margin: 0;
@@ -371,7 +371,7 @@ onMounted(async () => {
 }
 
 .search-icon {
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   margin-right: 0.6rem;
   opacity: 0.5;
 }
@@ -381,7 +381,7 @@ onMounted(async () => {
   border: none;
   background: none;
   outline: none;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   color: var(--text-primary);
   padding: 0;
 }
@@ -395,7 +395,7 @@ onMounted(async () => {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   transition: all var(--transition-fast);
@@ -420,7 +420,7 @@ onMounted(async () => {
   background: var(--bg-glass-soft);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-muted);
   font-weight: 500;
   transition: all var(--transition);
@@ -512,7 +512,7 @@ onMounted(async () => {
 }
 
 .app-icon {
-  font-size: 3rem;
+  font-size: var(--font-size-9xl);
   margin-bottom: 1rem;
   width: 72px;
   height: 72px;
@@ -529,7 +529,7 @@ onMounted(async () => {
 }
 
 .app-name {
-  font-size: 1.25rem;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
@@ -542,7 +542,7 @@ onMounted(async () => {
 .official-badge {
   display: inline-block;
   padding: 0.1rem 0.5rem;
-  font-size: 0.68rem;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   color: #fff;
   background: linear-gradient(135deg, #f59e0b, #ef4444);
@@ -552,7 +552,7 @@ onMounted(async () => {
 
 .app-description {
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   line-height: 1.5;
   margin-bottom: 0.8rem;
 }
@@ -560,7 +560,7 @@ onMounted(async () => {
 .app-meta {
   display: flex;
   gap: 0.8rem;
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   margin-bottom: 0.8rem;
 }
@@ -576,7 +576,7 @@ onMounted(async () => {
   gap: 4px;
   padding: 0.4rem 1.2rem;
   border-radius: var(--radius-pill);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   font-weight: 600;
   background: var(--gradient-primary);
   color: var(--accent-contrast);
@@ -643,7 +643,7 @@ onMounted(async () => {
   }
 
   .app-icon {
-    font-size: 2rem;
+    font-size: var(--font-size-6xl);
     width: 52px;
     height: 52px;
     border-radius: 14px;
@@ -651,11 +651,11 @@ onMounted(async () => {
   }
 
   .app-name {
-    font-size: 1rem;
+    font-size: var(--font-size-title);
   }
 
   .app-description {
-    font-size: 0.78rem;
+    font-size: var(--font-size-small);
   }
 }
 </style>

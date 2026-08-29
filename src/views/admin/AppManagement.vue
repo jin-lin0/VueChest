@@ -817,21 +817,21 @@ async function deleteApp(app: MarketAppItem) {
 
 .page-header h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
   color: var(--text-primary);
 }
 .page-desc {
   margin: 4px 0 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .btn-icon {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-weight: 300;
 }
 .btn-sm {
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .btn-primary {
@@ -840,7 +840,7 @@ async function deleteApp(app: MarketAppItem) {
   border: none;
   padding: 12px 24px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -864,7 +864,7 @@ async function deleteApp(app: MarketAppItem) {
   border: 1px solid var(--border-color);
   padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -879,7 +879,7 @@ async function deleteApp(app: MarketAppItem) {
   border: 1px solid var(--border-light);
   padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -898,7 +898,7 @@ async function deleteApp(app: MarketAppItem) {
   border: 1px solid var(--danger-bg);
   padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -916,7 +916,7 @@ async function deleteApp(app: MarketAppItem) {
   border: 1px solid var(--success-bg);
   padding: 8px 14px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -934,7 +934,7 @@ async function deleteApp(app: MarketAppItem) {
   border: 1px solid var(--danger-bg);
   padding: 8px 14px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -950,7 +950,7 @@ async function deleteApp(app: MarketAppItem) {
   display: inline-block;
   padding: 2px 10px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 500;
 }
 .status-pending {
@@ -989,13 +989,13 @@ async function deleteApp(app: MarketAppItem) {
 .pending-header h2 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: var(--font-size-title);
 }
 
 .pending-header p {
   margin: 2px 0 12px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .pending-list {
@@ -1020,7 +1020,7 @@ async function deleteApp(app: MarketAppItem) {
 }
 
 .pending-app > span {
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
 }
 
 .pending-app div {
@@ -1032,7 +1032,7 @@ async function deleteApp(app: MarketAppItem) {
 .pending-item time,
 .pending-item p {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .pending-item p {
@@ -1082,7 +1082,7 @@ async function deleteApp(app: MarketAppItem) {
   border-left: 3px solid var(--danger);
   background: var(--bg-subtle);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.6;
 }
 
@@ -1090,7 +1090,7 @@ async function deleteApp(app: MarketAppItem) {
   display: grid;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .reject-form small {
@@ -1140,7 +1140,7 @@ async function deleteApp(app: MarketAppItem) {
   box-shadow: var(--shadow-sm);
 }
 .stat-icon {
-  font-size: 28px;
+  font-size: var(--font-size-5xl);
   flex-shrink: 0;
 }
 .stat-info {
@@ -1148,13 +1148,13 @@ async function deleteApp(app: MarketAppItem) {
   flex-direction: column;
 }
 .stat-value {
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
 }
 .stat-label {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   margin-top: 2px;
 }
@@ -1180,7 +1180,7 @@ async function deleteApp(app: MarketAppItem) {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 16px;
+  font-size: var(--font-size-title);
   pointer-events: none;
 }
 .search-input {
@@ -1188,7 +1188,7 @@ async function deleteApp(app: MarketAppItem) {
   padding: 10px 14px 10px 38px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   outline: none;
   background: var(--bg-input);
   color: var(--text-primary);
@@ -1217,7 +1217,7 @@ async function deleteApp(app: MarketAppItem) {
 .app-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-primary);
 }
 .app-table thead {
@@ -1228,7 +1228,7 @@ async function deleteApp(app: MarketAppItem) {
   padding: 14px 16px;
   color: var(--text-secondary);
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   white-space: nowrap;
   border-bottom: 1px solid var(--border-light);
 }
@@ -1247,7 +1247,7 @@ async function deleteApp(app: MarketAppItem) {
   width: 50px;
 }
 .app-icon {
-  font-size: 28px;
+  font-size: var(--font-size-5xl);
   line-height: 1;
   display: inline-block;
 }
@@ -1257,7 +1257,7 @@ async function deleteApp(app: MarketAppItem) {
   margin-bottom: 2px;
 }
 .app-desc {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
 }
 .version-badge {
@@ -1265,7 +1265,7 @@ async function deleteApp(app: MarketAppItem) {
   color: var(--text-secondary);
   padding: 2px 8px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-family: monospace;
 }
 .category-tag {
@@ -1273,7 +1273,7 @@ async function deleteApp(app: MarketAppItem) {
   color: var(--accent);
   padding: 2px 10px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .col-actions {
   display: flex;
@@ -1285,7 +1285,7 @@ async function deleteApp(app: MarketAppItem) {
 }
 .col-date {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .pagination {
@@ -1300,7 +1300,7 @@ async function deleteApp(app: MarketAppItem) {
   border: 1px solid var(--border-color);
   padding: 10px 20px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-primary);
@@ -1314,7 +1314,7 @@ async function deleteApp(app: MarketAppItem) {
   cursor: not-allowed;
 }
 .page-info {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
 }
 
@@ -1336,7 +1336,7 @@ async function deleteApp(app: MarketAppItem) {
   margin-bottom: 6px;
   font-weight: 500;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .required {
   color: var(--danger);
@@ -1344,11 +1344,11 @@ async function deleteApp(app: MarketAppItem) {
 .label-optional {
   font-weight: 400;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .form-hint {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -1357,7 +1357,7 @@ async function deleteApp(app: MarketAppItem) {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 8px;
@@ -1365,7 +1365,7 @@ async function deleteApp(app: MarketAppItem) {
 
 .toggle-hint {
   font-weight: 400;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
 }
 
@@ -1416,7 +1416,7 @@ async function deleteApp(app: MarketAppItem) {
   padding: 10px 14px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   outline: none;
   transition: all 0.2s;
   background: var(--bg-input);
@@ -1432,7 +1432,7 @@ async function deleteApp(app: MarketAppItem) {
   padding: 10px 14px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-family: inherit;
   resize: vertical;
   outline: none;

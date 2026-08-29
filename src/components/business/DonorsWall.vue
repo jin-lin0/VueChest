@@ -69,15 +69,15 @@ onMounted(load)
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-2);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   color: var(--text-primary);
   margin: 0 0 var(--space-4);
 }
 .donors-heart {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .donors-sub {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -122,16 +122,16 @@ onMounted(load)
 .donor-name {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .donor-date {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   white-space: nowrap;
 }
 .donor-msg {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.6;
   color: var(--text-secondary);
 }

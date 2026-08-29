@@ -141,7 +141,7 @@ function onEditorSave() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .btn {
@@ -151,7 +151,7 @@ function onEditorSave() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -175,7 +175,7 @@ function onEditorSave() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -191,7 +191,7 @@ textarea {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
   width: 100%;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
@@ -207,11 +207,11 @@ textarea:focus {
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 .row {
   display: flex;
@@ -221,10 +221,10 @@ textarea:focus {
 }
 .k {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 .v {
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
 }
 
@@ -246,7 +246,7 @@ textarea:focus {
   border: none;
   padding: 0.5rem 1.1rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
 }
 .seg button.active {

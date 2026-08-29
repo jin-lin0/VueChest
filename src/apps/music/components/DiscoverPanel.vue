@@ -178,7 +178,7 @@ onMounted(() => {
               alt=""
               loading="lazy"
             />
-            <div v-else class="ms-song-cover ms-cover-ph" style="font-size: 20px">🎵</div>
+            <div v-else class="ms-song-cover ms-cover-ph" style="font-size: var(--font-size-heading)">🎵</div>
             <div class="ms-song-info">
               <div class="ms-song-name">
                 {{ song.name }}
@@ -288,12 +288,12 @@ onMounted(() => {
   justify-content: center;
   border-radius: 14px;
   background: var(--accent-gradient);
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
   box-shadow: 0 4px 14px rgba(108, 92, 231, 0.35);
 }
 
 .ms-entry-label {
-  font-size: 16px;
+  font-size: var(--font-size-title);
   font-weight: 600;
   color: var(--text);
 }
@@ -308,7 +308,7 @@ onMounted(() => {
 
 .ms-sub-head h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-weight: 700;
   color: var(--text);
 }
@@ -317,7 +317,7 @@ onMounted(() => {
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   cursor: pointer;
   width: 36px;
   height: 36px;

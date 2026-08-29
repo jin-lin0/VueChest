@@ -54,9 +54,28 @@ export interface AnalysisItem extends AnalysisResponse {
   id: string
   title: string
   cached?: boolean
+  streaming?: boolean
 }
 
 export interface AnalysisCacheEntry extends AnalysisResponse {
   title: string
   cachedAt: number
+}
+
+export interface AnalysisQuestionResponse {
+  content: string
+  model: string
+}
+
+export interface AnalysisQuestionMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  streaming?: boolean
+}
+
+export interface AnalysisQuestionThread {
+  messages: AnalysisQuestionMessage[]
+  asking: boolean
+  error: string
 }

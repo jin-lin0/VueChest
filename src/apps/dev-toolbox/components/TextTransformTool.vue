@@ -656,7 +656,7 @@ function downloadOutput() {
 }
 .tb-label {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 .btn {
   background: var(--bg-card);
@@ -665,7 +665,7 @@ function downloadOutput() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -696,7 +696,7 @@ function downloadOutput() {
   border: 1px solid var(--border-light);
   padding: 0.5rem 0.6rem;
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   width: 140px;
   max-width: 200px;
 }
@@ -742,7 +742,7 @@ function downloadOutput() {
   gap: 0.5rem;
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
 }
 .card-title .dot {
   width: 8px;
@@ -758,7 +758,7 @@ function downloadOutput() {
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   white-space: nowrap;
 }
 .card-actions {
@@ -819,7 +819,7 @@ function downloadOutput() {
 .tt-desc {
   margin: 0 0 1rem;
   color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   line-height: 1.6;
 }
 .tt-desc code {
@@ -827,12 +827,12 @@ function downloadOutput() {
   padding: 0.05rem 0.35rem;
   border-radius: var(--radius-xs);
   font-family: var(--font-mono, monospace);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 .tt-desc kbd,
 .btn kbd {
   font-family: var(--font-mono, monospace);
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
   line-height: 1;
   padding: 0.12rem 0.35rem;
   border-radius: var(--radius-xs);

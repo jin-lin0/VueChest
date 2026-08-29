@@ -129,7 +129,7 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .hidden-input {
@@ -165,12 +165,12 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.6rem 0 0;
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.6rem 0 0;
 }
 .grid {
@@ -199,7 +199,7 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.7rem;
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   line-height: 1.4;
   outline: none;
   word-break: break-all;
@@ -215,7 +215,7 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.3rem 0.7rem;
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
 }

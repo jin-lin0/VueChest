@@ -198,7 +198,7 @@ function savePosition() {
 
 .portfolio-heading span {
   color: #0f766e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 900;
   letter-spacing: 0.15em;
 }
@@ -206,13 +206,13 @@ function savePosition() {
 .portfolio-heading h1 {
   margin: 2px 0;
   color: var(--text-primary);
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
 }
 
 .portfolio-heading p,
 .card-header p {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .portfolio-heading > button {
@@ -251,16 +251,16 @@ function savePosition() {
 
 .portfolio-summary-grid small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .portfolio-summary-grid strong {
   margin-top: 4px;
-  font-size: 20px;
+  font-size: var(--font-size-heading);
 }
 
 .portfolio-summary-grid b {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .portfolio-layout {
@@ -287,7 +287,7 @@ function savePosition() {
 .card-header h2 {
   margin-top: 3px;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 
 .position-form-card {
@@ -301,7 +301,7 @@ function savePosition() {
   flex-direction: column;
   gap: 5px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .position-form-card input {
@@ -338,7 +338,7 @@ function savePosition() {
 
 .position-form-card > p {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   line-height: 1.6;
 }
 
@@ -359,19 +359,19 @@ function savePosition() {
 .position-select-empty > span,
 .panel-empty > span {
   color: #0f766e;
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
 }
 
 .position-select-empty strong,
 .panel-empty strong {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .position-select-empty p,
 .panel-empty p {
   max-width: 250px;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .position-table-wrap {
@@ -389,13 +389,13 @@ function savePosition() {
 .position-table td {
   border-bottom: 1px solid var(--border-light);
   padding: 11px 9px;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   text-align: right;
 }
 
 .position-table th {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 
 .position-table th:first-child,
@@ -433,7 +433,7 @@ function savePosition() {
 
 .remove-position {
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: var(--font-size-title);
 }
 
 .remove-position:hover {

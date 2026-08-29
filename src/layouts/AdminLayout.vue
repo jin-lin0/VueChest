@@ -242,7 +242,7 @@ function goToHome() {
   display: none;
   background: none;
   border: none;
-  font-size: 22px;
+  font-size: var(--font-size-heading);
   cursor: pointer;
   color: #374151;
   padding: 4px;
@@ -262,7 +262,7 @@ function goToHome() {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-muted);
 }
 
@@ -294,7 +294,7 @@ function goToHome() {
   border: none;
   background: #f3f4f6;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   cursor: pointer;
   transition: all 0.2s;
   color: #374151;
@@ -306,7 +306,7 @@ function goToHome() {
 }
 
 .header-btn-text {
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 @media (max-width: 480px) {

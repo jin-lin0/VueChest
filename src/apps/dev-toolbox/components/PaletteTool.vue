@@ -209,7 +209,7 @@ function extract(img: HTMLImageElement) {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .hidden-input {
@@ -251,7 +251,7 @@ function extract(img: HTMLImageElement) {
 }
 .opt-label {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 .num {
   width: 90px;
@@ -260,7 +260,7 @@ function extract(img: HTMLImageElement) {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.35rem 0.55rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
 }
 .num:focus {
@@ -268,12 +268,12 @@ function extract(img: HTMLImageElement) {
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.6rem 0 0;
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.6rem 0 0;
 }
 .grid {
@@ -322,16 +322,16 @@ function extract(img: HTMLImageElement) {
   flex: none;
 }
 .hex {
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   color: var(--text-primary);
   font-weight: 600;
 }
 .rgb {
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
 }
 .cnt {
-  font-size: 0.74rem;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   margin-left: auto;
 }

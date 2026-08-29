@@ -224,7 +224,7 @@ parse()
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .inp {
@@ -233,7 +233,7 @@ parse()
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
   width: 100%;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
@@ -244,12 +244,12 @@ parse()
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }
 .grid {
@@ -271,7 +271,7 @@ parse()
 }
 .swatch-hex {
   margin: 0.6rem 0 0;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   color: var(--text-primary);
 }
 .fmt {
@@ -285,7 +285,7 @@ parse()
 }
 .k {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 .fmt-val {
   display: block;
@@ -293,7 +293,7 @@ parse()
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
   word-break: break-all;
 }
@@ -303,7 +303,7 @@ parse()
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
 }

@@ -120,7 +120,7 @@ function createAlert() {
 }
 .card-header h2 {
   margin-top: 3px;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .card-header button {
   border: 0;
@@ -148,7 +148,7 @@ function createAlert() {
 .note-card > p {
   margin-top: 9px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .alert-form {
   display: grid;
@@ -193,7 +193,7 @@ function createAlert() {
 }
 .alert-list small {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .alert-toggle {
   width: 28px;

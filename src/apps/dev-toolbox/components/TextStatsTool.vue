@@ -98,7 +98,7 @@ const summary = computed(() => statList.value.map((s) => `${s.label}：${s.value
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .card-head .card-title {
@@ -110,7 +110,7 @@ const summary = computed(() => statList.value.map((s) => `${s.label}：${s.value
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
   width: 100%;
   resize: vertical;
@@ -132,7 +132,7 @@ const summary = computed(() => statList.value.map((s) => `${s.label}：${s.value
   padding: 0.7rem 0.8rem;
 }
 .stat .v {
-  font-size: 1.5rem;
+  font-size: var(--font-size-4xl);
   font-weight: 700;
   color: var(--accent);
   line-height: 1.2;
@@ -140,11 +140,11 @@ const summary = computed(() => statList.value.map((s) => `${s.label}：${s.value
 .stat .k {
   margin-top: 0.25rem;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 .mini {
   background: var(--bg-card);
@@ -152,7 +152,7 @@ const summary = computed(() => statList.value.map((s) => `${s.label}：${s.value
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
 }

@@ -37,17 +37,17 @@ withDefaults(
   text-align: center;
 }
 .empty-icon {
-  font-size: 2.4rem;
+  font-size: var(--font-size-8xl);
   line-height: 1;
 }
 .empty-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   color: var(--text-secondary);
 }
 .empty-desc {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-muted);
 }
 </style>

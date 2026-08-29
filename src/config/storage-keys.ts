@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   AI_CHAT_MODEL_PREFIX: 'ai-chat-model-',
   AI_CHAT_DRAFT: 'ai-chat-draft',
   BILI_ANALYSIS_CACHE: 'bili-analysis-cache',
+  BILI_SUBTITLE_SETTINGS: 'bili-subtitle-settings',
   // interview
   INTERVIEW_PRACTICED: 'interview_practiced',
   INTERVIEW_LEARNING: 'interview_learning',

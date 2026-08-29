@@ -273,7 +273,7 @@ function toggleReply(id: number) {
 }
 
 .rating-summary {
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   font-weight: 400;
   color: var(--text-secondary);
   margin-left: 0.5rem;
@@ -322,7 +322,7 @@ function toggleReply(id: number) {
 }
 
 .rating-hint {
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
   margin-left: 0.4rem;
 }
@@ -333,7 +333,7 @@ function toggleReply(id: number) {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.7rem 0.9rem;
-  font-size: 0.92rem;
+  font-size: var(--font-size-body-lg);
   font-family: inherit;
   color: var(--text-primary);
   background: var(--bg-card);
@@ -355,7 +355,7 @@ function toggleReply(id: number) {
 }
 
 .char-count {
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
 }
 
@@ -365,7 +365,7 @@ function toggleReply(id: number) {
   color: #fff;
   border: none;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s ease;
@@ -381,7 +381,7 @@ function toggleReply(id: number) {
 }
 
 .login-tip {
-  font-size: 0.92rem;
+  font-size: var(--font-size-body-lg);
   color: var(--text-secondary);
   padding: 0.8rem 0;
 }
@@ -398,7 +398,7 @@ function toggleReply(id: number) {
 
 .comment-error {
   color: var(--danger);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   margin: 0.5rem 0;
 }
 
@@ -407,7 +407,7 @@ function toggleReply(id: number) {
   text-align: center;
   color: var(--text-secondary);
   padding: 1.5rem;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
 }
 
 .comment-item {
@@ -433,7 +433,7 @@ function toggleReply(id: number) {
 .avatar.small {
   width: 30px;
   height: 30px;
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 
 .avatar-letter {
@@ -461,7 +461,7 @@ function toggleReply(id: number) {
 .username {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
 }
 
 .stars {
@@ -471,12 +471,12 @@ function toggleReply(id: number) {
 }
 
 .time {
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
 }
 
 .comment-content {
-  font-size: 0.92rem;
+  font-size: var(--font-size-body-lg);
   color: var(--text-primary);
   line-height: 1.6;
   white-space: pre-wrap;
@@ -494,7 +494,7 @@ function toggleReply(id: number) {
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   cursor: pointer;
   padding: 0;
 }
@@ -539,7 +539,7 @@ function toggleReply(id: number) {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s ease;
 }

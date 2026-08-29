@@ -122,7 +122,7 @@ function fmt(d: Date): string {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 .card-head {
   display: flex;
@@ -150,7 +150,7 @@ function fmt(d: Date): string {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   outline: none;
 }
 .inp:focus {
@@ -163,7 +163,7 @@ function fmt(d: Date): string {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -184,12 +184,12 @@ function fmt(d: Date): string {
 }
 .k {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   flex-shrink: 0;
 }
 .next-val {
   flex: 1;
-  font-size: 0.92rem;
+  font-size: var(--font-size-body-lg);
   color: var(--accent);
   font-weight: 600;
 }
@@ -218,23 +218,23 @@ function fmt(d: Date): string {
   border-radius: 50%;
   background: var(--accent);
   color: var(--accent-contrast);
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
 }
 .val {
   flex: 1;
   min-width: 0;
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }
 </style>

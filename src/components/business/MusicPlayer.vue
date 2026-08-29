@@ -482,13 +482,13 @@ onUnmounted(() => {
               <polyline points="7 23 3 19 7 15" />
               <path d="M21 13v2a4 4 0 0 1-4 4H3" />
               <text
+                class="single-mode-count"
                 x="12"
                 y="12"
                 text-anchor="middle"
                 dominant-baseline="central"
                 fill="currentColor"
                 stroke="none"
-                font-size="9"
                 font-weight="700"
               >
                 1
@@ -580,7 +580,12 @@ onUnmounted(() => {
             <div v-if="showSleepMenu" class="sleep-menu" @click.stop>
               <header>
                 <strong>睡眠定时</strong>
-                <button type="button" class="sleep-menu-close" aria-label="关闭睡眠定时" @click="showSleepMenu = false">
+                <button
+                  type="button"
+                  class="sleep-menu-close"
+                  aria-label="关闭睡眠定时"
+                  @click="showSleepMenu = false"
+                >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <line x1="6" y1="6" x2="18" y2="18" />
                     <line x1="18" y1="6" x2="6" y2="18" />
@@ -792,7 +797,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   background: var(--accent-gradient);
-  font-size: 22px;
+  font-size: var(--font-size-heading);
   flex-shrink: 0;
 }
 
@@ -801,7 +806,7 @@ onUnmounted(() => {
 }
 
 .player-song-name {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   color: var(--text);
   overflow: hidden;
@@ -810,7 +815,7 @@ onUnmounted(() => {
 }
 
 .player-song-artist {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -834,7 +839,7 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 8px;
   border-radius: 50%;
-  font-size: 16px;
+  font-size: var(--font-size-title);
   color: var(--text-secondary);
   transition:
     background 0.2s,
@@ -849,6 +854,10 @@ onUnmounted(() => {
   color: var(--text);
 }
 
+.single-mode-count {
+  font-size: var(--font-size-caption);
+}
+
 .ctrl-btn:active {
   transform: scale(0.9);
 }
@@ -861,7 +870,7 @@ onUnmounted(() => {
   height: 42px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -902,14 +911,14 @@ onUnmounted(() => {
 }
 
 .time-display {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   color: var(--text-dim);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .lyrics-btn {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
   width: 30px;
   height: 30px;
@@ -936,7 +945,7 @@ onUnmounted(() => {
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
 }
 .sleep-btn.active {
@@ -963,7 +972,7 @@ onUnmounted(() => {
 }
 .sleep-menu > header strong {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .sleep-menu > header button {
   display: inline-flex;
@@ -1014,16 +1023,16 @@ onUnmounted(() => {
   border-radius: 999px;
   background: rgba(108, 92, 231, 0.22);
   color: #cfc8ff;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .sleep-running-status strong {
   color: #fff;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-variant-numeric: tabular-nums;
 }
 .sleep-running-status small {
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .sleep-presets {
   display: grid;
@@ -1038,7 +1047,7 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .sleep-presets button:hover,
 .sleep-presets button.active {
@@ -1066,7 +1075,7 @@ onUnmounted(() => {
 }
 .sleep-custom-duration span {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .sleep-menu-actions {
   display: grid;
@@ -1079,7 +1088,7 @@ onUnmounted(() => {
   border: 0;
   border-radius: 7px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
 }
 .sleep-menu-actions button.primary {
@@ -1097,7 +1106,7 @@ onUnmounted(() => {
   gap: 8px;
   padding: 4px 8px 10px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .queue-toolbar span {
   margin-right: auto;
@@ -1109,7 +1118,7 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .lyrics-btn:hover {
@@ -1227,14 +1236,14 @@ onUnmounted(() => {
 }
 
 .lyrics-header h2 {
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   margin: 0;
   font-weight: 700;
   color: var(--text);
 }
 
 .lyrics-header p {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
   margin: 6px 0 0;
 }
@@ -1245,7 +1254,7 @@ onUnmounted(() => {
   right: 16px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   cursor: pointer;
   color: var(--text-secondary);
   width: 32px;
@@ -1281,7 +1290,7 @@ onUnmounted(() => {
 
 .lyric-line {
   padding: 10px 0;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   color: var(--text-dim);
   transition: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
   line-height: 1.8;
@@ -1289,7 +1298,7 @@ onUnmounted(() => {
 
 .lyric-line.active {
   color: var(--text);
-  font-size: 19px;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   text-shadow: 0 0 20px rgba(108, 92, 231, 0.5);
   transform: scale(1.04);
@@ -1327,7 +1336,7 @@ onUnmounted(() => {
 .drawer-tabs button {
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   color: var(--text-secondary);
@@ -1352,7 +1361,7 @@ onUnmounted(() => {
 .drawer-close {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   cursor: pointer;
   color: var(--text-secondary);
   width: 30px;
@@ -1376,7 +1385,7 @@ onUnmounted(() => {
   text-align: center;
   padding: 40px 16px;
   color: var(--text-dim);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .simi-cover {
@@ -1428,7 +1437,7 @@ onUnmounted(() => {
 .song-index {
   width: 26px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-dim);
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
@@ -1440,7 +1449,7 @@ onUnmounted(() => {
 }
 
 .song-name {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   color: var(--text);
   overflow: hidden;
@@ -1449,7 +1458,7 @@ onUnmounted(() => {
 }
 
 .song-artist {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
   margin-top: 2px;
   overflow: hidden;
@@ -1461,7 +1470,7 @@ onUnmounted(() => {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   cursor: pointer;
   padding: 4px;
   flex-shrink: 0;
@@ -1489,7 +1498,7 @@ onUnmounted(() => {
   background: rgba(40, 20, 28, 0.92);
   border: 1px solid rgba(253, 121, 168, 0.35);
   color: #ffd5e2;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 500;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(12px);
@@ -1547,7 +1556,7 @@ onUnmounted(() => {
   .play-btn {
     width: 38px;
     height: 38px;
-    font-size: 15px;
+    font-size: var(--font-size-body-lg);
   }
 
   .mode-btn,

@@ -58,7 +58,7 @@ defineOptions({ name: 'VcTooltip' })
   padding: 0.6rem 0.8rem;
   background: var(--vc-tooltip-bg);
   color: var(--vc-tooltip-fg);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   line-height: 1.65;
   font-weight: 400;
   text-align: left;

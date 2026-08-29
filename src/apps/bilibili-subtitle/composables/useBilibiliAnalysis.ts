@@ -1,32 +1,70 @@
 import { computed, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { api } from '@/lib/request'
 import { getStorage, setStorage } from '@/lib/storage'
 import { copyToClipboard } from '@/utils/clipboard'
 import { downloadFile } from '@/utils/common'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { fetchProviders, resolveModelSelection, type ProviderMeta } from '@/apps/ai-chat/config'
+import { streamBilibiliRequest } from '../stream'
 import type {
   AnalysisCacheEntry,
   AnalysisItem,
+  AnalysisQuestionMessage,
+  AnalysisQuestionResponse,
+  AnalysisQuestionThread,
   AnalysisResponse,
   AnalysisType,
   ExtractResult,
 } from '../types'
 
-export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied: () => void) {
-  const router = useRouter()
+const ANALYSIS_CACHE_VERSION = 'v3'
+const ANALYSIS_TYPES: AnalysisType[] = ['overview', 'translate', 'custom']
+
+function createTypeRecord<T>(factory: () => T): Record<AnalysisType, T> {
+  return Object.fromEntries(ANALYSIS_TYPES.map((type) => [type, factory()])) as Record<
+    AnalysisType,
+    T
+  >
+}
+
+export function useBilibiliAnalysis(
+  result: Ref<ExtractResult | null>,
+  onCopied: () => void,
+  useCache: Ref<boolean>,
+) {
   const providers = ref<ProviderMeta[]>([])
   const analysisProvider = ref(getStorage<string>(STORAGE_KEYS.AI_CHAT_PROVIDER, '') || '')
   const analysisModel = ref('')
   const analysisType = ref<AnalysisType>('overview')
   const customPrompt = ref('')
-  const analyzing = ref(false)
-  const analysisError = ref('')
-  const analysisDone = ref(0)
-  const analysisTotal = ref(0)
-  const analysisResults = ref<AnalysisItem[]>([])
+  const activeAnalysisType = ref<AnalysisType | null>(null)
+  const analysisResultsByType = ref(createTypeRecord<AnalysisItem[]>(() => []))
+  const analysisThreadsByType = ref(
+    createTypeRecord<Record<string, AnalysisQuestionThread>>(() => ({})),
+  )
+  const analysisErrorsByType = ref(createTypeRecord(() => ''))
+  const analysisProgressByType = ref(createTypeRecord(() => ({ done: 0, total: 0 })))
+  const analysisStatusByType = ref(createTypeRecord(() => ''))
   let analysisController: AbortController | null = null
+  const questionControllers = new Map<string, AbortController>()
+
+  const analyzing = computed(() => activeAnalysisType.value === analysisType.value)
+  const analysisError = computed({
+    get: () => analysisErrorsByType.value[analysisType.value],
+    set: (value: string) => {
+      analysisErrorsByType.value[analysisType.value] = value
+    },
+  })
+  const analysisDone = computed(() => analysisProgressByType.value[analysisType.value].done)
+  const analysisTotal = computed(() => analysisProgressByType.value[analysisType.value].total)
+  const analysisStatus = computed(() => analysisStatusByType.value[analysisType.value])
+  const analysisResults = computed(() => analysisResultsByType.value[analysisType.value])
+  const analysisThreads = computed(() => analysisThreadsByType.value[analysisType.value])
+  const analysisResultCounts = computed(
+    () =>
+      Object.fromEntries(
+        ANALYSIS_TYPES.map((type) => [type, analysisResultsByType.value[type].length]),
+      ) as Record<AnalysisType, number>,
+  )
 
   const currentAnalysisProvider = computed(
     () => providers.value.find((provider) => provider.id === analysisProvider.value) || null,
@@ -46,17 +84,18 @@ export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied:
       setStorage(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${analysisProvider.value}`, model)
     }
   })
-  watch(analysisType, () => {
-    analysisResults.value = []
-    analysisError.value = ''
-  })
-
   function resetAnalysis() {
     analysisController?.abort()
-    analysisResults.value = []
-    analysisError.value = ''
-    analysisDone.value = 0
-    analysisTotal.value = 0
+    questionControllers.forEach((controller) => controller.abort())
+    questionControllers.clear()
+    activeAnalysisType.value = null
+    analysisResultsByType.value = createTypeRecord<AnalysisItem[]>(() => [])
+    analysisThreadsByType.value = createTypeRecord<Record<string, AnalysisQuestionThread>>(
+      () => ({}),
+    )
+    analysisErrorsByType.value = createTypeRecord(() => '')
+    analysisProgressByType.value = createTypeRecord(() => ({ done: 0, total: 0 }))
+    analysisStatusByType.value = createTypeRecord(() => '')
   }
 
   function selectAnalysisProvider(raw?: string | number) {
@@ -124,28 +163,54 @@ export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied:
     setStorage(STORAGE_KEYS.BILI_ANALYSIS_CACHE, Object.fromEntries(recent))
   }
 
-  async function analyzeSource(source: { id: string; title: string; text: string }) {
-    const prompt = analysisType.value === 'custom' ? customPrompt.value.trim() : ''
-    const digest = await digestText(`${analysisType.value}\n${prompt}\n${source.text}`)
+  async function analyzeSource(
+    source: { id: string; title: string; text: string },
+    options: {
+      type: AnalysisType
+      prompt: string
+      provider: string
+      model: string
+      useCache: boolean
+      bvid?: string
+      signal: AbortSignal
+    },
+    callbacks: {
+      onStart: () => void
+      onDelta: (content: string) => void
+      onProgress: (label: string) => void
+    },
+  ) {
+    const digest = await digestText(
+      `${ANALYSIS_CACHE_VERSION}\n${options.provider}\n${options.model}\n${options.type}\n${options.prompt}\n${source.text}`,
+    )
     const cacheKey = `${source.id}:${digest}`
-    const cached = getAnalysisCache()[cacheKey]
+    const cached = options.useCache ? getAnalysisCache()[cacheKey] : undefined
     if (cached) return { id: source.id, ...cached, cached: true }
 
-    const response = await api.post<{ data: AnalysisResponse }>(
-      '/api/bilibili/analyze',
+    callbacks.onStart()
+    let streamedContent = ''
+    const response = await streamBilibiliRequest<AnalysisResponse>(
+      '/api/bilibili/analyze/stream',
       {
         title: source.title,
-        bvid: result.value?.bvid,
+        bvid: options.bvid,
         text: source.text,
-        provider: analysisProvider.value,
-        model: analysisModel.value,
-        type: analysisType.value,
-        prompt,
+        provider: options.provider,
+        model: options.model,
+        type: options.type,
+        prompt: options.prompt,
       },
-      { signal: analysisController?.signal },
+      {
+        onDelta: (delta) => {
+          streamedContent += delta
+          callbacks.onDelta(streamedContent)
+        },
+        onProgress: (progress) => callbacks.onProgress(progress.label),
+      },
+      options.signal,
     )
     const entry: AnalysisCacheEntry = {
-      ...response.data,
+      ...response,
       title: source.title,
       cachedAt: Date.now(),
     }
@@ -154,37 +219,97 @@ export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied:
   }
 
   async function runAnalysis() {
+    const type = analysisType.value
     const sources = analysisSources()
     if (!sources.length || !analysisProvider.value || !analysisModel.value) {
       analysisError.value = '请先获取字幕并选择可用模型'
       return
     }
-    if (analysisType.value === 'custom' && !customPrompt.value.trim()) {
+    if (type === 'custom' && !customPrompt.value.trim()) {
       analysisError.value = '请输入自定义分析要求'
       return
     }
 
     analysisController?.abort()
-    analysisController = new AbortController()
-    analyzing.value = true
-    analysisError.value = ''
-    analysisDone.value = 0
-    analysisTotal.value = sources.length
+    const controller = new AbortController()
+    analysisController = controller
+    activeAnalysisType.value = type
+    analysisErrorsByType.value[type] = ''
+    analysisStatusByType.value[type] = '正在准备字幕上下文…'
+    analysisProgressByType.value[type] = { done: 0, total: sources.length }
+    const options = {
+      type,
+      prompt: type === 'custom' ? customPrompt.value.trim() : '',
+      provider: analysisProvider.value,
+      model: analysisModel.value,
+      useCache: useCache.value,
+      bvid: result.value?.bvid,
+      signal: controller.signal,
+    }
     const completed: Array<AnalysisItem | undefined> = new Array(sources.length)
-    analysisResults.value = []
+    analysisResultsByType.value[type] = []
     let cursor = 0
     async function worker() {
-      while (cursor < sources.length && !analysisController?.signal.aborted) {
+      while (cursor < sources.length && !controller.signal.aborted) {
         const index = cursor++
-        completed[index] = await analyzeSource(sources[index])
-        analysisDone.value += 1
-        analysisResults.value = completed.filter((item): item is AnalysisItem => Boolean(item))
+        let placeholder: AnalysisItem = {
+          id: sources[index].id,
+          title: sources[index].title,
+          content: '',
+          structured: null,
+          model: options.model,
+          chunkCount: 0,
+          streaming: true,
+        }
+        let streamStarted = false
+        let latestContent = ''
+        let contentTimer: ReturnType<typeof setTimeout> | null = null
+        const publish = () => {
+          analysisResultsByType.value[type] = completed.filter((item): item is AnalysisItem =>
+            Boolean(item),
+          )
+        }
+        const flushContent = () => {
+          contentTimer = null
+          placeholder = { ...placeholder, content: latestContent }
+          completed[index] = placeholder
+          publish()
+        }
+        try {
+          const analyzed = await analyzeSource(sources[index], options, {
+            onStart: () => {
+              streamStarted = true
+              completed[index] = placeholder
+              publish()
+            },
+            onDelta: (content) => {
+              latestContent = content
+              if (contentTimer === null) contentTimer = setTimeout(flushContent, 32)
+            },
+            onProgress: (label) => {
+              analysisStatusByType.value[type] = label
+            },
+          })
+          if (contentTimer !== null) clearTimeout(contentTimer)
+          placeholder = { ...placeholder, content: latestContent }
+          completed[index] = analyzed
+          analysisProgressByType.value[type].done += 1
+          publish()
+        } catch (error) {
+          if (contentTimer !== null) clearTimeout(contentTimer)
+          if (streamStarted) {
+            placeholder = { ...placeholder, content: latestContent, streaming: false }
+            completed[index] = placeholder
+            publish()
+          }
+          throw error
+        }
       }
     }
 
     try {
       await Promise.all(Array.from({ length: Math.min(2, sources.length) }, worker))
-      const actualModel = analysisResults.value.at(-1)?.model
+      const actualModel = analysisResultsByType.value[type].at(-1)?.model
       if (
         actualModel &&
         currentAnalysisProvider.value?.models.some((item) => item.id === actualModel)
@@ -193,11 +318,14 @@ export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied:
       }
     } catch (reason) {
       if ((reason as { name?: string })?.name !== 'AbortError') {
-        analysisError.value = reason instanceof Error ? reason.message : '字幕分析失败'
+        analysisErrorsByType.value[type] = reason instanceof Error ? reason.message : '字幕分析失败'
       }
     } finally {
-      analyzing.value = false
-      analysisController = null
+      if (analysisController === controller) {
+        activeAnalysisType.value = null
+        analysisController = null
+        analysisStatusByType.value[type] = ''
+      }
     }
   }
 
@@ -231,11 +359,103 @@ export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied:
     )
   }
 
-  function continueInChat(item: AnalysisItem) {
-    setStorage(STORAGE_KEYS.AI_CHAT_DRAFT, {
-      text: `请基于下面的视频分析继续回答我的问题。\n\n${item.content}\n\n我的问题：`,
-    })
-    router.push('/ai-chat')
+  function analysisThreadFor(id: string): AnalysisQuestionThread {
+    const threads = analysisThreadsByType.value[analysisType.value]
+    if (!threads[id]) {
+      threads[id] = { messages: [], asking: false, error: '' }
+    }
+    return threads[id]
+  }
+
+  async function askAnalysisQuestion(item: AnalysisItem, rawQuestion: string) {
+    const type = analysisType.value
+    const question = rawQuestion.trim()
+    const source = analysisSources().find((candidate) => candidate.id === item.id)
+    const threads = analysisThreadsByType.value[type]
+    const thread =
+      threads[item.id] || (threads[item.id] = { messages: [], asking: false, error: '' })
+    if (!question) {
+      thread.error = '请输入要追问的问题'
+      return
+    }
+    if (!source || !analysisProvider.value || !analysisModel.value) {
+      thread.error = '字幕上下文或模型不可用，请重新分析后再试'
+      return
+    }
+
+    const controllerKey = `${type}:${item.id}`
+    questionControllers.get(controllerKey)?.abort()
+    const controller = new AbortController()
+    questionControllers.set(controllerKey, controller)
+    const history = thread.messages.map(({ role, content }) => ({ role, content }))
+    thread.messages.push({ id: crypto.randomUUID(), role: 'user', content: question })
+    const assistantId = crypto.randomUUID()
+    let assistantMessage: AnalysisQuestionMessage = {
+      id: assistantId,
+      role: 'assistant' as const,
+      content: '',
+      streaming: true,
+    }
+    thread.messages.push(assistantMessage)
+    thread.asking = true
+    thread.error = ''
+    let streamedContent = ''
+    let contentTimer: ReturnType<typeof setTimeout> | null = null
+    const updateAssistant = (content: string, streaming: boolean) => {
+      const messageIndex = thread.messages.findIndex((message) => message.id === assistantId)
+      if (messageIndex < 0) return
+      assistantMessage = { ...thread.messages[messageIndex], content, streaming }
+      thread.messages[messageIndex] = assistantMessage
+    }
+    const flushContent = () => {
+      contentTimer = null
+      updateAssistant(streamedContent, true)
+    }
+    try {
+      const response = await streamBilibiliRequest<AnalysisQuestionResponse>(
+        '/api/bilibili/ask/stream',
+        {
+          title: source.title,
+          bvid: result.value?.bvid,
+          text: source.text,
+          analysis: item.content,
+          question,
+          history,
+          provider: analysisProvider.value,
+          model: analysisModel.value,
+        },
+        {
+          onDelta: (delta) => {
+            streamedContent += delta
+            if (contentTimer === null) contentTimer = setTimeout(flushContent, 32)
+          },
+        },
+        controller.signal,
+      )
+      if (contentTimer !== null) clearTimeout(contentTimer)
+      updateAssistant(response.content, false)
+      if (
+        response.model &&
+        currentAnalysisProvider.value?.models.some((model) => model.id === response.model)
+      ) {
+        analysisModel.value = response.model
+      }
+    } catch (reason) {
+      if (contentTimer !== null) clearTimeout(contentTimer)
+      updateAssistant(streamedContent, false)
+      if (!streamedContent) {
+        const messageIndex = thread.messages.findIndex((message) => message.id === assistantId)
+        if (messageIndex >= 0) thread.messages.splice(messageIndex, 1)
+      }
+      if ((reason as { name?: string })?.name !== 'AbortError') {
+        thread.error = reason instanceof Error ? reason.message : '追问失败，请稍后重试'
+      }
+    } finally {
+      if (questionControllers.get(controllerKey) === controller) {
+        questionControllers.delete(controllerKey)
+        thread.asking = false
+      }
+    }
   }
 
   onMounted(async () => {
@@ -250,7 +470,10 @@ export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied:
       analysisError.value = 'AI 模型列表加载失败，字幕提取仍可正常使用'
     }
   })
-  onUnmounted(() => analysisController?.abort())
+  onUnmounted(() => {
+    analysisController?.abort()
+    questionControllers.forEach((controller) => controller.abort())
+  })
 
   return {
     analysisProvider,
@@ -261,7 +484,10 @@ export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied:
     analysisError,
     analysisDone,
     analysisTotal,
+    analysisStatus,
     analysisResults,
+    analysisThreads,
+    analysisResultCounts,
     analysisProviderOptions,
     analysisModelOptions,
     selectAnalysisProvider,
@@ -270,7 +496,8 @@ export function useBilibiliAnalysis(result: Ref<ExtractResult | null>, onCopied:
     copyAnalysis,
     exportAnalysisMarkdown,
     exportAnalysisJson,
-    continueInChat,
+    analysisThreadFor,
+    askAnalysisQuestion,
     resetAnalysis,
   }
 }

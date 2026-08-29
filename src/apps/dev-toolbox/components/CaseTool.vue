@@ -140,7 +140,7 @@ function finish(msg: string) {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .card-head .card-title {
@@ -152,7 +152,7 @@ function finish(msg: string) {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
   width: 100%;
   resize: vertical;
@@ -176,7 +176,7 @@ function finish(msg: string) {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -190,7 +190,7 @@ function finish(msg: string) {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
 }

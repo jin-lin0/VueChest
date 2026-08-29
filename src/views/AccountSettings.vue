@@ -246,7 +246,7 @@ onMounted(() => void refresh())
 header h1 {
   margin: 0.8rem 0 0;
   color: var(--text-primary);
-  font-size: 1.7rem;
+  font-size: var(--font-size-5xl);
 }
 
 header p,
@@ -255,7 +255,7 @@ header p,
 .sync-summary,
 .sync-copy > small {
   color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 
 .back-btn,
@@ -316,7 +316,7 @@ header p,
 .section-head h2 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 
 .session-list {
@@ -340,7 +340,7 @@ header p,
   border-radius: 999px;
   background: var(--success-bg);
   color: var(--success);
-  font-size: 0.68rem;
+  font-size: var(--font-size-meta);
 }
 
 .sync-summary {
@@ -356,7 +356,7 @@ header p,
 
 .sync-summary strong {
   color: var(--accent);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 
 .sync-category-list {
@@ -402,7 +402,7 @@ header p,
   border: 1px solid var(--border-color);
   border-radius: 7px;
   color: transparent;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 800;
 }
 
@@ -435,7 +435,7 @@ header p,
 
 .sync-copy > strong {
   color: var(--text-primary);
-  font-size: 0.86rem;
+  font-size: var(--font-size-body);
 }
 
 .sync-copy > small {
@@ -447,7 +447,7 @@ header p,
   display: inline-flex;
   border-radius: 999px;
   padding: 0.08rem 0.35rem;
-  font-size: 0.62rem;
+  font-size: var(--font-size-caption);
   font-weight: 700;
 }
 
@@ -466,7 +466,7 @@ header p,
 .sync-note {
   margin: 0.8rem 0;
   color: var(--text-secondary);
-  font-size: 0.74rem;
+  font-size: var(--font-size-small);
   line-height: 1.5;
 }
 

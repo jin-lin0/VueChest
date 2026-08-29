@@ -128,7 +128,7 @@ async function removeGroup(groupId: number, e: Event) {
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   line-height: 1;
   padding: 2px 3px;
   border-radius: 6px;
@@ -166,13 +166,13 @@ async function removeGroup(groupId: number, e: Event) {
   color: var(--text-primary, #222);
 }
 .fm-hint {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   line-height: 1.5;
   opacity: 0.7;
   max-width: 200px;
 }
 .fm-title {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 600;
   opacity: 0.6;
   margin-bottom: 6px;
@@ -184,7 +184,7 @@ async function removeGroup(groupId: number, e: Event) {
   padding: 6px 6px;
   border-radius: 7px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .fm-group:hover {
   background: rgba(128, 128, 128, 0.12);
@@ -203,7 +203,7 @@ async function removeGroup(groupId: number, e: Event) {
 }
 .fm-del {
   opacity: 0.5;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .fm-del:hover {
   opacity: 1;
@@ -221,7 +221,7 @@ async function removeGroup(groupId: number, e: Event) {
   border: 1px solid rgba(128, 128, 128, 0.3);
   border-radius: 6px;
   padding: 4px 6px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   background: transparent;
   color: inherit;
   outline: none;
@@ -233,6 +233,6 @@ async function removeGroup(groupId: number, e: Event) {
   border-radius: 6px;
   width: 26px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 </style>

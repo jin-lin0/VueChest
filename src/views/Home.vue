@@ -653,12 +653,12 @@ const navigateToApp = (route: string) => {
 }
 
 .logo-icon {
-  font-size: 1.4rem;
+  font-size: var(--font-size-4xl);
   filter: brightness(0) invert(1);
 }
 
 .header h1 {
-  font-size: 1.6rem;
+  font-size: var(--font-size-4xl);
   font-weight: 800;
   background: linear-gradient(135deg, #2c3e50, #667eea, #764ba2);
   -webkit-background-clip: text;
@@ -670,7 +670,7 @@ const navigateToApp = (route: string) => {
 }
 
 .subtitle {
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   color: #667eea;
   font-weight: 600;
   margin: 0;
@@ -679,7 +679,7 @@ const navigateToApp = (route: string) => {
 }
 
 .sub-desc {
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   color: var(--text-secondary);
 }
 
@@ -698,7 +698,7 @@ const navigateToApp = (route: string) => {
   background: var(--bg-glass);
   border-radius: 10px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: #667eea;
   font-weight: 600;
   transition: all 0.2s ease;
@@ -722,7 +722,7 @@ const navigateToApp = (route: string) => {
   background: var(--bg-glass);
   border-radius: var(--radius-full, 50%);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   line-height: 1;
   transition: all var(--transition, 0.2s ease);
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.04));
@@ -773,7 +773,7 @@ const navigateToApp = (route: string) => {
 }
 
 .search-icon {
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   margin-right: 0.6rem;
   opacity: 0.5;
 }
@@ -783,7 +783,7 @@ const navigateToApp = (route: string) => {
   border: none;
   background: none;
   outline: none;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   color: var(--text-primary);
   padding: 0;
 }
@@ -797,7 +797,7 @@ const navigateToApp = (route: string) => {
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   transition: all 0.15s ease;
@@ -816,7 +816,7 @@ const navigateToApp = (route: string) => {
   padding: 0.5rem 1.2rem;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   font-weight: 600;
   transition: opacity 0.2s ease;
 }
@@ -900,7 +900,7 @@ const navigateToApp = (route: string) => {
 }
 
 .app-icon {
-  font-size: 3rem;
+  font-size: var(--font-size-9xl);
   margin-bottom: 1rem;
   width: 72px;
   height: 72px;
@@ -917,7 +917,7 @@ const navigateToApp = (route: string) => {
 }
 
 .app-name {
-  font-size: 1.25rem;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
@@ -925,13 +925,13 @@ const navigateToApp = (route: string) => {
 
 .app-description {
   color: var(--text-secondary);
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   line-height: 1.5;
   margin-bottom: 0.8rem;
 }
 
 .card-arrow {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   color: var(--text-secondary);
   font-weight: 600;
   opacity: 0;
@@ -952,7 +952,7 @@ const navigateToApp = (route: string) => {
   position: absolute;
   top: 8px;
   right: 10px;
-  font-size: 1.2rem;
+  font-size: var(--font-size-heading);
   color: var(--text-secondary);
   opacity: 0;
   cursor: grab;
@@ -986,7 +986,7 @@ const navigateToApp = (route: string) => {
   text-align: center;
   padding: 1.5rem 0 0.5rem;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 
 .context-menu {
@@ -1023,7 +1023,7 @@ const navigateToApp = (route: string) => {
   background: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   color: var(--text-primary);
   transition: background-color 0.15s ease;
   white-space: nowrap;
@@ -1035,7 +1035,7 @@ const navigateToApp = (route: string) => {
 }
 
 .context-icon {
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
 }
 
 .manage-btn {
@@ -1043,7 +1043,7 @@ const navigateToApp = (route: string) => {
   border: none;
   color: #667eea;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   padding: 0;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -1059,7 +1059,7 @@ const navigateToApp = (route: string) => {
   border: none;
   color: #e0536b;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   padding: 0;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -1107,7 +1107,7 @@ const navigateToApp = (route: string) => {
 
 .manage-header h3 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--font-size-title);
   color: var(--text-primary);
 }
 
@@ -1124,7 +1124,7 @@ const navigateToApp = (route: string) => {
   padding: 0.35rem 0.8rem;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   font-weight: 600;
   transition: opacity 0.2s ease;
 }
@@ -1137,7 +1137,7 @@ const navigateToApp = (route: string) => {
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   cursor: pointer;
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
@@ -1179,11 +1179,11 @@ const navigateToApp = (route: string) => {
 }
 
 .hidden-icon {
-  font-size: 1.3rem;
+  font-size: var(--font-size-heading);
 }
 
 .hidden-name {
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -1195,7 +1195,7 @@ const navigateToApp = (route: string) => {
   padding: 0.3rem 0.7rem;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   font-weight: 500;
   transition: all 0.2s ease;
 }
@@ -1228,7 +1228,7 @@ const navigateToApp = (route: string) => {
 }
 
 .countdown-emoji {
-  font-size: 2.5rem;
+  font-size: var(--font-size-8xl);
   margin-right: 1.2rem;
   width: 56px;
   height: 56px;
@@ -1246,14 +1246,14 @@ const navigateToApp = (route: string) => {
 }
 
 .countdown-name {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 0.2rem;
 }
 
 .countdown-detail {
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
 }
 
@@ -1265,7 +1265,7 @@ const navigateToApp = (route: string) => {
 }
 
 .countdown-number {
-  font-size: 2.2rem;
+  font-size: var(--font-size-8xl);
   font-weight: 800;
   background: linear-gradient(135deg, #667eea, #764ba2);
   -webkit-background-clip: text;
@@ -1275,7 +1275,7 @@ const navigateToApp = (route: string) => {
 }
 
 .countdown-label {
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -1293,7 +1293,7 @@ const navigateToApp = (route: string) => {
   }
 
   .header h1 {
-    font-size: 1.3rem;
+    font-size: var(--font-size-heading);
   }
 
   .header-actions {
@@ -1316,7 +1316,7 @@ const navigateToApp = (route: string) => {
   }
 
   .app-icon {
-    font-size: 2rem;
+    font-size: var(--font-size-6xl);
     width: 52px;
     height: 52px;
     border-radius: 14px;
@@ -1324,11 +1324,11 @@ const navigateToApp = (route: string) => {
   }
 
   .app-name {
-    font-size: 1rem;
+    font-size: var(--font-size-title);
   }
 
   .app-description {
-    font-size: 0.78rem;
+    font-size: var(--font-size-small);
     margin-bottom: 0.5rem;
   }
 
@@ -1338,7 +1338,7 @@ const navigateToApp = (route: string) => {
   }
 
   .countdown-emoji {
-    font-size: 1.8rem;
+    font-size: var(--font-size-5xl);
     width: 42px;
     height: 42px;
     margin-right: 0.8rem;
@@ -1346,11 +1346,11 @@ const navigateToApp = (route: string) => {
   }
 
   .countdown-name {
-    font-size: 0.95rem;
+    font-size: var(--font-size-body-lg);
   }
 
   .countdown-detail {
-    font-size: 0.78rem;
+    font-size: var(--font-size-small);
   }
 
   .countdown-days {
@@ -1359,11 +1359,11 @@ const navigateToApp = (route: string) => {
   }
 
   .countdown-number {
-    font-size: 1.6rem;
+    font-size: var(--font-size-4xl);
   }
 
   .footer {
-    font-size: 0.78rem;
+    font-size: var(--font-size-small);
     padding: 1rem 0 0.4rem;
   }
 
@@ -1391,13 +1391,13 @@ const navigateToApp = (route: string) => {
 
 .backdoor-section h4 {
   margin: 0 0 0.4rem;
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   color: var(--text-primary);
 }
 
 .backdoor-desc {
   margin: 0 0 1rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
 }
 
@@ -1415,7 +1415,7 @@ const navigateToApp = (route: string) => {
   padding: 0.6rem 1.2rem;
   border: none;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1483,7 +1483,7 @@ const navigateToApp = (route: string) => {
   padding: 0.8rem;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   font-family: 'Monaco', 'Menlo', monospace;
   resize: vertical;
   margin-bottom: 1rem;
@@ -1497,7 +1497,7 @@ const navigateToApp = (route: string) => {
 
 .backdoor-status {
   margin: 0.8rem 0 0;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: #e74c3c;
 }
 

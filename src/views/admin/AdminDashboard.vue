@@ -283,26 +283,26 @@ onUnmounted(() => {
 
 .header-content h2 {
   margin: 0 0 6px 0;
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
   font-weight: 700;
 }
 
 .header-content p {
   margin: 0;
   opacity: 0.7;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
 }
 
 .header-time {
   text-align: right;
 }
 .current-time {
-  font-size: 28px;
+  font-size: var(--font-size-5xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .current-date {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   opacity: 0.6;
   margin-top: 2px;
 }
@@ -336,7 +336,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
   flex-shrink: 0;
 }
 
@@ -346,7 +346,7 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 30px;
+  font-size: var(--font-size-6xl);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.1;
@@ -377,12 +377,12 @@ onUnmounted(() => {
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   margin-top: 4px;
 }
 .stat-sub {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   color: var(--text-muted);
   margin-top: 1px;
 }
@@ -407,7 +407,7 @@ onUnmounted(() => {
 
 .card-header h3 {
   margin: 0 0 20px 0;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   color: var(--text-primary);
 }
 
@@ -439,14 +439,14 @@ onUnmounted(() => {
 }
 
 .action-icon {
-  font-size: 32px;
+  font-size: var(--font-size-6xl);
 }
 .action-title {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 600;
 }
 .action-desc {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
 }
 
@@ -469,12 +469,12 @@ onUnmounted(() => {
 
 .info-label {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .info-value {
   color: var(--text-primary);
   font-weight: 500;
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .geo-card {
@@ -494,7 +494,7 @@ onUnmounted(() => {
 
 .geo-col h4 {
   margin: 0 0 14px 0;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
   font-weight: 600;
 }
@@ -504,7 +504,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .geo-name {
@@ -541,7 +541,7 @@ onUnmounted(() => {
 
 .geo-empty {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   padding: 8px 0;
 }
 </style>

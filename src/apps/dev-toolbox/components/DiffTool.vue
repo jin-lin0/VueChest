@@ -145,7 +145,7 @@ function swap() {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -170,7 +170,7 @@ function swap() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .card-head .card-title {
@@ -182,7 +182,7 @@ function swap() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
   width: 100%;
   min-height: 160px;
@@ -198,7 +198,7 @@ function swap() {
   gap: 0.5rem;
 }
 .lg {
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
   padding: 0.12rem 0.45rem;
   border-radius: var(--radius-xs);
   border: 1px solid var(--border-light);
@@ -224,7 +224,7 @@ function swap() {
   max-height: 420px;
   overflow: auto;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   line-height: 1.6;
 }
 .dline {
@@ -276,7 +276,7 @@ function swap() {
 }
 .empty {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 .mini {
   background: var(--bg-card);
@@ -284,7 +284,7 @@ function swap() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
 }

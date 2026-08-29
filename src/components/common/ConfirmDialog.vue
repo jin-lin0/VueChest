@@ -51,7 +51,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 .confirm-message {
   margin: 0 0 20px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   line-height: 1.6;
   color: var(--text-primary);
   white-space: pre-wrap;
@@ -68,7 +68,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 .confirm-ok {
   padding: 9px 20px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.2s;

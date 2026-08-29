@@ -240,7 +240,7 @@ function setTargetNow() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 .card-head {
   display: flex;
@@ -260,7 +260,7 @@ function setTargetNow() {
   flex-wrap: wrap;
 }
 .radio {
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
@@ -275,7 +275,7 @@ function setTargetNow() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
 }
 .inp:focus {
@@ -292,7 +292,7 @@ function setTargetNow() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -318,13 +318,13 @@ function setTargetNow() {
   padding: 0.6rem 0.4rem;
 }
 .seg .v {
-  font-size: 1.3rem;
+  font-size: var(--font-size-heading);
   font-weight: 600;
   color: var(--accent);
 }
 .k {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
 }
 .out-row {
   display: flex;
@@ -341,23 +341,23 @@ function setTargetNow() {
   min-width: 0;
 }
 .v {
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
 }
 .expired {
   color: var(--danger, #ef4444);
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   font-weight: 600;
   padding: 0.5rem 0;
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }
 </style>

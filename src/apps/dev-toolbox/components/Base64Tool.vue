@@ -145,7 +145,7 @@ function clearAll() {
   border: none;
   padding: 0.5rem 1.1rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
 }
 .seg button.active {
@@ -157,7 +157,7 @@ function clearAll() {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -178,7 +178,7 @@ function clearAll() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -225,7 +225,7 @@ function clearAll() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
 }
 .plain {
   flex: 1;
@@ -238,7 +238,7 @@ function clearAll() {
   color: var(--text-body);
   padding: 12px 14px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.6;
   outline: none;
   transition: var(--transition-fast);
@@ -250,7 +250,7 @@ function clearAll() {
 .err {
   margin: 0.6rem 0 0;
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 
 @media (max-width: 880px) {

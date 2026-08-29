@@ -172,24 +172,24 @@ const isLockedRace = computed(() => ['time-trial', 'knockout', 'item-battle', 'c
   backdrop-filter: blur(24px);
 }
 .setup-header { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 14px; }
-.setup-header h2 { margin: 1px 0 0; font-size: 1.65rem; }
-.eyebrow { margin: 0; color: #ff8a68; font-size: .68rem; font-weight: 800; letter-spacing: .2em; }
+.setup-header h2 { margin: 1px 0 0; font-size: var(--font-size-5xl); }
+.eyebrow { margin: 0; color: #ff8a68; font-size: var(--font-size-meta); font-weight: 800; letter-spacing: .2em; }
 .icon-btn { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.16); border-radius: 14px; color: inherit; background: rgba(255,255,255,.06); cursor: pointer; }
 .mode-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 9px; margin-top: 22px; }
 .mode-card { min-height: 76px; display: grid; place-items: center; align-content: center; gap: 7px; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; color: #aeb5c9; background: rgba(255,255,255,.04); cursor: pointer; }
-.mode-card span { font-size: .78rem; font-weight: 700; }
+.mode-card span { font-size: var(--font-size-small); font-weight: 700; }
 .mode-card.active { color: #fff; border-color: #ff8062; background: linear-gradient(145deg, rgba(255,111,82,.34), rgba(255,111,82,.09)); box-shadow: inset 0 0 0 1px rgba(255,138,104,.2), 0 8px 28px rgba(255,100,70,.13); }
-.mode-copy { min-height: 22px; margin: 10px 0 16px; text-align: center; color: #9fa8be; font-size: .84rem; }
+.mode-copy { min-height: 22px; margin: 10px 0 16px; text-align: center; color: #9fa8be; font-size: var(--font-size-control); }
 .track-preview { display: grid; grid-template-columns: 54px 1fr auto; align-items: center; gap: 14px; padding: 15px; border-radius: 18px; background: linear-gradient(100deg, color-mix(in srgb, var(--track-accent) 19%, transparent), rgba(255,255,255,.04)); border: 1px solid color-mix(in srgb, var(--track-accent) 45%, transparent); }
 .track-icon { width: 48px; height: 48px; display: grid; place-items: center; color: var(--track-accent); border-radius: 15px; background: rgba(0,0,0,.25); }
 .track-preview strong,.track-preview span { display: block; }
-.track-preview span { margin-top: 3px; color: #aab2c4; font-size: .78rem; }
+.track-preview span { margin-top: 3px; color: #aab2c4; font-size: var(--font-size-small); }
 .difficulty-chip { padding: 5px 9px; color: #fff !important; border: 1px solid color-mix(in srgb,var(--track-accent) 55%,transparent); border-radius: 999px; background: rgba(0,0,0,.2); }
 .setup-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px; margin-top: 16px; }
-.setup-fields label > span { display: block; margin: 0 0 6px 4px; color: #aeb5c9; font-size: .76rem; font-weight: 700; }
-.setup-summary { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 17px 0 12px; color: #aeb5c9; font-size: .82rem; }
-.ai-roster { margin: -4px 0 12px; color: #7f8ba4; text-align: center; font-size: .72rem; }
-.launch-btn { width: 100%; min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 16px; color: #fff; background: linear-gradient(110deg,#ff6b55,#ff9a61); font-size: 1rem; font-weight: 800; cursor: pointer; box-shadow: 0 14px 34px rgba(255,95,67,.27); }
+.setup-fields label > span { display: block; margin: 0 0 6px 4px; color: #aeb5c9; font-size: var(--font-size-small); font-weight: 700; }
+.setup-summary { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 17px 0 12px; color: #aeb5c9; font-size: var(--font-size-control); }
+.ai-roster { margin: -4px 0 12px; color: #7f8ba4; text-align: center; font-size: var(--font-size-small); }
+.launch-btn { width: 100%; min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 16px; color: #fff; background: linear-gradient(110deg,#ff6b55,#ff9a61); font-size: var(--font-size-title); font-weight: 800; cursor: pointer; box-shadow: 0 14px 34px rgba(255,95,67,.27); }
 button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 @media (max-width: 700px) {
   .race-setup { padding: 18px; border-radius: 20px; }

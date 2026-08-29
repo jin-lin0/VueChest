@@ -128,12 +128,12 @@ function isRouteActive(path: string) {
 }
 
 .logo-icon {
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
   flex-shrink: 0;
 }
 
 .logo-text {
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
   font-weight: 600;
   color: #111827;
   white-space: nowrap;
@@ -151,7 +151,7 @@ function isRouteActive(path: string) {
   height: 32px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -189,7 +189,7 @@ function isRouteActive(path: string) {
 }
 
 .nav-section-label {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -245,12 +245,12 @@ function isRouteActive(path: string) {
 }
 
 .nav-icon {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   flex-shrink: 0;
 }
 
 .nav-text {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -283,7 +283,7 @@ function isRouteActive(path: string) {
   justify-content: center;
   color: white;
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   flex-shrink: 0;
   overflow: hidden;
   cursor: pointer;
@@ -301,7 +301,7 @@ function isRouteActive(path: string) {
 }
 
 .user-name {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   color: #111827;
   white-space: nowrap;
@@ -314,7 +314,7 @@ function isRouteActive(path: string) {
 }
 
 .user-role {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
   margin-top: 1px;
 }
@@ -338,7 +338,7 @@ function isRouteActive(path: string) {
   border: none;
   border-radius: 8px;
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: var(--font-size-title);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -369,7 +369,7 @@ function isRouteActive(path: string) {
   border: none;
   border-radius: 8px;
   color: #dc2626;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
 }

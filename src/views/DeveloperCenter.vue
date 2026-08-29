@@ -352,14 +352,14 @@ onMounted(() => void loadApps())
 .page-header h1 {
   margin: 0.7rem 0 0;
   color: var(--text-primary);
-  font-size: 1.7rem;
+  font-size: var(--font-size-5xl);
 }
 
 .page-header p,
 .app-copy small,
 .version-row small {
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 
 .back-btn,
@@ -399,13 +399,13 @@ onMounted(() => void loadApps())
 
 .stats-grid strong {
   color: var(--text-primary);
-  font-size: 1.35rem;
+  font-size: var(--font-size-heading);
 }
 
 .stats-grid span,
 .app-metrics {
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
 }
 
 .error-message {
@@ -442,7 +442,7 @@ onMounted(() => void loadApps())
   place-items: center;
   border-radius: 13px;
   background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
-  font-size: 1.8rem;
+  font-size: var(--font-size-5xl);
 }
 
 .app-copy {
@@ -459,7 +459,7 @@ onMounted(() => void loadApps())
 .version-row div > span {
   padding: 0.12rem 0.42rem;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: var(--font-size-meta);
 }
 
 .status-approved,
@@ -528,7 +528,7 @@ onMounted(() => void loadApps())
 
 .review-feedback strong {
   color: var(--danger);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 
 .review-feedback p {
@@ -559,7 +559,7 @@ onMounted(() => void loadApps())
 .review-history summary {
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
 }
 
 .review-history ol {
@@ -585,7 +585,7 @@ onMounted(() => void loadApps())
 .review-history time,
 .review-history li > span {
   color: var(--text-secondary);
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
 }
 
 .review-history li p {
@@ -601,7 +601,7 @@ onMounted(() => void loadApps())
   grid-column: 1 / -1;
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 
 .withdraw-btn {

@@ -374,7 +374,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .select-trigger:hover {
@@ -405,10 +405,10 @@ onUnmounted(() => {
   padding: 0 0.85rem;
   border-width: 1px;
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 .custom-select.size-sm .trigger-text {
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 .custom-select.size-sm .trigger-arrow svg {
   width: 10px;
@@ -420,7 +420,7 @@ onUnmounted(() => {
   height: 48px;
   padding: 0 16px;
   border-radius: 12px;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
 }
 
 /* 撑满父容器宽度（等价于 width="100%"） */
@@ -438,7 +438,7 @@ onUnmounted(() => {
 }
 
 .trigger-icon {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   flex-shrink: 0;
 }
 
@@ -486,7 +486,7 @@ onUnmounted(() => {
   padding: 8px 12px;
   border: 2px solid var(--border-light);
   border-radius: 10px;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   outline: none;
   transition: all 0.3s ease;
   background: var(--bg-subtle);
@@ -552,7 +552,7 @@ onUnmounted(() => {
 }
 
 .option-icon {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   flex-shrink: 0;
   width: 24px;
   text-align: center;
@@ -560,7 +560,7 @@ onUnmounted(() => {
 
 .option-label {
   flex: 1;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -579,7 +579,7 @@ onUnmounted(() => {
   padding: 20px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
 }
 
 /* 下拉动画 */

@@ -302,7 +302,7 @@ watch(
   gap: 16px;
   padding: 12px 16px 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 

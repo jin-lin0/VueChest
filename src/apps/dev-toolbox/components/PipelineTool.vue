@@ -744,7 +744,7 @@ function downloadBatch() {
 
 .eyebrow {
   color: var(--accent);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.14em;
 }
@@ -759,7 +759,7 @@ function downloadBatch() {
 .toolbar-copy p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .toolbar-actions {
@@ -775,7 +775,7 @@ function downloadBatch() {
   gap: 7px;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   white-space: nowrap;
 }
 
@@ -827,7 +827,7 @@ function downloadBatch() {
   background: var(--bg-subtle);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -862,7 +862,7 @@ function downloadBatch() {
   border-radius: 8px;
   background: color-mix(in srgb, #0f1324 92%, transparent);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.45;
   opacity: 0;
   pointer-events: none;
@@ -949,13 +949,13 @@ button {
 .section-heading strong,
 .io-card strong {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .section-heading small,
 .io-card small {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .add-step {
@@ -981,7 +981,7 @@ button {
   border-radius: 9px;
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 800;
 }
 
@@ -1046,7 +1046,7 @@ button {
 
 .tertiary-button {
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .io-card textarea {
@@ -1062,7 +1062,7 @@ button {
   background: var(--bg-input);
   color: var(--text-primary);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.65;
   transition: border-color 0.16s ease;
 }
@@ -1083,7 +1083,7 @@ button {
   border-radius: 13px;
   background: var(--bg-card);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .run-button {
@@ -1129,7 +1129,7 @@ button {
   padding: 10px;
   background: var(--bg-subtle);
   color: var(--text-body);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   white-space: pre-wrap;
 }
 
@@ -1181,13 +1181,13 @@ button {
 
 .extra-card h3 {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .extra-card header p {
   margin-top: 2px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .card-count {
@@ -1200,7 +1200,7 @@ button {
   padding: 0 8px;
   background: var(--bg-subtle);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
 }
 
@@ -1246,7 +1246,7 @@ button {
   border-radius: 10px;
   padding: 12px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   text-align: center;
 }
 
@@ -1284,7 +1284,7 @@ button {
 .preset-apply > small {
   flex: none;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .row-actions {
@@ -1338,7 +1338,7 @@ button {
   border-radius: 10px;
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
   font-weight: 800;
 }
 
@@ -1351,13 +1351,13 @@ button {
 
 .batch-intake-copy strong {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .batch-intake-copy small {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1367,7 +1367,7 @@ button {
   padding: 8px 11px;
   background: var(--accent);
   color: var(--accent-contrast);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1409,18 +1409,18 @@ button {
   border-radius: 11px;
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   font-weight: 800;
 }
 
 .batch-drop-overlay strong {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .batch-drop-overlay small {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .batch-progress {
@@ -1449,7 +1449,7 @@ button {
 
 .batch-summary p {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .batch-summary p > strong:first-child {
@@ -1493,7 +1493,7 @@ button {
   place-items: center;
   border-radius: 50%;
   background: var(--bg-card);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 800;
 }
 
@@ -1507,7 +1507,7 @@ button {
 .result-file strong {
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1515,7 +1515,7 @@ button {
 .result-file small {
   overflow: hidden;
   color: currentColor;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   opacity: 0.82;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1525,7 +1525,7 @@ button {
   border: 0;
   padding: 5px 7px;
   background: transparent;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .history-list {
@@ -1578,13 +1578,13 @@ button {
 
 .history-meta time {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
 }
 
 .history-meta small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .history-main > strong,
@@ -1596,12 +1596,12 @@ button {
 
 .history-main > strong {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .history-preview {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .history-delete {

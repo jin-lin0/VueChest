@@ -287,13 +287,13 @@ function swap() {
 }
 .head h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--font-size-heading);
   color: var(--text-primary);
 }
 .sub {
   margin: 0.3rem 0 0;
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 .toolbar {
   display: flex;
@@ -313,7 +313,7 @@ function swap() {
   border: none;
   padding: 0.5rem 1.1rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
 }
 .seg button.active {
@@ -328,7 +328,7 @@ function swap() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -379,16 +379,16 @@ function swap() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
 }
 .err {
   margin: 0.6rem 0 0;
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 @media (max-width: 880px) {
   .grid {

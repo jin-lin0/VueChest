@@ -1067,7 +1067,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   padding: 5px 7px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .text-action:disabled {
@@ -1108,14 +1108,14 @@ onUnmounted(() => {
 
 .setting-item label {
   display: block;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .setting-note {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   margin: 8px 0 0;
 }
@@ -1140,19 +1140,19 @@ onUnmounted(() => {
 }
 
 .welcome-icon {
-  font-size: 64px;
+  font-size: var(--font-size-display-md);
   margin-bottom: 16px;
 }
 
 .welcome h2 {
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .welcome p {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   color: var(--text-secondary);
   margin-bottom: 32px;
 }
@@ -1170,7 +1170,7 @@ onUnmounted(() => {
   border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 14px 16px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
@@ -1194,7 +1194,7 @@ onUnmounted(() => {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1236,7 +1236,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   flex-shrink: 0;
   background: var(--bg-subtle);
 }
@@ -1257,7 +1257,7 @@ onUnmounted(() => {
 .message-content {
   padding: 12px 16px;
   border-radius: 16px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1288,7 +1288,7 @@ onUnmounted(() => {
 }
 
 .message-time {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   color: var(--text-muted);
 }
 
@@ -1303,7 +1303,7 @@ onUnmounted(() => {
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .copy-btn:hover {
@@ -1362,7 +1362,7 @@ onUnmounted(() => {
   background: var(--danger-bg);
   border-top: 1px solid var(--border);
   color: var(--danger);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .error-bar button {
@@ -1370,7 +1370,7 @@ onUnmounted(() => {
   border: none;
   color: var(--danger);
   cursor: pointer;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   line-height: 1;
 }
 
@@ -1429,7 +1429,7 @@ onUnmounted(() => {
   max-width: 800px;
   margin: 0 auto 7px;
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .editing-banner button {
@@ -1461,7 +1461,7 @@ onUnmounted(() => {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   line-height: 1.5;
   resize: none;
   outline: none;
@@ -1512,7 +1512,7 @@ onUnmounted(() => {
 
 .input-footer {
   text-align: center;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   color: var(--text-muted);
   margin-top: 8px;
 }
@@ -1537,15 +1537,15 @@ onUnmounted(() => {
   }
 
   .welcome-icon {
-    font-size: 48px;
+    font-size: var(--font-size-9xl);
   }
 
   .welcome h2 {
-    font-size: 20px;
+    font-size: var(--font-size-heading);
   }
 
   .welcome p {
-    font-size: 14px;
+    font-size: var(--font-size-body);
   }
 
   .welcome-suggestions {
@@ -1555,7 +1555,7 @@ onUnmounted(() => {
 
   .suggestion-btn {
     padding: 12px 14px;
-    font-size: 13px;
+    font-size: var(--font-size-control);
   }
 
   .messages-area {
@@ -1570,12 +1570,12 @@ onUnmounted(() => {
   .message-avatar {
     width: 32px;
     height: 32px;
-    font-size: 16px;
+    font-size: var(--font-size-title);
   }
 
   .message-content {
     padding: 10px 14px;
-    font-size: 14px;
+    font-size: var(--font-size-body);
   }
 
   .input-area {

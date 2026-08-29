@@ -117,15 +117,15 @@ function formatPercent(value: number | null | undefined) {
   border-bottom: 1px solid var(--border-light);
 }
 .panel-heading h2 {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .panel-heading p {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .panel-heading > span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .financial-table-wrap {
   overflow: auto;
@@ -139,7 +139,7 @@ function formatPercent(value: number | null | undefined) {
 .financial-table th {
   padding: 10px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   text-align: right;
 }
 .financial-table th:first-child,
@@ -149,7 +149,7 @@ function formatPercent(value: number | null | undefined) {
 .financial-table td {
   padding: 13px 10px;
   border-top: 1px solid var(--border-light);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   text-align: right;
 }
 .financial-table td:first-child {

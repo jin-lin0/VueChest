@@ -64,7 +64,7 @@ defineExpose({ addToast, removeToast })
   padding: 14px 16px;
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   min-width: 280px;
   max-width: 420px;
   pointer-events: auto;
@@ -93,7 +93,7 @@ defineExpose({ addToast, removeToast })
 }
 
 .toast-icon {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   flex-shrink: 0;
 }
 
@@ -107,7 +107,7 @@ defineExpose({ addToast, removeToast })
   border: none;
   color: inherit;
   opacity: 0.6;
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   cursor: pointer;
   padding: 0 0 0 8px;
   flex-shrink: 0;

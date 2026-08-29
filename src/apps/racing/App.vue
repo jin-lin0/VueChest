@@ -2852,7 +2852,7 @@ canvas {
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   color: var(--text-inverse);
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.3s;
   backdrop-filter: blur(8px);
@@ -2899,7 +2899,7 @@ canvas {
 }
 
 .menu-title h1 {
-  font-size: 1.7rem;
+  font-size: var(--font-size-5xl);
   letter-spacing: 4px;
   background: linear-gradient(90deg, #ff6b6b, #ffd700, #7f9dff, #ff6b6b);
   background-size: 300% auto;
@@ -2912,7 +2912,7 @@ canvas {
 
 .menu-title .subtitle {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   letter-spacing: 1px;
   margin-top: 2px;
 }
@@ -2935,7 +2935,7 @@ canvas {
   border-radius: 999px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.25s;
 }
@@ -2962,7 +2962,7 @@ canvas {
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(8px);
   color: var(--text-inverse);
-  font-size: 1.8rem;
+  font-size: var(--font-size-5xl);
   line-height: 1;
   cursor: pointer;
   transition: all 0.25s;
@@ -3039,7 +3039,7 @@ canvas {
 }
 
 .car-big-name {
-  font-size: 1.6rem;
+  font-size: var(--font-size-4xl);
   letter-spacing: 3px;
   color: var(--text-inverse);
 }
@@ -3051,7 +3051,7 @@ canvas {
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-inverse);
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   line-height: 1;
   cursor: pointer;
   transition: all 0.25s;
@@ -3204,7 +3204,7 @@ canvas {
 }
 
 .showroom-loading strong {
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   letter-spacing: 0.08em;
 }
 
@@ -3217,7 +3217,7 @@ canvas {
 .car-trait {
   padding: 2px 10px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
   color: var(--text-inverse);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -3234,7 +3234,7 @@ canvas {
   width: min(330px, 90vw);
   margin: 7px 0 0;
   color: #aeb6ca;
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   text-align: center;
 }
 
@@ -3246,7 +3246,7 @@ canvas {
 
 .stat span {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   min-width: 35px;
 }
 
@@ -3294,7 +3294,7 @@ canvas {
 
 .start-btn {
   padding: 14px 50px;
-  font-size: 1.2rem;
+  font-size: var(--font-size-heading);
   font-weight: 600;
   letter-spacing: 2px;
   background: linear-gradient(
@@ -3340,7 +3340,7 @@ canvas {
 
 .controls-hint {
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   text-align: center;
 }
 
@@ -3368,7 +3368,7 @@ canvas {
 
 .pause-content h2 {
   color: var(--text-inverse);
-  font-size: 2rem;
+  font-size: var(--font-size-6xl);
   margin-bottom: 30px;
 }
 
@@ -3380,7 +3380,7 @@ canvas {
 
 .pause-buttons button {
   padding: 15px 40px;
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -3436,7 +3436,7 @@ canvas {
   border: 2px solid rgba(255, 255, 255, 0.3);
   background: rgba(0, 0, 0, 0.5);
   color: var(--text-inverse);
-  font-size: 1.2rem;
+  font-size: var(--font-size-heading);
   cursor: pointer;
   pointer-events: auto;
   transition: all 0.3s;
@@ -3446,7 +3446,7 @@ canvas {
 }
 
 .pause-btn span {
-  font-size: 0.7rem;
+  font-size: var(--font-size-meta);
   font-weight: 800;
 }
 
@@ -3480,7 +3480,7 @@ canvas {
 }
 
 .speed-value {
-  font-size: 1.8rem;
+  font-size: var(--font-size-5xl);
   font-weight: bold;
   color: var(--racing-accent);
   white-space: nowrap;
@@ -3490,11 +3490,11 @@ canvas {
 }
 
 .speed-display.small .speed-value {
-  font-size: 1.3rem;
+  font-size: var(--font-size-heading);
 }
 
 .speed-unit {
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   margin-left: 4px;
 }
@@ -3512,13 +3512,13 @@ canvas {
 }
 
 .score-value {
-  font-size: 1.3rem;
+  font-size: var(--font-size-heading);
   font-weight: bold;
   color: var(--racing-gold);
 }
 
 .combo-value {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   color: var(--racing-accent);
   animation: pulse 0.5s ease-in-out;
 }
@@ -3542,7 +3542,7 @@ canvas {
   border-radius: 12px;
   border: 2px solid var(--border-light);
   color: var(--text-inverse);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   min-width: 80px;
   display: flex;
   align-items: center;
@@ -3550,7 +3550,7 @@ canvas {
 }
 
 .lap-info.small {
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   padding: 6px 10px;
 }
 
@@ -3612,7 +3612,7 @@ canvas {
   padding: 8px 14px;
   border-radius: 999px;
   color: #fff;
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   font-weight: 800;
   letter-spacing: 0.02em;
   background: rgba(12, 15, 26, 0.84);
@@ -3642,7 +3642,7 @@ canvas {
 }
 .start-feedback {
   top: calc(50% + 100px);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 
 .race-tech-bar {
@@ -3674,7 +3674,7 @@ canvas {
   align-items: center;
   gap: 10px;
   padding: 0 13px;
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
   font-weight: 800;
 }
 
@@ -3700,7 +3700,7 @@ canvas {
   min-width: 118px;
   padding: 0 12px;
   color: #78e4ff;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   font-weight: 900;
 }
 .drift-callout.is-great {
@@ -3725,7 +3725,7 @@ canvas {
 }
 .item-slot kbd {
   color: #aeb7cc;
-  font-size: 0.68rem;
+  font-size: var(--font-size-meta);
 }
 
 @keyframes warning-pulse {
@@ -3784,7 +3784,7 @@ canvas {
 }
 
 .skill-icon {
-  font-size: 1.4rem;
+  font-size: var(--font-size-4xl);
 }
 
 .cooldown-overlay {
@@ -3800,7 +3800,7 @@ canvas {
   justify-content: center;
   color: var(--text-inverse);
   font-weight: bold;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
 }
 
 .skill-key {
@@ -3809,7 +3809,7 @@ canvas {
   right: -4px;
   background: var(--racing-accent);
   color: var(--text-inverse);
-  font-size: 0.6rem;
+  font-size: var(--font-size-caption);
   padding: 2px 5px;
   border-radius: 4px;
 }
@@ -3873,7 +3873,7 @@ canvas {
   height: 65px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  font-size: 1.4rem;
+  font-size: var(--font-size-4xl);
   pointer-events: auto;
   cursor: pointer;
   transition: transform 0.1s;
@@ -3887,7 +3887,7 @@ canvas {
   position: absolute;
   bottom: -17px;
   color: #fff;
-  font-size: 0.62rem;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   text-shadow: 0 1px 4px #000;
 }
@@ -3991,12 +3991,12 @@ canvas {
 }
 .loading-card > span {
   color: #ff8c6f;
-  font-size: 0.68rem;
+  font-size: var(--font-size-meta);
   font-weight: 900;
   letter-spacing: 0.18em;
 }
 .loading-card > strong {
-  font-size: 1.25rem;
+  font-size: var(--font-size-heading);
 }
 .loading-card > div {
   height: 9px;
@@ -4014,7 +4014,7 @@ canvas {
 .loading-card > b {
   justify-self: end;
   color: #b7bfd2;
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
 }
 
 .livery-strip {
@@ -4024,7 +4024,7 @@ canvas {
   flex-wrap: wrap;
   gap: 7px;
   color: #9ea8bf;
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
 }
 
 .livery-chip {
@@ -4094,14 +4094,14 @@ canvas {
 }
 
 .game-result h2 {
-  font-size: 2.2rem;
+  font-size: var(--font-size-8xl);
   color: var(--racing-gold);
   margin-bottom: 1rem;
   text-shadow: 0 0 20px var(--racing-gold);
 }
 
 .winner-announce {
-  font-size: 1.8rem;
+  font-size: var(--font-size-5xl);
   color: var(--racing-accent);
   margin-bottom: 1.5rem;
   text-shadow: 0 0 15px var(--racing-accent);
@@ -4122,7 +4122,7 @@ canvas {
   padding: 10px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-inverse);
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
 }
 
 .result-item:last-child {
@@ -4132,7 +4132,7 @@ canvas {
 .final-score {
   color: var(--racing-gold);
   font-weight: bold;
-  font-size: 1.3rem;
+  font-size: var(--font-size-heading);
 }
 
 .result-buttons {
@@ -4144,7 +4144,7 @@ canvas {
 
 .result-buttons button {
   padding: 14px 24px;
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -4184,13 +4184,13 @@ canvas {
 }
 
 .rank-value {
-  font-size: 1.8rem;
+  font-size: var(--font-size-5xl);
   font-weight: bold;
   color: var(--racing-gold);
 }
 
 .rank-total {
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-muted);
 }
 
@@ -4221,13 +4221,13 @@ canvas {
 }
 
 .lap-time-current {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   font-weight: bold;
   color: var(--text-inverse);
 }
 
 .lap-time-last {
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
 }
 
@@ -4277,7 +4277,7 @@ canvas {
 }
 
 .countdown-number {
-  font-size: 6rem;
+  font-size: var(--font-size-display-lg);
   font-weight: 900;
   color: var(--text-inverse);
   text-shadow: 0 0 30px var(--racing-accent);
@@ -4324,19 +4324,19 @@ canvas {
   }
 
   .menu-title h1 {
-    font-size: 1.3rem;
+    font-size: var(--font-size-heading);
     letter-spacing: 2px;
   }
 
   .seg-btn {
     padding: 6px 14px;
-    font-size: 0.8rem;
+    font-size: var(--font-size-control);
   }
 
   .edge-btn {
     width: 42px;
     height: 42px;
-    font-size: 1.3rem;
+    font-size: var(--font-size-heading);
     top: 31%;
   }
 
@@ -4375,17 +4375,17 @@ canvas {
   }
 
   .car-big-name {
-    font-size: 1.2rem;
+    font-size: var(--font-size-heading);
     letter-spacing: 2px;
   }
 
   .start-btn {
     padding: 12px 40px;
-    font-size: 1rem;
+    font-size: var(--font-size-title);
   }
 
   .controls-hint {
-    font-size: 0.72rem;
+    font-size: var(--font-size-small);
   }
 
   .hud-top {
@@ -4399,7 +4399,7 @@ canvas {
   }
 
   .speed-value {
-    font-size: 1.3rem;
+    font-size: var(--font-size-heading);
   }
 
   .score-display {
@@ -4408,14 +4408,14 @@ canvas {
   }
 
   .score-value {
-    font-size: 1rem;
+    font-size: var(--font-size-title);
   }
 
   .lap-info,
   .time-info {
     padding: 6px 10px;
     min-width: 60px;
-    font-size: 0.85rem;
+    font-size: var(--font-size-body);
   }
 
   .skills-bar {
@@ -4429,7 +4429,7 @@ canvas {
   }
 
   .skill-icon {
-    font-size: 1.1rem;
+    font-size: var(--font-size-title-lg);
   }
 
   .minimap {
@@ -4471,7 +4471,7 @@ canvas {
   .control-btn {
     width: 58px;
     height: 58px;
-    font-size: 1.2rem;
+    font-size: var(--font-size-heading);
   }
 
   .control-left {
@@ -4503,7 +4503,7 @@ canvas {
     top: 15px;
     left: 15px;
     padding: 8px 14px;
-    font-size: 14px;
+    font-size: var(--font-size-body);
   }
 
   .pause-btn {
@@ -4511,7 +4511,7 @@ canvas {
     left: 10px;
     width: auto;
     height: 38px;
-    font-size: 1rem;
+    font-size: var(--font-size-title);
   }
 
   .pause-content {
@@ -4519,17 +4519,17 @@ canvas {
   }
 
   .pause-content h2 {
-    font-size: 1.5rem;
+    font-size: var(--font-size-4xl);
     margin-bottom: 20px;
   }
 
   .pause-buttons button {
     padding: 12px 30px;
-    font-size: 0.95rem;
+    font-size: var(--font-size-body-lg);
   }
 
   .game-result h2 {
-    font-size: 1.6rem;
+    font-size: var(--font-size-4xl);
   }
 
   .result-stats {
@@ -4538,13 +4538,13 @@ canvas {
   }
 
   .result-item {
-    font-size: 0.95rem;
+    font-size: var(--font-size-body-lg);
     gap: 20px;
   }
 
   .result-buttons button {
     padding: 12px 24px;
-    font-size: 0.9rem;
+    font-size: var(--font-size-body);
   }
 
   .car-carousel {
@@ -4562,11 +4562,11 @@ canvas {
   }
 
   .rank-value {
-    font-size: 1.2rem;
+    font-size: var(--font-size-heading);
   }
 
   .countdown-number {
-    font-size: 4rem;
+    font-size: var(--font-size-display-md);
   }
 
   .cd-light {
@@ -4594,7 +4594,7 @@ canvas {
 
   .menu-title h1 {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: var(--font-size-title);
     letter-spacing: 2px;
   }
 
@@ -4608,7 +4608,7 @@ canvas {
 
   .back-btn {
     padding: 6px 11px;
-    font-size: 0.78rem;
+    font-size: var(--font-size-small);
   }
 
   .mode-seg {
@@ -4617,7 +4617,7 @@ canvas {
 
   .seg-btn {
     padding: 5px 11px;
-    font-size: 0.76rem;
+    font-size: var(--font-size-small);
   }
 
   .showroom-canvas {
@@ -4667,13 +4667,13 @@ canvas {
   }
 
   .car-big-name {
-    font-size: 1.05rem;
+    font-size: var(--font-size-title);
     letter-spacing: 1px;
   }
 
   .car-trait {
     padding: 2px 7px;
-    font-size: 0.64rem;
+    font-size: var(--font-size-caption);
   }
 
   .car-stats {
@@ -4687,7 +4687,7 @@ canvas {
 
   .stat span {
     min-width: 28px;
-    font-size: 0.72rem;
+    font-size: var(--font-size-small);
   }
 
   .stat-bar {
@@ -4698,7 +4698,7 @@ canvas {
     width: auto;
     flex-shrink: 0;
     padding: 10px 24px;
-    font-size: 0.9rem;
+    font-size: var(--font-size-body);
   }
 }
 

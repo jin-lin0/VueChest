@@ -1069,7 +1069,7 @@ onUnmounted(() => {
   background: rgba(13, 10, 26, 0.72);
   color: #b9b4ca;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
   backdrop-filter: blur(12px);
   transition:
@@ -1152,7 +1152,7 @@ onUnmounted(() => {
 .wordmark-cn {
   margin: 12px 0 0;
   color: #00e5ff;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 600;
   letter-spacing: 0.5em;
   text-shadow: 0 0 18px rgba(0, 229, 255, 0.5);
@@ -1161,7 +1161,7 @@ onUnmounted(() => {
   margin: 22px 0 0;
   max-width: 30ch;
   color: #8d84b4;
-  font-size: 13.5px;
+  font-size: var(--font-size-body);
   line-height: 1.75;
 }
 
@@ -1217,7 +1217,7 @@ onUnmounted(() => {
   height: 34px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.14);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .entry-text {
   display: flex;
@@ -1226,12 +1226,12 @@ onUnmounted(() => {
   min-width: 0;
 }
 .entry-text b {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 .entry-text small {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   letter-spacing: 0.16em;
   opacity: 0.72;
@@ -1241,7 +1241,7 @@ onUnmounted(() => {
   padding: 4px 11px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -1256,7 +1256,7 @@ onUnmounted(() => {
   background: none;
   color: #6f679a;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: var(--font-size-control);
   font-weight: 600;
   letter-spacing: 0.06em;
   cursor: pointer;
@@ -1266,7 +1266,7 @@ onUnmounted(() => {
   color: #b9b2d4;
 }
 .gear {
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 /* ===== 右栏选曲卡 ===== */
@@ -1292,13 +1292,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 .star {
   color: #00e5ff;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .tag {
   margin-left: auto;
@@ -1306,7 +1306,7 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 46, 99, 0.45);
   border-radius: 5px;
   color: #ff5c85;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   letter-spacing: 0.14em;
 }
@@ -1324,7 +1324,7 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.3);
   color: #e9e6f5;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: var(--font-size-body);
   transition: border-color 0.2s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .search-input::placeholder {
@@ -1345,7 +1345,7 @@ onUnmounted(() => {
   background: rgba(0, 229, 255, 0.1);
   color: #6fe6ff;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -1365,7 +1365,7 @@ onUnmounted(() => {
 .deck-label {
   margin: 16px 0 8px;
   color: #635b8c;
-  font-size: 9.5px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   letter-spacing: 0.2em;
 }
@@ -1414,14 +1414,14 @@ onUnmounted(() => {
 .idx {
   flex: none;
   color: #5f5885;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .s-name {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -1431,7 +1431,7 @@ onUnmounted(() => {
   flex: none;
   max-width: 34%;
   color: #6f679a;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1446,7 +1446,7 @@ onUnmounted(() => {
   border-radius: 9px;
   background: rgba(0, 229, 255, 0.06);
   color: #6fe6ff;
-  font-size: 12.5px;
+  font-size: var(--font-size-control);
   font-weight: 600;
   letter-spacing: 0.06em;
 }
@@ -1491,7 +1491,7 @@ onUnmounted(() => {
 }
 .chosen-name b {
   display: block;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -1503,7 +1503,7 @@ onUnmounted(() => {
   border: 1px solid rgba(0, 229, 255, 0.4);
   border-radius: 6px;
   color: #6fe6ff;
-  font-size: 10.5px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   letter-spacing: 0.1em;
   font-variant-numeric: tabular-nums;
@@ -1513,7 +1513,7 @@ onUnmounted(() => {
   gap: 14px;
   margin-top: 8px;
   color: #6f679a;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 600;
   letter-spacing: 0.06em;
 }
@@ -1544,12 +1544,12 @@ onUnmounted(() => {
     color 0.18s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .diff b {
-  font-size: 10.5px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   letter-spacing: 0.1em;
 }
 .diff small {
-  font-size: 9.5px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   opacity: 0.62;
   font-variant-numeric: tabular-nums;
@@ -1593,7 +1593,7 @@ onUnmounted(() => {
   background: linear-gradient(96deg, #ff2e63 0%, #b52fc9 55%, #7b3bf0 100%);
   color: #fff;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: var(--font-size-body);
   font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -1611,19 +1611,19 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 .go-icon {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .gen-info {
   margin: 10px 0 0;
   color: #635b8c;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   letter-spacing: 0.04em;
 }
 
 .empty {
   margin: 20px 0 4px;
   color: #7c749f;
-  font-size: 12.5px;
+  font-size: var(--font-size-control);
   line-height: 1.8;
 }
 .dim {
@@ -1636,7 +1636,7 @@ onUnmounted(() => {
   border-radius: 0 6px 6px 0;
   background: rgba(255, 46, 99, 0.09);
   color: #ff7d9c;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 /* ===== 高级面板 ===== */
@@ -1663,7 +1663,7 @@ onUnmounted(() => {
 }
 .panel h3 {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 700;
   letter-spacing: 0.14em;
   color: #a99fd0;
@@ -1671,12 +1671,12 @@ onUnmounted(() => {
 .hint {
   margin: 0 0 12px;
   color: #7c749f;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   line-height: 1.7;
 }
 .sub-note {
   color: #5f5885;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .c-beat {
   color: #6fe6ff;
@@ -1694,7 +1694,7 @@ onUnmounted(() => {
 }
 .ctl-label {
   color: #6f679a;
-  font-size: 11.5px;
+  font-size: var(--font-size-small);
   font-weight: 600;
   letter-spacing: 0.08em;
 }
@@ -1706,7 +1706,7 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.03);
   color: #b9b2d4;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -1744,13 +1744,13 @@ input[type='range']:disabled {
 .range-val {
   min-width: 48px;
   color: #b9b2d4;
-  font-size: 11.5px;
+  font-size: var(--font-size-small);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .eff-bpm {
   color: #ffd166;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1761,7 +1761,7 @@ input[type='range']:disabled {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
   color: #8d84b4;
-  font-size: 11.5px;
+  font-size: var(--font-size-small);
   line-height: 1.7;
 }
 .stat-note b {
@@ -1793,12 +1793,12 @@ input[type='range']:disabled {
 .tl-label {
   margin: 2px 0;
   color: #6f679a;
-  font-size: 11.5px;
+  font-size: var(--font-size-small);
   font-variant-numeric: tabular-nums;
 }
 .latency {
   color: #56507a;
-  font-size: 10.5px;
+  font-size: var(--font-size-meta);
 }
 .actions {
   display: flex;
@@ -1848,12 +1848,12 @@ input[type='range']:disabled {
 }
 .metric .k {
   color: #635b8c;
-  font-size: 9.5px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   letter-spacing: 0.14em;
 }
 .metric b {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1867,7 +1867,7 @@ input[type='range']:disabled {
   overflow: auto;
   color: #7c749f;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.7;
   white-space: pre-wrap;
 }

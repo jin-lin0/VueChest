@@ -32,7 +32,7 @@ function goBack() {
 }
 
 .nf-code {
-  font-size: 96px;
+  font-size: var(--font-size-display-lg);
   font-weight: 800;
   line-height: 1;
   background: var(--gradient-primary);
@@ -44,7 +44,7 @@ function goBack() {
 .nf-title {
   color: var(--text-primary);
   margin: 12px 0 8px;
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
 }
 
 .nf-desc {
@@ -65,7 +65,7 @@ function goBack() {
   text-decoration: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   transition: opacity var(--transition);
 }
 

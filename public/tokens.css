@@ -90,8 +90,35 @@
   --space-7: 28px;
   --space-8: 32px;
 
-  /* ---------- 字体 / 过渡 ---------- */
+  /* ---------- 字体字号 ---------- */
   --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-size-2xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-xl: 16px;
+  --font-size-3xl: 20px;
+  --font-size-4xl: 24px;
+  --font-size-5xl: 28px;
+  --font-size-6xl: 32px;
+  --font-size-8xl: 40px;
+  --font-size-9xl: 48px;
+  --font-size-display-md: 64px;
+  --font-size-display-lg: 96px;
+  --font-size-display-xl: 120px;
+  --font-size-display-2xl: 154px;
+
+  /* 语义别名：组件优先使用语义名，特殊展示再使用上方 primitive。 */
+  --font-size-caption: var(--font-size-2xs); /* 标签、时间、计数、图表注记 */
+  --font-size-meta: var(--font-size-sm); /* 元信息 / 次要说明 */
+  --font-size-small: var(--font-size-sm); /* 小号正文 / 紧凑控件 */
+  --font-size-control: var(--font-size-base); /* 紧凑按钮 / 表单控件 */
+  --font-size-body: var(--font-size-base); /* 默认正文 / 控件文字 */
+  --font-size-body-lg: var(--font-size-xl); /* 强调正文 */
+  --font-size-title: var(--font-size-xl); /* 卡片标题 */
+  --font-size-title-lg: var(--font-size-3xl); /* 大卡片标题 */
+  --font-size-heading: var(--font-size-3xl); /* 页面区块标题 */
+
+  /* ---------- 过渡 ---------- */
   --transition-fast: 0.15s ease;
   --transition: 0.2s ease;
 

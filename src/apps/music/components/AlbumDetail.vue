@@ -183,7 +183,7 @@ const formatPublishDate = (ms?: number): string => {
   border: 1px solid var(--border);
   background: var(--bg-card);
   color: var(--text);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -201,7 +201,7 @@ const formatPublishDate = (ms?: number): string => {
 }
 
 .ad-topbar-title {
-  font-size: 16px;
+  font-size: var(--font-size-title);
   font-weight: 600;
   color: var(--text);
   overflow: hidden;
@@ -230,7 +230,7 @@ const formatPublishDate = (ms?: number): string => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 64px;
+  font-size: var(--font-size-display-md);
   color: var(--text-dim);
   background: var(--accent-gradient-vivid);
 }
@@ -244,14 +244,14 @@ const formatPublishDate = (ms?: number): string => {
 }
 
 .ad-type {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--accent);
   font-weight: 600;
   letter-spacing: 2px;
 }
 
 .ad-name {
-  font-size: 30px;
+  font-size: var(--font-size-6xl);
   font-weight: 800;
   line-height: 1.2;
   margin: 0;
@@ -259,7 +259,7 @@ const formatPublishDate = (ms?: number): string => {
 }
 
 .ad-artist {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   color: var(--text-secondary);
 }
 
@@ -267,7 +267,7 @@ const formatPublishDate = (ms?: number): string => {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-dim);
 }
 
@@ -279,7 +279,7 @@ const formatPublishDate = (ms?: number): string => {
   border-radius: 24px;
   background: var(--accent-gradient);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -299,7 +299,7 @@ const formatPublishDate = (ms?: number): string => {
 
 .ad-desc-text {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.7;
   color: var(--text-secondary);
   white-space: pre-line;
@@ -318,7 +318,7 @@ const formatPublishDate = (ms?: number): string => {
   border: none;
   background: none;
   color: var(--accent);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   cursor: pointer;
   transition: opacity 0.2s;
 }

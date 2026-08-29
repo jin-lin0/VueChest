@@ -124,7 +124,7 @@ function handleBack() {
 <style scoped>
 .modal-title {
   text-align: center;
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   margin-bottom: 16px;
 }
@@ -135,18 +135,18 @@ function handleBack() {
 }
 
 .trophy {
-  font-size: 48px;
+  font-size: var(--font-size-9xl);
   margin-bottom: 4px;
 }
 
 .winner-name {
-  font-size: 22px;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   color: #ffd700;
 }
 
 .winner-sub {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
   margin-top: 2px;
 }
@@ -165,7 +165,7 @@ function handleBack() {
   padding: 8px 12px;
   background: var(--bg-subtle);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .stat-row.winner {
@@ -188,7 +188,7 @@ function handleBack() {
 .stat-health,
 .stat-length,
 .stat-status {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
 }
 
@@ -202,7 +202,7 @@ function handleBack() {
   padding: 10px;
   border: none;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -239,7 +239,7 @@ function handleBack() {
   justify-content: center;
   gap: 12px;
   margin-bottom: 20px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .tally-row {
@@ -260,7 +260,7 @@ function handleBack() {
 }
 
 .tally-score {
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   color: #ffd700;
   min-width: 24px;
@@ -268,7 +268,7 @@ function handleBack() {
 }
 
 .tally-vs {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   font-weight: 600;
 }

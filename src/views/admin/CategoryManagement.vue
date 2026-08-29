@@ -235,23 +235,23 @@ async function deleteCategory(id: number) {
 
 .page-header h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
   color: var(--text-primary);
 }
 
 .page-desc {
   margin: 4px 0 0 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .btn-icon {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-weight: 300;
 }
 .btn-sm {
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .btn-primary {
@@ -260,7 +260,7 @@ async function deleteCategory(id: number) {
   border: none;
   padding: 12px 24px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -285,7 +285,7 @@ async function deleteCategory(id: number) {
   border: 1px solid var(--border-color);
   padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -301,7 +301,7 @@ async function deleteCategory(id: number) {
   border: 1px solid var(--danger-bg);
   padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -334,10 +334,10 @@ async function deleteCategory(id: number) {
 }
 
 .empty-icon {
-  font-size: 48px;
+  font-size: var(--font-size-9xl);
 }
 .empty-state p {
-  font-size: 16px;
+  font-size: var(--font-size-title);
   margin: 0;
 }
 
@@ -366,7 +366,7 @@ async function deleteCategory(id: number) {
 }
 
 .category-icon {
-  font-size: 36px;
+  font-size: var(--font-size-8xl);
   line-height: 1;
 }
 .category-content {
@@ -375,7 +375,7 @@ async function deleteCategory(id: number) {
 
 .category-name {
   margin: 0 0 6px 0;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   color: var(--text-primary);
   font-weight: 600;
 }
@@ -383,7 +383,7 @@ async function deleteCategory(id: number) {
 .category-desc {
   margin: 0 0 10px 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   line-height: 1.5;
 }
 
@@ -393,7 +393,7 @@ async function deleteCategory(id: number) {
 }
 .stat {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .category-actions {
@@ -412,7 +412,7 @@ async function deleteCategory(id: number) {
   margin-bottom: 6px;
   font-weight: 500;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .required {
@@ -424,7 +424,7 @@ async function deleteCategory(id: number) {
   padding: 10px 14px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   outline: none;
   transition: all 0.2s;
   background: var(--bg-input);
@@ -447,7 +447,7 @@ async function deleteCategory(id: number) {
 .error-text {
   display: block;
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   margin-top: 4px;
 }
 
@@ -456,7 +456,7 @@ async function deleteCategory(id: number) {
   padding: 10px 14px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-family: inherit;
   resize: vertical;
   outline: none;

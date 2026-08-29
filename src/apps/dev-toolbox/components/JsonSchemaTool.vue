@@ -177,13 +177,13 @@ function clearAll() {
 }
 .head h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--font-size-heading);
   color: var(--text-primary);
 }
 .sub {
   margin: 0.3rem 0 0;
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 .toolbar {
   display: flex;
@@ -198,7 +198,7 @@ function clearAll() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -249,7 +249,7 @@ function clearAll() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
 }
 .result {
   background: var(--bg-card);
@@ -265,7 +265,7 @@ function clearAll() {
   border-color: #dc2626;
 }
 .badge {
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   background: var(--bg-subtle);
@@ -282,14 +282,14 @@ function clearAll() {
 .err {
   margin: 0.4rem 0 0;
   color: var(--danger, #ef4444);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   white-space: pre-wrap;
   word-break: break-word;
 }
 .errors {
   margin: 0.4rem 0 0;
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   line-height: 1.6;
   color: #dc2626;
   white-space: pre-wrap;
@@ -298,12 +298,12 @@ function clearAll() {
 .ok-text {
   margin: 0.4rem 0 0;
   color: #16a34a;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 .muted {
   margin: 0.4rem 0 0;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 @media (max-width: 880px) {
   .grid {

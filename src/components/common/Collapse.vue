@@ -81,7 +81,7 @@ function toggle() {
   background: transparent;
   border: none;
   color: var(--text-secondary, #475569);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   text-align: left;
   cursor: pointer;
   transition: color var(--transition-fast, 0.15s);
@@ -95,7 +95,7 @@ function toggle() {
 }
 .vc-collapse-chevron {
   display: inline-block;
-  font-size: 0.7rem;
+  font-size: var(--font-size-meta);
   transition: transform var(--transition-fast, 0.15s);
   transform: rotate(0deg);
 }

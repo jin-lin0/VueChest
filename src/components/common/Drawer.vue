@@ -124,7 +124,7 @@ const { close } = useOverlay({
   flex-shrink: 0;
 }
 .vc-drawer__title {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -132,7 +132,7 @@ const { close } = useOverlay({
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   line-height: 1;
   cursor: pointer;
   width: 32px;

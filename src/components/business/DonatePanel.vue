@@ -61,13 +61,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   color: var(--text-primary);
   margin: 0 0 var(--space-2);
 }
 .donate-panel-hint {
   margin: 0 0 var(--space-4);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-muted);
   line-height: 1.6;
 }
@@ -96,7 +96,7 @@ onMounted(async () => {
 }
 .donate-channel-name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-primary);
 }
 .donate-qr {

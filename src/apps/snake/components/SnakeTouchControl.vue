@@ -132,7 +132,7 @@ function updateKnob(touchX: number, touchY: number) {
 
 .dir-marker {
   position: absolute;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-muted);
   pointer-events: none;
 }

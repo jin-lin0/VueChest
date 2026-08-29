@@ -618,7 +618,7 @@ onUnmounted(() => {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   color: #b9b2d4;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -633,7 +633,7 @@ onUnmounted(() => {
   color: #fff;
 }
 .exit-btn .arrow {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   line-height: 1;
 }
 
@@ -656,7 +656,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 10px;
   margin-top: 5px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 600;
   letter-spacing: 0.12em;
   color: #8f86b8;
@@ -691,7 +691,7 @@ onUnmounted(() => {
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.04);
   color: #b9b2d4;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -708,7 +708,7 @@ onUnmounted(() => {
   color: #6fe6ff;
 }
 .song-name {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -732,7 +732,7 @@ onUnmounted(() => {
   transition: width 0.12s linear;
 }
 .song-meta {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 600;
   letter-spacing: 0.1em;
   color: #6f679a;
@@ -792,7 +792,7 @@ onUnmounted(() => {
   border-radius: 12px;
   background: color-mix(in oklch, var(--lane-color) 9%, transparent);
   color: color-mix(in oklch, var(--lane-color) 85%, white);
-  font-size: 16px;
+  font-size: var(--font-size-title);
   font-weight: 700;
   letter-spacing: 0.05em;
   /* 只动 transform / box-shadow / opacity，不碰布局属性 */
@@ -829,7 +829,7 @@ onUnmounted(() => {
   border-radius: 999px;
   background: rgba(61, 218, 215, 0.07);
   color: #7fd8d6;
-  font-size: 11.5px;
+  font-size: var(--font-size-small);
   font-weight: 600;
   letter-spacing: 0.12em;
 }
@@ -879,7 +879,7 @@ onUnmounted(() => {
 }
 .eyebrow {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   letter-spacing: 0.42em;
   color: #ff2e63;
@@ -905,13 +905,13 @@ onUnmounted(() => {
   gap: 2px;
 }
 .ready-stats b {
-  font-size: 19px;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   color: #00e5ff;
   font-variant-numeric: tabular-nums;
 }
 .ready-stats span {
-  font-size: 9.5px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   letter-spacing: 0.18em;
   color: #6f679a;
@@ -923,7 +923,7 @@ onUnmounted(() => {
   gap: 7px;
   margin: 2px 0 0;
   color: #8f86b8;
-  font-size: 12.5px;
+  font-size: var(--font-size-control);
 }
 kbd {
   display: inline-block;
@@ -935,14 +935,14 @@ kbd {
   background: rgba(255, 255, 255, 0.06);
   color: #d6d0ea;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
   text-align: center;
 }
 .tiny {
   margin: 0;
   color: #6f679a;
-  font-size: 11.5px;
+  font-size: var(--font-size-small);
   letter-spacing: 0.04em;
 }
 
@@ -958,7 +958,7 @@ kbd {
   background: linear-gradient(96deg, #ff2e63 0%, #a934d0 55%, #6d3bf5 100%);
   color: #fff;
   font-family: inherit;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -975,7 +975,7 @@ kbd {
   transform: translateY(0);
 }
 .cta small {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   letter-spacing: 0.2em;
   opacity: 0.72;
@@ -987,7 +987,7 @@ kbd {
   background: transparent;
   color: #9a92bd;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -1031,7 +1031,7 @@ kbd {
   text-shadow: 0 0 30px rgba(255, 46, 99, 0.4);
 }
 .final-score {
-  font-size: 30px;
+  font-size: var(--font-size-6xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
@@ -1039,7 +1039,7 @@ kbd {
 .final-acc {
   margin-bottom: 6px;
   color: #8f86b8;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   letter-spacing: 0.1em;
 }
@@ -1048,7 +1048,7 @@ kbd {
   grid-template-columns: repeat(2, minmax(140px, 1fr));
   gap: 2px 26px;
   margin: 4px 0 8px;
-  font-size: 12.5px;
+  font-size: var(--font-size-control);
 }
 .breakdown div {
   display: flex;
@@ -1086,7 +1086,7 @@ kbd {
   border-radius: 0 6px 6px 0;
   background: rgba(255, 176, 77, 0.09);
   color: #ffc477;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   line-height: 1.5;
 }
 .result-actions {
@@ -1152,7 +1152,7 @@ kbd {
     padding: 8px 14px 2px;
   }
   .score {
-    font-size: 24px;
+    font-size: var(--font-size-4xl);
   }
   .score-sub {
     display: none; /* ACC 与评级实时看意义不大，结算页有 */
@@ -1171,7 +1171,7 @@ kbd {
     width: 36px;
     height: 36px;
     margin-left: -18px;
-    font-size: 13px;
+    font-size: var(--font-size-control);
   }
   .corner {
     display: none; /* 倍率/时间码给跑道让路 */
@@ -1186,11 +1186,11 @@ kbd {
     margin: 0;
   }
   .rank {
-    font-size: 46px;
+    font-size: var(--font-size-9xl);
   }
   .breakdown {
     grid-template-columns: repeat(3, minmax(120px, 1fr));
-    font-size: 11.5px;
+    font-size: var(--font-size-small);
   }
 }
 

@@ -117,13 +117,38 @@ VueChest 使用一套**全局设计 Token（CSS 变量）**统一管理颜色、
 | `--space-3` | `12px` | `--space-7` | `28px` |
 | `--space-4` | `16px` | `--space-8` | `32px` |
 
-### 2.9 字体 / 过渡
+### 2.9 字体字号
 
-| 变量                | 值                                               |
-| ------------------- | ------------------------------------------------ |
-| `--font-sans`       | `'Helvetica Neue', Helvetica, Arial, sans-serif` |
-| `--transition-fast` | `0.15s ease`                                     |
-| `--transition`      | `0.2s ease`                                      |
+字体族由 `--font-sans` 统一管理。固定字号先使用 primitive 阶梯，再通过语义别名供组件消费：
+
+| Primitive                | 值      | Primitive                 | 值      |
+| ------------------------ | ------- | ------------------------- | ------- |
+| `--font-size-2xs`        | `10px`  | `--font-size-sm`          | `12px`  |
+| `--font-size-base`       | `14px`  | `--font-size-xl`          | `16px`  |
+| `--font-size-3xl`        | `20px`  | `--font-size-4xl`         | `24px`  |
+| `--font-size-5xl`        | `28px`  | `--font-size-6xl`         | `32px`  |
+| `--font-size-8xl`        | `40px`  | `--font-size-9xl`         | `48px`  |
+| `--font-size-display-md` | `64px`  | `--font-size-display-lg`  | `96px`  |
+| `--font-size-display-xl` | `120px` | `--font-size-display-2xl` | `154px` |
+
+| 语义变量                                     | 对应阶梯      | 用途                           |
+| -------------------------------------------- | ------------- | ------------------------------ |
+| `--font-size-caption`                        | `2xs`         | 最小辅助文字、标签、时间、计数 |
+| `--font-size-meta`                           | `sm`          | 元信息 / 次要说明              |
+| `--font-size-small`                          | `sm`          | 小号正文 / 紧凑控件            |
+| `--font-size-control`                        | `base`        | 紧凑按钮 / 表单控件            |
+| `--font-size-body` / `--font-size-body-lg`   | `base` / `xl` | 正文                           |
+| `--font-size-title` / `--font-size-title-lg` | `xl` / `3xl`  | 卡片标题                       |
+| `--font-size-heading`                        | `3xl`         | 页面区块标题                   |
+
+全站可读字号下限为 `--font-size-caption`。组件的固定 `px/rem` 字号必须走 token；只有确实依赖父级比例或视口变化的 `em`、`clamp()`，以及用于消除行内间隙的 `font-size: 0` 可以保留。
+
+### 2.10 过渡
+
+| 变量                | 值           |
+| ------------------- | ------------ |
+| `--transition-fast` | `0.15s ease` |
+| `--transition`      | `0.2s ease`  |
 
 ## 3. 让 JS 决定的颜色也跟随主题
 

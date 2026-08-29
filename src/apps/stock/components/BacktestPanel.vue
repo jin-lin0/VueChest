@@ -128,11 +128,11 @@ function run() {
   border-bottom: 1px solid var(--border-light);
 }
 .panel-heading h2 {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .panel-heading p {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .backtest-form {
   display: grid;
@@ -146,7 +146,7 @@ function run() {
   flex-direction: column;
   gap: 5px;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .backtest-form input {
   width: 100%;
@@ -187,11 +187,11 @@ function run() {
 }
 .backtest-metrics small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .backtest-metrics strong {
   margin-top: 4px;
-  font-size: 20px;
+  font-size: var(--font-size-heading);
 }
 .trade-list {
   display: grid;
@@ -214,16 +214,16 @@ function run() {
 }
 .trade-list small {
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--font-size-caption);
 }
 .trade-list strong,
 .trade-list b {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .backtest-note {
   margin-top: 12px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   line-height: 1.6;
   text-align: center;
 }

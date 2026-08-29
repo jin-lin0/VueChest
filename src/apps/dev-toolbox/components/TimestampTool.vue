@@ -228,7 +228,7 @@ function useNowDate() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 .card-head {
   display: flex;
@@ -260,11 +260,11 @@ function useNowDate() {
 }
 .k {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   flex-shrink: 0;
 }
 .v {
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
   flex: 1;
   min-width: 0;
@@ -291,7 +291,7 @@ function useNowDate() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
 }
 .inp:focus {
@@ -322,7 +322,7 @@ function useNowDate() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -333,12 +333,12 @@ function useNowDate() {
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }
 

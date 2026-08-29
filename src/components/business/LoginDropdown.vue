@@ -211,7 +211,7 @@ async function saveName() {
   background: var(--bg-glass);
   border-radius: 10px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
@@ -222,7 +222,7 @@ async function saveName() {
 }
 
 .user-icon {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   width: 24px;
   height: 24px;
   display: grid;
@@ -355,7 +355,7 @@ async function saveName() {
 .dropdown-info {
   padding: 0.8rem 1rem;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 
 .dropdown-role {
@@ -379,7 +379,7 @@ async function saveName() {
   border-radius: 6px;
   background: var(--bg-elevated);
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
 }
 
@@ -398,7 +398,7 @@ async function saveName() {
   flex: 1;
   padding: 0.35rem 0;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.15s ease;
@@ -442,7 +442,7 @@ async function saveName() {
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   color: var(--text-primary);
   transition: background-color 0.15s ease;
   text-align: left;

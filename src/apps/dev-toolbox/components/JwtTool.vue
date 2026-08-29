@@ -195,7 +195,7 @@ function clearAll() {
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
 }
 .tb-group {
   display: flex;
@@ -211,7 +211,7 @@ function clearAll() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -232,7 +232,7 @@ function clearAll() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -262,7 +262,7 @@ function clearAll() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
 }
 .plain {
   width: 100%;
@@ -275,7 +275,7 @@ function clearAll() {
   color: var(--text-body);
   padding: 12px 14px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.6;
   outline: none;
   transition: var(--transition-fast);
@@ -304,11 +304,11 @@ function clearAll() {
 }
 .k {
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   min-width: 48px;
 }
 .v {
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
 }
 .v.danger {
@@ -316,14 +316,14 @@ function clearAll() {
   font-weight: 600;
 }
 .sig {
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
   word-break: break-all;
 }
 .err {
   margin: 0.6rem 0 0;
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 
 @media (max-width: 880px) {

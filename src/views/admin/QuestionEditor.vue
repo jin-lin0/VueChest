@@ -265,7 +265,7 @@ function goBack() {
 }
 
 .editor-header h1 {
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   color: var(--text-primary);
   flex: 1;
   margin: 0;
@@ -275,7 +275,7 @@ function goBack() {
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 6px;
@@ -297,7 +297,7 @@ function goBack() {
   border: 1px solid var(--border-color);
   background: var(--bg-card);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   cursor: pointer;
   color: var(--text-primary);
   transition: all 0.15s;
@@ -313,7 +313,7 @@ function goBack() {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -358,7 +358,7 @@ function goBack() {
   align-items: center;
   gap: 8px;
   font-weight: 500;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-primary);
   margin-bottom: 8px;
 }
@@ -379,7 +379,7 @@ function goBack() {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-primary);
 }
 
@@ -389,7 +389,7 @@ function goBack() {
   padding: 9px 12px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   outline: none;
   transition: all 0.15s;
   background: var(--bg-input);
@@ -420,7 +420,7 @@ function goBack() {
 
 .hint {
   font-weight: 400;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   color: var(--text-muted);
 }
 
@@ -431,7 +431,7 @@ function goBack() {
 .error-text {
   display: block;
   color: var(--danger);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   margin-top: 3px;
 }
 
@@ -447,7 +447,7 @@ function goBack() {
   border-radius: 8px;
   background: var(--bg-card);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 500;
   transition: all 0.2s;
   color: var(--text-secondary);

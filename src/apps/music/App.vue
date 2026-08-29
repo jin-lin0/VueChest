@@ -272,7 +272,7 @@ onMounted(async () => {
 .music-title small {
   margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .header-queue {
   padding: 7px 10px;
@@ -281,7 +281,7 @@ onMounted(async () => {
   background: var(--bg-card);
   color: var(--text);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .history-heading {
   display: flex;
@@ -291,7 +291,7 @@ onMounted(async () => {
 }
 .history-heading h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .history-heading small {
   color: var(--text-secondary);
@@ -305,14 +305,14 @@ onMounted(async () => {
 }
 .history-remove {
   padding: 8px;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 
 .back-btn {
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   cursor: pointer;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
@@ -325,7 +325,7 @@ onMounted(async () => {
 
 .page-header h1 {
   flex: 1;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   margin: 0;
   font-weight: 600;
   background: var(--accent-gradient);
@@ -358,7 +358,7 @@ onMounted(async () => {
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   background: transparent;
   color: var(--text-secondary);
@@ -392,7 +392,7 @@ onMounted(async () => {
   border: 1px solid var(--border);
   border-radius: 999px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 500;
   background: var(--bg-card);
   color: var(--text-secondary);
@@ -412,7 +412,7 @@ onMounted(async () => {
 }
 
 .fav-count {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   opacity: 0.7;
   background: rgba(0, 0, 0, 0.18);
   border-radius: 999px;

@@ -243,12 +243,12 @@ async function syncInitialApps() {
 }
 
 .logo-icon {
-  font-size: 32px;
+  font-size: var(--font-size-6xl);
 }
 
 .logo-link h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
   font-weight: 700;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
@@ -259,7 +259,7 @@ async function syncInitialApps() {
 .subtitle {
   margin: 8px 0 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .form-group {
@@ -268,7 +268,7 @@ async function syncInitialApps() {
 
 .form-group label {
   display: block;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   color: var(--text-body);
   margin-bottom: 6px;
@@ -279,7 +279,7 @@ async function syncInitialApps() {
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   outline: none;
   transition: all 0.2s;
   background: var(--bg-card);
@@ -319,7 +319,7 @@ async function syncInitialApps() {
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -345,7 +345,7 @@ async function syncInitialApps() {
 
 .form-error {
   color: var(--danger);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   margin: 0 0 16px;
   text-align: center;
 }
@@ -357,7 +357,7 @@ async function syncInitialApps() {
   color: white;
   border: none;
   border-radius: 12px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.25s;
@@ -381,7 +381,7 @@ async function syncInitialApps() {
   text-align: center;
   margin-top: 20px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .link {

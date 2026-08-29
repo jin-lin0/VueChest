@@ -252,7 +252,7 @@ function draw() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .row {
@@ -273,7 +273,7 @@ function draw() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
 }
 .inp:focus {
@@ -288,7 +288,7 @@ function draw() {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -297,10 +297,10 @@ function draw() {
 }
 .k {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
 }
 .v {
-  font-size: 0.88rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
 }
 .btn {
@@ -310,7 +310,7 @@ function draw() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -334,7 +334,7 @@ function draw() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -365,7 +365,7 @@ function draw() {
 }
 .mono {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
   word-break: break-all;
 }
@@ -378,7 +378,7 @@ function draw() {
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.7rem;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
 }
 .plain:focus {
@@ -399,10 +399,10 @@ function draw() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.5rem 0.6rem;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
 }
 .strength {
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
   padding: 0.25rem 0.6rem;
   border-radius: var(--radius-xs);
   font-weight: 600;
@@ -426,7 +426,7 @@ function draw() {
 .winner {
   margin-top: 0.8rem;
   text-align: center;
-  font-size: 1.3rem;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   color: var(--accent);
   padding: 0.8rem;
@@ -436,7 +436,7 @@ function draw() {
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.6rem 0 0;
   line-height: 1.5;
 }

@@ -78,7 +78,7 @@ async function onClick() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   line-height: 1.2;
   transition: var(--transition-fast);
   white-space: nowrap;
@@ -94,7 +94,7 @@ async function onClick() {
 }
 .copy-btn--mini {
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   color: var(--text-secondary);
 }
 .copy-btn--ghost {

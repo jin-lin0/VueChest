@@ -684,10 +684,10 @@ function onContentClick(e: MouseEvent) {
   user-select: none;
 }
 .docs-logo {
-  font-size: 22px;
+  font-size: var(--font-size-heading);
 }
 .docs-title {
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: 0.3px;
@@ -709,7 +709,7 @@ function onContentClick(e: MouseEvent) {
   color: var(--text-secondary);
   border-radius: var(--radius-pill);
   padding: var(--space-2) var(--space-4);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition-fast);
@@ -749,7 +749,7 @@ function onContentClick(e: MouseEvent) {
   border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-body);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   text-align: left;
   cursor: pointer;
 }
@@ -762,7 +762,7 @@ function onContentClick(e: MouseEvent) {
 .docs-context-icon {
   width: 20px;
   color: var(--accent);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   line-height: 1;
   text-align: center;
 }
@@ -773,12 +773,12 @@ function onContentClick(e: MouseEvent) {
 }
 .docs-context-copy strong {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 600;
 }
 .docs-context-copy small {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .docs-header-actions {
@@ -794,7 +794,7 @@ function onContentClick(e: MouseEvent) {
   color: var(--text-body);
   border-radius: var(--radius-pill);
   padding: var(--space-2) var(--space-4);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   cursor: pointer;
   transition: var(--transition);
 }
@@ -821,7 +821,7 @@ function onContentClick(e: MouseEvent) {
 .docs-settings-note {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.6;
 }
 .docs-setting-row {
@@ -840,11 +840,11 @@ function onContentClick(e: MouseEvent) {
 }
 .docs-setting-copy strong {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .docs-setting-copy small {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   line-height: 1.45;
 }
 .docs-settings-note {
@@ -898,7 +898,7 @@ function onContentClick(e: MouseEvent) {
   width: 38px;
   padding: 0;
   height: 34px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
 }
 
 /* ---------- 主体三栏：侧边栏 / 内容 / 本页目录 ---------- */
@@ -951,7 +951,7 @@ function onContentClick(e: MouseEvent) {
   top: 0;
 }
 .docs-toc-title {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -989,7 +989,7 @@ function onContentClick(e: MouseEvent) {
   color: var(--text-secondary);
   padding: 4px 6px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   line-height: 1.5;
   cursor: pointer;
   transition: var(--transition-fast);
@@ -1055,7 +1055,7 @@ function onContentClick(e: MouseEvent) {
   padding: var(--space-8) var(--space-8);
   box-shadow: var(--shadow-sm);
   line-height: 1.75;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   color: var(--text-body);
   overflow-x: auto;
   overflow-wrap: break-word;
@@ -1065,7 +1065,7 @@ function onContentClick(e: MouseEvent) {
 
 /* ---------- Markdown 正文样式（作用于 v-html 内部） ---------- */
 .docs-content :deep(h1) {
-  font-size: 28px;
+  font-size: var(--font-size-5xl);
   color: var(--text-primary);
   margin: 0 0 var(--space-5);
   padding-bottom: var(--space-3);
@@ -1073,13 +1073,13 @@ function onContentClick(e: MouseEvent) {
   scroll-margin-top: 72px;
 }
 .docs-content :deep(h2) {
-  font-size: 21px;
+  font-size: var(--font-size-heading);
   color: var(--text-primary);
   margin: var(--space-7) 0 var(--space-3);
   scroll-margin-top: 72px;
 }
 .docs-content :deep(h3) {
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
   color: var(--text-primary);
   margin: var(--space-5) 0 var(--space-2);
   scroll-margin-top: 72px;
@@ -1114,7 +1114,7 @@ function onContentClick(e: MouseEvent) {
   width: 100%;
   border-collapse: collapse;
   margin: var(--space-4) 0;
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .docs-content :deep(th),
 .docs-content :deep(td) {
@@ -1168,7 +1168,7 @@ function onContentClick(e: MouseEvent) {
   background: transparent;
   color: #e6edf3;
   padding: 0;
-  font-size: 13.5px;
+  font-size: var(--font-size-body);
   line-height: 1.6;
 }
 
@@ -1245,7 +1245,7 @@ function onContentClick(e: MouseEvent) {
     background: var(--bg-card);
   }
   .docs-drawer-header span {
-    font-size: 15px;
+    font-size: var(--font-size-body-lg);
     font-weight: 700;
     color: var(--text-primary);
   }
@@ -1253,7 +1253,7 @@ function onContentClick(e: MouseEvent) {
     border: none;
     background: transparent;
     color: var(--text-secondary);
-    font-size: 18px;
+    font-size: var(--font-size-title-lg);
     line-height: 1;
     cursor: pointer;
     width: 32px;
@@ -1306,10 +1306,10 @@ function onContentClick(e: MouseEvent) {
   }
   .docs-content {
     padding: var(--space-4);
-    font-size: 14px;
+    font-size: var(--font-size-body);
   }
   .docs-title {
-    font-size: 15px;
+    font-size: var(--font-size-body-lg);
   }
 }
 </style>

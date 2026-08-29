@@ -318,7 +318,7 @@ watch(
 }
 .card-header h2 {
   margin-top: 3px;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .card-header button {
   border: 0;
@@ -331,7 +331,7 @@ watch(
 .decision-card .card-header p {
   margin-top: 2px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .chart-controls {
   display: flex;
@@ -352,7 +352,7 @@ watch(
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .period-switch button.active {
   background: #0f766e;
@@ -371,7 +371,7 @@ watch(
   border-radius: 9px;
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .candle-inspector {
   display: grid;
@@ -392,10 +392,10 @@ watch(
 .metric-grid small,
 .quality-grid small {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .candle-inspector strong {
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .analysis-grid {
   display: grid;
@@ -433,21 +433,21 @@ watch(
   align-items: baseline;
 }
 .score-ring strong {
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
 }
 .score-ring small,
 .signal-list small,
 .support-bar small {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .trend-copy > strong {
-  font-size: 20px;
+  font-size: var(--font-size-heading);
 }
 .trend-copy p {
   margin-top: 5px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.6;
 }
 .signal-list {
@@ -480,7 +480,7 @@ watch(
   flex-direction: column;
 }
 .signal-list strong {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .metric-grid {
   display: grid;
@@ -498,7 +498,7 @@ watch(
 }
 .metric-grid strong {
   margin-top: 3px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
 }
 .support-bar {
   display: flex;
@@ -520,7 +520,7 @@ watch(
   background: linear-gradient(90deg, var(--stock-down), #eab308, var(--stock-up));
 }
 .support-bar strong {
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .report-title {
   display: flex;
@@ -537,10 +537,10 @@ watch(
 }
 .quality-grid strong {
   margin: 4px 0;
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .quality-grid b {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .decision-badge {
   display: inline-flex;
@@ -550,7 +550,7 @@ watch(
   border-radius: 999px;
   padding: 0 12px;
   background: var(--bg-subtle);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 800;
 }
 .decision-badge.bullish {
@@ -572,12 +572,12 @@ watch(
   margin: 12px 0 10px;
 }
 .decision-score strong {
-  font-size: 28px;
+  font-size: var(--font-size-5xl);
 }
 .decision-score small,
 .decision-metrics {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .decision-metrics {
   display: flex;
@@ -598,14 +598,14 @@ watch(
   padding: 8px 10px;
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .decision-block {
   margin-top: 12px;
 }
 .decision-block h3 {
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .decision-block ul {
   display: grid;
@@ -615,7 +615,7 @@ watch(
   color: var(--text-secondary);
 }
 .decision-block li {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.6;
 }
 .decision-action {
@@ -624,7 +624,7 @@ watch(
   padding: 10px 11px;
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.65;
 }
 .notice-preview a {
@@ -649,18 +649,18 @@ watch(
   padding: 3px 6px;
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .notice-preview a strong {
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .notice-preview a small {
   flex: none;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .card-empty {
   padding: 24px;

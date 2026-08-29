@@ -144,7 +144,7 @@ onUnmounted(() => {
 }
 
 .sidebar-header h3 {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -187,7 +187,7 @@ onUnmounted(() => {
 .session-search {
   margin-bottom: 8px;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .session-search:focus,
@@ -215,7 +215,7 @@ onUnmounted(() => {
 }
 
 .session-title {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -225,7 +225,7 @@ onUnmounted(() => {
 
 .rename-input {
   padding: 4px 6px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .session-actions {
@@ -241,7 +241,7 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .session-item:hover .session-actions,

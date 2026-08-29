@@ -454,7 +454,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
   padding: 0.5rem 1rem;
   border-radius: 10px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   color: var(--accent);
   font-weight: 600;
   transition: all 0.2s ease;
@@ -485,7 +485,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 }
 
 .hero-icon {
-  font-size: 4rem;
+  font-size: var(--font-size-display-md);
   width: 96px;
   height: 96px;
   display: flex;
@@ -502,7 +502,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 }
 
 .hero-info h1 {
-  font-size: 1.8rem;
+  font-size: var(--font-size-5xl);
   font-weight: 800;
   color: var(--text-primary);
   margin: 0 0 0.6rem;
@@ -516,7 +516,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 }
 
 .meta-item {
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   background: var(--tag-bg);
   padding: 0.25rem 0.7rem;
@@ -524,7 +524,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 }
 
 .hero-desc {
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 1.2rem;
@@ -541,7 +541,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
   color: white;
   border: none;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s ease;
@@ -562,7 +562,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
   color: var(--danger);
   border: 1px solid var(--danger);
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -580,13 +580,13 @@ async function handleVersionStatus(version: MarketAppVersion) {
 .action-error {
   margin-top: 0.7rem;
   color: var(--danger);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 
 .action-message {
   margin-top: 0.7rem;
   color: var(--success);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 
 .section-heading,
@@ -604,7 +604,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 .section-heading p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 
 .report-btn,
@@ -640,13 +640,13 @@ async function handleVersionStatus(version: MarketAppVersion) {
 .security-grid strong {
   margin-bottom: 0.35rem;
   color: var(--text-primary);
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 
 .security-grid span {
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 0.76rem;
+  font-size: var(--font-size-small);
   line-height: 1.45;
   text-overflow: ellipsis;
 }
@@ -658,7 +658,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 .permission-dialog ul {
   padding-left: 1.2rem;
   color: var(--text-secondary);
-  font-size: 0.86rem;
+  font-size: var(--font-size-body);
   line-height: 1.8;
 }
 
@@ -668,7 +668,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
   border-radius: 8px;
   background: rgba(245, 158, 11, 0.08);
   color: #b45309;
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 
 .dialog-actions {
@@ -678,7 +678,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 
 .dialog-actions .install-btn {
   padding: 0.55rem 1rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 
 .report-dialog label,
@@ -689,7 +689,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 .report-dialog label {
   margin-bottom: 0.9rem;
   color: var(--text-primary);
-  font-size: 0.84rem;
+  font-size: var(--font-size-control);
 }
 
 .report-dialog select,
@@ -733,7 +733,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 .version-main time {
   margin-left: auto;
   color: var(--text-secondary);
-  font-size: 0.76rem;
+  font-size: var(--font-size-small);
 }
 
 .version-tag {
@@ -741,7 +741,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
   border-radius: 999px;
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 0.68rem;
+  font-size: var(--font-size-meta);
 }
 
 .version-tag.installed {
@@ -757,7 +757,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 .version-item p {
   margin: 0.55rem 0;
   color: var(--text-secondary);
-  font-size: 0.84rem;
+  font-size: var(--font-size-control);
   white-space: pre-wrap;
 }
 
@@ -788,14 +788,14 @@ async function handleVersionStatus(version: MarketAppVersion) {
 }
 
 .detail-section h2 {
-  font-size: 1.1rem;
+  font-size: var(--font-size-title-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 1rem;
 }
 
 .readme-content {
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   color: var(--text-secondary);
   line-height: 1.8;
   white-space: pre-wrap;
@@ -806,7 +806,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
   vertical-align: middle;
   margin-left: 0.6rem;
   padding: 0.15rem 0.6rem;
-  font-size: 0.72rem;
+  font-size: var(--font-size-small);
   font-weight: 700;
   color: #fff;
   background: linear-gradient(135deg, #f59e0b, #ef4444);
@@ -840,7 +840,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
   border: 1px solid var(--border);
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 1.4rem;
+  font-size: var(--font-size-4xl);
   line-height: 1;
   cursor: pointer;
   transition: all 0.2s ease;

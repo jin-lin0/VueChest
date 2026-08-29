@@ -551,14 +551,14 @@ async function handleSubmit() {
 
 .header-center h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--font-size-heading);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .header-center p {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
 }
 
@@ -571,7 +571,7 @@ async function handleSubmit() {
   border-radius: 10px;
   background: var(--bg-card);
   color: var(--text-body);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -603,7 +603,7 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 16px;
@@ -612,7 +612,7 @@ async function handleSubmit() {
 }
 
 .section-icon {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 
 /* File upload zone */
@@ -653,7 +653,7 @@ async function handleSubmit() {
 
 .file-zone-text {
   margin: 0 0 8px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   color: var(--text-secondary);
 }
 
@@ -670,7 +670,7 @@ async function handleSubmit() {
 
 .file-zone-hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-muted);
 }
 
@@ -684,12 +684,12 @@ async function handleSubmit() {
 .file-name {
   font-weight: 600;
   color: var(--success);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 
 .file-size {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-family: monospace;
 }
 
@@ -700,7 +700,7 @@ async function handleSubmit() {
   border-radius: 8px;
   background: var(--bg-card);
   color: var(--success);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -723,7 +723,7 @@ async function handleSubmit() {
 }
 
 .meta-icon {
-  font-size: 38px;
+  font-size: var(--font-size-8xl);
   flex-shrink: 0;
   width: 56px;
   height: 56px;
@@ -741,7 +741,7 @@ async function handleSubmit() {
 }
 
 .meta-name {
-  font-size: 16px;
+  font-size: var(--font-size-title);
   font-weight: 600;
   color: var(--text-primary);
   display: flex;
@@ -750,7 +750,7 @@ async function handleSubmit() {
 }
 
 .meta-version {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--accent);
   background: var(--bg-card);
   padding: 2px 10px;
@@ -760,7 +760,7 @@ async function handleSubmit() {
 }
 
 .meta-desc {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
   margin-top: 4px;
   line-height: 1.4;
@@ -777,7 +777,7 @@ async function handleSubmit() {
 
 .form-label {
   display: block;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   color: var(--text-body);
   margin-bottom: 6px;
@@ -786,12 +786,12 @@ async function handleSubmit() {
 .label-optional {
   font-weight: 400;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .form-hint {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -843,7 +843,7 @@ async function handleSubmit() {
   border: none;
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -868,7 +868,7 @@ async function handleSubmit() {
   right: 0;
   margin: 0;
   padding: 3px 4px;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: #fff;
   background: var(--danger);
   text-align: center;
@@ -897,13 +897,13 @@ async function handleSubmit() {
 }
 
 .shot-add-icon {
-  font-size: 26px;
+  font-size: var(--font-size-5xl);
   font-weight: 300;
   line-height: 1;
 }
 
 .shot-add-text {
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .form-textarea {
@@ -911,7 +911,7 @@ async function handleSubmit() {
   padding: 11px 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-family: inherit;
   resize: vertical;
   outline: none;
@@ -940,7 +940,7 @@ async function handleSubmit() {
   border: 1px solid var(--danger);
   border-radius: 10px;
   color: var(--danger);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   margin: 0 0 20px;
 }
 
@@ -956,7 +956,7 @@ async function handleSubmit() {
   color: white;
   border: none;
   border-radius: 12px;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.25s;
@@ -1010,19 +1010,19 @@ async function handleSubmit() {
 }
 
 .success-icon {
-  font-size: 36px;
+  font-size: var(--font-size-8xl);
 }
 
 .success-state h2 {
   margin: 0 0 8px;
-  font-size: 24px;
+  font-size: var(--font-size-4xl);
   color: var(--text-primary);
 }
 
 .success-desc {
   margin: 0 0 28px;
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
 }
 
 .success-actions {
@@ -1037,7 +1037,7 @@ async function handleSubmit() {
   gap: 6px;
   padding: 11px 24px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;

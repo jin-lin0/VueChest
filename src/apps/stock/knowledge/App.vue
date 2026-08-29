@@ -483,7 +483,7 @@ const confidenceLabel = (c: number) => {
   height: 100vh;
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-body);
 }
 .kb-header {
   display: flex;
@@ -507,7 +507,7 @@ const confidenceLabel = (c: number) => {
   background: var(--bg-page);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   white-space: nowrap;
 }
 .kb-back:hover {
@@ -515,16 +515,16 @@ const confidenceLabel = (c: number) => {
   color: var(--accent);
 }
 .kb-logo {
-  font-size: 28px;
+  font-size: var(--font-size-5xl);
 }
 .kb-title h1 {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   margin: 0;
 }
 .kb-sub {
   margin: 2px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .kb-actions {
   display: flex;
@@ -589,7 +589,7 @@ const confidenceLabel = (c: number) => {
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   padding: 40px;
   text-align: center;
 }
@@ -617,7 +617,7 @@ const confidenceLabel = (c: number) => {
   margin-bottom: 18px;
 }
 .kb-side-h {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   margin-bottom: 8px;
   font-weight: 600;
@@ -634,7 +634,7 @@ const confidenceLabel = (c: number) => {
   color: var(--text-primary);
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .kb-cat:hover {
   background: var(--bg-page);
@@ -651,7 +651,7 @@ const confidenceLabel = (c: number) => {
 }
 .kb-cat span {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   opacity: 0.7;
 }
 .kb-tags {
@@ -660,7 +660,7 @@ const confidenceLabel = (c: number) => {
   gap: 6px;
 }
 .kb-tag {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   padding: 4px 8px;
   border-radius: 20px;
   border: 1px solid var(--border-light);
@@ -690,7 +690,7 @@ const confidenceLabel = (c: number) => {
   gap: 14px;
   margin-bottom: 12px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 .kb-sort {
   cursor: pointer;
@@ -728,12 +728,12 @@ const confidenceLabel = (c: number) => {
 }
 .kb-badge {
   color: var(--text-inverse);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   padding: 2px 8px;
   border-radius: 6px;
 }
 .kb-conf {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   padding: 2px 8px;
   border-radius: 6px;
   background: var(--bg-page);
@@ -756,12 +756,12 @@ const confidenceLabel = (c: number) => {
 }
 .kb-card h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
 }
 .kb-summary {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   line-height: 1.5;
 }
 .kb-card-tags {
@@ -770,7 +770,7 @@ const confidenceLabel = (c: number) => {
   gap: 4px;
 }
 .kb-ctag {
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   color: var(--accent);
   background: rgba(var(--accent-rgb), 0.08);
   padding: 1px 6px;
@@ -806,13 +806,13 @@ const confidenceLabel = (c: number) => {
 .kb-x {
   border: none;
   background: transparent;
-  font-size: 16px;
+  font-size: var(--font-size-title);
   color: var(--text-muted);
   cursor: pointer;
 }
 .kb-detail-title {
   margin: 10px 0 4px;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .kb-detail-sum {
   margin: 0 0 10px;
@@ -822,7 +822,7 @@ const confidenceLabel = (c: number) => {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   margin-bottom: 8px;
 }
@@ -837,7 +837,7 @@ const confidenceLabel = (c: number) => {
   padding-top: 12px;
 }
 .kb-h {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   font-weight: 600;
   margin: 14px 0 6px;
 }
@@ -845,7 +845,7 @@ const confidenceLabel = (c: number) => {
 .kb-future ul {
   margin: 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
 }
 .kb-cits li {
@@ -864,7 +864,7 @@ const confidenceLabel = (c: number) => {
   border-radius: 6px;
   padding: 6px 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-control);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -884,7 +884,7 @@ const confidenceLabel = (c: number) => {
 }
 .kb-graph-bar {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-control);
   margin-bottom: 6px;
 }
 .kb-graph-bar b {
@@ -926,7 +926,7 @@ const confidenceLabel = (c: number) => {
   stroke-width: 3;
 }
 .kb-node-label {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   fill: var(--text-primary);
   text-anchor: middle;
   pointer-events: none;
@@ -949,13 +949,13 @@ const confidenceLabel = (c: number) => {
   margin-bottom: 6px;
 }
 .kb-gi-title {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   font-weight: 600;
   margin-bottom: 4px;
 }
 .kb-gi-sum {
   margin: 0 0 10px;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -977,10 +977,10 @@ const confidenceLabel = (c: number) => {
     gap: 8px;
   }
   .kb-logo {
-    font-size: 22px;
+    font-size: var(--font-size-heading);
   }
   .kb-title h1 {
-    font-size: 16px;
+    font-size: var(--font-size-title);
   }
   .kb-actions {
     width: 100%;
@@ -1056,7 +1056,7 @@ const confidenceLabel = (c: number) => {
   /* 移动端 SVG 受容器宽度限制被等比缩放（约 0.4 倍），viewBox 内字号会缩到 ~4px；
      放大 viewBox 单位的字号与节点半径，使缩放后实际像素接近桌面可读尺寸 */
   .kb-node-label {
-    font-size: 22px;
+    font-size: var(--font-size-heading);
   }
   .kb-node circle:not(.kb-hit) {
     r: 14;
@@ -1077,10 +1077,10 @@ const confidenceLabel = (c: number) => {
 /* 小屏手机（≤480px）微调 */
 @media (max-width: 480px) {
   .kb-logo {
-    font-size: 20px;
+    font-size: var(--font-size-heading);
   }
   .kb-title h1 {
-    font-size: 15px;
+    font-size: var(--font-size-body-lg);
   }
   .kb-sub {
     display: none;

@@ -218,7 +218,7 @@ function clearAll() {
 .card-title {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
   margin-bottom: 0.7rem;
 }
 .card-head {
@@ -239,7 +239,7 @@ function clearAll() {
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.7rem;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
 }
 .plain:focus {
@@ -250,7 +250,7 @@ function clearAll() {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
   cursor: pointer;
   margin-right: 0.8rem;
@@ -269,7 +269,7 @@ function clearAll() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: 0.5rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   outline: none;
   width: 100%;
 }
@@ -295,7 +295,7 @@ function clearAll() {
 }
 .res-label {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   min-width: 96px;
   flex-shrink: 0;
 }
@@ -303,7 +303,7 @@ function clearAll() {
   flex: 1;
   min-width: 0;
   word-break: break-all;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   color: var(--text-body);
   background: var(--bg-input);
   border: 1px solid var(--border-light);
@@ -317,7 +317,7 @@ function clearAll() {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: var(--transition-fast);
   white-space: nowrap;
 }
@@ -335,7 +335,7 @@ function clearAll() {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xs);
   padding: 0.25rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -350,12 +350,12 @@ function clearAll() {
 }
 .err {
   color: var(--danger, #ef4444);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }
 .hint {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
   line-height: 1.5;
 }

@@ -230,14 +230,14 @@ onMounted(async () => {
 .page-header h1 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1.6rem;
+  font-size: var(--font-size-4xl);
 }
 
 .page-header p,
 .app-copy small,
 .app-facts dt {
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
 }
 
 .back-btn,
@@ -256,7 +256,7 @@ onMounted(async () => {
 .action-message {
   margin-bottom: 0.8rem;
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 
 .installed-list {
@@ -282,7 +282,7 @@ onMounted(async () => {
   place-items: center;
   border-radius: 13px;
   background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
-  font-size: 1.8rem;
+  font-size: var(--font-size-5xl);
 }
 
 .app-copy {
@@ -297,7 +297,7 @@ onMounted(async () => {
   border-radius: 999px;
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 0.7rem;
+  font-size: var(--font-size-meta);
 }
 
 .app-facts {
@@ -314,7 +314,7 @@ onMounted(async () => {
 .app-facts dd {
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 0.84rem;
+  font-size: var(--font-size-control);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

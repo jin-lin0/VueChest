@@ -502,7 +502,7 @@ onActivated(reloadProfile)
 }
 .header-tools > button {
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .header-left > button {
   width: 38px;
@@ -522,11 +522,11 @@ onActivated(reloadProfile)
   flex-direction: column;
 }
 .header-left strong {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .header-left small {
   color: #75849e;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .refresh-button {
   padding: 8px 11px;
@@ -563,10 +563,10 @@ onActivated(reloadProfile)
 }
 .overview-strip small {
   color: #75849e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .overview-strip strong {
-  font-size: 20px;
+  font-size: var(--font-size-heading);
 }
 .center-layout {
   display: grid;
@@ -583,7 +583,7 @@ onActivated(reloadProfile)
 .section-heading h1,
 .section-heading h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--font-size-heading);
 }
 .section-heading small {
   color: #75849e;
@@ -665,7 +665,7 @@ onActivated(reloadProfile)
   flex-direction: column;
 }
 .card-title strong {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .card-title small,
 .card-body p {
@@ -673,11 +673,11 @@ onActivated(reloadProfile)
 }
 .card-title small {
   margin-top: 2px;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .card-body p {
   margin: 13px 0;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   line-height: 1.6;
 }
 .game-tags {
@@ -690,7 +690,7 @@ onActivated(reloadProfile)
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   color: #91a0b7;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .card-body > button {
   display: inline-flex;
@@ -738,15 +738,15 @@ onActivated(reloadProfile)
 }
 .side-card header small {
   color: #75849e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .challenge-card h2 {
   margin: 18px 0 5px;
-  font-size: 22px;
+  font-size: var(--font-size-heading);
 }
 .challenge-card > p {
   color: #8795aa;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .challenge-card > button,
 .text-link {
@@ -768,7 +768,7 @@ onActivated(reloadProfile)
   display: block;
   margin-top: 15px;
   color: #6bc8ff;
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .record-grid {
   display: grid;
@@ -785,7 +785,7 @@ onActivated(reloadProfile)
 }
 .record-grid small {
   color: #75849e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .record-grid strong {
   margin-top: 3px;
@@ -810,7 +810,7 @@ onActivated(reloadProfile)
 }
 .recent-card > button small {
   color: #75849e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .achievement-section {
   margin-top: 24px;
@@ -855,11 +855,11 @@ onActivated(reloadProfile)
 }
 .achievement-grid small {
   color: #75849e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .achievement-grid b {
   color: #75849e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .achievement-grid .unlocked b {
   color: #6bc8ff;
@@ -898,11 +898,11 @@ onActivated(reloadProfile)
 }
 .result-history-grid small {
   color: #75849e;
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .result-history-grid b {
   color: #91a0b7;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 .result-history-grid b.win {
   color: #6bc8ff;
@@ -971,7 +971,7 @@ onActivated(reloadProfile)
     padding: 11px;
   }
   .overview-strip strong {
-    font-size: 16px;
+    font-size: var(--font-size-title);
   }
 }
 </style>

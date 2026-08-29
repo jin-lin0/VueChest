@@ -897,7 +897,7 @@ onUnmounted(detachDocumentClickListener)
   border-radius: 12px;
   background: linear-gradient(135deg, var(--desk-primary), var(--desk-secondary));
   color: white;
-  font-size: 19px;
+  font-size: var(--font-size-heading);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
 }
 
@@ -910,7 +910,7 @@ onUnmounted(detachDocumentClickListener)
 .brand-copy strong {
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -918,7 +918,7 @@ onUnmounted(detachDocumentClickListener)
 .brand-copy small {
   margin-top: 4px;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.14em;
 }
@@ -959,7 +959,7 @@ onUnmounted(detachDocumentClickListener)
   height: 36px;
   place-items: center;
   border-radius: 50%;
-  font-size: 16px;
+  font-size: var(--font-size-title);
 }
 
 .workspace-shell {
@@ -992,7 +992,7 @@ onUnmounted(detachDocumentClickListener)
 
 .command-search-icon {
   color: var(--desk-primary);
-  font-size: 20px;
+  font-size: var(--font-size-heading);
   line-height: 1;
 }
 
@@ -1002,7 +1002,7 @@ kbd {
   border-radius: 6px;
   background: var(--bg-hover);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
   font-weight: 700;
 }
 
@@ -1074,7 +1074,7 @@ kbd {
 .add-workspace {
   width: 34px;
   height: 34px;
-  font-size: 20px;
+  font-size: var(--font-size-heading);
 }
 
 .add-workspace:hover,
@@ -1125,21 +1125,21 @@ kbd {
 .section-index {
   color: var(--desk-primary);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-style: italic;
   font-weight: 800;
 }
 
 .section-heading h2 {
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
 .section-note {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .quick-list {
@@ -1175,7 +1175,7 @@ kbd {
   place-items: center;
   border-radius: 8px;
   background: var(--bg-hover);
-  font-size: 16px;
+  font-size: var(--font-size-title);
 }
 
 .day-strip {
@@ -1191,7 +1191,7 @@ kbd {
 }
 
 .day-emoji {
-  font-size: 25px;
+  font-size: var(--font-size-4xl);
 }
 
 .day-copy {
@@ -1208,7 +1208,7 @@ kbd {
 .day-copy small,
 .day-count small {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .day-count {
@@ -1219,7 +1219,7 @@ kbd {
 
 .day-count strong {
   font-family: Georgia, serif;
-  font-size: 25px;
+  font-size: var(--font-size-4xl);
 }
 
 .local-search {
@@ -1312,7 +1312,7 @@ kbd {
 
 .drag-handle {
   cursor: grab;
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 
 .drag-handle:active {
@@ -1342,7 +1342,7 @@ kbd {
   border: 1px solid var(--border-light);
   border-radius: 15px;
   background: var(--bg-hover);
-  font-size: 23px;
+  font-size: var(--font-size-4xl);
 }
 
 .app-copy {
@@ -1352,7 +1352,7 @@ kbd {
 .app-copy h3 {
   margin: 2px 0 7px;
   color: var(--text-primary);
-  font-size: 17px;
+  font-size: var(--font-size-title-lg);
   letter-spacing: -0.02em;
 }
 
@@ -1360,7 +1360,7 @@ kbd {
   display: -webkit-box;
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   line-height: 1.6;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -1395,7 +1395,7 @@ kbd {
   border-radius: 50%;
   background: var(--bg-hover);
   color: var(--desk-primary);
-  font-size: 25px;
+  font-size: var(--font-size-4xl);
 }
 
 .empty-workspace h3 {
@@ -1403,7 +1403,7 @@ kbd {
 }
 
 .empty-workspace p {
-  font-size: 13px;
+  font-size: var(--font-size-control);
 }
 
 .empty-workspace button {
@@ -1424,7 +1424,7 @@ kbd {
   padding: 20px 0 30px;
   border-top: 1px solid var(--border-light);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .sync-status {
@@ -1528,12 +1528,12 @@ kbd {
 
 .setting-copy strong {
   color: var(--text-primary);
-  font-size: 0.92rem;
+  font-size: var(--font-size-body-lg);
 }
 
 .setting-copy small {
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
 }
 
 .setting-switch {
@@ -1595,7 +1595,7 @@ kbd {
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: var(--font-size-small);
   font-weight: 600;
 }
 
@@ -1679,7 +1679,7 @@ kbd {
 }
 
 .manager-icon {
-  font-size: 23px;
+  font-size: var(--font-size-4xl);
 }
 
 .manager-copy {
@@ -1698,7 +1698,7 @@ kbd {
 
 .manager-copy small {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 
 .checkmark {
@@ -1728,7 +1728,7 @@ kbd {
   flex-direction: column;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 700;
 }
 
@@ -1740,7 +1740,7 @@ kbd {
   outline: none;
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
 }
 
 .workspace-form input:focus {
@@ -1817,13 +1817,13 @@ kbd {
 
 .data-manager h3 {
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
 }
 
 .data-manager p,
 .data-manager small {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .data-manager button,
@@ -1852,13 +1852,13 @@ kbd {
 .backdoor-section h4 {
   margin: 0 0 0.4rem;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 
 .backdoor-desc {
   margin: 0 0 1rem;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 
 .backdoor-divider {
@@ -1876,7 +1876,7 @@ kbd {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   font-weight: 600;
   transition: all 0.2s ease;
 }
@@ -1935,7 +1935,7 @@ kbd {
   background: var(--bg-card);
   color: var(--text-primary);
   font-family: Monaco, Menlo, monospace;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
   transition: border-color 0.2s ease;
 }
 
@@ -1946,7 +1946,7 @@ kbd {
 .backdoor-status {
   margin: 0.8rem 0 0;
   color: #e74c3c;
-  font-size: 0.85rem;
+  font-size: var(--font-size-body);
 }
 
 .backdoor-status.success {
@@ -2170,13 +2170,13 @@ kbd {
   border-radius: 14px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
-  font-size: 1.4rem;
+  font-size: var(--font-size-4xl);
 }
 
 .brand-copy strong {
   background: linear-gradient(135deg, #2c3e50, #667eea, #764ba2);
   background-clip: text;
-  font-size: 1.6rem;
+  font-size: var(--font-size-4xl);
   line-height: 1.2;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -2185,7 +2185,7 @@ kbd {
 .brand-copy small {
   margin-top: 1px;
   color: #667eea;
-  font-size: 0.68rem;
+  font-size: var(--font-size-meta);
   font-weight: 600;
   letter-spacing: 0.08em;
 }
@@ -2217,7 +2217,7 @@ kbd {
 
 .command-search-icon {
   color: inherit;
-  font-size: 0.95rem;
+  font-size: var(--font-size-body-lg);
   opacity: 0.5;
 }
 
@@ -2229,7 +2229,7 @@ kbd {
   outline: 0;
   background: transparent;
   color: var(--text-primary);
-  font-size: 0.92rem;
+  font-size: var(--font-size-body-lg);
 }
 
 .command-trigger input::placeholder {
@@ -2243,7 +2243,7 @@ kbd {
   background: var(--bg-hover);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.68rem;
+  font-size: var(--font-size-meta);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -2285,7 +2285,7 @@ kbd {
 .workspace-tab {
   padding: 0.48rem 0.75rem;
   border-radius: 9px;
-  font-size: 0.84rem;
+  font-size: var(--font-size-control);
 }
 
 .workspace-tab:hover {
@@ -2310,7 +2310,7 @@ kbd {
   border-radius: 9px;
   background: transparent;
   color: #667eea;
-  font-size: 0.82rem;
+  font-size: var(--font-size-control);
 }
 
 .workspace-tools button:hover {
@@ -2435,7 +2435,7 @@ kbd {
   border: 0;
   border-radius: 18px;
   background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
-  font-size: 3rem;
+  font-size: var(--font-size-9xl);
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -2446,14 +2446,14 @@ kbd {
 .app-copy h3 {
   margin: 0 0 0.5rem;
   color: var(--text-primary);
-  font-size: 1.18rem;
+  font-size: var(--font-size-title-lg);
   font-weight: 700;
 }
 
 .app-copy p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.84rem;
+  font-size: var(--font-size-control);
   line-height: 1.5;
   -webkit-line-clamp: 3;
 }
@@ -2474,16 +2474,16 @@ kbd {
   flex-basis: 48px;
   margin-bottom: 0.55rem;
   border-radius: 13px;
-  font-size: 1.9rem;
+  font-size: var(--font-size-6xl);
 }
 
 .compact-cards .app-copy h3 {
   margin-bottom: 0.25rem;
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 
 .compact-cards .app-copy p {
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   -webkit-line-clamp: 2;
 }
 
@@ -2522,7 +2522,7 @@ kbd {
   }
 
   .brand-copy strong {
-    font-size: 1.3rem;
+    font-size: var(--font-size-heading);
   }
 
   .command-trigger {
@@ -2563,15 +2563,15 @@ kbd {
     flex-basis: 52px;
     margin-bottom: 0.6rem;
     border-radius: 14px;
-    font-size: 2rem;
+    font-size: var(--font-size-6xl);
   }
 
   .app-copy h3 {
-    font-size: 1rem;
+    font-size: var(--font-size-title);
   }
 
   .app-copy p {
-    font-size: 0.78rem;
+    font-size: var(--font-size-small);
     -webkit-line-clamp: 2;
   }
 

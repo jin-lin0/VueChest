@@ -250,13 +250,13 @@ onMounted(() => {
 .page-header h1 {
   margin: 0.7rem 0 0;
   color: var(--text-primary);
-  font-size: 1.7rem;
+  font-size: var(--font-size-5xl);
 }
 
 .page-header p,
 .preview-card p {
   color: var(--text-secondary);
-  font-size: 0.84rem;
+  font-size: var(--font-size-control);
 }
 
 .back-btn,
@@ -303,7 +303,7 @@ onMounted(() => {
 .templates-page section > h2 {
   margin-bottom: 0.7rem;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 
 .template-grid {
@@ -329,7 +329,7 @@ onMounted(() => {
 }
 
 .template-card > span {
-  font-size: 2rem;
+  font-size: var(--font-size-6xl);
 }
 
 .template-card small {
@@ -356,7 +356,7 @@ onMounted(() => {
 }
 
 .preview-head > span {
-  font-size: 2rem;
+  font-size: var(--font-size-6xl);
 }
 
 .preview-head h2 {
@@ -376,7 +376,7 @@ onMounted(() => {
   border-radius: 999px;
   background: var(--tag-bg);
   color: var(--text-secondary);
-  font-size: 0.76rem;
+  font-size: var(--font-size-small);
 }
 
 .missing-note {

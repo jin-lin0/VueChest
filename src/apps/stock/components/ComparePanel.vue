@@ -142,11 +142,11 @@ async function run() {
   border-bottom: 1px solid var(--border-light);
 }
 .panel-heading h2 {
-  font-size: 18px;
+  font-size: var(--font-size-title-lg);
 }
 .panel-heading p {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-meta);
 }
 .panel-heading button {
   min-height: 38px;
@@ -186,7 +186,7 @@ async function run() {
 .compare-picker small,
 .compare-metrics small {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
 }
 .compare-metrics {
   display: grid;
@@ -212,7 +212,7 @@ async function run() {
   flex-direction: column;
 }
 .compare-metrics b {
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 .panel-empty {
   display: grid;

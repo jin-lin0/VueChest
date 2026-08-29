@@ -254,7 +254,7 @@ onMounted(() => {
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text);
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   outline: none;
   transition:
     border-color 0.2s,
@@ -287,7 +287,7 @@ onMounted(() => {
 }
 
 .suggest-group-title {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-dim);
   padding: 6px 12px 4px;
   font-weight: 600;
@@ -300,7 +300,7 @@ onMounted(() => {
   padding: 9px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--text);
   transition: background 0.18s;
 }
@@ -316,7 +316,7 @@ onMounted(() => {
 }
 
 .suggest-extra {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--text-dim);
   flex-shrink: 0;
 }
@@ -332,7 +332,7 @@ onMounted(() => {
 
 /* 结果头部 */
 .result-head {
-  font-size: 13px;
+  font-size: var(--font-size-control);
   color: var(--text-secondary);
   margin-bottom: 10px;
 }
@@ -359,7 +359,7 @@ onMounted(() => {
 }
 
 .history-remove {
-  font-size: 15px;
+  font-size: var(--font-size-body-lg);
   line-height: 1;
   color: var(--text-dim);
   cursor: pointer;
