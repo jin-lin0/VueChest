@@ -15,11 +15,13 @@ import {
   renameConversation,
   resolveModelSelection,
   type ProviderMeta,
+  type ModelOption,
   type ChatMessage,
   type ConversationSummary,
 } from './config'
 import { suggestionPool } from './suggestions'
-import { useChatStream } from './composables/useChatStream'
+import { ChatStreamError, useChatStream } from './composables/useChatStream'
+import { resolveModelFailure } from './model-failure'
 import {
   conversationToJson,
   conversationToMarkdown,
@@ -81,6 +83,25 @@ const modelOptions = computed<SelectOption[]>(() =>
 
 const showSidebar = ref(true)
 const error = ref('')
+const suggestedModel = ref<ModelOption | null>(null)
+
+function showError(message: string, suggestion: ModelOption | null = null) {
+  error.value = message
+  suggestedModel.value = suggestion
+}
+
+function clearError() {
+  error.value = ''
+  suggestedModel.value = null
+}
+
+function switchToSuggestedModel() {
+  if (!suggestedModel.value) return
+  selectedModel.value = suggestedModel.value.id
+  lastResolvedModel.value = ''
+  clearError()
+}
+
 /** 当前活跃流的 AbortController：切换会话/卸载时用于中止上一个流 */
 let activeController: AbortController | null = null
 
@@ -175,7 +196,7 @@ const deleteSession = async (id: string) => {
   const idx = sessions.value.findIndex((s) => s.id === id)
   if (idx === -1) return
   if (id === currentSessionId.value && isLoading.value) {
-    error.value = '请等待当前回答结束后再删除会话'
+    showError('请等待当前回答结束后再删除会话')
     return
   }
 
@@ -188,7 +209,7 @@ const deleteSession = async (id: string) => {
         ? Number((reason as { status?: unknown }).status)
         : 0
     if (status !== 404) {
-      error.value = reason instanceof Error ? reason.message : '删除会话失败'
+      showError(reason instanceof Error ? reason.message : '删除会话失败')
       return
     }
   }
@@ -230,7 +251,7 @@ const loadSessions = async (options: { query?: string; page?: number; append?: b
     if (!query) saveSessions()
   } catch (reason) {
     if (!options.append && !query) sessions.value = localFallback
-    error.value = reason instanceof Error ? reason.message : '加载会话列表失败'
+    showError(reason instanceof Error ? reason.message : '加载会话列表失败')
   } finally {
     sessionsLoading.value = false
   }
@@ -252,7 +273,7 @@ const renameSession = async (id: string, title: string) => {
     if (session) session.title = title.trim()
     saveSessions()
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '重命名会话失败'
+    showError(reason instanceof Error ? reason.message : '重命名会话失败')
   }
 }
 
@@ -264,7 +285,7 @@ const loadProviders = async () => {
     if (list.length === 0) {
       selectedProviderId.value = ''
       selectedModel.value = ''
-      error.value = '没有可用的 AI 平台或免费模型'
+      showError('没有可用的 AI 平台或免费模型')
       return
     }
     const stored = getStorage<string>(STORAGE_KEYS.AI_CHAT_PROVIDER, '')
@@ -281,7 +302,7 @@ const loadProviders = async () => {
         )
       : ''
   } catch {
-    error.value = '加载平台列表失败，请检查服务端是否已启动并配置 API Key'
+    showError('加载平台列表失败，请检查服务端是否已启动并配置 API Key')
   }
 }
 
@@ -362,12 +383,17 @@ const sendMessage = async (options: SendOptions = {}) => {
     return
   }
 
-  error.value = ''
+  clearError()
 
   // 开始新请求前先释放可能仍在进行的上一个流，确保同一时刻只有一条活跃流
   abortActiveStream()
   activeController = new AbortController()
   const streamSignal = activeController.signal
+  const requestProviderId = selectedProviderId.value
+  const requestProvider =
+    providers.value.find((provider) => provider.id === requestProviderId) || currentProvider.value
+  const requestModelId = selectedModel.value
+  let resolvedRequestModelId = ''
 
   const convId = currentSessionId.value || createSession().id
   currentSessionId.value = convId
@@ -439,13 +465,14 @@ const sendMessage = async (options: SendOptions = {}) => {
     try {
       for await (const delta of streamChat({
         conversationId: convId,
-        provider: selectedProviderId.value,
-        model: selectedModel.value,
+        provider: requestProviderId,
+        model: requestModelId,
         messages: apiMessages,
         signal: streamSignal,
         mode,
         replaceFromMessageId,
         onModelResolved: (usedModel) => {
+          resolvedRequestModelId = usedModel
           if (currentSessionId.value !== streamSessionId) return
           lastResolvedModel.value = usedModel
           if (!currentProvider.value.models.some((option) => option.id === usedModel)) return
@@ -498,8 +525,10 @@ const sendMessage = async (options: SendOptions = {}) => {
       saveSessions()
     }
   } catch (err: unknown) {
-    const errMsg = err instanceof Error ? err.message : '请求出错，请检查网络'
-    error.value = errMsg
+    const code = err instanceof ChatStreamError ? err.code : 'AI_STREAM_ERROR'
+    const failedModelId = resolvedRequestModelId || requestModelId
+    const notice = resolveModelFailure(requestProvider.models, failedModelId, code)
+    showError(notice.message, notice.suggestedModel)
     if (rollbackMessages) {
       currentMessages.value = rollbackMessages
       return
@@ -507,7 +536,7 @@ const sendMessage = async (options: SendOptions = {}) => {
     const errorMessage: Message = {
       id: generateId(),
       role: 'assistant',
-      content: `❌ 错误: ${errMsg}`,
+      content: `❌ ${notice.message}`,
       timestamp: Date.now(),
     }
     currentMessages.value.push(errorMessage)
@@ -900,7 +929,17 @@ onUnmounted(() => {
 
       <div v-if="error" class="error-bar">
         <span>{{ error }}</span>
-        <button @click="error = ''">×</button>
+        <div class="error-actions">
+          <button
+            v-if="suggestedModel"
+            class="error-switch"
+            :title="`切换到 ${suggestedModel.name}`"
+            @click="switchToSuggestedModel"
+          >
+            切换到 {{ suggestedModel.name }}
+          </button>
+          <button class="error-dismiss" aria-label="关闭错误提示" @click="clearError">×</button>
+        </div>
       </div>
 
       <div class="input-area">
@@ -1279,7 +1318,7 @@ onUnmounted(() => {
 .error-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   padding: 8px 16px;
   background: var(--danger-bg);
   border-top: 1px solid var(--border);
@@ -1287,7 +1326,38 @@ onUnmounted(() => {
   font-size: var(--font-size-control);
 }
 
-.error-bar button {
+.error-bar > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.error-bar .error-switch {
+  max-width: min(320px, 40vw);
+  padding: 5px 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--danger);
+  cursor: pointer;
+  font-size: var(--font-size-small);
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error-bar .error-switch:hover {
+  border-color: var(--danger);
+}
+
+.error-bar .error-dismiss {
   background: none;
   border: none;
   color: var(--danger);
@@ -1507,6 +1577,21 @@ onUnmounted(() => {
   .messages-area {
     padding: 12px;
     gap: 12px;
+  }
+
+  .error-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .error-actions {
+    justify-content: flex-end;
+  }
+
+  .error-bar .error-switch {
+    max-width: calc(100vw - 64px);
   }
 
   .message {

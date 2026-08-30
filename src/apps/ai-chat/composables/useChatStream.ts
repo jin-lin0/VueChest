@@ -70,21 +70,27 @@ export function useChatStream() {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
 
-    const response = await fetch(`${API_BASE}/api/ai-chat/chat`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        conversationId,
-        provider,
-        model,
-        messages,
-        maxTokens,
-        temperature,
-        mode,
-        replaceFromMessageId,
-      }),
-      signal,
-    })
+    let response: Response
+    try {
+      response = await fetch(`${API_BASE}/api/ai-chat/chat`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          conversationId,
+          provider,
+          model,
+          messages,
+          maxTokens,
+          temperature,
+          mode,
+          replaceFromMessageId,
+        }),
+        signal,
+      })
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') throw error
+      throw new ChatStreamError('AI 服务连接中断', 'NETWORK_ERROR')
+    }
 
     if (!response.ok) {
       let msg = `请求失败: ${response.status}`
@@ -154,6 +160,10 @@ export function useChatStream() {
           if (typeof delta === 'string' && delta) yield delta
         }
       }
+    } catch (error) {
+      if (error instanceof ChatStreamError) throw error
+      if (error instanceof Error && error.name === 'AbortError') throw error
+      throw new ChatStreamError('AI 响应连接中断', 'NETWORK_ERROR')
     } finally {
       // 无论正常结束、出错还是被 abort，都取消 reader 释放底层网络流
       try {
