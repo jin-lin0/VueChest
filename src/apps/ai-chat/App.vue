@@ -79,7 +79,6 @@ const modelOptions = computed<SelectOption[]>(() =>
   }),
 )
 
-const showSettings = ref(false)
 const showSidebar = ref(true)
 const error = ref('')
 /** 当前活跃流的 AbortController：切换会话/卸载时用于中止上一个流 */
@@ -728,7 +727,12 @@ onUnmounted(() => {
             size="sm"
             @change="(v) => selectProvider(v)"
           />
-          <CustomSelect v-model="selectedModel" :options="modelOptions" size="sm" />
+          <CustomSelect
+            v-model="selectedModel"
+            :options="modelOptions"
+            :dropdown-min-width="320"
+            size="sm"
+          />
         </div>
         <div class="header-actions">
           <button
@@ -760,45 +764,8 @@ onUnmounted(() => {
               />
             </svg>
           </button>
-          <button class="btn-icon" @click="showSettings = !showSettings" title="设置">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <circle cx="12" cy="12" r="3" />
-              <path
-                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
-              />
-            </svg>
-          </button>
         </div>
       </header>
-
-      <div v-if="showSettings" class="settings-panel">
-        <div class="settings-content">
-          <div class="setting-item">
-            <label>平台</label>
-            <CustomSelect
-              v-model="selectedProviderId"
-              :options="providerOptions"
-              block
-              @change="(v) => selectProvider(v)"
-            />
-          </div>
-          <div class="setting-item">
-            <label>模型</label>
-            <CustomSelect v-model="selectedModel" :options="modelOptions" block />
-          </div>
-          <p v-if="currentProvider.id === 'openrouter'" class="setting-note">
-            免费模型按 OpenRouter 智能指数排序，第一项为推荐默认；到期日期表示免费供应结束时间。
-          </p>
-          <p v-else class="setting-note">API Key 由服务端配置，无需在此填写。</p>
-        </div>
-      </div>
 
       <div ref="messagesContainer" class="messages-area" @scroll="handleScroll">
         <div v-if="currentMessages.length === 0" class="welcome">
@@ -1073,51 +1040,6 @@ onUnmounted(() => {
 .text-action:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.settings-panel {
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border-light);
-  padding: 16px 20px;
-  animation: slideDown 0.2s ease;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.settings-content {
-  max-width: 480px;
-  margin: 0 auto;
-}
-
-.setting-item {
-  margin-bottom: 12px;
-}
-
-.setting-item:last-child {
-  margin-bottom: 0;
-}
-
-.setting-item label {
-  display: block;
-  font-size: var(--font-size-control);
-  font-weight: 500;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-
-.setting-note {
-  font-size: var(--font-size-small);
-  color: var(--text-muted);
-  margin: 8px 0 0;
 }
 
 .messages-area {
@@ -1523,16 +1445,40 @@ onUnmounted(() => {
   }
 
   .chat-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     padding: 8px 10px;
     gap: 8px;
   }
 
   .header-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
     min-width: 0;
     gap: 6px;
   }
 
+  .header-center :deep(.custom-select) {
+    min-width: 0;
+  }
+
+  .header-center :deep(.custom-select:first-child) {
+    flex: 1 1 38%;
+  }
+
+  .header-center :deep(.custom-select:last-child) {
+    flex: 1 1 62%;
+  }
+
+  .header-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
   .sidebar-toggle {
+    grid-column: 1;
+    grid-row: 1;
     flex-shrink: 0;
   }
 

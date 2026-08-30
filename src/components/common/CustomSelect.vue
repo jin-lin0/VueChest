@@ -45,6 +45,7 @@
           v-if="isOpen"
           ref="dropdownRef"
           :style="dropdownStyle"
+          :data-placement="dropdownPlacement"
           @click.stop
         >
           <div class="dropdown-search" v-if="searchable">
@@ -108,7 +109,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted, nextTick, useId, watch, watchEffect } from 'vue'
-import { getHorizontalDropdownLayout } from './custom-select-layout'
+import { getHorizontalDropdownLayout, getVerticalDropdownLayout } from './custom-select-layout'
 
 export interface SelectOption {
   value: string | number
@@ -129,6 +130,7 @@ const props = withDefaults(
     size?: 'sm' | 'md' | 'lg'
     block?: boolean
     width?: string
+    dropdownMinWidth?: number
   }>(),
   {
     placeholder: '请选择',
@@ -138,6 +140,7 @@ const props = withDefaults(
     size: 'md',
     block: false,
     width: '',
+    dropdownMinWidth: 200,
   },
 )
 
@@ -155,6 +158,7 @@ const searchQuery = ref('')
 const activeIndex = ref(-1)
 // 下拉面板用 Teleport 送到 body，按触发器坐标 fixed 定位，避免被 overflow:auto 的弹窗裁切
 const dropdownStyle = ref<Record<string, string>>({})
+const dropdownPlacement = ref<'top' | 'bottom'>('bottom')
 
 const selectedOption = computed(() => {
   if (model.value === null || model.value === undefined) return undefined
@@ -280,32 +284,55 @@ function handleSearchKeydown(event: KeyboardEvent) {
   handleKeyboard(event)
 }
 
-// 根据触发器位置计算下拉面板 fixed 定位；底部空间不足时自动上翻
+// 根据触发器和可视视口计算 fixed 定位；窄触发器保留可读宽度，垂直空间不足时自动翻转/限高
 function positionDropdown() {
   const el = selectRef.value
   if (!el) return
   const r = el.getBoundingClientRect()
   const viewportPadding = 8
+  const visualViewport = window.visualViewport
+  const viewportLeft = visualViewport?.offsetLeft ?? 0
+  const viewportTop = visualViewport?.offsetTop ?? 0
+  const viewportWidth = visualViewport?.width ?? window.innerWidth
+  const viewportHeight = visualViewport?.height ?? window.innerHeight
   const { left, width } = getHorizontalDropdownLayout(
-    r.left,
+    r.left - viewportLeft,
     r.width,
-    window.innerWidth,
+    viewportWidth,
+    viewportPadding,
+    props.dropdownMinWidth,
+  )
+  const dd = dropdownRef.value
+  const { top, maxHeight, placement } = getVerticalDropdownLayout(
+    r.top,
+    r.bottom,
+    dd?.scrollHeight ?? 0,
+    viewportTop,
+    viewportHeight,
     viewportPadding,
   )
-  let top = r.bottom + 8
-  const dd = dropdownRef.value
-  if (dd) {
-    const ddHeight = dd.offsetHeight
-    if (top + ddHeight > window.innerHeight && r.top - 8 - ddHeight > 0) {
-      top = r.top - 8 - ddHeight
-    }
-  }
+  dropdownPlacement.value = placement
   dropdownStyle.value = {
     position: 'fixed',
     top: `${top}px`,
-    left: `${left}px`,
+    left: `${left + viewportLeft}px`,
     width: `${width}px`,
+    maxHeight: `${maxHeight}px`,
   }
+}
+
+function addPositionListeners() {
+  window.addEventListener('scroll', positionDropdown, true)
+  window.addEventListener('resize', positionDropdown)
+  window.visualViewport?.addEventListener('scroll', positionDropdown)
+  window.visualViewport?.addEventListener('resize', positionDropdown)
+}
+
+function removePositionListeners() {
+  window.removeEventListener('scroll', positionDropdown, true)
+  window.removeEventListener('resize', positionDropdown)
+  window.visualViewport?.removeEventListener('scroll', positionDropdown)
+  window.visualViewport?.removeEventListener('resize', positionDropdown)
 }
 
 function selectOption(option: SelectOption) {
@@ -325,18 +352,19 @@ watch(isOpen, (val) => {
   if (val) {
     document.addEventListener('click', handleClickOutside)
     // 弹窗/页面滚动或窗口尺寸变化时让下拉跟随触发器
-    window.addEventListener('scroll', positionDropdown, true)
-    window.addEventListener('resize', positionDropdown)
+    addPositionListeners()
     nextTick(positionDropdown)
   } else {
     document.removeEventListener('click', handleClickOutside)
-    window.removeEventListener('scroll', positionDropdown, true)
-    window.removeEventListener('resize', positionDropdown)
+    removePositionListeners()
     searchQuery.value = ''
   }
 })
 
-watch(filteredOptions, () => resetActiveIndex())
+watch(filteredOptions, () => {
+  resetActiveIndex()
+  if (isOpen.value) nextTick(positionDropdown)
+})
 
 watchEffect(() => {
   if (props.defaultFirst && model.value == null && props.options.length > 0) {
@@ -346,8 +374,7 @@ watchEffect(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
-  window.removeEventListener('scroll', positionDropdown, true)
-  window.removeEventListener('resize', positionDropdown)
+  removePositionListeners()
 })
 </script>
 
@@ -465,6 +492,8 @@ onUnmounted(() => {
 /* 下拉面板（已 Teleport 到 body，按触发器坐标 fixed 定位） */
 .select-dropdown {
   position: fixed;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-card);
   border-radius: 16px;
   box-shadow:
@@ -477,6 +506,7 @@ onUnmounted(() => {
 
 /* 搜索框 */
 .dropdown-search {
+  flex-shrink: 0;
   padding: 12px;
   border-bottom: 1px solid var(--border-light);
 }
@@ -504,6 +534,8 @@ onUnmounted(() => {
 
 /* 选项列表 */
 .dropdown-options {
+  flex: 0 1 auto;
+  min-height: 0;
   max-height: 280px;
   overflow-y: auto;
   padding: 6px;
@@ -613,9 +645,25 @@ onUnmounted(() => {
   }
 }
 
+.select-dropdown[data-placement='top'] {
+  transform-origin: bottom center;
+}
+
+.select-dropdown[data-placement='bottom'] {
+  transform-origin: top center;
+}
+
 @media (max-width: 768px) {
   .custom-select {
     min-width: 0;
+  }
+
+  .option-label {
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    line-height: 1.4;
   }
 }
 </style>
