@@ -22,8 +22,9 @@ const routeBudgets = [
   },
   {
     name: 'API 工作台',
-    budget: 80 * 1024,
+    budget: 95 * 1024,
     resolveKey: () => 'src/apps/api-manager/App.vue',
+    eagerDynamic: [{ source: 'src/apps/api-manager/defaults.ts' }],
   },
   {
     name: '面试题库',
@@ -37,15 +38,18 @@ const routeBudgets = [
   },
   {
     name: '题目编辑器',
-    budget: 70 * 1024,
+    // Markdown 编辑器在页面首帧就渲染，虽然通过 defineAsyncComponent 拆包，
+    // 仍属于首次进入成本。该后台页面允许更高预算，但必须如实计入编辑器 chunk。
+    budget: 400 * 1024,
     resolveKey: () =>
       manifest['src/views/admin/QuestionEditor.vue']
         ? 'src/views/admin/QuestionEditor.vue'
         : Object.keys(manifest).find((key) => key.startsWith('_QuestionEditor-')),
+    eagerDynamic: [{ name: 'QuestionMarkdownEditor' }],
   },
 ]
 
-function collectStaticGraph(entryKey) {
+function collectStaticGraph(entryKey, additionalEntries = []) {
   const keys = new Set()
   const visit = (key) => {
     if (!key || keys.has(key) || !manifest[key]) return
@@ -53,13 +57,33 @@ function collectStaticGraph(entryKey) {
     for (const imported of manifest[key].imports || []) visit(imported)
   }
   visit(entryKey)
+  additionalEntries.forEach(visit)
   return keys
 }
 
 const initialGraph = collectStaticGraph('index.html')
 
-function routeSize(entryKey) {
-  const graph = collectStaticGraph(entryKey)
+function resolveEagerDynamicEntries(entryKey, selectors = []) {
+  const dynamicKeys = manifest[entryKey]?.dynamicImports || []
+  return selectors.map((selector) => {
+    const key = dynamicKeys.find((candidate) => {
+      const chunk = manifest[candidate]
+      if (!chunk) return false
+      if (selector.source && (candidate === selector.source || chunk.src === selector.source))
+        return true
+      return selector.name && chunk.name === selector.name
+    })
+    if (!key) {
+      const label = selector.source || selector.name
+      throw new Error(`${entryKey} 未找到首帧动态入口 ${label}`)
+    }
+    return key
+  })
+}
+
+function routeSize(entryKey, eagerDynamic = []) {
+  const eagerEntries = resolveEagerDynamicEntries(entryKey, eagerDynamic)
+  const graph = collectStaticGraph(entryKey, eagerEntries)
   const files = new Set()
   for (const key of graph) {
     // 路由切换前入口公共依赖已加载，不重复计入路由增量成本。
@@ -87,7 +111,13 @@ for (const route of routeBudgets) {
     errors.push(`${route.name} 未在构建清单中找到入口`)
     continue
   }
-  const size = routeSize(key)
+  let size
+  try {
+    size = routeSize(key, route.eagerDynamic)
+  } catch (error) {
+    errors.push(`${route.name} ${error instanceof Error ? error.message : String(error)}`)
+    continue
+  }
   console.log(
     `- ${route.name}: ${(size.gzip / 1024).toFixed(1)} KB gzip / ${(size.raw / 1024).toFixed(1)} KB raw (${size.files} files)`,
   )

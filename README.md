@@ -89,7 +89,7 @@ pnpm dev
 pnpm build
 ```
 
-依次生成文档懒加载目录、执行 TypeScript 类型检查、Vite 构建、首屏预算和路由级预算检查。当前首屏预算限制入口 gzip ≤30KB、JavaScript 合计 ≤100KB；路由预算根据 Vite manifest 统计首次进入的静态依赖闭包，覆盖股票、API、面试、赛车和题目编辑器。产物输出到 `dist/`。
+依次生成文档懒加载目录、执行 TypeScript 类型检查、Vite 构建、首屏预算和路由级预算检查。当前首屏预算限制入口 gzip ≤30KB、JavaScript 合计 ≤100KB；路由预算根据 Vite manifest 统计首次进入的静态依赖闭包，并显式纳入首帧必触发的动态组件，覆盖股票、API、面试、赛车和题目编辑器。产物输出到 `dist/`。
 
 ### 预览构建产物
 

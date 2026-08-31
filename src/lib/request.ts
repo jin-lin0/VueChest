@@ -32,10 +32,18 @@ interface RequestConfig {
   headers?: Record<string, string>
   auth?: boolean
   signal?: AbortSignal
+  timeoutMs?: number
 }
 
 async function request<T = unknown>(path: string, config: RequestConfig = {}): Promise<T> {
-  const { method = 'GET', body, headers = {}, auth = true, signal } = config
+  const {
+    method = 'GET',
+    body,
+    headers = {},
+    auth = true,
+    signal,
+    timeoutMs = 0,
+  } = config
 
   const fetchHeaders: Record<string, string> = { ...headers }
 
@@ -46,28 +54,49 @@ async function request<T = unknown>(path: string, config: RequestConfig = {}): P
     }
   }
 
-  const fetchConfig: RequestInit = { method, headers: fetchHeaders, signal }
+  const controller = new AbortController()
+  let timedOut = false
+  const abortFromCaller = () => controller.abort(signal?.reason)
+  if (signal?.aborted) abortFromCaller()
+  else signal?.addEventListener('abort', abortFromCaller, { once: true })
+  const timeoutId =
+    timeoutMs > 0
+      ? setTimeout(() => {
+          timedOut = true
+          controller.abort()
+        }, timeoutMs)
+      : undefined
+
+  const fetchConfig: RequestInit = { method, headers: fetchHeaders, signal: controller.signal }
 
   if (body !== undefined && body !== null) {
     fetchHeaders['Content-Type'] = 'application/json'
     fetchConfig.body = JSON.stringify(body)
   }
 
-  const res = await fetch(`${API_BASE}${path}`, fetchConfig)
-
-  let json: ApiResponse<T>
   try {
-    json = await res.json()
-  } catch {
-    throw new ApiError('服务器响应格式错误', 'PARSE_ERROR', res.status)
-  }
+    const res = await fetch(`${API_BASE}${path}`, fetchConfig)
 
-  // 同时检查 HTTP 状态码和业务 success 字段，避免后端错误响应（无 success 字段）被当成成功
-  if (!res.ok || json.success === false) {
-    throw new ApiError(json.error || `请求失败 (${res.status})`, json.code, res.status)
-  }
+    let json: ApiResponse<T>
+    try {
+      json = await res.json()
+    } catch {
+      throw new ApiError('服务器响应格式错误', 'PARSE_ERROR', res.status)
+    }
 
-  return json as T
+    // 同时检查 HTTP 状态码和业务 success 字段，避免后端错误响应（无 success 字段）被当成成功
+    if (!res.ok || json.success === false) {
+      throw new ApiError(json.error || `请求失败 (${res.status})`, json.code, res.status)
+    }
+
+    return json as T
+  } catch (error) {
+    if (timedOut) throw new ApiError('请求超时，请稍后重试', 'TIMEOUT', 408)
+    throw error
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId)
+    signal?.removeEventListener('abort', abortFromCaller)
+  }
 }
 
 const api = {

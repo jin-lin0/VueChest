@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 import { api } from '@/lib/request'
 import { TOKEN_KEY, USER_INFO_KEY } from '@/lib/constants'
 
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 10_000
+
 export interface UserInfo {
   id: number
   username: string
@@ -54,7 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         const savedUser = localStorage.getItem(USER_INFO_KEY)
         if (savedUser) user.value = JSON.parse(savedUser)
-        await fetchUserInfo()
+        await fetchUserInfo({ timeoutMs: AUTH_BOOTSTRAP_TIMEOUT_MS })
       } catch {
         clearAuth()
       }
@@ -200,11 +202,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function fetchUserInfo(): Promise<boolean> {
+  async function fetchUserInfo(options: { timeoutMs?: number } = {}): Promise<boolean> {
     if (!token.value) return false
 
     try {
-      const { data } = await api.get<{ data: UserInfo }>('/api/auth/me')
+      const { data } = await api.get<{ data: UserInfo }>('/api/auth/me', options)
       user.value = data
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(data))
       return true

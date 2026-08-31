@@ -46,7 +46,7 @@ describe('auth initialization', () => {
     await store.initAuth()
 
     expect(mocks.apiGet).toHaveBeenCalledTimes(1)
-    expect(mocks.apiGet).toHaveBeenCalledWith('/api/auth/me')
+    expect(mocks.apiGet).toHaveBeenCalledWith('/api/auth/me', { timeoutMs: 10_000 })
     expect(store.isInitialized).toBe(true)
     expect(store.user).toEqual(user)
   })

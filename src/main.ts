@@ -103,7 +103,8 @@ runtimeWindow.__VueChest__ = {
 // 市场 app（运行时注入的纯 JS）读取主题的主通道
 runtimeWindow.__APP_THEME__ = appTheme
 
-initStorage().then(async () => {
+async function bootstrap() {
+  await initStorage()
   const app = createApp(App)
   const pinia = createPinia()
 
@@ -132,8 +133,31 @@ initStorage().then(async () => {
     if (geo) sessionStorage.setItem('client_geo', JSON.stringify(geo))
   })
 
-  // 跨设备同步：以服务端实时列表为唯一真源对账，不再信任 auth_user_info 缓存里的 installedApps
-  await marketStore.syncWithServer()
-  // 检查市场应用更新；仅在用户开启自动更新时下载新版本。
-  await marketStore.checkForUpdates({ autoApply: true })
+  void (async () => {
+    // 跨设备同步：以服务端实时列表为唯一真源对账，不再信任 auth_user_info 缓存里的 installedApps
+    await marketStore.syncWithServer()
+    // 检查市场应用更新；仅在用户开启自动更新时下载新版本。
+    await marketStore.checkForUpdates({ autoApply: true })
+  })().catch((error) => console.error('Market background sync failed:', error))
+}
+
+function renderBootstrapError() {
+  const root = document.querySelector<HTMLElement>('#app')
+  if (!root) return
+
+  const message = document.createElement('main')
+  message.setAttribute('role', 'alert')
+  message.textContent = 'VueChest 启动失败，请检查网络后重试。'
+
+  const retry = document.createElement('button')
+  retry.type = 'button'
+  retry.textContent = '重新加载'
+  retry.addEventListener('click', () => window.location.reload())
+
+  root.replaceChildren(message, retry)
+}
+
+void bootstrap().catch((error) => {
+  console.error('VueChest bootstrap failed:', error)
+  renderBootstrapError()
 })

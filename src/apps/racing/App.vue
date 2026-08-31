@@ -643,6 +643,7 @@ import { GhostRecorder, interpolateGhost, loadGhost, saveGhost, type GhostLap } 
 import { loadTrackEnvironment, loadTrackProps, preloadRaceAssets } from './assets'
 import { recordGameResult } from '@/apps/game-center/profile'
 import { useRacingGamepads } from './composables/useRacingGamepads'
+import { createRacingKeyboardControls, createRacingKeyboardHandlers } from './keyboard'
 import {
   DRIFT_LEVEL_LABELS,
   ITEM_LABELS,
@@ -946,18 +947,7 @@ const mobileControls = reactive({
   action: false,
 })
 
-const keyboardControls = reactive({
-  p1Left: false,
-  p1Right: false,
-  p1Gas: false,
-  p1Brake: false,
-  p2Left: false,
-  p2Right: false,
-  p2Gas: false,
-  p2Brake: false,
-  p1Action: false,
-  p2Action: false,
-})
+const keyboardControls = reactive(createRacingKeyboardControls())
 
 type MobileControl = keyof typeof mobileControls
 
@@ -2710,69 +2700,24 @@ function gameLoop() {
   updateMinimap()
 }
 
-// 键盘映射：p1=WASD, p2=方向键。合并 handleKeyDown/handleKeyUp 的对称分支。
-const KEY_BINDINGS: {
-  binding: keyof RacingSettings['keyBindings']
-  control: keyof typeof keyboardControls
-}[] = [
-  { binding: 'p1Left', control: 'p1Left' },
-  { binding: 'p1Right', control: 'p1Right' },
-  { binding: 'p1Gas', control: 'p1Gas' },
-  { binding: 'p1Brake', control: 'p1Brake' },
-  { binding: 'p1Action', control: 'p1Action' },
-  { binding: 'p2Left', control: 'p2Left' },
-  { binding: 'p2Right', control: 'p2Right' },
-  { binding: 'p2Gas', control: 'p2Gas' },
-  { binding: 'p2Brake', control: 'p2Brake' },
-  { binding: 'p2Action', control: 'p2Action' },
-]
-
-function applyKeyBinding(e: KeyboardEvent, value: boolean) {
-  const binding = KEY_BINDINGS.find((b) => racingSettings.keyBindings[b.binding] === e.key)
-  if (binding) keyboardControls[binding.control] = value
-}
-
-function handleKeyDown(e: KeyboardEvent) {
-  // 菜单界面：← → 快速切换玩家1赛车（此时方向键尚未绑定驾驶）
-  if (gameState.value === 'menu') {
-    if (e.key === 'ArrowLeft') {
-      prevCar(1)
-      return
+const { onKeyDown: handleKeyDown, onKeyUp: handleKeyUp } = createRacingKeyboardHandlers({
+  settings: racingSettings,
+  controls: keyboardControls,
+  getGameState: () => gameState.value,
+  getGameMode: () => gameMode.value,
+  onMenuPreviousCar: () => prevCar(1),
+  onMenuNextCar: () => nextCar(1),
+  onPlayerOneGasStart() {
+    if (canCaptureStartThrottle() && firstThrottleAt === null) {
+      firstThrottleAt = performance.now()
     }
-    if (e.key === 'ArrowRight') {
-      nextCar(1)
-      return
-    }
-  }
-  if (
-    canCaptureStartThrottle() &&
-    e.key === racingSettings.keyBindings.p1Gas &&
-    firstThrottleAt === null
-  ) {
-    firstThrottleAt = performance.now()
-  }
-  applyKeyBinding(e, true)
-
-  if (!e.repeat && e.key === racingSettings.keyBindings.p1Action) onActionPress(1)
-  if (!e.repeat && e.key === racingSettings.keyBindings.p2Action) onActionPress(2)
-  if (!e.repeat && e.key === racingSettings.keyBindings.p1Reset && gameState.value === 'playing')
-    resetRacer(player1Data, car1)
-  if (
-    !e.repeat &&
-    e.key === racingSettings.keyBindings.p2Reset &&
-    gameState.value === 'playing' &&
-    gameMode.value === 'multi'
-  )
-    resetRacer(player2Data, car2)
-
-  if (e.key === 'Escape' && gameState.value === 'playing') {
-    pauseGame()
-  }
-}
-
-function handleKeyUp(e: KeyboardEvent) {
-  applyKeyBinding(e, false)
-}
+  },
+  onAction: onActionPress,
+  onReset(player) {
+    resetRacer(player === 1 ? player1Data : player2Data, player === 1 ? car1 : car2)
+  },
+  onPause: pauseGame,
+})
 
 function handleResize() {
   if (!camera || !renderer) return

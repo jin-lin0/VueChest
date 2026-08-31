@@ -26,10 +26,9 @@ import Toast from '@/components/common/Toast.vue'
 import Modal from '@/components/common/Modal.vue'
 import WorkspaceRequestPicker from './components/WorkspaceRequestPicker.vue'
 import { useConfirm } from '@/composables/useConfirm'
-import { STORAGE_KEYS } from '@/config/storage-keys'
-import { getStorage, setStorage } from '@/lib/storage'
 import type { ApiItem } from './defaults'
 import { importApiDocument } from './importers'
+import { useApiManagerPersistence } from './useApiManagerPersistence'
 import {
   applyAuth,
   extractResponseVariables,
@@ -81,18 +80,26 @@ type CatalogScope = 'all' | 'featured' | 'pinned' | 'recent'
 type RequestTab = 'params' | 'headers' | 'body' | 'tests' | 'extract'
 type ResponseTab = 'preview' | 'headers' | 'tests'
 
-const LEGACY_USER_APIS_KEY = 'userApis'
-const LEGACY_PINNED_IDS_KEY = 'pinnedSystemIds'
 const router = useRouter()
 const route = useRoute()
 const { confirm } = useConfirm()
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
+const {
+  userApis,
+  pinnedSystemIds,
+  recentIds,
+  requestHistory,
+  environments,
+  activeEnvironmentId,
+  collections,
+  activeCollectionId,
+  savedRequests,
+  hydrate: hydratePersistentState,
+  persistWorkspace,
+} = useApiManagerPersistence()
+
 const defaultApis = ref<ApiItem[]>([])
-const userApis = ref<ApiItem[]>([])
-const pinnedSystemIds = ref<(string | number)[]>([])
-const recentIds = ref<(string | number)[]>([])
-const requestHistory = ref<RequestHistoryItem[]>([])
 const isCatalogLoading = ref(true)
 
 const searchQuery = ref('')
@@ -110,11 +117,6 @@ const error = ref<string | null>(null)
 const validationMessage = ref<string | null>(null)
 const isLoading = ref(false)
 const activeController = ref<AbortController | null>(null)
-const environments = ref<ApiEnvironment[]>([])
-const activeEnvironmentId = ref('')
-const collections = ref<ApiCollection[]>([])
-const activeCollectionId = ref('')
-const savedRequests = ref<SavedRequest[]>([])
 const assertions = ref<AssertionRule[]>([])
 const assertionResults = ref<AssertionResult[]>([])
 const showWorkspaceManager = ref(false)
@@ -227,32 +229,7 @@ async function applyRouteCommand() {
 }
 
 onMounted(async () => {
-  const legacyUserApis = getStorage<ApiItem[]>(LEGACY_USER_APIS_KEY, []) ?? []
-  const legacyPinnedIds = getStorage<(string | number)[]>(LEGACY_PINNED_IDS_KEY, []) ?? []
-  userApis.value =
-    getStorage<ApiItem[]>(STORAGE_KEYS.API_MANAGER_USER_APIS, legacyUserApis) ?? legacyUserApis
-  pinnedSystemIds.value =
-    getStorage<(string | number)[]>(STORAGE_KEYS.API_MANAGER_PINNED_IDS, legacyPinnedIds) ??
-    legacyPinnedIds
-  recentIds.value = getStorage<(string | number)[]>(STORAGE_KEYS.API_MANAGER_RECENT_IDS, []) ?? []
-  requestHistory.value =
-    getStorage<RequestHistoryItem[]>(STORAGE_KEYS.API_MANAGER_HISTORY, []) ?? []
-  environments.value = getStorage<ApiEnvironment[]>(STORAGE_KEYS.API_MANAGER_ENVIRONMENTS, []) ?? []
-  if (!environments.value.length) {
-    environments.value = [{ id: crypto.randomUUID(), name: '默认环境', variables: [] }]
-  }
-  activeEnvironmentId.value =
-    getStorage<string>(STORAGE_KEYS.API_MANAGER_ACTIVE_ENVIRONMENT, environments.value[0].id) ||
-    environments.value[0].id
-  collections.value = getStorage<ApiCollection[]>(STORAGE_KEYS.API_MANAGER_COLLECTIONS, []) ?? []
-  if (!collections.value.length) {
-    collections.value = [{ id: crypto.randomUUID(), name: '默认集合', color: '#667eea' }]
-  }
-  activeCollectionId.value =
-    getStorage<string>(STORAGE_KEYS.API_MANAGER_ACTIVE_COLLECTION, collections.value[0].id) ||
-    collections.value[0].id
-  savedRequests.value =
-    getStorage<SavedRequest[]>(STORAGE_KEYS.API_MANAGER_SAVED_REQUESTS, []) ?? []
+  hydratePersistentState()
 
   defaultApis.value = (await import('./defaults')).defaultApis
   isCatalogLoading.value = false
@@ -260,25 +237,7 @@ onMounted(async () => {
   await applyRouteCommand()
 })
 
-watch(userApis, (value) => setStorage(STORAGE_KEYS.API_MANAGER_USER_APIS, value), { deep: true })
-watch(pinnedSystemIds, (value) => setStorage(STORAGE_KEYS.API_MANAGER_PINNED_IDS, value), {
-  deep: true,
-})
-watch(recentIds, (value) => setStorage(STORAGE_KEYS.API_MANAGER_RECENT_IDS, value), { deep: true })
-watch(requestHistory, (value) => setStorage(STORAGE_KEYS.API_MANAGER_HISTORY, value), {
-  deep: true,
-})
-watch(environments, (value) => setStorage(STORAGE_KEYS.API_MANAGER_ENVIRONMENTS, value), {
-  deep: true,
-})
-watch(activeEnvironmentId, (value) =>
-  setStorage(STORAGE_KEYS.API_MANAGER_ACTIVE_ENVIRONMENT, value),
-)
-watch(collections, (value) => setStorage(STORAGE_KEYS.API_MANAGER_COLLECTIONS, value), {
-  deep: true,
-})
 watch(activeCollectionId, (value, previous) => {
-  setStorage(STORAGE_KEYS.API_MANAGER_ACTIVE_COLLECTION, value)
   if (value !== previous) {
     collectionResults.value = []
     collectionRuntimeVariables.value = []
@@ -290,9 +249,6 @@ watch(activeCollectionId, (value, previous) => {
       saveRequestName.value = ''
     }
   }
-})
-watch(savedRequests, (value) => setStorage(STORAGE_KEYS.API_MANAGER_SAVED_REQUESTS, value), {
-  deep: true,
 })
 watch(showWorkspaceManager, (visible) => {
   if (!visible) {
@@ -1192,8 +1148,7 @@ function removeWorkspaceAssertion(id: string) {
 }
 
 function saveWorkspace() {
-  setStorage(STORAGE_KEYS.API_MANAGER_COLLECTIONS, collections.value)
-  setStorage(STORAGE_KEYS.API_MANAGER_SAVED_REQUESTS, savedRequests.value)
+  persistWorkspace()
   notify('success', `已保存集合「${activeCollection.value?.name || ''}」`)
 }
 
