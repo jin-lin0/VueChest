@@ -2,7 +2,16 @@
 import { onMounted } from 'vue'
 import { useNotesStore } from './store'
 import { marked } from 'marked'
-import hljs from 'highlight.js'
+import DOMPurify from 'dompurify'
+import hljs from 'highlight.js/lib/core'
+import bash from 'highlight.js/lib/languages/bash'
+import css from 'highlight.js/lib/languages/css'
+import javascript from 'highlight.js/lib/languages/javascript'
+import json from 'highlight.js/lib/languages/json'
+import markdown from 'highlight.js/lib/languages/markdown'
+import plaintext from 'highlight.js/lib/languages/plaintext'
+import typescript from 'highlight.js/lib/languages/typescript'
+import xml from 'highlight.js/lib/languages/xml'
 import 'highlight.js/styles/github-dark.css'
 
 defineOptions({ name: 'NotesView' })
@@ -11,6 +20,20 @@ marked.setOptions({
   breaks: true,
   gfm: true,
 })
+
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('sh', bash)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('js', javascript)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('markdown', markdown)
+hljs.registerLanguage('md', markdown)
+hljs.registerLanguage('plaintext', plaintext)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('ts', typescript)
+hljs.registerLanguage('html', xml)
+hljs.registerLanguage('xml', xml)
 
 const renderer = new marked.Renderer()
 renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
@@ -22,7 +45,8 @@ renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
 marked.use({ renderer })
 
 const renderMarkdown = (content: string): string => {
-  return marked.parse(content) as string
+  const rawHtml = marked.parse(content) as string
+  return DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } }) as string
 }
 
 const notesStore = useNotesStore()

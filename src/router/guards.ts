@@ -1,9 +1,9 @@
 import type { Router } from 'vue-router'
 import { isKnowledgeDocId } from '@/docs/knowledge/access'
+import { useAuthStore } from '@/stores/auth'
 
 export function createRouterGuard(router: Router) {
   router.beforeEach(async (to) => {
-    const { useAuthStore } = await import('@/stores/auth')
     const authStore = useAuthStore()
 
     if (!authStore.isInitialized) await authStore.initAuth()

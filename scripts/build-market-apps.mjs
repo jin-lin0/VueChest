@@ -30,42 +30,58 @@ if (!existsSync(outputDir)) {
   mkdirSync(outputDir, { recursive: true })
 }
 
+const failures = []
+
 for (const app of apps) {
   const appDir = join(marketAppsDir, app.name)
   console.log(`Building: ${app.name}`)
 
   try {
-    execSync('npx vite build', {
+    execSync('npx --no-install vite build', {
       cwd: appDir,
       stdio: 'pipe',
     })
 
     const distDir = join(appDir, 'dist')
-    if (existsSync(distDir)) {
-      const jsFiles = []
-      let cssContent = null
+    if (!existsSync(distDir)) throw new Error('构建完成后未生成 dist 目录')
 
-      for (const file of readdirSync(distDir)) {
-        if (file.endsWith('.css')) {
-          cssContent = readFileSync(join(distDir, file), 'utf-8')
-        } else if (file.endsWith('.js')) {
-          jsFiles.push(file)
-        }
-      }
+    const jsFiles = []
+    let cssContent = null
 
-      for (const file of jsFiles) {
-        let code = readFileSync(join(distDir, file), 'utf-8')
-        if (cssContent) {
-          code = `(function(){var s=document.createElement('style');s.textContent=${JSON.stringify(cssContent)};document.head.appendChild(s)})();` + code
-        }
-        const dest = join(outputDir, `${app.name}-${file}`)
-        writeFileSync(dest, code, 'utf-8')
-        console.log(`  → ${dest} (${cssContent ? 'CSS内联 ' : ''}${code.length} bytes)`)
+    for (const file of readdirSync(distDir)) {
+      if (file.endsWith('.css')) {
+        cssContent = readFileSync(join(distDir, file), 'utf-8')
+      } else if (file.endsWith('.js')) {
+        jsFiles.push(file)
       }
     }
+    if (jsFiles.length === 0) throw new Error('构建完成后未生成 JavaScript 入口')
+
+    for (const file of jsFiles) {
+      let code = readFileSync(join(distDir, file), 'utf-8')
+      if (cssContent) {
+        code = `(function(){var s=document.createElement('style');s.textContent=${JSON.stringify(cssContent)};document.head.appendChild(s)})();` + code
+      }
+      const dest = join(outputDir, `${app.name}-${file}`)
+      writeFileSync(dest, code, 'utf-8')
+      console.log(`  → ${dest} (${code.length} bytes${cssContent ? '，含内联 CSS' : ''})`)
+    }
   } catch (e) {
-    console.error(`  Failed: ${e.message}`)
+    const message = e instanceof Error ? e.message : String(e)
+    failures.push({ app: app.name, message })
+    console.error(`  Failed: ${message}`)
+    const output = [e?.stdout, e?.stderr]
+      .filter(Boolean)
+      .map((value) => String(value).trim())
+      .filter(Boolean)
+      .join('\n')
+    if (output) console.error(output)
   }
 }
 
-console.log(`\n所有 App 已构建完成，输出目录: ${outputDir}`)
+if (failures.length > 0) {
+  console.error(`\n市场 App 构建失败：${failures.map((item) => item.app).join('、')}`)
+  process.exitCode = 1
+} else {
+  console.log(`\n所有 App 已构建完成，输出目录: ${outputDir}`)
+}
