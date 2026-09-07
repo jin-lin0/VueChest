@@ -1,4 +1,4 @@
-import { dbSet, dbRemove, dbGetAll, dbImportAll } from './db'
+import { dbSet, dbRemove, dbGetAll, dbImportAll, dbApplyPatch } from './db'
 
 const cache = new Map<string, unknown>()
 let initialized = false
@@ -32,6 +32,16 @@ export function setStorage(key: string, value: unknown): void {
   dbSet(key, toPlainObject(value)).catch((error) => {
     console.error('IndexedDB 写入失败:', error)
   })
+}
+
+/** 等待持久化成功后再更新内存缓存，用于安装、同步等必须确认写入的操作。 */
+export async function applyStoragePatch(data: Record<string, unknown>): Promise<void> {
+  const snapshot = toPlainObject(data)
+  await dbApplyPatch(snapshot)
+  for (const [key, value] of Object.entries(snapshot)) {
+    if (value === null) cache.delete(key)
+    else cache.set(key, value)
+  }
 }
 
 export function getStorage<T>(key: string, defaultValue?: T): T | null {

@@ -1,10 +1,12 @@
 export type LearningStatus = 'learning' | 'review' | 'mastered'
-export type LearningFilter = '' | 'unpracticed' | LearningStatus | 'favorite'
+export type LearningFilter = '' | 'due' | 'unpracticed' | LearningStatus | 'favorite'
 
 export interface QuestionProgress {
   status: LearningStatus
   attempts: number
   lastPracticedAt: number
+  nextReviewAt?: number
+  reviewIntervalDays?: number
 }
 
 export interface InterviewLearningState {
@@ -12,6 +14,8 @@ export interface InterviewLearningState {
   records: Record<string, QuestionProgress>
   favorites: number[]
   lastQuestionId: number | null
+  dailyGoal?: number
+  practiceDays?: Record<string, number[]>
 }
 
 export interface LearningStats {
@@ -44,6 +48,8 @@ export function createLearningState(legacyPracticedIds: number[] = []): Intervie
     records,
     favorites: [],
     lastQuestionId: null,
+    dailyGoal: 10,
+    practiceDays: {},
   }
 }
 
@@ -93,7 +99,42 @@ export function normalizeLearningState(
       ? Number(candidate.lastQuestionId)
       : null
 
-  return { version: 1, records, favorites, lastQuestionId }
+  for (const [id, record] of Object.entries(records)) {
+    const raw = candidate.records?.[id]
+    const interval = raw?.reviewIntervalDays
+    record.reviewIntervalDays =
+      typeof interval === 'number' && Number.isInteger(interval) && interval >= 1 && interval <= 60
+        ? interval
+        : defaultReviewDays(record.status)
+    record.nextReviewAt =
+      typeof raw?.nextReviewAt === 'number' &&
+      Number.isFinite(raw.nextReviewAt) &&
+      raw.nextReviewAt > 0
+        ? raw.nextReviewAt
+        : nextReviewTime(record.lastPracticedAt, record.reviewIntervalDays)
+  }
+  const practiceDays: Record<string, number[]> = {}
+  if (candidate.practiceDays && typeof candidate.practiceDays === 'object') {
+    for (const [day, ids] of Object.entries(candidate.practiceDays)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 90)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(ids)) continue
+      const parsed = new Date(`${day}T12:00:00`)
+      if (!Number.isFinite(parsed.getTime()) || practiceDayKey(parsed.getTime()) !== day) continue
+      practiceDays[day] = [...new Set(ids.filter((id) => Number.isInteger(id) && id > 0))].slice(
+        0,
+        1000,
+      )
+    }
+  }
+  return {
+    version: 1,
+    records,
+    favorites,
+    lastQuestionId,
+    dailyGoal: normalizeDailyGoal(candidate.dailyGoal),
+    practiceDays,
+  }
 }
 
 export function getLearningStatus(
@@ -118,9 +159,11 @@ export function updateQuestionProgress(
         status,
         attempts: (previous?.attempts ?? 0) + 1,
         lastPracticedAt: now,
+        ...reviewSchedule(status, previous, now),
       },
     },
     lastQuestionId: questionId,
+    practiceDays: recordPracticeDay(state.practiceDays || {}, questionId, now),
   }
 }
 
@@ -129,6 +172,7 @@ export function setQuestionStatus(
   questionId: number,
   status: LearningStatus,
   now = Date.now(),
+  attemptBase?: QuestionProgress | null,
 ): InterviewLearningState {
   const previous = state.records[String(questionId)]
   return {
@@ -139,6 +183,7 @@ export function setQuestionStatus(
         status,
         attempts: Math.max(1, previous?.attempts ?? 0),
         lastPracticedAt: now,
+        ...reviewSchedule(status, attemptBase === undefined ? previous : attemptBase, now),
       },
     },
     lastQuestionId: questionId,
@@ -188,7 +233,9 @@ export function filterQuestionsByLearning<T extends QuestionLike>(
   questions: T[],
   filter: LearningFilter,
   state: InterviewLearningState,
+  now = Date.now(),
 ): T[] {
+  if (filter === 'due') return getDueQuestions(questions, state, now)
   if (!filter) return questions
   const favorites = new Set(state.favorites)
 
@@ -198,4 +245,79 @@ export function filterQuestionsByLearning<T extends QuestionLike>(
     if (filter === 'favorite') return favorites.has(question.id)
     return status === filter
   })
+}
+
+export function practiceDayKey(now = Date.now()): string {
+  const date = new Date(now)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function defaultReviewDays(status: LearningStatus) {
+  return status === 'review' ? 1 : status === 'learning' ? 3 : 7
+}
+
+function nextReviewTime(now: number, days: number) {
+  const date = new Date(now)
+  date.setDate(date.getDate() + days)
+  date.setHours(0, 0, 0, 0)
+  return date.getTime()
+}
+
+function reviewSchedule(
+  status: LearningStatus,
+  previous: QuestionProgress | null | undefined,
+  now: number,
+) {
+  const reviewIntervalDays =
+    status === 'mastered' && previous?.status === 'mastered'
+      ? Math.min(60, (previous.reviewIntervalDays || 7) * 2)
+      : defaultReviewDays(status)
+  return { reviewIntervalDays, nextReviewAt: nextReviewTime(now, reviewIntervalDays) }
+}
+
+export function normalizeDailyGoal(value: unknown) {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 100
+    ? value
+    : 10
+}
+
+function recordPracticeDay(days: Record<string, number[]>, questionId: number, now: number) {
+  const day = practiceDayKey(now)
+  const next = { ...days, [day]: [...new Set([...(days[day] || []), questionId])] }
+  return Object.fromEntries(
+    Object.entries(next)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 90),
+  )
+}
+
+export function todayPracticeCount(state: InterviewLearningState, now = Date.now()) {
+  return new Set(state.practiceDays?.[practiceDayKey(now)] || []).size
+}
+
+export function getDueQuestions<T extends QuestionLike>(
+  questions: T[],
+  state: InterviewLearningState,
+  now = Date.now(),
+): T[] {
+  const dueAt = (id: number) => {
+    const record = state.records[String(id)]
+    return record
+      ? (record.nextReviewAt ??
+          nextReviewTime(
+            record.lastPracticedAt,
+            record.reviewIntervalDays || defaultReviewDays(record.status),
+          ))
+      : Infinity
+  }
+  const priority = { review: 0, learning: 1, mastered: 2 }
+  return questions
+    .filter((question) => dueAt(question.id) <= now)
+    .sort(
+      (a, b) =>
+        dueAt(a.id) - dueAt(b.id) ||
+        priority[state.records[String(a.id)].status] -
+          priority[state.records[String(b.id)].status] ||
+        a.id - b.id,
+    )
 }

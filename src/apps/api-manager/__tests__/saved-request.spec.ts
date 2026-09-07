@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ApiItem } from '../defaults'
-import {
-  cloneSavedRequestToCollection,
-  createSavedRequestFromApi,
-} from '../saved-request'
+import { cloneSavedRequestToCollection, createSavedRequestFromApi } from '../saved-request'
 
 const api: ApiItem = {
   id: 'users',
@@ -12,9 +9,7 @@ const api: ApiItem = {
   method: 'GET',
   category: '测试',
   description: '获取用户列表',
-  params: [
-    { name: 'page', type: 'number', defaultValue: '1', required: false, description: '' },
-  ],
+  params: [{ name: 'page', type: 'number', defaultValue: '1', required: false, description: '' }],
 }
 
 function deterministicFactory() {
@@ -27,12 +22,7 @@ function deterministicFactory() {
 
 describe('saved request factory', () => {
   it('从 API 默认配置创建可运行请求', () => {
-    const saved = createSavedRequestFromApi(
-      api,
-      'collection-a',
-      '分页用户',
-      deterministicFactory(),
-    )
+    const saved = createSavedRequestFromApi(api, 'collection-a', '分页用户', deterministicFactory())
 
     expect(saved).toMatchObject({
       id: 'id-1',
@@ -45,9 +35,7 @@ describe('saved request factory', () => {
       timeoutMs: 20_000,
       createdAt: '2026-08-29T00:00:00.000Z',
     })
-    expect(saved.headers).toEqual([
-      { id: 'id-2', name: 'Accept', value: '*/*', enabled: true },
-    ])
+    expect(saved.headers).toEqual([{ id: 'id-2', name: 'Accept', value: '*/*', enabled: true }])
     expect(saved.assertions.map((rule) => rule.id)).toEqual(['id-3', 'id-4'])
   })
 
@@ -58,15 +46,18 @@ describe('saved request factory', () => {
       { id: 'old-extraction', path: '$.data.id', variable: 'userId', enabled: true },
     ]
     original.auth = { type: 'bearer', token: '{{token}}' }
+    original.bodyMode = 'form-data'
+    original.formFields = [
+      { id: 'upload', name: 'file', value: 'report.txt', type: 'file', enabled: true },
+    ]
 
-    const cloned = cloneSavedRequestToCollection(
-      original,
-      'collection-b',
-      factory,
-    )
+    const cloned = cloneSavedRequestToCollection(original, 'collection-b', factory)
 
     expect(cloned.collectionId).toBe('collection-b')
     expect(cloned.id).not.toBe(original.id)
+    expect(cloned.bodyMode).toBe('form-data')
+    expect(cloned.formFields?.[0]).toMatchObject({ name: 'file', value: 'report.txt' })
+    expect(cloned.formFields?.[0].id).not.toBe(original.formFields[0].id)
     expect(cloned.headers[0]).not.toBe(original.headers[0])
     expect(cloned.headers[0].id).not.toBe(original.headers[0].id)
     expect(cloned.assertions[0]).not.toBe(original.assertions[0])

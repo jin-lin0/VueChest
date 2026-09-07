@@ -22,6 +22,9 @@ coverage
 /cypress/videos/
 /cypress/screenshots/
 
+# 本地验收产物（截图、日志、体积测量结果）
+/artifacts/verification/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

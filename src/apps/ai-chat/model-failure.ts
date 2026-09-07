@@ -9,6 +9,8 @@ export interface ModelFailureNotice {
 
 const SWITCHABLE_CODES = new Set([
   'NETWORK_ERROR',
+  'INCOMPLETE_STREAM',
+  'STREAM_INTERRUPTED',
   'RATE_LIMIT',
   'QUOTA_EXHAUSTED',
   'UPSTREAM_UNAVAILABLE',
@@ -23,6 +25,8 @@ const SWITCHABLE_CODES = new Set([
 
 function failureReason(code: string) {
   switch (code) {
+    case 'INCOMPLETE_STREAM':
+    case 'STREAM_INTERRUPTED':
     case 'NETWORK_ERROR':
       return '连接中断，未收到完整响应'
     case 'RATE_LIMIT':

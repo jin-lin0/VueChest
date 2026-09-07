@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onScopeDispose } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/lib/request'
 import { TOKEN_KEY, USER_INFO_KEY } from '@/lib/constants'
@@ -40,6 +40,18 @@ export const useAuthStore = defineStore('auth', () => {
   const sessions = ref<UserSessionInfo[]>([])
   const isInitialized = ref(false)
   let initPromise: Promise<void> | null = null
+  // 登录、资料和设备列表分别判定请求先后；退出时使未完成操作全部失效。
+  let authRevision = 0
+  let profileRevision = 0
+  let sessionsRevision = 0
+
+  const onAuthExpired = (event: Event) => {
+    if ((event as CustomEvent<string>).detail === token.value) clearAuth()
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('vc:auth-expired', onAuthExpired)
+    onScopeDispose(() => window.removeEventListener('vc:auth-expired', onAuthExpired))
+  }
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
 
@@ -71,6 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(
     credentials: LoginCredentials,
   ): Promise<{ success: boolean; message: string; role?: string }> {
+    const revision = ++authRevision
     isLoading.value = true
     error.value = null
 
@@ -80,7 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
         credentials,
         { auth: false },
       )
-
+      if (revision !== authRevision) return { success: false, message: '登录操作已取消' }
       token.value = data.token
       user.value = data.user
 
@@ -89,11 +102,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true, message: '登录成功', role: data.user.role }
     } catch (e) {
+      if (revision !== authRevision) return { success: false, message: '登录操作已取消' }
       const message = e instanceof Error ? e.message : '网络连接失败，请检查服务器是否运行'
       error.value = message
       return { success: false, message }
     } finally {
-      isLoading.value = false
+      if (revision === authRevision) isLoading.value = false
     }
   }
 
@@ -128,6 +142,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(
     credentials: LoginCredentials & { email?: string; code?: string },
   ): Promise<{ success: boolean; message: string }> {
+    const revision = ++authRevision
     isLoading.value = true
     error.value = null
 
@@ -137,7 +152,7 @@ export const useAuthStore = defineStore('auth', () => {
         credentials,
         { auth: false },
       )
-
+      if (revision !== authRevision) return { success: false, message: '注册操作已取消' }
       token.value = data.token
       user.value = data.user
 
@@ -146,11 +161,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true, message: '注册成功' }
     } catch (e) {
+      if (revision !== authRevision) return { success: false, message: '注册操作已取消' }
       const message = e instanceof Error ? e.message : '网络连接失败，请检查服务器是否运行'
       error.value = message
       return { success: false, message }
     } finally {
-      isLoading.value = false
+      if (revision === authRevision) isLoading.value = false
     }
   }
 
@@ -204,15 +220,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchUserInfo(options: { timeoutMs?: number } = {}): Promise<boolean> {
     if (!token.value) return false
+    const ownToken = token.value
+    const revision = ++profileRevision
+    const belongsHere = () => token.value === ownToken && revision === profileRevision
 
     try {
       const { data } = await api.get<{ data: UserInfo }>('/api/auth/me', options)
+      if (!belongsHere()) return false
       user.value = data
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(data))
       return true
     } catch (error) {
       const status = (error as { status?: number })?.status
-      if (status === 401 || status === 403) clearAuth()
+      if (belongsHere() && (status === 401 || status === 403)) clearAuth()
       return false
     }
   }
@@ -220,12 +240,18 @@ export const useAuthStore = defineStore('auth', () => {
   async function updateProfile(payload: {
     username?: string
   }): Promise<{ success: boolean; message: string }> {
+    const ownToken = token.value
+    const revision = ++profileRevision
     try {
       const { data } = await api.put<{ data: UserInfo }>('/api/auth/me', payload)
+      if (token.value !== ownToken || revision !== profileRevision)
+        return { success: false, message: '账号或资料已变化，请重新操作' }
       user.value = data
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(data))
       return { success: true, message: '资料已更新' }
     } catch (e) {
+      if (token.value !== ownToken || revision !== profileRevision)
+        return { success: false, message: '账号或资料已变化，请重新操作' }
       const message = e instanceof Error ? e.message : '资料更新失败，请稍后重试'
       error.value = message
       return { success: false, message }
@@ -236,11 +262,16 @@ export const useAuthStore = defineStore('auth', () => {
   // 否则下次启动 syncFromServer 会以陈旧的 auth_user_info 为准把已卸载应用拉回来。
   function setInstalledApps(ids: number[]) {
     if (!user.value) return
+    profileRevision++
     user.value.installedApps = ids
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(user.value))
   }
 
   function clearAuth() {
+    authRevision++
+    profileRevision++
+    sessionsRevision++
+    isLoading.value = false
     token.value = null
     user.value = null
     sessions.value = []
@@ -250,26 +281,34 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    if (token.value) await api.post('/api/auth/logout').catch(() => {})
+    const pending = token.value ? api.post('/api/auth/logout') : Promise.resolve()
     clearAuth()
+    await pending.catch(() => {})
   }
 
   async function fetchSessions() {
+    const ownToken = token.value
+    const revision = ++sessionsRevision
     const { data } = await api.get<{ data: UserSessionInfo[] }>('/api/auth/sessions')
+    if (token.value !== ownToken || revision !== sessionsRevision) return []
     sessions.value = data
     return data
   }
 
   async function revokeSession(id: string) {
+    const ownToken = token.value
     const { data } = await api.delete<{ data: { revokedCurrent: boolean } }>(
       `/api/auth/sessions/${id}`,
     )
+    if (token.value !== ownToken) return
     if (data.revokedCurrent) clearAuth()
     else await fetchSessions()
   }
 
   async function revokeOtherSessions() {
+    const ownToken = token.value
     await api.delete('/api/auth/sessions/others')
+    if (token.value !== ownToken) return
     await fetchSessions()
   }
 

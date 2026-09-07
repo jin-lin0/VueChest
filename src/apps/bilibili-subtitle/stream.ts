@@ -1,4 +1,5 @@
 import { API_BASE, getAuthToken } from '@/lib/request'
+import { readSseData } from '@/lib/sse'
 
 interface StreamHandlers {
   onDelta?: (delta: string) => void
@@ -26,11 +27,6 @@ export class BilibiliStreamError extends Error {
   }
 }
 
-export function splitSseLines(buffer: string): { lines: string[]; rest: string } {
-  const lines = buffer.split('\n')
-  return { lines: lines.slice(0, -1), rest: lines.at(-1) || '' }
-}
-
 export async function streamBilibiliRequest<T>(
   path: string,
   body: unknown,
@@ -41,12 +37,20 @@ export async function streamBilibiliRequest<T>(
   const token = getAuthToken()
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-    signal,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal,
+    })
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) {
+      throw new DOMException('请求已取消', 'AbortError')
+    }
+    throw new BilibiliStreamError('AI 服务连接中断', 'NETWORK_ERROR')
+  }
   if (!response.ok) {
     let message = `请求失败 (${response.status})`
     let code = 'AI_REQUEST_FAILED'
@@ -58,22 +62,9 @@ export async function streamBilibiliRequest<T>(
     throw new BilibiliStreamError(message, code)
   }
 
-  const reader = response.body?.getReader()
-  if (!reader) throw new BilibiliStreamError('无法读取 AI 响应流', 'INVALID_STREAM')
-
-  const decoder = new TextDecoder()
-  let buffer = ''
+  if (!response.body) throw new BilibiliStreamError('无法读取 AI 响应流', 'INVALID_STREAM')
   let completed: T | undefined
-  let streamDone = false
-
-  const processLine = (line: string) => {
-    const trimmed = line.trim()
-    if (!trimmed.startsWith('data: ')) return
-    const data = trimmed.slice(6)
-    if (data === '[DONE]') {
-      streamDone = true
-      return
-    }
+  const processData = (data: string) => {
     let payload: StreamPayload<T>
     try {
       payload = JSON.parse(data) as StreamPayload<T>
@@ -102,20 +93,14 @@ export async function streamBilibiliRequest<T>(
   }
 
   try {
-    while (!streamDone) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const split = splitSseLines(buffer)
-      buffer = split.rest
-      for (const line of split.lines) processLine(line)
+    for await (const data of readSseData(response.body, signal)) {
+      if (data === '[DONE]') break
+      processData(data)
     }
-    buffer += decoder.decode()
-    if (buffer) processLine(buffer)
-  } finally {
-    try {
-      await reader.cancel()
-    } catch {}
+  } catch (error) {
+    if (error instanceof BilibiliStreamError) throw error
+    if (error instanceof Error && error.name === 'AbortError') throw error
+    throw new BilibiliStreamError('AI 响应连接中断', 'NETWORK_ERROR')
   }
 
   if (completed === undefined) {

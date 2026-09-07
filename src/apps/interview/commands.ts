@@ -39,6 +39,15 @@ export function useInterviewCommandProvider() {
           execute: navigateToPractice('unpracticed'),
         },
         {
+          id: 'interview-due',
+          label: '开始到期复习',
+          description: '优先复习已到期的题目，按到期时间和薄弱程度排序',
+          icon: '↻',
+          keywords: ['面试', '到期', '复习计划'],
+          priority: 76,
+          execute: navigateToPractice('due'),
+        },
+        {
           id: 'interview-review',
           label: '复习一道薄弱题',
           description: '从标记为需要复习的题目中抽取',

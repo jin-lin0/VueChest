@@ -2,6 +2,7 @@ import type { ApiItem } from './defaults'
 import { REQUEST_TIMEOUT_MS } from './request-executor'
 import type { RequestHeader } from './request-utils'
 import type { SavedRequest } from './types'
+import { canSendBody } from './request-body'
 
 interface SavedRequestFactoryOptions {
   createId?: () => string
@@ -13,9 +14,7 @@ const defaultFactoryOptions: Required<SavedRequestFactoryOptions> = {
   now: () => new Date().toISOString(),
 }
 
-function factoryOptions(
-  options: SavedRequestFactoryOptions,
-): Required<SavedRequestFactoryOptions> {
+function factoryOptions(options: SavedRequestFactoryOptions): Required<SavedRequestFactoryOptions> {
   return { ...defaultFactoryOptions, ...options }
 }
 
@@ -41,7 +40,7 @@ export function createSavedRequestFromApi(
     apiId: api.id,
     paramValues: Object.fromEntries(api.params.map((param) => [param.name, param.defaultValue])),
     headers: [createRequestHeader('Accept', '*/*', factory.createId)],
-    body: api.method === 'GET' ? '' : '{\n  \n}',
+    body: canSendBody(api.method) ? '{\n  \n}' : '',
     assertions: [
       { id: factory.createId(), type: 'status', expected: '200', enabled: true },
       { id: factory.createId(), type: 'time', expected: '2000', enabled: false },
@@ -65,6 +64,7 @@ export function cloneSavedRequestToCollection(
     id: factory.createId(),
     collectionId,
     paramValues: { ...saved.paramValues },
+    formFields: saved.formFields?.map((field) => ({ ...field, id: factory.createId() })),
     headers: saved.headers.map((header) => ({ ...header, id: factory.createId() })),
     assertions: saved.assertions.map((rule) => ({ ...rule, id: factory.createId() })),
     extractions: (saved.extractions || []).map((rule) => ({

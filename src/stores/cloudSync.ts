@@ -1,9 +1,9 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { STORAGE_KEYS } from '@/config'
 import { api } from '@/lib/request'
-import { getStorage, removeStorage, setStorage } from '@/lib/storage'
-import { useWorkspaceStore } from './workspace'
+import { getStorage, setStorage, applyStoragePatch } from '@/lib/storage'
+import { useWorkspaceStore, type WorkspaceCloudConfig, type WorkspaceConfig } from './workspace'
 
 export type CloudSyncCategoryId =
   | 'workspace'
@@ -146,27 +146,73 @@ function collectCategoryData(id: Exclude<CloudSyncCategoryId, 'workspace'>): Clo
   }
 }
 
-function applyCategoryData(
+async function applyCategoryData(
   id: Exclude<CloudSyncCategoryId, 'workspace'>,
   payload: CloudCategoryPayload,
 ) {
+  if (!payload?.data || typeof payload.data !== 'object') throw new Error('云端数据格式无效')
   if (id === 'toolbox') {
-    const allowed = new Set(TOOLBOX_LOCAL_STORAGE_KEYS)
-    for (const [key, value] of Object.entries(payload.data.localStorage || {})) {
-      if (!allowed.has(key)) continue
-      if (typeof value === 'string') localStorage.setItem(key, value)
-      else localStorage.removeItem(key)
+    const values = payload.data.localStorage
+    if (!values || typeof values !== 'object' || Array.isArray(values))
+      throw new Error('工具箱数据格式无效')
+    const before = collectCategoryData('toolbox').data.localStorage!
+    try {
+      for (const key of TOOLBOX_LOCAL_STORAGE_KEYS) {
+        if (!(key in values)) continue
+        const value = values[key]
+        if (value !== null && typeof value !== 'string') throw new Error('工具箱数据格式无效')
+        if (value === null) localStorage.removeItem(key)
+        else localStorage.setItem(key, value)
+      }
+    } catch (error) {
+      // localStorage 没有事务，写入失败时尽量恢复该类别原有数据。
+      for (const [key, value] of Object.entries(before)) {
+        try {
+          if (value === null) localStorage.removeItem(key)
+          else localStorage.setItem(key, value)
+        } catch {}
+      }
+      throw error
     }
     return
   }
-
+  const values = payload.data.storage
+  if (!values || typeof values !== 'object' || Array.isArray(values))
+    throw new Error('云端数据格式无效')
   const allowed = new Set(STORAGE_CATEGORY_KEYS[id])
-  for (const [key, value] of Object.entries(payload.data.storage || {})) {
-    if (!allowed.has(key)) continue
-    if (value === null || value === undefined) removeStorage(key)
-    else setStorage(key, value)
-  }
+  await applyStoragePatch(
+    Object.fromEntries(Object.entries(values).filter(([key]) => allowed.has(key))),
+  )
 }
+
+export interface CloudSyncBackup {
+  version: 1
+  createdAt: number
+  ownerId: number | null
+  selection: CloudSyncCategoryId[]
+  workspace?: WorkspaceConfig
+  categories: SelectiveCloudSyncConfig['categories']
+}
+
+export interface CloudSyncDownloadPreview {
+  ownerId: number | null
+  selection: CloudSyncCategoryId[]
+  workspace: WorkspaceCloudConfig | null
+  categories: SelectiveCloudSyncConfig['categories']
+  entries: Array<{
+    id: CloudSyncCategoryId
+    title: string
+    available: boolean
+    localCount: number
+    remoteCount: number
+  }>
+}
+
+const cloneSnapshot = <T>(value: T): T => JSON.parse(JSON.stringify(value))
+const categoryCount = (payload?: CloudCategoryPayload) =>
+  Object.values(payload?.data?.storage || payload?.data?.localStorage || {}).filter(
+    (value) => value !== null,
+  ).length
 
 export const useCloudSyncStore = defineStore('cloud-sync', () => {
   const workspace = useWorkspaceStore()
@@ -177,6 +223,44 @@ export const useCloudSyncStore = defineStore('cloud-sync', () => {
   const remoteUpdatedAt = ref<number | null>(null)
   const isLoading = ref(false)
   const isSyncing = ref(false)
+  let remoteRevision = 0
+  let activePreview: CloudSyncDownloadPreview | null = null
+  const backupKey = (owner = workspace.ownerId) => `cloud-sync:backup:${owner ?? 'guest'}`
+  const localBackup = ref<CloudSyncBackup | null>(getStorage(backupKey()))
+  watch(
+    () => workspace.ownerId,
+    () => {
+      remoteRevision++
+      activePreview = null
+      remote.value = null
+      remoteUpdatedAt.value = null
+      isLoading.value = false
+      localBackup.value = getStorage(backupKey())
+    },
+    { flush: 'sync' },
+  )
+  const assertOwner = (owner: number | null) => {
+    if (workspace.ownerId !== owner) throw new Error('账号已切换，请重新操作')
+  }
+  const checkIdle = () => {
+    if (isSyncing.value) throw new Error('已有同步操作正在进行，请稍后重试')
+  }
+  async function saveBackup(ids: CloudSyncCategoryId[]) {
+    const snapshot: CloudSyncBackup = {
+      version: 1,
+      createdAt: Date.now(),
+      ownerId: workspace.ownerId,
+      selection: [...ids],
+      categories: {},
+    }
+    for (const id of ids) {
+      if (id === 'workspace') snapshot.workspace = cloneSnapshot(workspace.config)
+      else snapshot.categories[id] = cloneSnapshot(collectCategoryData(id))
+    }
+    await applyStoragePatch({ [backupKey(snapshot.ownerId)]: snapshot })
+    assertOwner(snapshot.ownerId)
+    localBackup.value = snapshot
+  }
 
   const selectedSet = computed(() => new Set(selection.value))
   const hasRemoteData = (id: CloudSyncCategoryId) =>
@@ -200,11 +284,15 @@ export const useCloudSyncStore = defineStore('cloud-sync', () => {
   }
 
   async function fetchRemote(options: { adoptSelection?: boolean } = {}) {
+    const owner = workspace.ownerId
+    const revision = ++remoteRevision
     isLoading.value = true
     try {
       const { data } = await api.get<{
         data: { config: SelectiveCloudSyncConfig; updatedAt: string } | null
       }>('/api/auth/sync')
+      assertOwner(owner)
+      if (revision !== remoteRevision) throw new Error('云端检查已被新的操作替代，请重试')
       remote.value = data?.config || null
       remoteUpdatedAt.value = data
         ? data.config.updatedAt || Date.parse(data.updatedAt) || Date.now()
@@ -215,98 +303,190 @@ export const useCloudSyncStore = defineStore('cloud-sync', () => {
       }
       return remote.value
     } finally {
-      isLoading.value = false
+      if (revision === remoteRevision) isLoading.value = false
     }
   }
 
   async function uploadSelected() {
+    checkIdle()
     if (!selection.value.length) throw new Error('请至少选择一类数据')
     isSyncing.value = true
+    const owner = workspace.ownerId
+    const ids = [...selection.value]
     try {
-      if (selectedSet.value.has('workspace')) {
+      await fetchRemote({ adoptSelection: false })
+      assertOwner(owner)
+      if (ids.includes('workspace')) {
         const uploaded = await workspace.pushToServer(true)
         if (!uploaded) throw new Error('工作区布局上传失败')
       }
+      assertOwner(owner)
 
       const categories = { ...(remote.value?.categories || {}) }
-      for (const id of selection.value) {
+      for (const id of ids) {
         if (id === 'workspace') continue
         categories[id] = collectCategoryData(id)
       }
       const config: SelectiveCloudSyncConfig = {
         version: 1,
-        selection: [...selection.value],
+        selection: ids,
         categories,
         updatedAt: Date.now(),
       }
       const { data } = await api.put<{
         data: { config: SelectiveCloudSyncConfig; updatedAt: string }
       }>('/api/auth/sync', { config })
+      assertOwner(owner)
       remote.value = data.config
       remoteUpdatedAt.value = data.config.updatedAt || Date.parse(data.updatedAt) || Date.now()
-      return selection.value.length
+      return ids.length
     } finally {
       isSyncing.value = false
     }
   }
 
-  async function downloadSelected() {
+  async function prepareDownload(): Promise<CloudSyncDownloadPreview> {
+    checkIdle()
     if (!selection.value.length) throw new Error('请至少选择一类数据')
+    const ids = [...selection.value]
+    const ownerId = workspace.ownerId
     isSyncing.value = true
     try {
-      const latest = await fetchRemote({ adoptSelection: false })
-      const applied: CloudSyncCategoryId[] = []
-      const missing: CloudSyncCategoryId[] = []
+      const [latest, remoteWorkspace] = await Promise.all([
+        fetchRemote({ adoptSelection: false }),
+        ids.includes('workspace') ? workspace.fetchCloudWorkspace() : Promise.resolve(null),
+      ])
+      assertOwner(ownerId)
+      const preview: CloudSyncDownloadPreview = cloneSnapshot({
+        ownerId,
+        selection: ids,
+        workspace: remoteWorkspace,
+        categories: latest?.categories || {},
+        entries: ids.map((id) => ({
+          id,
+          title: CLOUD_SYNC_CATEGORIES.find((category) => category.id === id)!.title,
+          available:
+            id === 'workspace' ? Boolean(remoteWorkspace) : Boolean(latest?.categories[id]),
+          localCount:
+            id === 'workspace'
+              ? workspace.config.workspaces.length
+              : categoryCount(collectCategoryData(id)),
+          remoteCount:
+            id === 'workspace'
+              ? remoteWorkspace?.workspaces.length || 0
+              : categoryCount(latest?.categories[id]),
+        })),
+      })
+      activePreview = preview
+      return preview
+    } finally {
+      isSyncing.value = false
+    }
+  }
 
-      for (const id of selection.value) {
-        if (id === 'workspace') {
-          try {
-            await workspace.downloadCloudWorkspace()
-            applied.push(id)
-          } catch {
-            missing.push(id)
-          }
-          continue
+  async function downloadSelected(prepared?: CloudSyncDownloadPreview) {
+    checkIdle()
+    const preview = prepared || (await prepareDownload())
+    checkIdle()
+    assertOwner(preview.ownerId)
+    if (activePreview !== preview) throw new Error('请重新预览云端数据')
+    activePreview = null
+    isSyncing.value = true
+    try {
+      const available = preview.entries.filter((entry) => entry.available).map((entry) => entry.id)
+      const missing = preview.entries.filter((entry) => !entry.available).map((entry) => entry.id)
+      const applied: CloudSyncCategoryId[] = []
+      const failed: Array<{ id: CloudSyncCategoryId; message: string }> = []
+      if (available.length) await saveBackup(available)
+      for (const id of available) {
+        assertOwner(preview.ownerId)
+        try {
+          if (id === 'workspace') await workspace.applyCloudWorkspace(preview.workspace!)
+          else await applyCategoryData(id, preview.categories[id]!)
+          applied.push(id)
+        } catch (error) {
+          failed.push({ id, message: error instanceof Error ? error.message : '本地写入失败' })
         }
-        const payload = latest?.categories[id]
-        if (!payload) {
-          missing.push(id)
-          continue
-        }
-        applyCategoryData(id, payload)
-        applied.push(id)
+        assertOwner(preview.ownerId)
       }
-      return { applied, missing }
+      return { applied, missing, failed }
+    } finally {
+      isSyncing.value = false
+    }
+  }
+
+  async function restoreBackup() {
+    checkIdle()
+    const backup = cloneSnapshot(localBackup.value)
+    if (!backup) throw new Error('本机还没有同步备份')
+    assertOwner(backup.ownerId)
+    isSyncing.value = true
+    try {
+      // 先保存当前数据，使本次恢复也可以撤销。
+      await saveBackup(backup.selection)
+      const applied: CloudSyncCategoryId[] = []
+      const failed: Array<{ id: CloudSyncCategoryId; message: string }> = []
+      for (const id of backup.selection) {
+        assertOwner(backup.ownerId)
+        try {
+          if (id === 'workspace') {
+            if (!backup.workspace) throw new Error('备份缺少工作区数据')
+            await workspace.restoreLocalConfig(backup.workspace)
+          } else {
+            if (!backup.categories[id]) throw new Error('备份缺少数据')
+            await applyCategoryData(id, backup.categories[id]!)
+          }
+          applied.push(id)
+        } catch (error) {
+          failed.push({ id, message: error instanceof Error ? error.message : '恢复失败' })
+        }
+        assertOwner(backup.ownerId)
+      }
+      if (failed.length) {
+        // 部分类别恢复失败时保留原恢复点，供重试使用。
+        await applyStoragePatch({ [backupKey(backup.ownerId)]: backup })
+        assertOwner(backup.ownerId)
+        localBackup.value = backup
+      }
+      return { applied, failed }
     } finally {
       isSyncing.value = false
     }
   }
 
   async function deleteSelectedCloudData() {
+    checkIdle()
     if (!selection.value.length) throw new Error('请至少选择一类数据')
     isSyncing.value = true
+    const owner = workspace.ownerId
+    const ids = [...selection.value]
     try {
-      if (selectedSet.value.has('workspace')) await workspace.deleteCloudWorkspace()
+      await fetchRemote({ adoptSelection: false })
+      assertOwner(owner)
+      if (ids.includes('workspace')) await workspace.deleteCloudWorkspace()
+      assertOwner(owner)
 
       const categories = { ...(remote.value?.categories || {}) }
-      for (const id of selection.value) {
+      for (const id of ids) {
         if (id !== 'workspace') delete categories[id]
       }
 
       if (Object.keys(categories).length) {
         const config: SelectiveCloudSyncConfig = {
           version: 1,
-          selection: [...selection.value],
+          selection: ids,
           categories,
           updatedAt: Date.now(),
         }
         const { data } = await api.put<{
           data: { config: SelectiveCloudSyncConfig; updatedAt: string }
         }>('/api/auth/sync', { config })
+        assertOwner(owner)
         remote.value = data.config
         remoteUpdatedAt.value = data.config.updatedAt || Date.parse(data.updatedAt) || Date.now()
       } else {
         await api.delete('/api/auth/sync')
+        assertOwner(owner)
         remote.value = null
         remoteUpdatedAt.value = null
       }
@@ -317,6 +497,9 @@ export const useCloudSyncStore = defineStore('cloud-sync', () => {
 
   return {
     selection,
+    localBackup,
+    prepareDownload,
+    restoreBackup,
     remote,
     remoteUpdatedAt,
     isLoading,

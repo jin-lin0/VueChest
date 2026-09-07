@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getStorage, setStorage, removeStorage } from '@/lib/storage'
+import { getStorage, setStorage, applyStoragePatch } from '@/lib/storage'
 import { api } from '@/lib/request'
 import { useAuthStore } from '@/stores/auth'
 import { addedNetworkPermissions, sha256Hex, verifyBundleIntegrity } from '@/lib/bundle-integrity'
@@ -163,7 +163,46 @@ export const useMarketStore = defineStore('market', () => {
       ),
   )
 
-  const persistInstalledApps = () => setStorage(INSTALLED_KEY, installedApps.value)
+  // 所有安装信息和包缓存按顺序提交；一次失败不能阻塞后续操作。
+  let commitQueue = Promise.resolve()
+  function commit<T>(operation: () => Promise<T>): Promise<T> {
+    const next = commitQueue.then(operation)
+    commitQueue = next.then(
+      () => {},
+      () => {},
+    )
+    return next
+  }
+
+  async function commitDownload(
+    download: { entry: InstalledApp; code: string },
+    previous: InstalledApp | null,
+  ) {
+    return commit(async () => {
+      const index = installedApps.value.findIndex((item) => item.id === download.entry.id)
+      if (previous && index < 0) throw new Error('应用已被卸载，已取消更新')
+      if (!previous && index >= 0) return installedApps.value[index]
+      const entry = {
+        ...download.entry,
+        ...(previous ? { installedAt: previous.installedAt, updatedAt: Date.now() } : {}),
+      }
+      const next = [...installedApps.value]
+      if (index >= 0) next.splice(index, 1, entry)
+      else next.push(entry)
+      const patch: Record<string, unknown> = {
+        [INSTALLED_KEY]: next,
+        [`${BUNDLE_KEY_PREFIX}${entry.id}`]: download.code,
+      }
+      const oldBundle = getStorage<string>(`${BUNDLE_KEY_PREFIX}${entry.id}`, '')
+      if (previous && oldBundle) {
+        patch[`${ROLLBACK_BUNDLE_KEY_PREFIX}${entry.id}`] = oldBundle
+        patch[`${ROLLBACK_META_KEY_PREFIX}${entry.id}`] = { entry: previous, savedAt: Date.now() }
+      }
+      await applyStoragePatch(patch)
+      installedApps.value = next
+      return entry
+    })
+  }
 
   function initInstalledApps() {
     const saved = getStorage<InstalledApp[]>(INSTALLED_KEY, [])
@@ -211,10 +250,10 @@ export const useMarketStore = defineStore('market', () => {
    * 从服务端下载并安装单个 App（核心安装逻辑）
    * 供 installApp / syncFromServer 共用
    */
-  async function downloadAndInstall(
+  async function downloadAppVersion(
     appId: number,
     versionId?: number,
-  ): Promise<InstalledApp | null> {
+  ): Promise<{ entry: InstalledApp; code: string }> {
     // 1. 下载 bundle + 详情（并发）
     const [downloadRes, detail] = await Promise.all([
       api.get<{
@@ -237,21 +276,21 @@ export const useMarketStore = defineStore('market', () => {
     if (!downloadRes.data.fileUrl) throw new Error('应用下载地址无效')
     const bundle = await fetchVerifiedBundle(downloadRes.data.fileUrl, downloadRes.data.sha256)
 
-    // 2. 缓存 bundle 到 IndexedDB（仅在沙箱 iframe 内执行）
-    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, bundle.code)
-
-    // 3. 构建 InstalledApp 记录（元信息来自服务端，不再依赖父进程解析 bundle）
+    // 2. 返回待提交的包和安装信息，校验或授权失败时不改变本机数据。
     return {
-      id: appId,
-      name: detail?.name || downloadRes.data.name,
-      icon: detail?.icon || '🧩',
-      // route 指向受控命名空间路径，供 Home 等导航使用（见 navigateToApp）
-      route: installedRoutePath(appId),
-      description: detail?.description || '',
-      version: downloadRes.data.version,
-      allowNetwork: downloadRes.data.allowNetwork || detail?.allowNetwork || [],
-      sha256: downloadRes.data.sha256 || detail?.sha256 || null,
-      installedAt: Date.now(),
+      code: bundle.code,
+      entry: {
+        id: appId,
+        name: detail?.name || downloadRes.data.name,
+        icon: detail?.icon || '🧩',
+        // route 指向受控命名空间路径，供 Home 等导航使用（见 navigateToApp）
+        route: installedRoutePath(appId),
+        description: detail?.description || '',
+        version: downloadRes.data.version,
+        allowNetwork: downloadRes.data.allowNetwork || detail?.allowNetwork || [],
+        sha256: bundle.sha256,
+        installedAt: Date.now(),
+      },
     }
   }
 
@@ -261,14 +300,32 @@ export const useMarketStore = defineStore('market', () => {
   async function ensureBundle(appId: number): Promise<string | null> {
     const cached = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`, '')
     if (cached) return cached
+    const installed = installedApps.value.find((item) => item.id === appId)
     try {
+      let path = `/api/market/apps/${appId}/download`
+      if (installed) {
+        const versions = await fetchAppVersions(appId)
+        const pinned = versions.find(
+          (item) => item.version === installed.version && item.status === 'active',
+        )
+        if (!pinned) return null
+        path = `/api/market/apps/${appId}/versions/${pinned.id}/download`
+      }
       const downloadRes = await api.get<{
         data: { fileUrl: string; sha256?: string | null }
-      }>(`/api/market/apps/${appId}/download`, { auth: false })
+      }>(path, { auth: false })
       if (!downloadRes.data.fileUrl) return null
       const bundle = await fetchVerifiedBundle(downloadRes.data.fileUrl, downloadRes.data.sha256)
-      setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, bundle.code)
-      return bundle.code
+      return await commit(async () => {
+        // 下载期间可能发生更新或卸载，不能把过期下载重新写回缓存。
+        const current = installedApps.value.find((item) => item.id === appId)
+        if (installed && !current) return null
+        const newer = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`, '')
+        if (newer) return newer
+        if (current?.sha256 && current.sha256 !== bundle.sha256) return null
+        await applyStoragePatch({ [`${BUNDLE_KEY_PREFIX}${appId}`]: bundle.code })
+        return bundle.code
+      })
     } catch {
       return null
     }
@@ -281,34 +338,58 @@ export const useMarketStore = defineStore('market', () => {
     auth.setInstalledApps(installedApps.value.map((a) => a.id))
   }
 
-  async function installApp(appId: number) {
-    if (installedApps.value.some((a) => a.id === appId)) return
+  const pendingInstalls = new Map<number, Promise<void>>()
+  function installApp(appId: number): Promise<void> {
+    const active = pendingInstalls.get(appId)
+    if (active) return active
+    const pending = performInstall(appId).finally(() => pendingInstalls.delete(appId))
+    pendingInstalls.set(appId, pending)
+    return pending
+  }
 
-    const entry = await downloadAndInstall(appId)
-    if (!entry) throw new Error('无法加载应用')
-
-    installedApps.value.push(entry)
-    setStorage(INSTALLED_KEY, installedApps.value)
-    syncAuthInstalled()
-    syncToServer()
+  async function performInstall(appId: number) {
+    if (installedApps.value.some((item) => item.id === appId) || isUpdating(appId)) return
+    const auth = useAuthStore()
+    const ownerToken = auth.token
+    updatingIds.value = [...updatingIds.value, appId]
+    try {
+      const download = await downloadAppVersion(appId)
+      await commitDownload(download, null)
+      if (auth.token === ownerToken) {
+        syncAuthInstalled()
+        void syncToServer()
+      }
+    } finally {
+      updatingIds.value = updatingIds.value.filter((id) => id !== appId)
+    }
   }
 
   async function uninstallApp(appId: number) {
-    if (isUpdating(appId)) throw new Error('应用正在更新，请稍后再卸载')
-    const idx = installedApps.value.findIndex((a) => a.id === appId)
-    if (idx !== -1) {
-      installedApps.value.splice(idx, 1)
-      persistInstalledApps()
+    if (isUpdating(appId)) throw new Error('应用正在安装或更新，请稍后再卸载')
+    const auth = useAuthStore()
+    const ownerToken = auth.token
+    updatingIds.value = [...updatingIds.value, appId]
+    try {
+      await commit(async () => {
+        const next = installedApps.value.filter((item) => item.id !== appId)
+        await applyStoragePatch({
+          [INSTALLED_KEY]: next,
+          [`${BUNDLE_KEY_PREFIX}${appId}`]: null,
+          [`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`]: null,
+          [`${ROLLBACK_META_KEY_PREFIX}${appId}`]: null,
+        })
+        installedApps.value = next
+      })
+      const nextLatest = { ...latestApps.value }
+      delete nextLatest[appId]
+      latestApps.value = nextLatest
+      if (auth.token === ownerToken) {
+        syncAuthInstalled()
+        void syncToServer()
+      }
+    } finally {
+      updatingIds.value = updatingIds.value.filter((id) => id !== appId)
     }
-
-    removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
-    removeStorage(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`)
-    removeStorage(`${ROLLBACK_META_KEY_PREFIX}${appId}`)
-    const nextLatest = { ...latestApps.value }
-    delete nextLatest[appId]
-    latestApps.value = nextLatest
-    syncAuthInstalled()
-    syncToServer()
   }
 
   async function uploadApp(formData: {
@@ -418,14 +499,24 @@ export const useMarketStore = defineStore('market', () => {
     await api.post(`/api/market/apps/${appId}/reports`, payload)
   }
 
-  // 将已安装的 App ID 列表同步到服务端
-  async function syncToServer() {
-    const ids = installedApps.value.map((a) => a.id)
-    try {
-      await api.put('/api/auth/installed-apps', { installedApps: ids })
-    } catch {
-      // ignore sync errors silently
-    }
+  let serverSyncQueue = Promise.resolve()
+
+  // 按提交顺序上传，防止较早的安装列表最后到达服务端。
+  function syncToServer(ids = installedApps.value.map((app) => app.id)): Promise<void> {
+    const auth = useAuthStore()
+    const ownerToken = auth.token
+    if (!ownerToken || !auth.user) return Promise.resolve()
+    const snapshot = [...ids]
+    serverSyncQueue = serverSyncQueue.then(async () => {
+      if (auth.token !== ownerToken) return
+      try {
+        await api.put('/api/auth/installed-apps', { installedApps: snapshot })
+      } catch {
+        if (auth.token === ownerToken)
+          updateCheckError.value = '本机改动已保存，安装列表暂未同步到云端'
+      }
+    })
+    return serverSyncQueue
   }
 
   async function refreshInstalledMeta() {
@@ -445,15 +536,6 @@ export const useMarketStore = defineStore('market', () => {
     return addedNetworkPermissions(current?.allowNetwork, nextPermissions)
   }
 
-  function saveRollbackPoint(appId: number, entry: InstalledApp, bundle: string | null) {
-    if (!bundle) return
-    setStorage(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, bundle)
-    setStorage(`${ROLLBACK_META_KEY_PREFIX}${appId}`, {
-      entry: { ...entry },
-      savedAt: Date.now(),
-    })
-  }
-
   function hasRollback(appId: number) {
     return !!(
       getStorage<string>(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, '') &&
@@ -463,26 +545,20 @@ export const useMarketStore = defineStore('market', () => {
 
   async function rollbackApp(appId: number): Promise<InstalledApp> {
     if (isUpdating(appId)) throw new Error('应用正在更新，请稍后再回退')
-    const currentIndex = installedApps.value.findIndex((item) => item.id === appId)
-    if (currentIndex < 0) throw new Error('应用未安装')
-    const rollbackBundle = getStorage<string>(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, '')
-    const point = getStorage<AppRollbackPoint | null>(`${ROLLBACK_META_KEY_PREFIX}${appId}`, null)
-    const currentBundle = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`, '')
-    if (!rollbackBundle || !point?.entry || !currentBundle) throw new Error('没有可回退的版本')
-    await verifyBundleIntegrity(new TextEncoder().encode(rollbackBundle), point.entry.sha256)
-
-    const currentEntry = { ...installedApps.value[currentIndex] }
-    const restored = {
-      ...point.entry,
-      installedAt: currentEntry.installedAt,
-      updatedAt: Date.now(),
+    updatingIds.value = [...updatingIds.value, appId]
+    try {
+      const previous = installedApps.value.find((item) => item.id === appId)
+      if (!previous) throw new Error('应用未安装')
+      const code = getStorage<string>(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, '')
+      const point = getStorage<AppRollbackPoint | null>(`${ROLLBACK_META_KEY_PREFIX}${appId}`, null)
+      if (!code || !point?.entry) throw new Error('没有可回退的版本')
+      await verifyBundleIntegrity(new TextEncoder().encode(code), point.entry.sha256)
+      const restored = await commitDownload({ entry: point.entry, code }, { ...previous })
+      await checkForUpdates({ force: true }).catch(() => [])
+      return restored
+    } finally {
+      updatingIds.value = updatingIds.value.filter((id) => id !== appId)
     }
-    setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, rollbackBundle)
-    installedApps.value.splice(currentIndex, 1, restored)
-    persistInstalledApps()
-    saveRollbackPoint(appId, currentEntry, currentBundle)
-    await checkForUpdates({ force: true }).catch(() => [])
-    return restored
   }
 
   function setAutoUpdate(enabled: boolean) {
@@ -509,133 +585,58 @@ export const useMarketStore = defineStore('market', () => {
     await api.put(`/api/market/apps/${appId}/versions/${versionId}/status`, { status })
   }
 
-  async function installVersion(
+  async function replaceVersion(
     appId: number,
-    versionId: number,
+    versionId: number | undefined,
     options?: { approvePermissions?: boolean },
-  ): Promise<InstalledApp> {
-    if (isUpdating(appId)) {
-      const current = installedApps.value.find((item) => item.id === appId)
-      if (!current) throw new Error('应用正在安装')
-      return current
-    }
-
+  ) {
+    if (isUpdating(appId)) throw new Error('应用正在安装或更新')
+    const previous = installedApps.value.find((item) => item.id === appId)
+    if (!versionId && !previous) throw new Error('应用未安装')
+    const oldEntry = previous ? { ...previous } : null
     updatingIds.value = [...updatingIds.value, appId]
-    const currentIndex = installedApps.value.findIndex((item) => item.id === appId)
-    const oldEntry = currentIndex >= 0 ? { ...installedApps.value[currentIndex] } : null
-    const oldBundle = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`)
     updateErrors.value = { ...updateErrors.value, [appId]: '' }
-
+    const auth = useAuthStore()
+    const ownerToken = auth.token
     try {
-      const nextEntry = await downloadAndInstall(appId, versionId)
-      if (!nextEntry) throw new Error('应用版本下载失败')
-      const addedPermissions = addedNetworkPermissions(
-        oldEntry?.allowNetwork,
-        nextEntry.allowNetwork,
-      )
-      if (oldEntry && addedPermissions.length && !options?.approvePermissions) {
-        throw new Error(`新版本新增联网权限：${addedPermissions.join('、')}`)
-      }
-      if (oldEntry) {
-        nextEntry.installedAt = oldEntry.installedAt
-        nextEntry.updatedAt = Date.now()
-        const replaceIndex = installedApps.value.findIndex((item) => item.id === appId)
-        if (replaceIndex < 0) throw new Error('应用已被卸载，已取消安装')
-        saveRollbackPoint(appId, oldEntry, oldBundle)
-        installedApps.value.splice(replaceIndex, 1, nextEntry)
-      } else {
-        installedApps.value.push(nextEntry)
+      const download = await downloadAppVersion(appId, versionId)
+      const added = addedNetworkPermissions(oldEntry?.allowNetwork, download.entry.allowNetwork)
+      if (oldEntry && added.length && !options?.approvePermissions)
+        throw new Error(`新版本新增联网权限：${added.join('、')}`)
+      if (!versionId && oldEntry && compareVersions(download.entry.version, oldEntry.version) <= 0)
+        return oldEntry
+      const entry = await commitDownload(download, oldEntry)
+      if (!oldEntry && auth.token === ownerToken) {
         syncAuthInstalled()
         void syncToServer()
       }
-      persistInstalledApps()
-      await checkForUpdates({ force: true })
-      return nextEntry
+      return entry
     } catch (error) {
-      if (oldBundle) setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, oldBundle)
-      else removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
-      if (oldEntry) {
-        const restoreIndex = installedApps.value.findIndex((item) => item.id === appId)
-        if (restoreIndex >= 0) installedApps.value.splice(restoreIndex, 1, oldEntry)
+      updateErrors.value = {
+        ...updateErrors.value,
+        [appId]: error instanceof Error ? error.message : '版本安装失败',
       }
-      persistInstalledApps()
-      const message = error instanceof Error ? error.message : '版本安装失败'
-      updateErrors.value = { ...updateErrors.value, [appId]: message }
       throw error
     } finally {
       updatingIds.value = updatingIds.value.filter((id) => id !== appId)
     }
   }
 
-  async function updateApp(
+  async function installVersion(
+    appId: number,
+    versionId: number,
+    options?: { approvePermissions?: boolean },
+  ): Promise<InstalledApp> {
+    const entry = await replaceVersion(appId, versionId, options)
+    await checkForUpdates({ force: true })
+    return entry
+  }
+
+  function updateApp(
     appId: number,
     options?: { approvePermissions?: boolean },
   ): Promise<InstalledApp> {
-    if (isUpdating(appId)) {
-      const current = installedApps.value.find((item) => item.id === appId)
-      if (!current) throw new Error('应用未安装')
-      return current
-    }
-
-    let latest: MarketAppItem | undefined = latestApps.value[appId]
-    const currentIndex = installedApps.value.findIndex((item) => item.id === appId)
-    if (currentIndex < 0) throw new Error('应用未安装')
-    if (!latest) {
-      latest = (await fetchAppDetail(appId)) || undefined
-      if (latest) latestApps.value = { ...latestApps.value, [appId]: latest }
-    }
-    if (
-      !latest ||
-      compareVersions(latest.version, installedApps.value[currentIndex].version) <= 0
-    ) {
-      return installedApps.value[currentIndex]
-    }
-
-    updatingIds.value = [...updatingIds.value, appId]
-    const oldEntry = { ...installedApps.value[currentIndex] }
-    const oldBundle = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`)
-    updateErrors.value = { ...updateErrors.value, [appId]: '' }
-
-    try {
-      const nextEntry = await downloadAndInstall(appId)
-      if (!nextEntry) throw new Error('新版本下载失败')
-      const addedPermissions = addedNetworkPermissions(
-        oldEntry.allowNetwork,
-        nextEntry.allowNetwork,
-      )
-      if (addedPermissions.length && !options?.approvePermissions) {
-        throw new Error(`新版本新增联网权限：${addedPermissions.join('、')}`)
-      }
-      if (compareVersions(nextEntry.version, oldEntry.version) <= 0) {
-        if (oldBundle) setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, oldBundle)
-        else removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
-        const nextLatest = { ...latestApps.value }
-        delete nextLatest[appId]
-        latestApps.value = nextLatest
-        return oldEntry
-      }
-      nextEntry.installedAt = oldEntry.installedAt
-      nextEntry.updatedAt = Date.now()
-      const replaceIndex = installedApps.value.findIndex((item) => item.id === appId)
-      if (replaceIndex < 0) throw new Error('应用已被卸载，已取消更新')
-      saveRollbackPoint(appId, oldEntry, oldBundle)
-      installedApps.value.splice(replaceIndex, 1, nextEntry)
-      persistInstalledApps()
-      return nextEntry
-    } catch (error) {
-      if (oldBundle) setStorage(`${BUNDLE_KEY_PREFIX}${appId}`, oldBundle)
-      else removeStorage(`${BUNDLE_KEY_PREFIX}${appId}`)
-      const restoreIndex = installedApps.value.findIndex((item) => item.id === appId)
-      if (restoreIndex >= 0) {
-        installedApps.value.splice(restoreIndex, 1, oldEntry)
-        persistInstalledApps()
-      }
-      const message = error instanceof Error ? error.message : '更新失败'
-      updateErrors.value = { ...updateErrors.value, [appId]: message }
-      throw error
-    } finally {
-      updatingIds.value = updatingIds.value.filter((id) => id !== appId)
-    }
+    return replaceVersion(appId, undefined, options)
   }
 
   async function updateAll() {
@@ -673,26 +674,14 @@ export const useMarketStore = defineStore('market', () => {
       const requestedIds = installedApps.value.map((item) => item.id)
       const results = await Promise.allSettled(requestedIds.map((id) => fetchAppDetail(id)))
       const nextLatest: Record<number, MarketAppItem> = { ...latestApps.value }
-      let metadataChanged = false
       let successCount = 0
 
       results.forEach((result, index) => {
         if (result.status !== 'fulfilled' || !result.value) return
         const detail = result.value
-        const installed = installedApps.value.find((item) => item.id === requestedIds[index])
+        if (!installedApps.value.some((item) => item.id === requestedIds[index])) return
         successCount += 1
         nextLatest[detail.id] = detail
-        if (
-          installed &&
-          (installed.icon !== detail.icon ||
-            installed.name !== detail.name ||
-            installed.description !== detail.description)
-        ) {
-          installed.icon = detail.icon
-          installed.name = detail.name
-          installed.description = detail.description
-          metadataChanged = true
-        }
       })
 
       if (successCount === 0) {
@@ -705,7 +694,31 @@ export const useMarketStore = defineStore('market', () => {
 
       latestApps.value = nextLatest
       lastUpdateCheckAt.value = now
-      if (metadataChanged) persistInstalledApps()
+      try {
+        await commit(async () => {
+          const next = installedApps.value.map((installed) => {
+            const detail = nextLatest[installed.id]
+            if (
+              !detail ||
+              (installed.icon === detail.icon &&
+                installed.name === detail.name &&
+                installed.description === detail.description)
+            )
+              return installed
+            return {
+              ...installed,
+              icon: detail.icon,
+              name: detail.name,
+              description: detail.description,
+            }
+          })
+          if (next.every((item, index) => item === installedApps.value[index])) return
+          await applyStoragePatch({ [INSTALLED_KEY]: next })
+          installedApps.value = next
+        })
+      } catch (error) {
+        updateCheckError.value = error instanceof Error ? error.message : '应用信息保存失败'
+      }
       return availableUpdates.value
     } finally {
       isCheckingUpdates.value = false
@@ -728,25 +741,26 @@ export const useMarketStore = defineStore('market', () => {
    * 并发下载，比串行快很多
    */
   async function syncFromServer(serverAppIds: number[]) {
-    // 找出本地没有的
-    const missing = serverAppIds.filter((id) => !installedApps.value.some((a) => a.id === id))
-    if (missing.length === 0) return
-
-    // 并发下载
-    const results = await Promise.allSettled(missing.map((id) => downloadAndInstall(id)))
-    const newApps = results
-      .filter(
-        (r): r is PromiseFulfilledResult<InstalledApp> =>
-          r.status === 'fulfilled' && r.value !== null,
-      )
-      .map((r) => r.value)
-
-    if (newApps.length === 0) return
-
-    installedApps.value.push(...newApps)
-    setStorage(INSTALLED_KEY, installedApps.value)
-    syncAuthInstalled()
-    syncToServer()
+    const auth = useAuthStore()
+    const ownerToken = auth.token
+    const missing = [...new Set(serverAppIds)].filter(
+      (id) => !installedApps.value.some((item) => item.id === id) && !isUpdating(id),
+    )
+    const results = await Promise.allSettled(
+      missing.map(async (id) => {
+        updatingIds.value = [...updatingIds.value, id]
+        try {
+          const download = await downloadAppVersion(id)
+          if (auth.token !== ownerToken) return
+          await commitDownload(download, null)
+        } finally {
+          updatingIds.value = updatingIds.value.filter((item) => item !== id)
+        }
+      }),
+    )
+    const failed = results.filter((item) => item.status === 'rejected').length
+    if (failed) updateCheckError.value = `有 ${failed} 个应用未能恢复到本机，请稍后重试同步`
+    if (auth.token === ownerToken) syncAuthInstalled()
   }
 
   // 跨设备同步：以服务端实时列表（GET /api/auth/installed-apps）为唯一真源，
@@ -756,12 +770,17 @@ export const useMarketStore = defineStore('market', () => {
     const auth = useAuthStore()
     if (!auth.token || !auth.user) return
     try {
+      const ownerToken = auth.token
       const { data: serverIds } = await api.get<{ data: number[] }>('/api/auth/installed-apps')
+      if (auth.token !== ownerToken) return
       const localIds = installedApps.value.map((a) => a.id)
       const hasMissingOnLocal = serverIds.some((id) => !localIds.includes(id))
       const hasMissingOnServer = localIds.some((id) => !serverIds.includes(id))
       if (hasMissingOnLocal) await syncFromServer(serverIds)
-      if (hasMissingOnServer) await syncToServer()
+      if (hasMissingOnServer && auth.token === ownerToken) {
+        const merged = [...new Set([...serverIds, ...installedApps.value.map((item) => item.id)])]
+        await syncToServer(merged)
+      }
     } catch {
       // 拉取失败则跳过跨设备同步
     }

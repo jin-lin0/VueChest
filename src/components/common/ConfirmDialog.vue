@@ -1,8 +1,15 @@
 <template>
   <transition name="confirm-fade">
     <div v-if="state.visible" class="confirm-overlay" @click.self="handleCancel">
-      <div class="confirm-dialog" role="alertdialog" aria-modal="true">
-        <p class="confirm-message">{{ state.message }}</p>
+      <div
+        ref="panel"
+        class="confirm-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        :aria-labelledby="messageId"
+        tabindex="-1"
+      >
+        <p :id="messageId" class="confirm-message">{{ state.message }}</p>
         <div class="confirm-actions">
           <button class="confirm-cancel" @click="handleCancel">取消</button>
           <button class="confirm-ok" @click="handleConfirm">确定</button>
@@ -13,17 +20,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { ref, useId } from 'vue'
 import { useConfirmController } from '@/composables/useConfirm'
-
+import { useOverlay } from '@/composables/useOverlay'
 const { state, handleConfirm, handleCancel } = useConfirmController()
-
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && state.visible) handleCancel()
-}
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+const panel = ref<HTMLElement | null>(null)
+const messageId = useId()
+useOverlay({ isOpen: () => state.visible, onClose: handleCancel, element: () => panel.value })
 </script>
 
 <style scoped>

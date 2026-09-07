@@ -56,11 +56,40 @@ describe('cURL request importer', () => {
 
   it('拒绝不完整或当前不支持的命令', () => {
     expect(() => parseCurlCommand('wget https://api.example.com')).toThrow('命令需要以 curl 开头')
-    expect(() => parseCurlCommand("curl -F 'file=@demo.png' https://api.example.com")).toThrow(
-      '暂不支持 multipart 表单',
+    expect(() => parseCurlCommand("curl -F 'file=<demo.png' https://api.example.com")).toThrow(
+      '暂不支持',
     )
-    expect(() => parseCurlCommand('curl -X HEAD https://api.example.com')).toThrow(
-      '暂不支持 HEAD 请求方法',
+    expect(() => parseCurlCommand('curl -X TRACE https://api.example.com')).toThrow(
+      '暂不支持 TRACE',
     )
+  })
+
+  it('保留空字符串、重复表单名、文件描述和字面量特殊符号', () => {
+    const result = parseCurlCommand(
+      `curl https://example.com -F 'tag=first' -Ftag=second --form-string 'literal=@abc;type=text/plain' -F 'upload=@demo.png;type=image/png;filename=cover.png'`,
+    )
+    expect(result.method).toBe('POST')
+    expect(result.bodyMode).toBe('form-data')
+    expect(result.formFields?.map(({ name, value, type }) => ({ name, value, type }))).toEqual([
+      { name: 'tag', value: 'first', type: 'text' },
+      { name: 'tag', value: 'second', type: 'text' },
+      { name: 'literal', value: '@abc;type=text/plain', type: 'text' },
+      { name: 'upload', value: 'demo.png', type: 'file' },
+    ])
+    expect(result.formFields?.[3]).toMatchObject({
+      filename: 'cover.png',
+      contentType: 'image/png',
+    })
+    expect(parseCurlCommand(`curl https://example.com --data ''`).method).toBe('POST')
+  })
+
+  it('支持 HEAD/OPTIONS 和 urlencode，拒绝无法等价执行的混合请求', () => {
+    expect(parseCurlCommand('curl -I https://example.com').method).toBe('HEAD')
+    expect(parseCurlCommand('curl -XOPTIONS https://example.com').method).toBe('OPTIONS')
+    expect(parseCurlCommand("curl -G https://example.com --data-urlencode 'q=a b&中文'").url).toBe(
+      'https://example.com?q=a%20b%26%E4%B8%AD%E6%96%87',
+    )
+    expect(() => parseCurlCommand('curl https://example.com -F a=b --data x=y')).toThrow('不能与')
+    expect(() => parseCurlCommand('curl https://example.com -F a=@one,two')).toThrow('一个文件')
   })
 })

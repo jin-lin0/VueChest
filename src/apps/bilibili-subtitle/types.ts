@@ -55,6 +55,7 @@ export interface AnalysisItem extends AnalysisResponse {
   title: string
   cached?: boolean
   streaming?: boolean
+  error?: string
 }
 
 export interface AnalysisCacheEntry extends AnalysisResponse {

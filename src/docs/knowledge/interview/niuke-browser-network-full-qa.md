@@ -33,7 +33,9 @@ order: 54
 
 ### 浏览器缓存机制？浏览器本地存储一般用在哪些场景（localStorage / sessionStorage / cookie / IndexedDB）？cookie / localStorage / sessionStorage 的区别、大小限制？IndexedDB 与 localStorage 如何选型？跨域访问 localStorage 可以吗？
 
-> “我按数据寿命、容量、查询方式和安全性选存储：Cookie 容量通常约 4KB，会按规则随请求发送，适合服务端会话标识；localStorage 通常约 5～10MB、同源持久保存，但同步 API 会阻塞主线程；sessionStorage 按同源且按标签页会话隔离，关闭页签后清除；IndexedDB 是异步、事务型数据库，适合较大的结构化数据、索引查询和离线缓存。敏感令牌优先放 Secure、HttpOnly、SameSite Cookie，避免被 XSS 直接读取。localStorage 受协议、域名、端口组成的源隔离，不能直接跨域读取；确需共享要通过受控后端、`postMessage` 或同站点方案，并验证来源。”
+> “我按数据寿命、容量、查询方式和安全性选存储：Cookie 容量通常约 4KB，会按规则随请求发送，适合服务端会话标识；Web Storage 通常按每源 localStorage 5 MiB、sessionStorage 5 MiB 计，不能把合计额度当作 localStorage 的可用空间，写入要处理 QuotaExceededError；localStorage 同源持久保存但采用同步 API；sessionStorage 按源与标签页会话隔离，刷新保留、关闭页签结束，带 opener 的新窗口可能取得初始副本，之后彼此独立；IndexedDB 是异步、事务型数据库，适合较大的结构化数据、索引查询和离线缓存。敏感令牌优先放 Secure、HttpOnly、SameSite Cookie，避免被 XSS 直接读取。localStorage 受协议、域名、端口组成的源隔离，不能直接跨域读取；确需共享要通过受控后端、`postMessage` 或同站点方案，并验证来源。”
+
+配额、隐私模式和驱逐政策由浏览器决定；IndexedDB 也不能替代备份。参见 [MDN 存储配额](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria) 与 [sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)。
 
 ### DNS 解析前端会遇到什么问题？CDN 是什么、缓存查询步骤、怎么落地？Nginx 解决跨域时是什么角色？正向 / 反向代理区别、负载均衡、静态资源缓存？
 
@@ -109,7 +111,7 @@ order: 54
 
 ### 用户点击"停止生成"，后端如何立即终止 LLM 推理？多轮对话 + 流式输出如何保证消息不乱序、上下文不丢失？跨服务流式透传（gRPC streaming / HTTP2 SSE）？
 
-> “点击停止时，前端用 AbortController 关闭读取并向后端发送包含 generationId 的取消指令；后端维护请求到任务的映射，传播 cancellation token 到模型 SDK 或推理服务，并停止下游工具与计费，不能只断开前端连接。每轮消息使用 conversationId、messageId、parentId、sequence 和 generationId，服务端先持久化状态，再按序推送带事件 ID 的增量，客户端去重且只更新对应消息。跨服务用支持背压和取消传播的 gRPC streaming 或 HTTP 流式转发，并贯穿 trace ID；重试必须有幂等语义。”
+> “点击停止时，前端用 AbortController 关闭读取并向后端发送包含 generationId 的取消指令；后端维护请求到任务的映射，传播 cancellation token 到模型 SDK 或推理服务，并尽力取消尚未完成的下游任务，不能只断开前端连接；取消是否被供应商接受、已处理 token 如何收费，要以供应商协议为准，客户端 abort 不保证停止所有计算或不计费。每轮消息使用 conversationId、messageId、parentId、sequence 和 generationId，服务端先持久化状态，再按序推送带事件 ID 的增量，客户端去重且只更新对应消息。跨服务用支持背压和取消传播的 gRPC streaming 或 HTTP 流式转发，并贯穿 trace ID；重试必须有幂等语义。”
 
 ---
 

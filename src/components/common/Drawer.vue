@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useOverlay } from '../../composables/useOverlay'
 defineOptions({ name: 'VcDrawer', inheritAttrs: false })
 
@@ -6,6 +7,7 @@ const props = withDefaults(
   defineProps<{
     /** 是否打开（支持 v-model:open） */
     open: boolean
+    returnFocus?: HTMLElement | null
     /** 滑出方向 */
     side?: 'left' | 'right'
     /** 标题，留空则不显示标题栏（除非提供了 #header 插槽） */
@@ -39,7 +41,10 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const panel = ref<HTMLElement | null>(null)
 const { close } = useOverlay({
+  element: () => panel.value,
+  returnFocus: () => props.returnFocus || null,
   isOpen: () => props.open,
   onClose: () => {
     emit('update:open', false)
@@ -62,6 +67,9 @@ const { close } = useOverlay({
           class="vc-drawer"
           :class="[side, { 'no-padding': noPadding }]"
           :style="{ width: typeof width === 'number' ? width + 'px' : width }"
+          ref="panel"
+          tabindex="-1"
+          :aria-label="title || '侧边面板'"
           role="dialog"
           aria-modal="true"
         >

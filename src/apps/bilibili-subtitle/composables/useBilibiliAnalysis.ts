@@ -46,6 +46,12 @@ export function useBilibiliAnalysis(
   const analysisStatusByType = ref(createTypeRecord(() => ''))
   let analysisController: AbortController | null = null
   const questionControllers = new Map<string, AbortController>()
+  let previousInputs = createTypeRecord<null | {
+    provider: string
+    model: string
+    prompt: string
+    sources: Array<{ id: string; text: string }>
+  }>(() => null)
 
   const analyzing = computed(() => activeAnalysisType.value === analysisType.value)
   const analysisError = computed({
@@ -86,9 +92,11 @@ export function useBilibiliAnalysis(
   })
   function resetAnalysis() {
     analysisController?.abort()
+    analysisController = null
     questionControllers.forEach((controller) => controller.abort())
     questionControllers.clear()
     activeAnalysisType.value = null
+    previousInputs = createTypeRecord(() => null)
     analysisResultsByType.value = createTypeRecord<AnalysisItem[]>(() => [])
     analysisThreadsByType.value = createTypeRecord<Record<string, AnalysisQuestionThread>>(
       () => ({}),
@@ -183,6 +191,7 @@ export function useBilibiliAnalysis(
     const digest = await digestText(
       `${ANALYSIS_CACHE_VERSION}\n${options.provider}\n${options.model}\n${options.type}\n${options.prompt}\n${source.text}`,
     )
+    options.signal.throwIfAborted()
     const cacheKey = `${source.id}:${digest}`
     const cached = options.useCache ? getAnalysisCache()[cacheKey] : undefined
     if (cached) return { id: source.id, ...cached, cached: true }
@@ -209,6 +218,7 @@ export function useBilibiliAnalysis(
       },
       options.signal,
     )
+    options.signal.throwIfAborted()
     const entry: AnalysisCacheEntry = {
       ...response,
       title: source.title,
@@ -218,7 +228,7 @@ export function useBilibiliAnalysis(
     return { id: source.id, ...entry, cached: false }
   }
 
-  async function runAnalysis() {
+  async function runAnalysis(retryFailed = false) {
     const type = analysisType.value
     const sources = analysisSources()
     if (!sources.length || !analysisProvider.value || !analysisModel.value) {
@@ -230,13 +240,56 @@ export function useBilibiliAnalysis(
       return
     }
 
-    analysisController?.abort()
+    const input = {
+      provider: analysisProvider.value,
+      model: analysisModel.value,
+      prompt: type === 'custom' ? customPrompt.value.trim() : '',
+      sources: sources.map(({ id, text }) => ({ id, text })),
+    }
+    const previousInput = previousInputs[type]
+    if (
+      retryFailed &&
+      previousInput &&
+      (input.provider !== previousInput.provider ||
+        input.model !== previousInput.model ||
+        input.prompt !== previousInput.prompt ||
+        input.sources.length !== previousInput.sources.length ||
+        input.sources.some(
+          (source, index) =>
+            source.id !== previousInput.sources[index].id ||
+            source.text !== previousInput.sources[index].text,
+        ))
+    ) {
+      analysisError.value = '字幕或分析条件已变化，请点击重新分析以生成一致的结果'
+      return
+    }
+    previousInputs[type] = input
+    cancelAnalysis()
     const controller = new AbortController()
     analysisController = controller
+    const isCurrent = () => analysisController === controller && !controller.signal.aborted
+    const previous = retryFailed ? analysisResultsByType.value[type] : []
+    const completed: Array<AnalysisItem | undefined> = sources.map((source) =>
+      previous.find(
+        (item) => item.id === source.id && !item.error && !item.streaming && item.content,
+      ),
+    )
+    if (!retryFailed) {
+      for (const [key, pending] of questionControllers) {
+        if (key.startsWith(`${type}:`)) {
+          pending.abort()
+          questionControllers.delete(key)
+        }
+      }
+      analysisThreadsByType.value[type] = {}
+    }
     activeAnalysisType.value = type
     analysisErrorsByType.value[type] = ''
     analysisStatusByType.value[type] = '正在准备字幕上下文…'
-    analysisProgressByType.value[type] = { done: 0, total: sources.length }
+    analysisProgressByType.value[type] = {
+      done: completed.filter(Boolean).length,
+      total: sources.length,
+    }
     const options = {
       type,
       prompt: type === 'custom' ? customPrompt.value.trim() : '',
@@ -246,13 +299,19 @@ export function useBilibiliAnalysis(
       bvid: result.value?.bvid,
       signal: controller.signal,
     }
-    const completed: Array<AnalysisItem | undefined> = new Array(sources.length)
-    analysisResultsByType.value[type] = []
+    const publish = () => {
+      if (isCurrent())
+        analysisResultsByType.value[type] = completed.filter((item): item is AnalysisItem =>
+          Boolean(item),
+        )
+    }
+    publish()
     let cursor = 0
     async function worker() {
-      while (cursor < sources.length && !controller.signal.aborted) {
+      while (cursor < sources.length && isCurrent()) {
         const index = cursor++
-        let placeholder: AnalysisItem = {
+        if (completed[index]) continue
+        const placeholder: AnalysisItem = {
           id: sources[index].id,
           title: sources[index].title,
           content: '',
@@ -261,64 +320,66 @@ export function useBilibiliAnalysis(
           chunkCount: 0,
           streaming: true,
         }
-        let streamStarted = false
         let latestContent = ''
         let contentTimer: ReturnType<typeof setTimeout> | null = null
-        const publish = () => {
-          analysisResultsByType.value[type] = completed.filter((item): item is AnalysisItem =>
-            Boolean(item),
-          )
-        }
         const flushContent = () => {
           contentTimer = null
-          placeholder = { ...placeholder, content: latestContent }
-          completed[index] = placeholder
+          if (!isCurrent()) return
+          completed[index] = { ...placeholder, content: latestContent }
           publish()
         }
         try {
           const analyzed = await analyzeSource(sources[index], options, {
             onStart: () => {
-              streamStarted = true
-              completed[index] = placeholder
-              publish()
+              if (isCurrent()) {
+                completed[index] = placeholder
+                publish()
+              }
             },
             onDelta: (content) => {
+              if (!isCurrent()) return
               latestContent = content
               if (contentTimer === null) contentTimer = setTimeout(flushContent, 32)
             },
             onProgress: (label) => {
-              analysisStatusByType.value[type] = label
+              if (isCurrent()) analysisStatusByType.value[type] = label
             },
           })
-          if (contentTimer !== null) clearTimeout(contentTimer)
-          placeholder = { ...placeholder, content: latestContent }
+          if (!isCurrent()) return
           completed[index] = analyzed
+        } catch (error) {
+          if (!isCurrent()) return
+          completed[index] = {
+            ...placeholder,
+            content: latestContent,
+            streaming: false,
+            error: error instanceof Error ? error.message : '字幕分析失败',
+          }
+        } finally {
+          if (contentTimer !== null) clearTimeout(contentTimer)
+        }
+        if (isCurrent()) {
           analysisProgressByType.value[type].done += 1
           publish()
-        } catch (error) {
-          if (contentTimer !== null) clearTimeout(contentTimer)
-          if (streamStarted) {
-            placeholder = { ...placeholder, content: latestContent, streaming: false }
-            completed[index] = placeholder
-            publish()
-          }
-          throw error
         }
       }
     }
 
     try {
       await Promise.all(Array.from({ length: Math.min(2, sources.length) }, worker))
-      const actualModel = analysisResultsByType.value[type].at(-1)?.model
+      if (!isCurrent()) return
+      const failed = completed.filter((item) => item?.error).length
+      if (failed)
+        analysisErrorsByType.value[type] =
+          `${failed} 个分 P 分析失败，已保留其他结果，可仅重试失败项`
+      const actualModel = [...completed].reverse().find((item) => item && !item.error)?.model
       if (
         actualModel &&
+        analysisProvider.value === options.provider &&
         currentAnalysisProvider.value?.models.some((item) => item.id === actualModel)
       ) {
         analysisModel.value = actualModel
-      }
-    } catch (reason) {
-      if ((reason as { name?: string })?.name !== 'AbortError') {
-        analysisErrorsByType.value[type] = reason instanceof Error ? reason.message : '字幕分析失败'
+        if (previousInputs[type]) previousInputs[type]!.model = actualModel
       }
     } finally {
       if (analysisController === controller) {
@@ -330,7 +391,18 @@ export function useBilibiliAnalysis(
   }
 
   function cancelAnalysis() {
-    analysisController?.abort()
+    if (!analysisController) return
+    analysisController.abort()
+    analysisController = null
+    const type = activeAnalysisType.value
+    if (type) {
+      analysisResultsByType.value[type] = analysisResultsByType.value[type].map((item) =>
+        item.streaming ? { ...item, streaming: false, error: '已取消，可重试' } : item,
+      )
+      analysisErrorsByType.value[type] = '分析已取消，已保留完成的结果'
+      analysisStatusByType.value[type] = ''
+    }
+    activeAnalysisType.value = null
   }
 
   const combinedAnalysisMarkdown = computed(() =>
@@ -374,6 +446,7 @@ export function useBilibiliAnalysis(
     const threads = analysisThreadsByType.value[type]
     const thread =
       threads[item.id] || (threads[item.id] = { messages: [], asking: false, error: '' })
+    if (thread.asking) return
     if (!question) {
       thread.error = '请输入要追问的问题'
       return
@@ -387,6 +460,10 @@ export function useBilibiliAnalysis(
     questionControllers.get(controllerKey)?.abort()
     const controller = new AbortController()
     questionControllers.set(controllerKey, controller)
+    const isCurrent = () =>
+      questionControllers.get(controllerKey) === controller && !controller.signal.aborted
+    const requestProvider = analysisProvider.value
+    const previousMessages = [...thread.messages]
     const history = thread.messages.map(({ role, content }) => ({ role, content }))
     thread.messages.push({ id: crypto.randomUUID(), role: 'user', content: question })
     const assistantId = crypto.randomUUID()
@@ -402,6 +479,7 @@ export function useBilibiliAnalysis(
     let streamedContent = ''
     let contentTimer: ReturnType<typeof setTimeout> | null = null
     const updateAssistant = (content: string, streaming: boolean) => {
+      if (!isCurrent()) return
       const messageIndex = thread.messages.findIndex((message) => message.id === assistantId)
       if (messageIndex < 0) return
       assistantMessage = { ...thread.messages[messageIndex], content, streaming }
@@ -433,19 +511,21 @@ export function useBilibiliAnalysis(
         controller.signal,
       )
       if (contentTimer !== null) clearTimeout(contentTimer)
+      if (!isCurrent()) return
       updateAssistant(response.content, false)
       if (
         response.model &&
+        analysisProvider.value === requestProvider &&
         currentAnalysisProvider.value?.models.some((model) => model.id === response.model)
       ) {
         analysisModel.value = response.model
       }
     } catch (reason) {
       if (contentTimer !== null) clearTimeout(contentTimer)
+      if (!isCurrent()) return
       updateAssistant(streamedContent, false)
       if (!streamedContent) {
-        const messageIndex = thread.messages.findIndex((message) => message.id === assistantId)
-        if (messageIndex >= 0) thread.messages.splice(messageIndex, 1)
+        thread.messages = previousMessages
       }
       if ((reason as { name?: string })?.name !== 'AbortError') {
         thread.error = reason instanceof Error ? reason.message : '追问失败，请稍后重试'
@@ -470,10 +550,7 @@ export function useBilibiliAnalysis(
       analysisError.value = 'AI 模型列表加载失败，字幕提取仍可正常使用'
     }
   })
-  onUnmounted(() => {
-    analysisController?.abort()
-    questionControllers.forEach((controller) => controller.abort())
-  })
+  onUnmounted(resetAnalysis)
 
   return {
     analysisProvider,

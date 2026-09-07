@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import { RotateCcw, Settings2, Trash2 } from '@lucide/vue'
-import { Drawer } from '@/components'
+import Drawer from '@/components/common/Drawer.vue'
 import { DEFAULT_BILIBILI_SUBTITLE_SETTINGS, type BilibiliSubtitleSettings } from '../settings'
 
 defineOptions({ name: 'BilibiliSettingsDrawer' })

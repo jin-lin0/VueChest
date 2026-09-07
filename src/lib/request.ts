@@ -36,19 +36,13 @@ interface RequestConfig {
 }
 
 async function request<T = unknown>(path: string, config: RequestConfig = {}): Promise<T> {
-  const {
-    method = 'GET',
-    body,
-    headers = {},
-    auth = true,
-    signal,
-    timeoutMs = 0,
-  } = config
+  const { method = 'GET', body, headers = {}, auth = true, signal, timeoutMs = 0 } = config
 
   const fetchHeaders: Record<string, string> = { ...headers }
+  const requestToken = auth ? getAuthToken() : null
 
   if (auth) {
-    const token = getAuthToken()
+    const token = requestToken
     if (token) {
       fetchHeaders['Authorization'] = `Bearer ${token}`
     }
@@ -76,6 +70,14 @@ async function request<T = unknown>(path: string, config: RequestConfig = {}): P
 
   try {
     const res = await fetch(`${API_BASE}${path}`, fetchConfig)
+    if (
+      res.status === 401 &&
+      requestToken &&
+      requestToken === getAuthToken() &&
+      typeof window !== 'undefined'
+    ) {
+      window.dispatchEvent(new CustomEvent('vc:auth-expired', { detail: requestToken }))
+    }
 
     let json: ApiResponse<T>
     try {
@@ -86,7 +88,11 @@ async function request<T = unknown>(path: string, config: RequestConfig = {}): P
 
     // 同时检查 HTTP 状态码和业务 success 字段，避免后端错误响应（无 success 字段）被当成成功
     if (!res.ok || json.success === false) {
-      throw new ApiError(json.error || `请求失败 (${res.status})`, json.code, res.status)
+      throw new ApiError(
+        json.error || json.message || `请求失败 (${res.status})`,
+        json.code,
+        res.status,
+      )
     }
 
     return json as T

@@ -9,6 +9,7 @@ import {
   createSavedRequestFromApi,
 } from './saved-request'
 import type { ApiCollection, SavedRequest } from './types'
+import { HTTP_METHODS } from './request-body'
 
 type WorkspacePickerTab = 'catalog' | 'saved' | 'custom'
 type WorkspaceCustomMode = 'form' | 'curl'
@@ -36,7 +37,7 @@ interface WorkspaceRequestPickerOptions {
 
 const workspaceMethodOptions: SelectOption[] = [
   { value: 'all', label: '全部方法' },
-  ...['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((value) => ({ value, label: value })),
+  ...HTTP_METHODS.map((value) => ({ value, label: value })),
 ]
 
 function blankCustomRequest(): WorkspaceCustomRequestDraft {
@@ -241,6 +242,8 @@ export function useWorkspaceRequestPicker(options: WorkspaceRequestPickerOptions
     const saved = createSavedRequestFromApi(api, options.activeCollectionId.value)
     saved.headers = parsed.headers.map((header) => createRequestHeader(header.name, header.value))
     saved.body = parsed.body
+    saved.bodyMode = parsed.bodyMode
+    saved.formFields = parsed.formFields
     if (parsed.basicAuth) saved.auth = { type: 'basic', ...parsed.basicAuth }
     options.addCreatedRequest(api, saved)
   }

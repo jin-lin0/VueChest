@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
 import { MessageCircle, Send, Sparkles } from '@lucide/vue'
-import { MarkdownView } from '@/components'
+import MarkdownView from '@/components/common/MarkdownView.vue'
 import type { AnalysisQuestionThread } from '../types'
 
 defineOptions({ name: 'AnalysisFollowUp' })
@@ -53,7 +53,7 @@ watch(
       >
         <span>{{ message.role === 'user' ? '你' : 'AI' }}</span>
         <div v-if="message.role === 'assistant'">
-          <MarkdownView :content="message.content" />
+          <MarkdownView :content="message.content" :streaming="message.streaming" />
           <i v-if="message.streaming" class="stream-cursor" aria-hidden="true"></i>
         </div>
         <p v-else>{{ message.content }}</p>

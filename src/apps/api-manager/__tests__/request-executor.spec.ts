@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ApiItem } from '../defaults'
-import {
-  MAX_PREVIEW_BYTES,
-  parseResponseBody,
-  runSavedRequest,
-} from '../request-executor'
+import { MAX_PREVIEW_BYTES, parseResponseBody, runSavedRequest } from '../request-executor'
 import type { SavedRequest } from '../types'
 
 const api: ApiItem = {
@@ -31,9 +27,7 @@ function createSavedRequest(overrides: Partial<SavedRequest> = {}): SavedRequest
       { id: 'body', type: 'body-includes', expected: 'created', enabled: true },
     ],
     auth: { type: 'bearer', token: '{{token}}' },
-    extractions: [
-      { id: 'user-id', path: '$.data.id', variable: 'userId', enabled: true },
-    ],
+    extractions: [{ id: 'user-id', path: '$.data.id', variable: 'userId', enabled: true }],
     retryCount: 0,
     timeoutMs: 5000,
     createdAt: '2026-08-29T00:00:00.000Z',
@@ -59,16 +53,36 @@ describe('parseResponseBody', () => {
   it('默认预览上限保持为 512 KiB', () => {
     expect(MAX_PREVIEW_BYTES).toBe(512 * 1024)
   })
+
+  it('releases the reader and does not mark an exact-size response as truncated', async () => {
+    const response = new Response('exact')
+    const result = await parseResponseBody(response, 'text/plain', 5)
+    expect(result).toMatchObject({ data: 'exact', truncated: false, size: 5 })
+    expect(response.body?.locked).toBe(false)
+  })
+
+  it('releases the reader after a network error', async () => {
+    const response = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.error(new Error('Connection lost'))
+        },
+      }),
+    )
+    await expect(parseResponseBody(response, 'text/plain')).rejects.toThrow('Connection lost')
+    expect(response.body?.locked).toBe(false)
+  })
 })
 
 describe('runSavedRequest', () => {
   it('解析变量、鉴权、断言和响应提取', async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response('{"created":true,"data":{"id":42}}', {
-        status: 201,
-        statusText: 'Created',
-        headers: { 'Content-Type': 'application/json', 'X-Trace': 'trace-1' },
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response('{"created":true,"data":{"id":42}}', {
+          status: 201,
+          statusText: 'Created',
+          headers: { 'Content-Type': 'application/json', 'X-Trace': 'trace-1' },
+        }),
     )
     const timestamps = [100, 148]
 

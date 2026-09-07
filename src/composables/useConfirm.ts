@@ -20,6 +20,7 @@ const state = reactive<ConfirmState>({
  */
 export function useConfirm() {
   function confirm(message: string): Promise<boolean> {
+    state.resolve?.(false)
     state.message = message
     state.visible = true
     return new Promise<boolean>((resolve) => {

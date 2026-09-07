@@ -1,9 +1,11 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vitest/config'
+import vue from '@vitejs/plugin-vue'
 
 // 测试配置独立于 vite.config.ts：跑单测不需要 vue-devtools / dev proxy，
-// 只保留路径别名，避免构建插件在测试环境产生副作用。
+// 保留路径别名，并使用 Vue 插件编译组件测试导入的 .vue 文件。
 export default defineConfig({
+  plugins: [vue()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

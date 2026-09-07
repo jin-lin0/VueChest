@@ -33,7 +33,9 @@ order: 52
 
 ### useState 可以放在条件语句里吗，为什么？useState 返回为什么是数组不是对象？
 
-> “Hook 依靠每个 Fiber 上稳定的调用顺序把当前调用对应到状态槽，条件分支会让后续槽位错位，所以只能在组件或自定义 Hook 顶层调用。`useState` 返回数组便于调用者任意命名和多次解构；如果返回固定字段对象，多个 state 解构会重名。规则应由 eslint-plugin-react-hooks 静态检查，而不是靠约定记忆。”
+> “useState 等 Hook 依靠每个 Fiber 上稳定的调用顺序把当前调用对应到状态槽，条件分支会让后续槽位错位，所以只能在组件或自定义 Hook 顶层调用。`useState` 返回数组便于调用者任意命名和多次解构；如果返回固定字段对象，多个 state 解构会重名。规则应由 eslint-plugin-react-hooks 静态检查，而不是靠约定记忆。”
+
+**边界**：React 19 的 `use(resource)` API 可以在循环和条件中调用，但仍必须位于组件或自定义 Hook 内，不能包在 `try/catch` 中。`useState` 返回数组是 API 设计选择；对象解构也能通过别名避免重名，不能说对象形式无法实现。参见 [React use](https://react.dev/reference/react/use)。
 
 ### 了解 React Fiber 吗？为什么需要 Fiber 架构（可中断渲染）？引入 fiber 架构的原因、可中断内部如何实现、何时中断节点渲染、浏览器如何验证空闲时间？React 如何实现中断？fiber 的数据结构与算法？
 
@@ -41,7 +43,7 @@ order: 52
 
 ### 函数组件和类组件的区别？Hooks 的优缺点？为什么要有 React Hooks、设计动机？Hooks 为什么不能放在分支逻辑（if）里？依赖过多问题怎么解决（useMemo / useCallback / 拆分 Hook）？用 useMemo 实现 useCallback？
 
-> “函数组件以 props/state 快照重新执行，类组件依赖实例和生命周期。Hooks 让状态逻辑按业务关注点复用，避免 HOC/render props 嵌套；代价是闭包、依赖数组和调用规则更易踩坑。Hook 不能进分支因为顺序标识状态槽。依赖过多先拆 effect 和自定义 Hook、减少派生状态，再按证据用 memo。`useCallback(fn,deps)` 语义近似 `useMemo(()=>fn,deps)`，但都不是正确性的保证。”
+> “函数组件以 props/state 快照重新执行，类组件依赖实例和生命周期。Hooks 让状态逻辑按业务关注点复用，避免 HOC/render props 嵌套；代价是闭包、依赖数组和调用规则更易踩坑。useState/useEffect 等 Hook 不能进分支，因为调用顺序对应状态槽；React 的 `use` API 允许条件调用，不能据此放宽普通 Hook 的规则。依赖过多先拆 effect 和自定义 Hook、减少派生状态，再按证据用 memo。`useCallback(fn,deps)` 语义近似 `useMemo(()=>fn,deps)`，但都不是正确性的保证。”
 
 ### 受控组件与非受控组件？React 父组件更新如何防止子组件不必要的更新（React.memo / shouldComponentUpdate）？React 做优化会用哪些 hooks？
 
@@ -97,11 +99,13 @@ order: 52
 
 ### ref 与 reactive 的区别？为什么 template 里响应式不用 .value？
 
-> “reactive 只接对象并返回 Proxy，整体替换和直接解构容易断开追踪；ref 可包任意值，用稳定容器的 `.value` 读写，对象值内部会转 reactive。模板渲染上下文会自动解包顶层 ref，所以通常不用 `.value`，但数组/集合中的 ref 和某些嵌套表达式有边界。团队里我常优先 ref，需要一组固定字段共同修改时用 reactive。”
+> “reactive 接受对象并返回 Proxy，追踪发生在代理属性访问时；把基本类型属性解构为局部变量会失去与原属性的连接，解构出的嵌套代理对象仍可追踪自身属性，但不会跟随原属性被替换；ref 可包任意值，用稳定容器的 `.value` 读写，对象值内部会转 reactive。模板渲染上下文会自动解包顶层 ref，所以通常不用 `.value`，但数组/集合中的 ref 和某些嵌套表达式有边界。团队里我常优先 ref，需要一组固定字段共同修改时用 reactive。”
 
 ### Vue3 生命周期？Vue2 与 Vue3 的生命周期对应？Vue3 的 Composition API setup() 里响应式丢失的原因与解决？第一次渲染触发哪几个钩子、created 与 mounted 的区别？
 
-> “Composition API 常用 onBeforeMount/onMounted、onBeforeUpdate/onUpdated、onBeforeUnmount/onUnmounted、onActivated/onDeactivated，对应 Vue2 的 mounted 等；beforeCreate/created 的初始化逻辑直接在 setup 执行。首渲染是 setup、beforeMount、mounted。created 时数据和方法可用但无 DOM，mounted 后 DOM 已挂载。reactive 解构或整体替换会丢响应式，用 toRefs、保留对象访问或 ref；生命周期副作用要在卸载时清理。”
+> “Composition API 常用 onBeforeMount/onMounted、onBeforeUpdate/onUpdated、onBeforeUnmount/onUnmounted、onActivated/onDeactivated，对应 Vue2 的 mounted 等；beforeCreate/created 的初始化逻辑直接在 setup 执行。首渲染是 setup、beforeMount、mounted。created 时数据和方法可用但无 DOM，mounted 后 DOM 已挂载。对普通 reactive 的基本类型属性解构、或让已捕获旧代理的代码面对变量整体替换时，需要用 toRefs、保留代理访问或 ref 容器维持连接；生命周期副作用要在卸载时清理。”
+
+**Vue 3.5+ 编译器边界**：在 `<script setup>` 中直接解构 `defineProps`，同一块代码里的变量读取会被编译为 props 访问；这不适用于普通 `reactive` 解构。监听解构 prop 用 `watch(() => title, callback)`，向需要持续读取的函数传 getter，直接传 `title` 仍只是当次取值。Vue 3.4 及更早版本默认没有该转换。参见 [Vue 响应式 Props 解构](https://vuejs.org/api/sfc-script-setup.html#reactive-props-destructure)。
 
 ### v-if 与 v-show 的区别及渲染机制？visibility:hidden、display:none、opacity:0 的核心区别？
 

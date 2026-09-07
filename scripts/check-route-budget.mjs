@@ -23,13 +23,38 @@ const routeBudgets = [
   {
     name: 'API 工作台',
     budget: 95 * 1024,
-    resolveKey: () => 'src/apps/api-manager/App.vue',
+    resolveKey: () =>
+      manifest['src/apps/api-manager/App.vue']
+        ? 'src/apps/api-manager/App.vue'
+        : Object.keys(manifest).find((key) =>
+            manifest[key].dynamicImports?.includes('src/apps/api-manager/importers.ts'),
+          ),
     eagerDynamic: [{ source: 'src/apps/api-manager/defaults.ts' }],
   },
   {
     name: '面试题库',
     budget: 85 * 1024,
     resolveKey: () => 'src/apps/interview/App.vue',
+  },
+  {
+    name: 'AI 聊天',
+    budget: 80 * 1024,
+    resolveKey: () => 'src/apps/ai-chat/App.vue',
+  },
+  {
+    name: 'B站字幕分析',
+    budget: 90 * 1024,
+    resolveKey: () => 'src/apps/bilibili-subtitle/App.vue',
+  },
+  {
+    name: '节奏音游',
+    budget: 35 * 1024,
+    resolveKey: () =>
+      manifest['src/apps/rhythm/App.vue']
+        ? 'src/apps/rhythm/App.vue'
+        : Object.keys(manifest).find((key) =>
+            manifest[key].dynamicImports?.includes('src/apps/rhythm/components/PlayView.vue'),
+          ),
   },
   {
     name: '3D 赛车',

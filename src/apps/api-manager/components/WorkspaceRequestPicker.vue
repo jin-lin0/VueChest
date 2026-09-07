@@ -5,6 +5,7 @@ import CustomSelect, { type SelectOption } from '@/components/common/CustomSelec
 import type { ApiItem } from '../defaults'
 import type { ApiCollection, SavedRequest } from '../types'
 import { useWorkspaceRequestPicker } from '../useWorkspaceRequestPicker'
+import { HTTP_METHODS } from '../request-body'
 
 defineOptions({ name: 'WorkspaceRequestPicker' })
 
@@ -24,7 +25,7 @@ const emit = defineEmits<{
   notify: [type: 'success' | 'error' | 'warning' | 'info', message: string]
 }>()
 
-const methodOptions: SelectOption[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((value) => ({
+const methodOptions: SelectOption[] = HTTP_METHODS.map((value) => ({
   value,
   label: value,
 }))
@@ -156,9 +157,7 @@ watch(showWorkspaceRequestPicker, (visible) => {
               type="search"
               autofocus
               :placeholder="
-                workspacePickerTab === 'catalog'
-                  ? '搜索 API 名称、分类或 URL'
-                  : '搜索已保存请求'
+                workspacePickerTab === 'catalog' ? '搜索 API 名称、分类或 URL' : '搜索已保存请求'
               "
             />
           </label>
@@ -289,7 +288,11 @@ watch(showWorkspaceRequestPicker, (visible) => {
           <template v-if="workspaceCustomMode === 'form'">
             <label>
               <span>请求名称 <b>*</b></span>
-              <input v-model="workspaceCustomRequest.name" type="text" placeholder="例如：获取当前用户" />
+              <input
+                v-model="workspaceCustomRequest.name"
+                type="text"
+                placeholder="例如：获取当前用户"
+              />
               <small v-if="workspaceCustomErrors.name">{{ workspaceCustomErrors.name }}</small>
             </label>
             <div class="custom-request-url-row">

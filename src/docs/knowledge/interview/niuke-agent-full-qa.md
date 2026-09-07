@@ -329,6 +329,33 @@ order: 56
 
 ---
 
+### 流式聊天场景下，如何优化长文本输出的展示与交互体验（如大量增量内容渲染卡顿、滚动位置保持、长文可读性与不阻塞主线程）？
+
+先区分四层：网络字节解码、SSE/NDJSON 事件组装、消息内容缓冲、视图渲染。chunk 不等于一个 token 或完整事件；按协议解析后再累加，并将 Markdown 解析与 DOM 更新合并到每帧一次或固定短周期。只解析当前变化的消息，已完成的历史消息保持稳定；非常长的会话再考虑按消息虚拟化，保留复制全文与查找入口。
+
+```js
+function createFrameWriter(render) {
+  let text = '', frame = null
+  const flush = () => {
+    if (frame !== null) cancelAnimationFrame(frame)
+    frame = null
+    render(text)
+  }
+  return {
+    append(delta) {
+      text += delta
+      if (frame === null) frame = requestAnimationFrame(flush)
+    },
+    flush,
+    dispose() { if (frame !== null) cancelAnimationFrame(frame); frame = null },
+  }
+}
+```
+
+示例的 render 仍需检查 conversationId/generationId 归属。完成和保留部分结果的失败分支主动 flush，离开页面 dispose；后台页可能暂停 rAF，不能只靠下一帧保证尾段显示。[MDN requestAnimationFrame](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)。
+
+用户接近底部时才自动跟随；上翻阅读后保持位置并显示“新内容/回到底部”。代码块横向滚动、合理行宽、段落间距和停止/重试入口比逐字动画更重要。重解析可移至 Worker，DOM 仍在主线程；任何 HTML 渲染仍需清洗，部分代码围栏不能绕过安全处理。用长回复、低速设备和中途切换会话测帧耗时、解析次数与尾段完整性。
+
 ## 参考来源
 
 - [牛客网面试经验](https://www.nowcoder.com/discuss)

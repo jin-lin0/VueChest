@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onUnmounted, ref, watch } from 'vue'
-import { EmptyState } from '@/components'
+import EmptyState from '@/components/common/EmptyState.vue'
 import type { ConversationSummary } from '../config'
 
 defineProps<{

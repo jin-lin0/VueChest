@@ -8,7 +8,6 @@ import {
   Download,
   ExternalLink,
   GripVertical,
-  Layers3,
   Play,
   Plus,
   Save,
@@ -25,9 +24,21 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import Toast from '@/components/common/Toast.vue'
 import Modal from '@/components/common/Modal.vue'
 import WorkspaceRequestPicker from './components/WorkspaceRequestPicker.vue'
+import RequestEditor from './components/RequestEditor.vue'
+import ResponsePanel from './components/ResponsePanel.vue'
+import CollectionSidebar from './components/CollectionSidebar.vue'
+import { useCollectionRunner } from './useCollectionRunner'
+import { assertionTypeOptions } from './editor-options'
+import {
+  HTTP_METHODS,
+  canSendBody,
+  prepareRequestBody,
+  type RequestBodyMode,
+  type RequestFormField,
+  type RequestFiles,
+} from './request-body'
 import { useConfirm } from '@/composables/useConfirm'
 import type { ApiItem } from './defaults'
-import { importApiDocument } from './importers'
 import { useApiManagerPersistence } from './useApiManagerPersistence'
 import {
   applyAuth,
@@ -37,9 +48,7 @@ import {
   type ExtractionRule,
 } from './collection-runner'
 import {
-  createRuntimeVariableContext,
   findVariableReferences,
-  mergeRuntimeVariables,
   requestsForCollection,
   upsertCollectionRequest,
 } from './collection-workspace'
@@ -47,6 +56,7 @@ import {
   buildCurlCommand,
   buildRequestUrl,
   formatBytes,
+  getStatusTone,
   inferApiAccess,
   evaluateAssertions,
   resolveVariables,
@@ -54,11 +64,7 @@ import {
   type AssertionRule,
   type RequestHeader,
 } from './request-utils'
-import {
-  REQUEST_TIMEOUT_MS,
-  parseResponseBody,
-  runSavedRequest,
-} from './request-executor'
+import { REQUEST_TIMEOUT_MS, parseResponseBody } from './request-executor'
 import {
   createRequestHeader as createHeader,
   createSavedRequestFromApi as buildSavedRequestFromApi,
@@ -68,7 +74,6 @@ import type {
   ApiEnvironment,
   ApiResponse,
   AuthDraft,
-  CollectionRunResult,
   CollectionRuntimeVariable,
   RequestHistoryItem,
   SavedRequest,
@@ -110,6 +115,9 @@ const selectedId = ref<string | number | null>(null)
 const paramValues = ref<Record<string, string>>({})
 const requestHeaders = ref<RequestHeader[]>([])
 const requestBody = ref('')
+const requestBodyMode = ref<RequestBodyMode>('raw')
+const requestFormFields = ref<RequestFormField[]>([])
+const requestFiles = ref<RequestFiles>({})
 const requestTab = ref<RequestTab>('params')
 const responseTab = ref<ResponseTab>('preview')
 const response = ref<ApiResponse | null>(null)
@@ -124,7 +132,6 @@ const newEnvironmentName = ref('')
 const newCollectionName = ref('')
 const saveRequestName = ref('')
 const editingSavedRequestId = ref<string | null>(null)
-const workspaceFileRef = ref<HTMLInputElement | null>(null)
 const definitionFileRef = ref<HTMLInputElement | null>(null)
 const authDraft = ref<AuthDraft>({
   type: 'none',
@@ -138,13 +145,9 @@ const authDraft = ref<AuthDraft>({
 const extractionRules = ref<ExtractionRule[]>([])
 const retryCount = ref(0)
 const requestTimeoutMs = ref(REQUEST_TIMEOUT_MS)
-const collectionRunning = ref(false)
-const collectionResults = ref<CollectionRunResult[]>([])
-const collectionRuntimeVariables = ref<CollectionRuntimeVariable[]>([])
 const selectedWorkspaceRequestId = ref<string | null>(null)
 const workspaceStepTab = ref<WorkspaceStepTab>('request')
 const workspaceResponseSection = ref<WorkspaceResponseSection>('body')
-const runningRequestId = ref<string | null>(null)
 const showNewCollectionInput = ref(false)
 const draggedWorkspaceRequestId = ref<string | null>(null)
 const collectionContextMenu = ref<{ collectionId: string; x: number; y: number } | null>(null)
@@ -166,7 +169,7 @@ const blankForm = (): Partial<ApiItem> => ({
 })
 const formData = ref<Partial<ApiItem>>(blankForm())
 
-const methodOptions: SelectOption[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((value) => ({
+const methodOptions: SelectOption[] = HTTP_METHODS.map((value) => ({
   value,
   label: value,
 }))
@@ -183,21 +186,6 @@ const authOptions: SelectOption[] = [
 const corsOptions: SelectOption[] = [
   { value: 'supported', label: '支持 CORS' },
   { value: 'unknown', label: '未知 / 待验证' },
-]
-const assertionTypeOptions: SelectOption[] = [
-  { value: 'status', label: '状态码等于' },
-  { value: 'time', label: '响应耗时小于' },
-  { value: 'body-includes', label: '响应包含文本' },
-]
-const requestAuthOptions: SelectOption[] = [
-  { value: 'none', label: '无鉴权' },
-  { value: 'bearer', label: 'Bearer Token' },
-  { value: 'api-key', label: 'API Key' },
-  { value: 'basic', label: 'Basic Auth' },
-]
-const apiKeyLocationOptions: SelectOption[] = [
-  { value: 'header', label: 'Header' },
-  { value: 'query', label: 'Query 参数' },
 ]
 
 let routeCommandsReady = false
@@ -340,6 +328,28 @@ const activeCollection = computed(
 const activeCollectionRequests = computed(() =>
   requestsForCollection(savedRequests.value, activeCollectionId.value),
 )
+const {
+  collectionRunning,
+  collectionResults,
+  collectionRuntimeVariables,
+  runningRequestId,
+  runActiveCollection,
+  stopCollection,
+} = useCollectionRunner({
+  collectionId: activeCollectionId,
+  requests: activeCollectionRequests,
+  variables: activeVariables,
+  files: requestFiles,
+  apiFor: apiForSavedRequest,
+  notify,
+  select: (id, completed) => {
+    selectedWorkspaceRequestId.value = id
+    if (completed) {
+      workspaceStepTab.value = 'response'
+      workspaceResponseSection.value = 'body'
+    }
+  },
+})
 const editingSavedRequest = computed(() =>
   savedRequests.value.find((item) => item.id === editingSavedRequestId.value),
 )
@@ -386,29 +396,38 @@ const currentUrl = computed(() =>
     ? resolveVariables(buildRequestUrl(selectedApi.value, paramValues.value), activeVariables.value)
     : '',
 )
-const curlCommand = computed(() =>
-  selectedApi.value
-    ? buildCurlCommand(
-        selectedApi.value,
-        currentUrl.value,
-        requestHeaders.value.map((header) => ({
-          ...header,
-          value: resolveVariables(header.value, activeVariables.value),
-        })),
-        resolveVariables(requestBody.value, activeVariables.value),
-      )
-    : '',
-)
-const responseText = computed(() => {
-  if (!response.value || response.value.imageUrl) return ''
-  if (typeof response.value.data === 'string') return response.value.data
-  try {
-    return JSON.stringify(response.value.data, null, 2)
-  } catch {
-    return String(response.value.data)
-  }
+const curlCommand = computed(() => {
+  if (!selectedApi.value) return ''
+  const authenticated = applyAuth(
+    currentUrl.value,
+    resolvedHeaders(requestHeaders.value, activeVariables.value),
+    currentAuthConfig(),
+    activeVariables.value,
+  )
+  return buildCurlCommand(
+    selectedApi.value,
+    authenticated.url,
+    Object.entries(authenticated.headers).map(([name, value]) => ({
+      id: name,
+      name,
+      value,
+      enabled: true,
+    })),
+    resolveVariables(requestBody.value, activeVariables.value),
+    requestBodyMode.value,
+    requestFormFields.value.map((field) => ({
+      ...field,
+      name: resolveVariables(field.name, activeVariables.value),
+      value: resolveVariables(field.value, activeVariables.value),
+      filename: field.filename
+        ? resolveVariables(field.filename, activeVariables.value)
+        : undefined,
+      contentType: field.contentType
+        ? resolveVariables(field.contentType, activeVariables.value)
+        : undefined,
+    })),
+  )
 })
-const canHaveBody = computed(() => Boolean(selectedApi.value && selectedApi.value.method !== 'GET'))
 
 function notify(type: 'success' | 'error' | 'warning' | 'info', message: string) {
   toastRef.value?.addToast(type, message)
@@ -449,12 +468,15 @@ function loadAuthConfig(auth?: AuthConfig) {
 }
 
 function resetRequest(api: ApiItem) {
+  abortRequest()
   if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
   paramValues.value = Object.fromEntries(
     api.params.map((param) => [param.name, param.defaultValue]),
   )
   requestHeaders.value = [createHeader('Accept', '*/*')]
-  requestBody.value = api.method === 'GET' ? '' : '{\n  \n}'
+  requestBody.value = canSendBody(api.method) ? '{\n  \n}' : ''
+  requestBodyMode.value = 'raw'
+  requestFormFields.value = []
   requestTab.value = api.params.length ? 'params' : 'headers'
   responseTab.value = 'preview'
   response.value = null
@@ -541,13 +563,15 @@ async function executeApi() {
       currentAuthConfig(),
       activeVariables.value,
     )
-    const headers = authenticated.headers
-    const hasContentType = Object.keys(headers).some(
-      (name) => name.toLowerCase() === 'content-type',
-    )
-    const resolvedBody = resolveVariables(requestBody.value, activeVariables.value)
-    const hasBody = api.method !== 'GET' && resolvedBody.trim() !== ''
-    if (hasBody && !hasContentType) headers['Content-Type'] = 'application/json'
+    const prepared = prepareRequestBody({
+      method: api.method,
+      body: requestBody.value,
+      bodyMode: requestBodyMode.value,
+      formFields: requestFormFields.value,
+      files: requestFiles.value,
+      variables: activeVariables.value,
+      headers: authenticated.headers,
+    })
 
     let result: Response | null = null
     const attempts = Math.min(3, Math.max(0, retryCount.value)) + 1
@@ -555,8 +579,8 @@ async function executeApi() {
       try {
         result = await fetch(authenticated.url, {
           method: api.method,
-          headers,
-          body: hasBody ? resolvedBody : undefined,
+          headers: prepared.headers,
+          body: prepared.body,
           signal: controller.signal,
         })
         if (result.status < 500 || attempt === attempts - 1) break
@@ -568,6 +592,10 @@ async function executeApi() {
     if (!result) throw new Error('请求未返回响应')
     const contentType = result.headers.get('content-type') ?? ''
     const parsed = await parseResponseBody(result, contentType)
+    if (activeController.value !== controller) {
+      if (parsed.imageUrl) URL.revokeObjectURL(parsed.imageUrl)
+      return
+    }
     const time = Math.round(performance.now() - startedAt)
     const responseHeaders: Record<string, string> = {}
     result.headers.forEach((value, name) => {
@@ -600,6 +628,7 @@ async function executeApi() {
       ok: result.ok,
     })
   } catch (reason) {
+    if (activeController.value !== controller) return
     const time = Math.round(performance.now() - startedAt)
     const message = timedOut
       ? `请求超过 ${Math.round(requestTimeoutMs.value / 1000)} 秒，已自动取消`
@@ -621,20 +650,17 @@ async function executeApi() {
     })
   } finally {
     window.clearTimeout(timeoutId)
-    if (activeController.value === controller) activeController.value = null
-    isLoading.value = false
+    if (activeController.value === controller) {
+      activeController.value = null
+      isLoading.value = false
+    }
   }
 }
 
 function abortRequest() {
   activeController.value?.abort()
-}
-
-function getStatusTone(status: number): string {
-  if (status >= 200 && status < 300) return 'success'
-  if (status >= 400 && status < 500) return 'warning'
-  if (status >= 500) return 'danger'
-  return 'info'
+  activeController.value = null
+  isLoading.value = false
 }
 
 function accessFor(api: ApiItem) {
@@ -643,14 +669,6 @@ function accessFor(api: ApiItem) {
 
 function setScope(scope: CatalogScope) {
   catalogScope.value = scope
-}
-
-function addRequestHeader() {
-  requestHeaders.value.push(createHeader())
-}
-
-function removeRequestHeader(id: string) {
-  requestHeaders.value = requestHeaders.value.filter((header) => header.id !== id)
 }
 
 function showAddFormPanel() {
@@ -844,10 +862,6 @@ function selectWorkspaceCollection(id: string) {
   collectionContextMenu.value = null
 }
 
-function collectionRequestCount(id: string) {
-  return savedRequests.value.filter((item) => item.collectionId === id).length
-}
-
 function createWorkspaceCollection() {
   if (!newCollectionName.value.trim())
     newCollectionName.value = `新集合 ${collections.value.length + 1}`
@@ -896,33 +910,6 @@ function openCollectionContextMenu(event: MouseEvent, collectionId: string) {
   }
 }
 
-function addAssertion() {
-  assertions.value.push({
-    id: crypto.randomUUID(),
-    type: 'body-includes',
-    expected: '',
-    enabled: true,
-  })
-}
-
-function removeAssertion(id: string) {
-  assertions.value = assertions.value.filter((item) => item.id !== id)
-  assertionResults.value = assertionResults.value.filter((item) => item.id !== id)
-}
-
-function addExtractionRule() {
-  extractionRules.value.push({
-    id: crypto.randomUUID(),
-    path: '$.data.token',
-    variable: 'token',
-    enabled: true,
-  })
-}
-
-function removeExtractionRule(id: string) {
-  extractionRules.value = extractionRules.value.filter((item) => item.id !== id)
-}
-
 function persistCurrentRequest(asCopy: boolean): SavedRequest | undefined {
   if (!selectedApi.value) return undefined
   const existing = asCopy ? undefined : editingSavedRequest.value
@@ -935,6 +922,8 @@ function persistCurrentRequest(asCopy: boolean): SavedRequest | undefined {
     paramValues: { ...paramValues.value },
     headers: requestHeaders.value.map((item) => ({ ...item })),
     body: requestBody.value,
+    bodyMode: requestBodyMode.value,
+    formFields: requestFormFields.value.map((field) => ({ ...field })),
     assertions: assertions.value.map((item) => ({ ...item })),
     auth: currentAuthConfig(),
     extractions: extractionRules.value.map((item) => ({ ...item })),
@@ -1004,6 +993,8 @@ function openSavedRequest(saved: SavedRequest) {
   paramValues.value = { ...saved.paramValues }
   requestHeaders.value = saved.headers.map((item) => ({ ...item }))
   requestBody.value = saved.body
+  requestBodyMode.value = saved.bodyMode || 'raw'
+  requestFormFields.value = (saved.formFields || []).map((field) => ({ ...field }))
   assertions.value = saved.assertions.map((item) => ({ ...item }))
   loadAuthConfig(saved.auth)
   extractionRules.value = (saved.extractions || []).map((item) => ({ ...item }))
@@ -1087,6 +1078,9 @@ function requestVariableReferences(saved: SavedRequest) {
     ...Object.values(saved.paramValues),
     ...saved.headers.flatMap((header) => [header.name, header.value]),
     saved.body,
+    ...(saved.formFields || [])
+      .filter((field) => field.enabled)
+      .flatMap((field) => [field.name, field.value, field.filename || '', field.contentType || '']),
     ...authVariableValues(saved.auth),
   ])
 }
@@ -1214,8 +1208,9 @@ function importApiDefinition(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   const reader = new FileReader()
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
+      const { importApiDocument } = await import('./importers')
       const imported = importApiDocument(String(reader.result || ''))
       const collection: ApiCollection = {
         id: crypto.randomUUID(),
@@ -1236,6 +1231,8 @@ function importApiDefinition(event: Event) {
           ),
           headers: request.headers,
           body: request.body,
+          bodyMode: request.bodyMode,
+          formFields: request.formFields,
           assertions: [{ id: crypto.randomUUID(), type: 'status', expected: '200', enabled: true }],
           auth: { type: 'none' },
           extractions: [],
@@ -1260,54 +1257,6 @@ function importApiDefinition(event: Event) {
   }
   reader.readAsText(file)
   input.value = ''
-}
-
-async function runActiveCollection() {
-  const requests = activeCollectionRequests.value
-  if (collectionRunning.value) return
-  if (!requests.length) {
-    notify('info', `集合「${activeCollection.value?.name || '当前集合'}」还没有请求`)
-    return
-  }
-  collectionRunning.value = true
-  collectionResults.value = []
-  collectionRuntimeVariables.value = []
-  let runtimeContext = createRuntimeVariableContext(activeVariables.value)
-  try {
-    for (const request of requests) {
-      runningRequestId.value = request.id
-      selectedWorkspaceRequestId.value = request.id
-      const execution = await runSavedRequest(request, apiForSavedRequest(request), runtimeContext)
-      collectionResults.value.push(execution.result)
-      workspaceStepTab.value = 'response'
-      workspaceResponseSection.value = 'body'
-      runtimeContext = mergeRuntimeVariables(
-        runtimeContext,
-        execution.extracted.map((item) => ({ key: item.variable, value: item.value })),
-      )
-      for (const variable of execution.extracted) {
-        const record: CollectionRuntimeVariable = {
-          key: variable.variable,
-          value: variable.value,
-          sourceRequestId: request.id,
-          sourceRequestName: request.name,
-        }
-        const index = collectionRuntimeVariables.value.findIndex(
-          (item) => item.key === variable.variable,
-        )
-        if (index >= 0) collectionRuntimeVariables.value[index] = record
-        else collectionRuntimeVariables.value.push(record)
-      }
-    }
-    const passed = collectionResults.value.filter((item) => item.ok).length
-    notify(
-      passed === requests.length ? 'success' : 'warning',
-      `集合运行完成：${passed}/${requests.length} 通过`,
-    )
-  } finally {
-    runningRequestId.value = null
-    collectionRunning.value = false
-  }
 }
 
 function exportCollectionReport() {
@@ -1359,7 +1308,7 @@ function formatHistoryTime(value: string): string {
 }
 
 onBeforeUnmount(() => {
-  activeController.value?.abort()
+  abortRequest()
   if (response.value?.imageUrl) URL.revokeObjectURL(response.value.imageUrl)
 })
 </script>
@@ -1446,9 +1395,10 @@ onBeforeUnmount(() => {
           <kbd>⌘ K</kbd>
         </label>
 
-        <div class="scope-tabs" role="tablist" aria-label="目录筛选">
+        <div class="scope-tabs" role="group" aria-label="目录筛选">
           <button
             :class="{ active: catalogScope === 'all' }"
+            :aria-pressed="catalogScope === 'all'"
             type="button"
             @click="setScope('all')"
           >
@@ -1456,6 +1406,7 @@ onBeforeUnmount(() => {
           </button>
           <button
             :class="{ active: catalogScope === 'featured' }"
+            :aria-pressed="catalogScope === 'featured'"
             type="button"
             @click="setScope('featured')"
           >
@@ -1463,6 +1414,7 @@ onBeforeUnmount(() => {
           </button>
           <button
             :class="{ active: catalogScope === 'pinned' }"
+            :aria-pressed="catalogScope === 'pinned'"
             type="button"
             @click="setScope('pinned')"
           >
@@ -1470,6 +1422,7 @@ onBeforeUnmount(() => {
           </button>
           <button
             :class="{ active: catalogScope === 'recent' }"
+            :aria-pressed="catalogScope === 'recent'"
             type="button"
             @click="setScope('recent')"
           >
@@ -1865,352 +1818,38 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="runner-grid">
-            <section class="runner-card request-card">
-              <div class="runner-card-heading">
-                <div>
-                  <span class="step-number">01</span>
-                  <div>
-                    <h2>构建请求</h2>
-                    <p>配置运行时参数、Header 与 Body</p>
-                  </div>
-                </div>
-                <CopyButton :text="curlCommand" label="复制 cURL" :icon="false" variant="mini" />
-              </div>
+            <RequestEditor
+              :selected-api="selectedApi"
+              :curl-command="curlCommand"
+              :is-loading="isLoading"
+              :validation-message="validationMessage"
+              v-model:paramValues="paramValues"
+              v-model:requestHeaders="requestHeaders"
+              v-model:requestBody="requestBody"
+              v-model:requestBodyMode="requestBodyMode"
+              v-model:requestFormFields="requestFormFields"
+              v-model:requestFiles="requestFiles"
+              v-model:requestTab="requestTab"
+              v-model:assertions="assertions"
+              v-model:authDraft="authDraft"
+              v-model:extractionRules="extractionRules"
+              v-model:retryCount="retryCount"
+              v-model:requestTimeoutMs="requestTimeoutMs"
+              @send="executeApi"
+              @cancel="abortRequest"
+              @remove-assertion="
+                assertionResults = assertionResults.filter((item) => item.id !== $event)
+              "
+            />
 
-              <div class="runner-tabs" role="tablist">
-                <button
-                  :class="{ active: requestTab === 'params' }"
-                  type="button"
-                  @click="requestTab = 'params'"
-                >
-                  Params <span>{{ selectedApi.params.length }}</span>
-                </button>
-                <button
-                  :class="{ active: requestTab === 'headers' }"
-                  type="button"
-                  @click="requestTab = 'headers'"
-                >
-                  Headers <span>{{ requestHeaders.length }}</span>
-                </button>
-                <button
-                  v-if="canHaveBody"
-                  :class="{ active: requestTab === 'body' }"
-                  type="button"
-                  @click="requestTab = 'body'"
-                >
-                  Body
-                </button>
-                <button
-                  :class="{ active: requestTab === 'tests' }"
-                  type="button"
-                  @click="requestTab = 'tests'"
-                >
-                  Tests <span>{{ assertions.length }}</span>
-                </button>
-                <button
-                  :class="{ active: requestTab === 'extract' }"
-                  type="button"
-                  @click="requestTab = 'extract'"
-                >
-                  提取 <span>{{ extractionRules.length }}</span>
-                </button>
-              </div>
-
-              <div class="request-config vc-scrollbar vc-scrollbar--thin">
-                <div v-if="requestTab === 'params'" class="runtime-params">
-                  <div v-if="selectedApi.params.length" class="param-table-head">
-                    <span>参数</span><span>值</span>
-                  </div>
-                  <label v-for="param in selectedApi.params" :key="param.name" class="runtime-param"
-                    ><span class="runtime-param-info"
-                      ><strong>{{ param.name }} <b v-if="param.required">*</b></strong
-                      ><small>{{ param.description || `${param.type} 参数` }}</small></span
-                    ><input
-                      v-model="paramValues[param.name]"
-                      :type="param.type === 'number' ? 'number' : 'text'"
-                      :placeholder="param.defaultValue || '输入参数值'"
-                  /></label>
-                  <div v-if="!selectedApi.params.length" class="config-empty">
-                    <span>✓</span><strong>这个接口没有动态参数</strong>
-                    <p>请求地址已经可以直接运行。需要自定义 Header 时切换到 Headers。</p>
-                  </div>
-                </div>
-
-                <div v-else-if="requestTab === 'headers'" class="headers-editor">
-                  <div class="header-table-head">
-                    <span>启用</span><span>Header</span><span>Value</span><span></span>
-                  </div>
-                  <div v-for="header in requestHeaders" :key="header.id" class="header-row">
-                    <label class="row-check"
-                      ><input v-model="header.enabled" type="checkbox" /><span></span></label
-                    ><input v-model="header.name" type="text" placeholder="Authorization" /><input
-                      v-model="header.value"
-                      type="text"
-                      placeholder="Bearer …"
-                    /><button
-                      type="button"
-                      aria-label="删除请求头"
-                      @click="removeRequestHeader(header.id)"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <button class="add-table-row" type="button" @click="addRequestHeader">
-                    ＋ 添加 Header
-                  </button>
-                  <div class="auth-editor">
-                    <strong>鉴权</strong>
-                    <CustomSelect
-                      v-model="authDraft.type"
-                      :options="requestAuthOptions"
-                      size="sm"
-                      block
-                    />
-                    <input
-                      v-if="authDraft.type === 'bearer'"
-                      v-model="authDraft.token"
-                      type="password"
-                      placeholder="Token 或 {{token}}"
-                    />
-                    <template v-else-if="authDraft.type === 'api-key'">
-                      <CustomSelect
-                        v-model="authDraft.location"
-                        :options="apiKeyLocationOptions"
-                        size="sm"
-                      />
-                      <input v-model="authDraft.name" type="text" placeholder="X-API-Key" />
-                      <input
-                        v-model="authDraft.value"
-                        type="password"
-                        placeholder="值或 {{apiKey}}"
-                      />
-                    </template>
-                    <template v-else-if="authDraft.type === 'basic'">
-                      <input v-model="authDraft.username" type="text" placeholder="用户名" />
-                      <input v-model="authDraft.password" type="password" placeholder="密码" />
-                    </template>
-                  </div>
-                  <p class="security-note">敏感 Header 只用于本次页面会话，不会写入请求历史。</p>
-                </div>
-
-                <div v-else-if="requestTab === 'body'" class="body-editor">
-                  <div class="code-editor-bar">
-                    <span>JSON / TEXT</span
-                    ><small>Content-Type 未填写时默认 application/json</small>
-                  </div>
-                  <textarea
-                    v-model="requestBody"
-                    spellcheck="false"
-                    aria-label="请求 Body"
-                  ></textarea>
-                </div>
-                <div v-else-if="requestTab === 'tests'" class="assertion-editor">
-                  <div class="assertion-head">
-                    <span>启用</span><span>断言</span><span>期望值</span><span></span>
-                  </div>
-                  <div v-for="rule in assertions" :key="rule.id" class="assertion-row">
-                    <label class="row-check"
-                      ><input v-model="rule.enabled" type="checkbox" /><span></span
-                    ></label>
-                    <CustomSelect
-                      v-model="rule.type"
-                      :options="assertionTypeOptions"
-                      size="sm"
-                      block
-                    />
-                    <input
-                      v-model="rule.expected"
-                      type="text"
-                      :placeholder="
-                        rule.type === 'status' ? '200' : rule.type === 'time' ? '2000' : 'success'
-                      "
-                    />
-                    <button type="button" aria-label="删除断言" @click="removeAssertion(rule.id)">
-                      ×
-                    </button>
-                  </div>
-                  <button class="add-table-row" type="button" @click="addAssertion">
-                    ＋ 添加断言
-                  </button>
-                  <p class="security-note">每次请求完成后自动验证状态、性能和响应内容。</p>
-                </div>
-                <div v-else class="extraction-editor standalone">
-                  <div class="extraction-intro">
-                    <strong>把响应字段传给下一个请求</strong>
-                    <p>
-                      例如提取 <code>$.data.token</code> 为 <code>token</code>，后续请求中使用
-                      <code v-pre>{{ token }}</code
-                      >。
-                    </p>
-                  </div>
-                  <div v-for="rule in extractionRules" :key="rule.id" class="extraction-row">
-                    <label class="row-check" title="启用提取规则">
-                      <input v-model="rule.enabled" type="checkbox" /><span></span>
-                    </label>
-                    <input
-                      v-model="rule.path"
-                      type="text"
-                      aria-label="JSONPath"
-                      placeholder="$.data.token"
-                    />
-                    <input
-                      v-model="rule.variable"
-                      type="text"
-                      aria-label="变量名"
-                      placeholder="token"
-                    />
-                    <button
-                      type="button"
-                      aria-label="删除提取规则"
-                      @click="removeExtractionRule(rule.id)"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <button class="add-table-row" type="button" @click="addExtractionRule">
-                    ＋ 添加提取规则
-                  </button>
-                  <p v-if="!extractionRules.length" class="config-empty compact">
-                    仅在需要把一个请求的响应传给后续请求时配置。
-                  </p>
-                </div>
-              </div>
-
-              <p v-if="validationMessage" class="form-banner error">{{ validationMessage }}</p>
-              <div class="request-policy">
-                <label
-                  >失败重试 <input v-model.number="retryCount" type="number" min="0" max="3"
-                /></label>
-                <label>
-                  超时(ms)
-                  <input
-                    v-model.number="requestTimeoutMs"
-                    type="number"
-                    min="1000"
-                    max="120000"
-                    step="1000"
-                  />
-                </label>
-              </div>
-              <div class="request-actions">
-                <button v-if="!isLoading" class="send-button" type="button" @click="executeApi">
-                  <span>▶</span> 发送请求</button
-                ><button v-else class="cancel-request-button" type="button" @click="abortRequest">
-                  <span>■</span> 取消请求</button
-                ><span
-                  ><i :class="{ running: isLoading }"></i
-                  >{{
-                    isLoading ? '正在等待目标服务响应…' : `超时限制 ${requestTimeoutMs / 1000}s`
-                  }}</span
-                >
-              </div>
-            </section>
-
-            <section class="runner-card response-card">
-              <div class="runner-card-heading response-heading">
-                <div>
-                  <span class="step-number">02</span>
-                  <div>
-                    <h2>读取响应</h2>
-                    <p>预览 Body 与响应 Header</p>
-                  </div>
-                </div>
-                <CopyButton
-                  v-if="responseText"
-                  :text="responseText"
-                  label="复制响应"
-                  :icon="false"
-                  variant="mini"
-                />
-              </div>
-
-              <div class="runner-tabs response-tabs" role="tablist">
-                <button
-                  :class="{ active: responseTab === 'preview' }"
-                  type="button"
-                  @click="responseTab = 'preview'"
-                >
-                  Preview</button
-                ><button
-                  :class="{ active: responseTab === 'headers' }"
-                  :disabled="!response"
-                  type="button"
-                  @click="responseTab = 'headers'"
-                >
-                  Headers <span>{{ response ? Object.keys(response.headers).length : 0 }}</span>
-                </button>
-                <button
-                  :class="{ active: responseTab === 'tests' }"
-                  :disabled="!response"
-                  type="button"
-                  @click="responseTab = 'tests'"
-                >
-                  Tests
-                  <span
-                    >{{ assertionResults.filter((item) => item.passed).length }}/{{
-                      assertionResults.length
-                    }}</span
-                  >
-                </button>
-                <div v-if="response" class="response-metrics">
-                  <span class="status-pill" :class="getStatusTone(response.status)"
-                    ><i></i>{{ response.status }} {{ response.statusText }}</span
-                  ><span>{{ response.time }} ms</span><span>{{ formatBytes(response.size) }}</span>
-                </div>
-              </div>
-
-              <div class="response-viewport vc-scrollbar vc-scrollbar--thin">
-                <div v-if="isLoading" class="response-loading">
-                  <span class="pulse-ring"></span><strong>请求已发出</strong>
-                  <p>正在等待响应并读取数据流…</p>
-                  <div><i></i><i></i><i></i></div>
-                </div>
-                <div v-else-if="error" class="response-error">
-                  <span>!</span><strong>请求没有完成</strong>
-                  <p>{{ error }}</p>
-                  <button type="button" @click="executeApi">重新发送</button>
-                </div>
-                <template v-else-if="response">
-                  <div v-if="response.truncated" class="truncate-banner">
-                    响应超过 512 KB，已停止读取并只展示安全范围内的内容。
-                  </div>
-                  <div v-if="responseTab === 'preview'" class="response-body">
-                    <img
-                      v-if="response.imageUrl"
-                      :src="response.imageUrl"
-                      :alt="response.contentType"
-                    />
-                    <pre v-else><code>{{ responseText }}</code></pre>
-                  </div>
-                  <div v-else-if="responseTab === 'headers'" class="response-headers-table">
-                    <div v-for="(value, name) in response.headers" :key="name">
-                      <strong>{{ name }}</strong
-                      ><code>{{ value }}</code>
-                    </div>
-                  </div>
-                  <div v-else class="assertion-results">
-                    <div
-                      v-for="item in assertionResults"
-                      :key="item.id"
-                      :class="item.passed ? 'passed' : 'failed'"
-                    >
-                      <span>{{ item.passed ? '✓' : '×' }}</span
-                      ><strong>{{ item.label }}</strong
-                      ><small>{{ item.detail }}</small>
-                    </div>
-                    <p v-if="!assertionResults.length">还没有启用的断言。</p>
-                  </div>
-                </template>
-                <div v-else class="response-placeholder">
-                  <div class="response-orbit"><span>{ }</span><i></i><i></i></div>
-                  <strong>等待一次真实响应</strong>
-                  <p>配置左侧请求并点击“发送请求”，状态、耗时、大小和响应内容会显示在这里。</p>
-                  <div class="placeholder-hints">
-                    <span>JSON 格式化</span><span>图片预览</span><span>响应头</span>
-                  </div>
-                </div>
-              </div>
-            </section>
+            <ResponsePanel
+              v-model:tab="responseTab"
+              :response="response"
+              :is-loading="isLoading"
+              :error="error"
+              :assertion-results="assertionResults"
+              @retry="executeApi"
+            />
           </div>
 
           <section class="request-history-drawer">
@@ -2284,13 +1923,22 @@ onBeforeUnmount(() => {
               <Save :size="15" /> 保存
             </button>
             <button
+              v-if="!collectionRunning"
               class="flow-run-action"
               type="button"
               :disabled="collectionRunning || !activeCollectionRequests.length"
               @click="runActiveCollection"
             >
               <Play :size="15" fill="currentColor" />
-              {{ collectionRunning ? '运行中' : '运行流程' }}
+              运行流程
+            </button>
+            <button
+              v-if="collectionRunning"
+              type="button"
+              class="flow-run-action"
+              @click="stopCollection"
+            >
+              停止运行
             </button>
             <button
               class="flow-close-action"
@@ -2305,64 +1953,19 @@ onBeforeUnmount(() => {
       </template>
 
       <div class="flow-workspace-shell">
-        <aside class="flow-collection-sidebar">
-          <div class="flow-sidebar-heading">
-            <span>集合</span>
-            <button type="button" aria-label="新建集合" @click="showNewCollectionInput = true">
-              <Plus :size="16" />
-            </button>
-          </div>
-          <form
-            v-if="showNewCollectionInput"
-            class="flow-new-collection"
-            @submit.prevent="createWorkspaceCollection"
-          >
-            <input
-              v-model="newCollectionName"
-              type="text"
-              aria-label="新集合名称"
-              placeholder="集合名称"
-              autofocus
-              @keydown.esc="cancelWorkspaceCollectionCreation"
-            />
-            <button type="submit" aria-label="创建集合"><Check :size="15" /></button>
-            <button
-              class="cancel"
-              type="button"
-              aria-label="取消新建集合"
-              @click="cancelWorkspaceCollectionCreation"
-            >
-              <X :size="15" />
-            </button>
-          </form>
-          <nav class="flow-collection-list" aria-label="请求集合">
-            <button
-              v-for="collection in collections"
-              :key="collection.id"
-              type="button"
-              :class="{ active: collection.id === activeCollectionId }"
-              @click="selectWorkspaceCollection(collection.id)"
-              @contextmenu.prevent="openCollectionContextMenu($event, collection.id)"
-            >
-              <Layers3 :size="15" />
-              <span>{{ collection.name }}</span>
-              <b>{{ collectionRequestCount(collection.id) }}</b>
-            </button>
-          </nav>
-          <div class="flow-sidebar-footer">
-            <button type="button" @click="exportWorkspace"><Download :size="15" /> 导出</button>
-            <button type="button" @click="workspaceFileRef?.click()">
-              <Upload :size="15" /> 导入
-            </button>
-            <input
-              ref="workspaceFileRef"
-              type="file"
-              accept="application/json,.json"
-              hidden
-              @change="importWorkspace"
-            />
-          </div>
-        </aside>
+        <CollectionSidebar
+          v-model:show-new="showNewCollectionInput"
+          v-model:name="newCollectionName"
+          :collections="collections"
+          :saved-requests="savedRequests"
+          :active-collection-id="activeCollectionId"
+          @select="selectWorkspaceCollection"
+          @context="openCollectionContextMenu"
+          @create="createWorkspaceCollection"
+          @cancel="cancelWorkspaceCollectionCreation"
+          @export="exportWorkspace"
+          @import="importWorkspace"
+        />
 
         <main class="flow-editor-main">
           <header class="flow-editor-heading">
@@ -2935,4 +2538,4 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped src="./api-manager.css"></style>
+<style src="./api-manager.css"></style>

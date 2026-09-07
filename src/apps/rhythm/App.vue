@@ -2,18 +2,16 @@
 // 音游主界面：选曲/分析 → 校验节拍 → 生成谱面 → 游玩。
 // 分析与校验区保留下来是有意的：自动谱面质量依赖 BPM/offset 正确，
 // 出问题时需要能当场听出来并手动纠正。
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { analyze, gridAlignment, type AnalyzeResult } from './core/analyze'
 import { AudioClock } from './core/clock'
 import { Metronome } from './core/metronome'
 import { OnsetClicker } from './core/onset-clicker'
 import { generateBeatmap, beatmapDensity, difficultyLabel, type Beatmap } from './core/beatmap'
-import {
-  DIFFICULTY_PRESETS,
-  useRhythmSettings,
-} from './composables/useRhythmSettings'
-import PlayView from './components/PlayView.vue'
+import { DIFFICULTY_PRESETS, useRhythmSettings } from './composables/useRhythmSettings'
+const PlayView = defineAsyncComponent(() => import('./components/PlayView.vue'))
 import { musicApi } from '@/lib/musicApi'
 import { recordGameResult } from '@/apps/game-center/profile'
 import { getStorage, removeStorage } from '@/lib/storage'
@@ -52,6 +50,9 @@ const searching = ref(false)
 const searchResults = ref<{ id: string; name: string; artist: string }[]>([])
 
 let ctx: AudioContext | null = null
+let disposed = false
+const analysisRequest = useLatestRequest()
+const fontLinks: HTMLLinkElement[] = []
 let clock: AudioClock | null = null
 let metronome: Metronome | null = null
 let onsetClicker: OnsetClicker | null = null
@@ -351,12 +352,18 @@ function startSegmentPractice() {
 }
 
 function getCtx(): AudioContext {
+  if (disposed) throw new Error('页面已关闭')
   if (!ctx) ctx = new AudioContext()
   return ctx
 }
 
 /** 统一的分析流程：拿到 ArrayBuffer 之后的部分完全一致 */
-async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string, cacheKey?: string) {
+async function runAnalyze(
+  getBuffer: (signal: AbortSignal) => Promise<ArrayBuffer>,
+  label: string,
+  cacheKey?: string,
+) {
+  const request = analysisRequest.start()
   stopPlayback()
   result.value = null
   errorMsg.value = ''
@@ -377,6 +384,7 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string, 
       clock = new AudioClock(getCtx(), cached.buffer)
       stage.value = 'ready'
       log('已复用本次会话中的音频分析缓存')
+      request.finish()
       return
     }
   }
@@ -385,7 +393,8 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string, 
     stage.value = 'fetching'
     log(`开始获取音频：${label}`)
     let t = performance.now()
-    const arrayBuffer = await getBuffer()
+    const arrayBuffer = await getBuffer(request.signal)
+    if (!request.isCurrent()) return
     timings.value.fetch = Math.round(performance.now() - t)
     log(
       `获取完成，${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB，耗时 ${timings.value.fetch}ms`,
@@ -394,6 +403,7 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string, 
     stage.value = 'decoding'
     t = performance.now()
     const audioBuffer = await getCtx().decodeAudioData(arrayBuffer)
+    if (!request.isCurrent()) return
     timings.value.decode = Math.round(performance.now() - t)
     log(
       `解码完成：${audioBuffer.duration.toFixed(1)}s / ${audioBuffer.sampleRate}Hz / ` +
@@ -403,6 +413,7 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string, 
     stage.value = 'analyzing'
     t = performance.now()
     const res = await analyze(audioBuffer)
+    if (!request.isCurrent()) return
     timings.value.analyze = Math.round(performance.now() - t)
     log(
       `分析完成：BPM ${res.bpm}（原始检测 ${res.rawBpm}），首拍 ${res.offset.toFixed(3)}s，onset ${res.onsets.length} 个，耗时 ${timings.value.analyze}ms`,
@@ -415,16 +426,23 @@ async function runAnalyze(getBuffer: () => Promise<ArrayBuffer>, label: string, 
     decodedBuffer.value = audioBuffer
     songTitle.value = label
     clock = new AudioClock(getCtx(), audioBuffer)
-    if (cacheKey) analysisCache.set(cacheKey, { result: res, buffer: audioBuffer, label })
+    if (cacheKey) {
+      analysisCache.delete(cacheKey)
+      analysisCache.set(cacheKey, { result: res, buffer: audioBuffer, label })
+      while (analysisCache.size > 2) analysisCache.delete(analysisCache.keys().next().value!)
+    }
     latencyInfo.value =
       `baseLatency ${((getCtx().baseLatency || 0) * 1000).toFixed(1)}ms / ` +
       `outputLatency ${((getCtx().outputLatency || 0) * 1000).toFixed(1)}ms`
     log(`输出延迟：${latencyInfo.value}`)
     stage.value = 'ready'
   } catch (e) {
+    if (!request.isCurrent()) return
     stage.value = 'error'
     errorMsg.value = e instanceof Error ? e.message : String(e)
     log(`❌ 失败：${errorMsg.value}`)
+  } finally {
+    request.finish()
   }
 }
 
@@ -462,8 +480,8 @@ async function doSearch() {
 function pickSong(song: { id: string; name: string; artist: string }) {
   const url = musicApi.songUrlPath('netease', song.id)
   runAnalyze(
-    async () => {
-      const res = await fetch(url)
+    async (signal) => {
+      const res = await fetch(url, { signal })
       if (!res.ok) throw new Error(`音频请求失败 ${res.status}`)
       return res.arrayBuffer()
     },
@@ -613,14 +631,15 @@ onMounted(async () => {
       'https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap'
     stylesheet.dataset.rhythmFont = 'stylesheet'
     document.head.append(preconnect, stylesheet)
+    fontLinks.push(preconnect, stylesheet)
   }
 
   const source = getStorage<RhythmSource>(STORAGE_KEYS.RHYTHM_SOURCE)
   if (source?.url) {
     removeStorage(STORAGE_KEYS.RHYTHM_SOURCE)
     await runAnalyze(
-      async () => {
-        const response = await fetch(source.url)
+      async (signal) => {
+        const response = await fetch(source.url, { signal })
         if (!response.ok) throw new Error(`音频请求失败 ${response.status}`)
         return response.arrayBuffer()
       },
@@ -631,10 +650,16 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  disposed = true
   stopPlayback()
   metronome?.dispose()
   onsetClicker?.dispose()
-  ctx?.close()
+  void ctx?.close().catch(() => {})
+  ctx = null
+  analysisCache.clear()
+  decodedBuffer.value = null
+  playBuffer.value = null
+  fontLinks.forEach((link) => link.remove())
 })
 </script>
 
@@ -691,7 +716,7 @@ onUnmounted(() => {
               <b>上传本地音频</b>
               <small>LOCAL FILE · 不依赖第三方服务</small>
             </span>
-            <input type="file" accept="audio/*" @change="onPickFile" />
+            <input type="file" aria-label="上传本地音频" accept="audio/*" @change="onPickFile" />
           </label>
           <label class="entry">
             <span class="entry-icon">♫</span>
@@ -701,6 +726,7 @@ onUnmounted(() => {
             </span>
             <input
               ref="beatmapFileRef"
+              aria-label="导入谱面"
               type="file"
               accept="application/json,.json"
               @change="importBeatmap"
@@ -1190,7 +1216,20 @@ onUnmounted(() => {
     box-shadow 0.24s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .entry input[type='file'] {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.entry:focus-within,
+.entry:focus-visible {
+  outline: 2px solid #6fe6ff;
+  outline-offset: 3px;
 }
 .entry:hover:not(:disabled) {
   transform: translateY(-2px);

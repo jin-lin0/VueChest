@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStorage, removeStorage, setStorage } from '@/lib/storage'
 import { copyToClipboard } from '@/utils/clipboard'
 import { downloadFile } from '@/utils/common'
-import { MarkdownView, CustomSelect, Drawer, type SelectOption } from '@/components'
+import { useLatestRequest } from '@/composables/useLatestRequest'
+import MarkdownView from '@/components/common/MarkdownView.vue'
+import CustomSelect, { type SelectOption } from '@/components/common/CustomSelect.vue'
+import Drawer from '@/components/common/Drawer.vue'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import ChatSidebar from './components/ChatSidebar.vue'
 import {
@@ -59,6 +62,10 @@ const currentMessages = ref<Message[]>([])
 const inputMessage = ref('')
 const editingTarget = ref<{ index: number; serverId: number } | null>(null)
 const isLoading = ref(false)
+const historyLoading = ref(false)
+const historyRequest = useLatestRequest()
+const sessionsRequest = useLatestRequest()
+let disposed = false
 const providers = ref<ProviderMeta[]>([])
 const selectedProviderId = ref(getStorage<string>(STORAGE_KEYS.AI_CHAT_PROVIDER, '') || '')
 const selectedModel = ref('')
@@ -102,15 +109,12 @@ function switchToSuggestedModel() {
   clearError()
 }
 
-/** 当前活跃流的 AbortController：切换会话/卸载时用于中止上一个流 */
-let activeController: AbortController | null = null
+const streamRequest = useLatestRequest()
 
 /** 中止正在进行的流式请求，避免旧流继续推送增量或造成内存泄漏 */
 const abortActiveStream = () => {
-  if (activeController) {
-    activeController.abort()
-    activeController = null
-  }
+  streamRequest.cancel()
+  isLoading.value = false
 }
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const messagesContainer = ref<HTMLDivElement | null>(null)
@@ -136,7 +140,8 @@ const canSend = computed(
     inputMessage.value.trim() &&
     selectedProviderId.value &&
     selectedModel.value &&
-    !isLoading.value,
+    !isLoading.value &&
+    !historyLoading.value,
 )
 
 const goBack = () => {
@@ -174,7 +179,6 @@ const createSession = (): ChatSession => {
 
 /** 新建并直接跳转到空会话：新会话必为空，不请求 /messages */
 const startNewConversation = () => {
-  abortActiveStream()
   const s = createSession()
   currentSessionId.value = s.id
   currentMessages.value = []
@@ -186,6 +190,8 @@ const startNewConversation = () => {
 const switchSession = (id: string) => {
   abortActiveStream()
   currentSessionId.value = id
+  currentMessages.value = []
+  clearError()
   if (isMobile.value) {
     showSidebar.value = false
   }
@@ -214,7 +220,8 @@ const deleteSession = async (id: string) => {
     }
   }
 
-  sessions.value.splice(idx, 1)
+  const currentIndex = sessions.value.findIndex((session) => session.id === id)
+  if (currentIndex >= 0) sessions.value.splice(currentIndex, 1)
   if (currentSessionId.value === id) {
     const next = sortedSessions.value[0]
     if (next) {
@@ -236,9 +243,12 @@ const loadSessions = async (options: { query?: string; page?: number; append?: b
   const localFallback = getStorage<ChatSession[]>(STORAGE_KEYS.AI_CHAT_SESSIONS, []) ?? []
   const query = options.query ?? sessionQuery.value
   const page = options.page || 1
+  const request = sessionsRequest.start()
+  sessionQuery.value = query
   sessionsLoading.value = true
   try {
-    const result = await fetchConversationPage({ query, page, limit: 50 })
+    const result = await fetchConversationPage({ query, page, limit: 50 }, request.signal)
+    if (!request.isCurrent()) return
     if (options.append) {
       const existing = new Set(sessions.value.map((item) => item.id))
       sessions.value.push(...result.items.filter((item) => !existing.has(item.id)))
@@ -250,10 +260,12 @@ const loadSessions = async (options: { query?: string; page?: number; append?: b
     sessionsHasMore.value = result.hasMore
     if (!query) saveSessions()
   } catch (reason) {
+    if (!request.isCurrent()) return
     if (!options.append && !query) sessions.value = localFallback
     showError(reason instanceof Error ? reason.message : '加载会话列表失败')
   } finally {
-    sessionsLoading.value = false
+    if (request.isCurrent()) sessionsLoading.value = false
+    request.finish()
   }
 }
 
@@ -281,6 +293,7 @@ const renameSession = async (id: string, title: string) => {
 const loadProviders = async () => {
   try {
     const list = await fetchProviders()
+    if (disposed) return
     providers.value = list
     if (list.length === 0) {
       selectedProviderId.value = ''
@@ -302,14 +315,18 @@ const loadProviders = async () => {
         )
       : ''
   } catch {
+    if (disposed) return
     showError('加载平台列表失败，请检查服务端是否已启动并配置 API Key')
   }
 }
 
 /** 打开会话时，从服务端拉取历史消息并还原平台/模型 */
 const loadMessages = async (id: string) => {
+  const request = historyRequest.start()
+  historyLoading.value = true
   try {
-    const data = await fetchConversation(id)
+    const data = await fetchConversation(id, request.signal)
+    if (!request.isCurrent()) return
     currentMessages.value = (data.messages || []).map((m: ChatMessage) => ({
       id: generateId(),
       serverId: m.id,
@@ -330,8 +347,15 @@ const loadMessages = async (id: string) => {
       sess.model = data.model
       saveSessions()
     }
-  } catch {
+  } catch (reason) {
+    if (!request.isCurrent()) return
     currentMessages.value = []
+    const status =
+      reason && typeof reason === 'object' && 'status' in reason ? Number(reason.status) : 0
+    if (status !== 404) showError('加载会话失败，请重新选择会话重试')
+  } finally {
+    if (request.isCurrent()) historyLoading.value = false
+    request.finish()
   }
 }
 
@@ -386,19 +410,19 @@ const sendMessage = async (options: SendOptions = {}) => {
   clearError()
 
   // 开始新请求前先释放可能仍在进行的上一个流，确保同一时刻只有一条活跃流
+  const convId = currentSessionId.value || createSession().id
+  currentSessionId.value = convId
   abortActiveStream()
-  activeController = new AbortController()
-  const streamSignal = activeController.signal
+  const stream = streamRequest.start()
+  const isCurrentStream = stream.isCurrent
   const requestProviderId = selectedProviderId.value
   const requestProvider =
     providers.value.find((provider) => provider.id === requestProviderId) || currentProvider.value
   const requestModelId = selectedModel.value
   let resolvedRequestModelId = ''
 
-  const convId = currentSessionId.value || createSession().id
-  currentSessionId.value = convId
-
-  let rollbackMessages = options.rollbackMessages
+  const rollbackMessages =
+    options.rollbackMessages || currentMessages.value.map((message) => ({ ...message }))
   let replaceFromMessageId = options.replaceFromMessageId
   let userMessage: Message
   if (mode === 'regenerate') {
@@ -409,16 +433,15 @@ const sendMessage = async (options: SendOptions = {}) => {
     userMessage = latestUser
   } else {
     if (mode === 'edit' && editingTarget.value) {
-      rollbackMessages = currentMessages.value.map((message) => ({ ...message }))
       replaceFromMessageId = editingTarget.value.serverId
       currentMessages.value = currentMessages.value.slice(0, editingTarget.value.index)
     }
-    userMessage = {
+    userMessage = reactive<Message>({
       id: generateId(),
       role: 'user',
       content: inputMessage.value.trim(),
       timestamp: Date.now(),
-    }
+    })
     currentMessages.value.push(userMessage)
     editingTarget.value = null
   }
@@ -439,6 +462,7 @@ const sendMessage = async (options: SendOptions = {}) => {
   isLoading.value = true
 
   await nextTick()
+  if (!isCurrentStream()) return
   scrollToBottom()
 
   // 完整上下文发给服务端做转发；服务端只落库「最新一轮」user+assistant
@@ -446,115 +470,95 @@ const sendMessage = async (options: SendOptions = {}) => {
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({ role: m.role, content: m.content }))
 
-  const assistantMessage: Message = {
+  const assistantMessage = reactive<Message>({
     id: generateId(),
     role: 'assistant',
     content: '',
     timestamp: Date.now(),
-  }
+  })
   currentMessages.value.push(assistantMessage)
-  const assistantIndex = currentMessages.value.length - 1
 
   const { streamChat } = useChatStream()
-  let fullContent = ''
   let scrollFrame: number | null = null
-  // 此流归属的会话 id：增量只允许写入「当前激活会话」，切换会话后跳过写入，防止写错目标
-  const streamSessionId = convId
 
   try {
-    try {
-      for await (const delta of streamChat({
-        conversationId: convId,
-        provider: requestProviderId,
-        model: requestModelId,
-        messages: apiMessages,
-        signal: streamSignal,
-        mode,
-        replaceFromMessageId,
-        onModelResolved: (usedModel) => {
-          resolvedRequestModelId = usedModel
-          if (currentSessionId.value !== streamSessionId) return
-          lastResolvedModel.value = usedModel
-          if (!currentProvider.value.models.some((option) => option.id === usedModel)) return
-          selectedModel.value = usedModel
-          const activeSession = sessions.value.find((item) => item.id === streamSessionId)
-          if (activeSession) {
-            activeSession.model = usedModel
-            saveSessions()
-          }
-        },
-        onPersisted: (persisted) => {
-          if (persisted.userMessageId) userMessage.serverId = persisted.userMessageId
-          if (persisted.assistantMessageId) {
-            assistantMessage.serverId = persisted.assistantMessageId
-          }
-          const activeSession = sessions.value.find((item) => item.id === streamSessionId)
-          if (activeSession) {
-            activeSession.title = persisted.title
-            activeSession.updatedAt = Date.now()
-            saveSessions()
-          }
-        },
-      })) {
-        // 若已切换到其它会话，跳过写入（旧流会被 watch/abort 及时中止，这里是兜底）
-        if (currentSessionId.value !== streamSessionId) continue
-        fullContent += delta
-        currentMessages.value[assistantIndex].content = fullContent
-        if (scrollFrame === null) {
-          scrollFrame = requestAnimationFrame(() => {
-            scrollFrame = null
-            scrollToBottom()
-          })
+    for await (const delta of streamChat({
+      conversationId: convId,
+      provider: requestProviderId,
+      model: requestModelId,
+      messages: apiMessages,
+      signal: stream.signal,
+      mode,
+      replaceFromMessageId,
+      onModelResolved: (usedModel) => {
+        resolvedRequestModelId = usedModel
+        if (!isCurrentStream()) return
+        if (selectedProviderId.value !== requestProviderId) return
+        lastResolvedModel.value = usedModel
+        if (!currentProvider.value.models.some((option) => option.id === usedModel)) return
+        selectedModel.value = usedModel
+        const activeSession = sessions.value.find((item) => item.id === convId)
+        if (activeSession) {
+          activeSession.model = usedModel
+          saveSessions()
         }
+      },
+      onPersisted: (persisted) => {
+        if (!isCurrentStream()) return
+        if (persisted.userMessageId) userMessage.serverId = persisted.userMessageId
+        if (persisted.assistantMessageId) {
+          assistantMessage.serverId = persisted.assistantMessageId
+        }
+        const activeSession = sessions.value.find((item) => item.id === convId)
+        if (activeSession) {
+          activeSession.title = persisted.title
+          activeSession.updatedAt = Date.now()
+          saveSessions()
+        }
+      },
+    })) {
+      // 若已切换到其它会话，跳过写入（旧流会被 watch/abort 及时中止，这里是兜底）
+      if (!isCurrentStream()) break
+      assistantMessage.content += delta
+      if (scrollFrame === null) {
+        scrollFrame = requestAnimationFrame(() => {
+          scrollFrame = null
+          if (isCurrentStream()) scrollToBottom()
+        })
       }
-    } catch (err) {
-      // 切换会话导致的 abort 不属于错误，直接结束（会话已切换，不写入错误提示）
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      // SSE 启动失败（HTTP 非 2xx / 无法读取流 / 网络异常），移除空占位消息后向上抛出
-      currentMessages.value.splice(assistantIndex, 1)
-      throw err
-    } finally {
-      if (scrollFrame !== null) cancelAnimationFrame(scrollFrame)
     }
-
+    if (!isCurrentStream()) return
     const sess = sessions.value.find((s) => s.id === convId)
     if (sess) {
-      sess.provider = selectedProviderId.value
-      sess.model = selectedModel.value
+      sess.provider = requestProviderId
+      sess.model = resolvedRequestModelId || requestModelId
       sess.updatedAt = Date.now()
       saveSessions()
     }
   } catch (err: unknown) {
+    if (!isCurrentStream() || (err instanceof Error && err.name === 'AbortError')) return
     const code = err instanceof ChatStreamError ? err.code : 'AI_STREAM_ERROR'
     const failedModelId = resolvedRequestModelId || requestModelId
     const notice = resolveModelFailure(requestProvider.models, failedModelId, code)
     showError(notice.message, notice.suggestedModel)
-    if (rollbackMessages) {
+    // 保留已收到的部分回答供复制；错误提示不作为下一轮对话上下文。
+    if (!assistantMessage.content) {
       currentMessages.value = rollbackMessages
-      return
+      if (mode !== 'regenerate' && !inputMessage.value) inputMessage.value = userMessage.content
     }
-    const errorMessage: Message = {
-      id: generateId(),
-      role: 'assistant',
-      content: `❌ ${notice.message}`,
-      timestamp: Date.now(),
-    }
-    currentMessages.value.push(errorMessage)
-    saveSessions()
   } finally {
-    activeController = null
-    isLoading.value = false
-    if (streamSignal.aborted && fullContent && currentSessionId.value === streamSessionId) {
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      await loadMessages(streamSessionId)
+    if (scrollFrame !== null) cancelAnimationFrame(scrollFrame)
+    if (isCurrentStream()) {
+      stream.finish()
+      isLoading.value = false
+      await nextTick()
+      if (!disposed && currentSessionId.value === convId) scrollToBottom()
     }
-    await nextTick()
-    scrollToBottom()
   }
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault()
     sendMessage()
   }
@@ -629,9 +633,16 @@ watch(inputMessage, () => {
 })
 
 /** 切换会话时释放上一个流，避免旧流把增量写进新会话 */
-watch(currentSessionId, () => {
-  abortActiveStream()
-})
+watch(
+  currentSessionId,
+  () => {
+    abortActiveStream()
+    historyRequest.cancel()
+    historyLoading.value = false
+    editingTarget.value = null
+  },
+  { flush: 'sync' },
+)
 
 watch(selectedModel, (val) => {
   setStorage(`${STORAGE_KEYS.AI_CHAT_MODEL_PREFIX}${selectedProviderId.value}`, val)
@@ -656,19 +667,12 @@ const copyMessage = (content: string, messageId: string) =>
 
 onMounted(async () => {
   await Promise.all([loadSessions(), loadProviders()])
-  let isNew = false
-  if (sessions.value.length === 0) {
-    // 首次进入没有会话：新建并直接跳转到空会话（不请求 /messages）
-    const s = createSession()
-    currentSessionId.value = s.id
-    currentMessages.value = []
-    isNew = true
-  } else {
-    currentSessionId.value = sortedSessions.value[0].id
-  }
-  // 仅已有会话需要拉历史；新建会话必为空，跳过 /messages 请求
-  if (!isNew && currentSessionId.value) {
-    await loadMessages(currentSessionId.value)
+  if (disposed) return
+  // 初始化期间用户可能已新建或选择会话，不能再覆盖他的选择。
+  if (!currentSessionId.value) {
+    const existing = sortedSessions.value[0]
+    if (existing) switchSession(existing.id)
+    else startNewConversation()
   }
   const draft = getStorage<{ text?: string }>(STORAGE_KEYS.AI_CHAT_DRAFT)
   if (draft?.text) {
@@ -680,10 +684,11 @@ onMounted(async () => {
   if (isMobile.value) {
     showSidebar.value = false
   }
-  window.addEventListener('resize', handleResize)
+  if (!disposed) window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
+  disposed = true
   abortActiveStream()
   window.removeEventListener('resize', handleResize)
 })
@@ -737,7 +742,12 @@ onUnmounted(() => {
 
     <main class="chat-main">
       <header class="chat-header">
-        <button class="btn-icon sidebar-toggle" @click="showSidebar = !showSidebar">
+        <button
+          class="btn-icon sidebar-toggle"
+          aria-label="打开会话列表"
+          :aria-expanded="showSidebar"
+          @click="showSidebar = !showSidebar"
+        >
           <svg
             width="20"
             height="20"
@@ -797,7 +807,8 @@ onUnmounted(() => {
       </header>
 
       <div ref="messagesContainer" class="messages-area" @scroll="handleScroll">
-        <div v-if="currentMessages.length === 0" class="welcome">
+        <div v-if="historyLoading" class="welcome" role="status">正在加载会话…</div>
+        <div v-else-if="currentMessages.length === 0" class="welcome">
           <div class="welcome-icon">🤖</div>
           <h2>AI 智能助手</h2>
           <p>基于 {{ currentProvider.name || 'AI' }} 大模型，随时为你解答问题</p>
@@ -842,7 +853,10 @@ onUnmounted(() => {
             <div class="message-body">
               <template v-if="msg.role === 'assistant'">
                 <div v-if="msg.content" class="message-content">
-                  <MarkdownView :content="msg.content" />
+                  <MarkdownView
+                    :content="msg.content"
+                    :streaming="isLoading && msg === currentMessages.at(-1)"
+                  />
                 </div>
                 <div
                   v-else-if="isLoading && index === currentMessages.length - 1"
@@ -962,6 +976,7 @@ onUnmounted(() => {
           <button
             v-else
             class="send-btn"
+            aria-label="发送消息"
             :class="{ active: canSend }"
             :disabled="!canSend"
             @click="() => sendMessage()"

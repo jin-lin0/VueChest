@@ -125,6 +125,40 @@ order: 53
 
 ---
 
+### 如何用 CSS 实现一个类似「AI 正在输入」的光标闪烁 / 打字中提示效果（如对话中 AI 回复前的闪烁竖线光标，或三点跳动的「正在输入」动画）？有哪些实现方式（CSS animation / 伪元素 / SVG）与注意点？
+
+闪烁光标可用一个装饰性 `::after` 配合 opacity 动画；三点提示可让三个圆点使用相同 transform/opacity 动画并错开 delay。SVG 适合需要精确图形的提示，也应遵守相同的暂停与可访问性规则。优先改变 opacity/transform，避免每帧改 width/left 触发布局；动画只在等待或生成时挂载。
+
+```html
+<span role="status">正在生成回复</span>
+<span class="typing-cursor" aria-hidden="true"></span>
+```
+
+```css
+.typing-cursor::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: currentColor;
+  animation: cursor-blink 1.2s steps(1, end) infinite;
+}
+@keyframes cursor-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .typing-cursor::after { animation: none; }
+}
+```
+
+状态文字应在状态变化时播报，不让读屏器逐 token 重复播报。动画不能是唯一状态反馈；停止、失败、完成都需清除等待态。减少动态效果偏好应保留静态提示。[MDN prefers-reduced-motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion)。
+
+### 前端页面由哪三部分组成，各自的作用是什么（结构层 / 表示层 / 行为层，即 HTML / CSS / JavaScript 的分工与协作）？
+
+HTML 表达内容与语义结构，例如标题、表单、按钮；CSS 控制排版、颜色、响应式布局和视觉状态；JavaScript 处理事件、数据请求及状态变化，并通过 DOM 或框架更新页面。三层是职责划分，不要求一定分成三个文件：Vue 单文件组件也可分别承载 template、style 和 script。
+
+例如计数器应先使用有原生键盘语义的 `<button type="button">增加</button>`，CSS 定义外观与 `:focus-visible`，JavaScript 监听 click 并更新旁边的文本计数。不要因为加了点击监听就把任意 div 当按钮，也不要用 CSS 的装饰性 content 承载不可缺少的业务信息。
+
+协作顺序是状态驱动内容和样式，而不是以 DOM 颜色反推业务状态。浏览器分别解释这些层，随后完成样式计算、布局与绘制；JavaScript 的同步长任务会影响交互响应。
+
 ## 参考来源
 
 - [牛客网面试经验](https://www.nowcoder.com/discuss)

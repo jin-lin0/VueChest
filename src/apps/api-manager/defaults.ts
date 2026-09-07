@@ -10,7 +10,7 @@ export interface ApiItem {
   id: string | number
   name: string
   url: string
-  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
   category: string
   description: string
   params: ApiParam[]

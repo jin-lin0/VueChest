@@ -2,12 +2,15 @@
 import { load as loadYaml } from 'js-yaml'
 import type { ApiItem } from './defaults'
 import type { RequestHeader } from './request-utils'
+import { HTTP_METHODS, type RequestBodyMode, type RequestFormField } from './request-body'
 
 export interface ImportedRequest {
   api: ApiItem
   name: string
   headers: RequestHeader[]
   body: string
+  bodyMode?: RequestBodyMode
+  formFields?: RequestFormField[]
 }
 
 export interface ApiImportResult {
@@ -47,7 +50,7 @@ function importOpenApi(document: Record<string, any>): ApiImportResult {
   const title = String(document.info?.title || 'OpenAPI 导入')
   const server = String(document.servers?.[0]?.url || '')
   const requests: ImportedRequest[] = []
-  const methods = ['get', 'post', 'put', 'patch', 'delete'] as const
+  const methods = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as const
 
   for (const [path, pathItemValue] of Object.entries(objectValue(document.paths))) {
     const pathItem = objectValue(pathItemValue)
@@ -83,11 +86,26 @@ function importOpenApi(document: Record<string, any>): ApiImportResult {
         createdAt: new Date().toISOString(),
       }
       const body = requestBodyExample(operation.requestBody)
+      const multipart = operation.requestBody?.content?.['multipart/form-data']
       requests.push({
         api,
         name: api.name,
-        headers: body ? [header('Content-Type', 'application/json')] : [],
-        body,
+        headers: body && !multipart ? [header('Content-Type', 'application/json')] : [],
+        body: multipart ? '' : body,
+        ...(multipart
+          ? {
+              bodyMode: 'form-data' as const,
+              formFields: Object.entries(objectValue(multipart.schema?.properties)).map(
+                ([name, schema]) => ({
+                  id: crypto.randomUUID(),
+                  name,
+                  value: String(schema.example ?? schema.default ?? ''),
+                  type: schema.format === 'binary' ? ('file' as const) : ('text' as const),
+                  enabled: true,
+                }),
+              ),
+            }
+          : {}),
       })
     }
   }
@@ -116,7 +134,7 @@ function importPostman(document: Record<string, any>): ApiImportResult {
       const request = objectValue(item?.request)
       if (!Object.keys(request).length) continue
       const method = String(request.method || 'GET').toUpperCase()
-      if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) continue
+      if (!(HTTP_METHODS as readonly string[]).includes(method)) continue
       const rawUrl = postmanUrl(request.url)
       const query = Array.isArray(request.url?.query) ? request.url.query : []
       const url = query.length ? rawUrl.replace(/\?[^#]*/, '') : rawUrl
@@ -146,6 +164,25 @@ function importPostman(document: Record<string, any>): ApiImportResult {
           header(String(item.key || ''), String(item.value || '')),
         ),
         body: String(request.body?.raw || ''),
+        ...(request.body?.mode === 'formdata'
+          ? {
+              bodyMode: 'form-data' as const,
+              formFields: (request.body.formdata || []).flatMap((field: any) => {
+                const sources =
+                  field.type === 'file' && Array.isArray(field.src)
+                    ? field.src
+                    : [field.type === 'file' ? field.src : field.value]
+                return sources.map((value: unknown) => ({
+                  id: crypto.randomUUID(),
+                  name: String(field.key || ''),
+                  value: String(value || ''),
+                  type: field.type === 'file' ? ('file' as const) : ('text' as const),
+                  enabled: field.disabled !== true,
+                  contentType: field.contentType,
+                }))
+              }),
+            }
+          : {}),
       })
     }
   }

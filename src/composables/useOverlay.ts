@@ -1,78 +1,131 @@
-import { onBeforeUnmount, watch } from 'vue'
+import { nextTick, onBeforeUnmount, watch } from 'vue'
 
 export interface UseOverlayOptions {
-  /** 受控的 open 状态读取（组件传 () => props.open） */
   isOpen: () => boolean
-  /** 请求关闭时调用（组件传 () => { emit('update:open', false); emit('close') }） */
+  /** 请求外层组件关闭，不直接修改受控状态。 */
   onClose: () => void
-  /** 请求打开时调用（可选，受控组件通常不需要） */
   onOpen?: () => void
-  /** 打开时是否锁定 body 滚动，默认 true */
+  /** 打开时锁定页面滚动，默认开启，支持嵌套弹层。 */
   lockScroll?: boolean
+  /** 弹层面板，用于约束键盘焦点。 */
+  element?: () => HTMLElement | null
+  /** 关闭后回到指定元素；未指定时回到打开前的焦点。 */
+  returnFocus?: () => HTMLElement | null
 }
-
 export interface UseOverlayReturn {
-  /** 当前 open 状态读取器 */
   isOpen: () => boolean
-  /** 请求打开 */
   open: () => void
-  /** 请求关闭 */
   close: () => void
 }
+const overlays: symbol[] = []
+const scrollLocks = new Set<symbol>()
+let previousOverflow = ''
+const focusSelector =
+  'button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+function visible(element: HTMLElement) {
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    if (node.hidden || node.inert) return false
+    const style = getComputedStyle(node)
+    if (style.display === 'none' || style.visibility === 'hidden') return false
+  }
+  return true
+}
 
-/**
- * Modal / Drawer 共用的浮层逻辑：
- * - Esc 键关闭（仅在 open 时绑定监听，关闭时解绑）
- * - 打开时锁定 document.body 滚动，关闭时复原
- * - 组件卸载时清理监听与滚动锁
- *
- * 组件为受控模式：open 由外部 prop 决定，close() 通过 onClose 回调
- * 向上 emit update:open=false 与 close 事件，自身不维护 open ref。
- */
+/** 管理嵌套弹层的焦点、Esc 和滚动锁，兼容 Teleport 下拉菜单。 */
 export function useOverlay(options: UseOverlayOptions): UseOverlayReturn {
   const { isOpen, onClose, onOpen, lockScroll = true } = options
-
-  function close() {
-    onClose()
+  const id = Symbol('overlay')
+  let registered = false
+  let previousFocus: HTMLElement | null = null
+  const topmost = () => overlays.at(-1) === id
+  const close = () => onClose()
+  const open = () => onOpen?.()
+  function surfaces() {
+    const root = options.element?.()
+    if (!root) return []
+    const portals = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-overlay-owner]'),
+    ).filter((node) => {
+      const owner = document.getElementById(node.dataset.overlayOwner || '')
+      return owner && root.contains(owner)
+    })
+    return [root, ...portals]
   }
-
-  function open() {
-    onOpen?.()
+  const focusables = () =>
+    surfaces()
+      .flatMap((root) => Array.from(root.querySelectorAll<HTMLElement>(focusSelector)))
+      .filter((node) => node.tabIndex >= 0 && visible(node))
+  function focusFirst() {
+    const root = options.element?.()
+    const target = root?.querySelector<HTMLElement>('[autofocus]') || focusables()[0] || root
+    target?.focus({ preventScroll: true })
   }
-
-  function onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && isOpen()) {
-      e.stopPropagation()
+  function onFocusIn(event: FocusEvent) {
+    if (!topmost() || !options.element?.()) return
+    if (!surfaces().some((root) => root.contains(event.target as Node))) focusFirst()
+  }
+  function onKeydown(event: KeyboardEvent) {
+    if (!topmost() || !isOpen() || event.defaultPrevented || event.isComposing) return
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopImmediatePropagation()
       close()
+    } else if (event.key === 'Tab' && options.element?.()) {
+      const items = focusables()
+      const index = items.indexOf(document.activeElement as HTMLElement)
+      event.preventDefault()
+      if (!items.length) {
+        options.element()?.focus()
+        return
+      }
+      const next =
+        index < 0
+          ? event.shiftKey
+            ? items.length - 1
+            : 0
+          : (index + (event.shiftKey ? -1 : 1) + items.length) % items.length
+      items[next].focus()
     }
   }
-
-  function lockBody() {
-    if (lockScroll) document.body.style.overflow = 'hidden'
-  }
-
-  function unlockBody() {
-    if (lockScroll) document.body.style.overflow = ''
-  }
-
-  watch(
-    () => isOpen(),
-    (v) => {
-      if (v) {
-        window.addEventListener('keydown', onKeydown)
-        lockBody()
-      } else {
-        window.removeEventListener('keydown', onKeydown)
-        unlockBody()
-      }
-    },
-    { immediate: true },
-  )
-
-  onBeforeUnmount(() => {
+  function release() {
+    if (!registered) return
+    registered = false
+    const wasTop = topmost()
+    overlays.splice(overlays.indexOf(id), 1)
     window.removeEventListener('keydown', onKeydown)
-    unlockBody()
-  })
-
+    document.removeEventListener('focusin', onFocusIn)
+    if (scrollLocks.delete(id) && !scrollLocks.size) document.body.style.overflow = previousOverflow
+    const target = options.returnFocus?.() || previousFocus
+    if (wasTop && target?.isConnected) {
+      void nextTick(() => {
+        if (!registered && target.isConnected) target.focus({ preventScroll: true })
+      })
+    }
+  }
+  watch(
+    isOpen,
+    (value) => {
+      if (!value) {
+        release()
+        return
+      }
+      if (registered) return
+      registered = true
+      previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      overlays.push(id)
+      if (lockScroll) {
+        if (!scrollLocks.size) previousOverflow = document.body.style.overflow
+        scrollLocks.add(id)
+        document.body.style.overflow = 'hidden'
+      }
+      window.addEventListener('keydown', onKeydown)
+      document.addEventListener('focusin', onFocusIn)
+      void nextTick(() => {
+        if (registered && topmost()) focusFirst()
+      })
+    },
+    { immediate: true, flush: 'post' },
+  )
+  onBeforeUnmount(release)
   return { isOpen, open, close }
 }

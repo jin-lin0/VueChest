@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
+import { Modal } from '@/components'
+import type { CloudSyncDownloadPreview } from '@/stores/cloudSync'
 import { useRouter } from 'vue-router'
 import {
   CLOUD_SYNC_CATEGORIES,
@@ -21,6 +23,13 @@ const cloudWorkspace = ref<WorkspaceCloudConfig | null>(null)
 const message = ref('')
 const loading = ref(true)
 const reloadNeeded = ref(false)
+const downloadButton = ref<HTMLButtonElement | null>(null)
+const downloadPreview = shallowRef<CloudSyncDownloadPreview | null>(null)
+const categoryTitle = (id: CloudSyncCategoryId) =>
+  CLOUD_SYNC_CATEGORIES.find((category) => category.id === id)?.title || id
+const backupTitles = computed(
+  () => cloudSync.localBackup?.selection.map(categoryTitle).join('、') || '',
+)
 const selectedTitles = computed(() =>
   CLOUD_SYNC_CATEGORIES.filter((category) => cloudSync.selectedSet.has(category.id)).map(
     (category) => category.title,
@@ -88,19 +97,48 @@ async function uploadCloud() {
 }
 
 async function downloadCloud() {
-  const ok = await confirm(
-    `云端的“${selectedTitles.value.join('、')}”将覆盖本机对应数据，未选择的数据不受影响。确定下载吗？`,
-  )
-  if (!ok) return
   try {
-    const { applied, missing } = await cloudSync.downloadSelected()
-    reloadNeeded.value = applied.some((id) => id !== 'workspace')
-    const appliedText = applied.length ? `已下载 ${applied.length} 类数据` : '没有可下载的数据'
-    message.value = missing.length
-      ? `${appliedText}，${missing.length} 类云端暂无副本`
-      : appliedText
+    downloadPreview.value = await cloudSync.prepareDownload()
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : '读取云端数据失败'
+  }
+}
+
+async function applyDownload() {
+  if (!downloadPreview.value) return
+  const preview = downloadPreview.value
+  downloadPreview.value = null
+  try {
+    const { applied, missing, failed } = await cloudSync.downloadSelected(preview)
+    reloadNeeded.value ||= applied.some((id) => id !== 'workspace')
+    message.value = [
+      applied.length ? `已下载：${applied.map(categoryTitle).join('、')}` : '本次没有数据下载成功',
+      missing.length ? `云端暂无副本：${missing.map(categoryTitle).join('、')}` : '',
+      ...failed.map((item) => `${categoryTitle(item.id)}失败：${item.message}，可从本机备份恢复`),
+    ]
+      .filter(Boolean)
+      .join('；')
   } catch (error) {
     message.value = error instanceof Error ? error.message : '下载失败'
+  }
+}
+
+async function restoreLocalBackup() {
+  if (
+    !(await confirm(
+      `将用备份恢复本机的“${backupTitles.value}”。当前数据会先保存为新的备份，云端数据不受影响。确定恢复吗？`,
+    ))
+  )
+    return
+  try {
+    const { applied, failed } = await cloudSync.restoreBackup()
+    reloadNeeded.value ||= applied.some((id) => id !== 'workspace')
+    message.value = [
+      applied.length ? `已恢复：${applied.map(categoryTitle).join('、')}` : '本次没有数据恢复成功',
+      ...failed.map((item) => `${categoryTitle(item.id)}恢复失败：${item.message}，原备份仍保留`),
+    ].join('；')
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : '恢复失败'
   }
 }
 
@@ -133,7 +171,7 @@ onMounted(() => void refresh())
       <p>管理登录设备，并选择需要在账号间同步的数据。</p>
     </header>
 
-    <div v-if="message" class="message">
+    <div v-if="message" class="message" role="status">
       <span>{{ message }}</span>
       <button v-if="reloadNeeded" @click="reloadApp">重新加载以应用</button>
     </div>
@@ -190,6 +228,7 @@ onMounted(() => void refresh())
             <input
               type="checkbox"
               :checked="cloudSync.selectedSet.has(category.id)"
+              :disabled="cloudSync.isSyncing"
               @change="toggleCategory(category.id, $event)"
             />
             <span class="sync-check" aria-hidden="true">✓</span>
@@ -218,6 +257,7 @@ onMounted(() => void refresh())
           </button>
           <button
             :disabled="!cloudSync.selection.length || cloudSync.isSyncing"
+            ref="downloadButton"
             @click="downloadCloud"
           >
             下载所选数据
@@ -230,12 +270,93 @@ onMounted(() => void refresh())
             删除所选云端数据
           </button>
         </div>
+        <div v-if="cloudSync.localBackup" class="backup-summary">
+          <div>
+            <strong>本机恢复点</strong>
+            <p>{{ backupTitles }}</p>
+            <small
+              >{{ new Date(cloudSync.localBackup.createdAt).toLocaleString() }} ·
+              只保存在当前浏览器</small
+            >
+          </div>
+          <button :disabled="cloudSync.isSyncing" @click="restoreLocalBackup">恢复备份</button>
+        </div>
       </section>
     </template>
+    <Modal
+      :open="!!downloadPreview"
+      title="下载前确认"
+      :return-focus="downloadButton"
+      :width="600"
+      @close="downloadPreview = null"
+    >
+      <template v-if="downloadPreview">
+        <p>下面是本次将下载的云端副本。覆盖前会先保存本机备份，完成后可在此页面恢复。</p>
+        <div class="download-preview-list">
+          <div
+            v-for="entry in downloadPreview.entries"
+            :key="entry.id"
+            class="download-preview-row"
+          >
+            <strong>{{ entry.title }}</strong>
+            <span v-if="entry.available"
+              >本机 {{ entry.localCount }} → 云端 {{ entry.remoteCount }}
+              {{ entry.id === 'workspace' ? '个工作区' : '项设置' }}</span
+            >
+            <span v-else>云端暂无副本，本机保持原样</span>
+          </div>
+        </div>
+        <p class="sync-note">备份仅保留最近一次覆盖前的数据；备份保存失败时将停止下载。</p>
+      </template>
+      <template #footer>
+        <button class="preview-action" @click="downloadPreview = null">取消</button>
+        <button
+          class="preview-action primary"
+          :disabled="
+            !downloadPreview?.entries.some((entry) => entry.available) || cloudSync.isSyncing
+          "
+          @click="applyDownload"
+        >
+          备份并下载
+        </button>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <style scoped>
+.backup-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light);
+}
+.backup-summary p {
+  margin: 0.4rem 0;
+}
+.backup-summary small,
+.download-preview-row span {
+  color: var(--text-secondary);
+}
+.download-preview-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.download-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-hover);
+  border-radius: 8px;
+}
+
 .account-page {
   width: min(820px, calc(100% - 40px));
   min-height: 100%;
@@ -262,7 +383,9 @@ header p,
 .section-head button,
 .session-item button,
 .message button,
-.cloud-actions button {
+.cloud-actions button,
+.backup-summary button,
+.preview-action {
   padding: 0.48rem 0.78rem;
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: 8px;
@@ -399,7 +522,7 @@ header p,
   width: 22px;
   height: 22px;
   place-items: center;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-light);
   border-radius: 7px;
   color: transparent;
   font-size: var(--font-size-small);
@@ -475,7 +598,8 @@ header p,
   flex-wrap: wrap;
 }
 
-.cloud-actions .primary {
+.cloud-actions .primary,
+.preview-action.primary {
   border: 0;
   background: var(--gradient-primary);
   color: white;

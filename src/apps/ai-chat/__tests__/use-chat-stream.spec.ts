@@ -72,3 +72,42 @@ describe('AI chat stream errors', () => {
     )
   })
 })
+
+describe('AI chat completion protocol', () => {
+  it('keeps partial text but reports a missing completion marker', async () => {
+    vi.stubGlobal('localStorage', { getItem: () => null })
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(new Response('data:{"choices":[{"delta":{"content":"部分回答"}}]}\n\n')),
+    )
+    const stream = useChatStream().streamChat(params)
+    expect(await stream.next()).toEqual({ value: '部分回答', done: false })
+    await expect(stream.next()).rejects.toMatchObject({ code: 'INCOMPLETE_STREAM' })
+  })
+
+  it('reports the persisted IDs and stops reading at DONE', async () => {
+    vi.stubGlobal('localStorage', { getItem: () => null })
+    const onPersisted = vi.fn()
+    const onModelResolved = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            'data: {"model":"resolved"}\r\n\r\ndata: {"persisted":{"userMessageId":1,"assistantMessageId":2,"title":"Title"}}\n\ndata:[DONE]\n\ndata:{"error":"must ignore"}\n\n',
+          ),
+        ),
+    )
+    const stream = useChatStream().streamChat({ ...params, onPersisted, onModelResolved })
+    expect((await stream.next()).done).toBe(true)
+    expect(onModelResolved).toHaveBeenCalledWith('resolved')
+    expect(onPersisted).toHaveBeenCalledWith({
+      userMessageId: 1,
+      assistantMessageId: 2,
+      title: 'Title',
+    })
+  })
+})

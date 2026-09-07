@@ -1,4 +1,4 @@
-// 引用时统一从 '@/components' 命名导入。
+// 公共组件的聚合入口；性能敏感路由可直接导入具体组件，避免带入无关样式副作用。
 
 // 通用 UI 组件
 export { default as CustomSelect } from './common/CustomSelect.vue'

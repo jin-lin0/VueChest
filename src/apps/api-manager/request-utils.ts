@@ -1,4 +1,5 @@
 import type { ApiItem } from './defaults'
+import type { RequestBodyMode, RequestFormField } from './request-body'
 
 export interface RequestHeader {
   id: string
@@ -126,17 +127,43 @@ function quoteShell(value: string): string {
   return `'${value.split("'").join("'\\''")}'`
 }
 
+function curlFormFile(field: RequestFormField): string {
+  const quote = (value: string) => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+  const parts = [`@${quote(field.value)}`]
+  if (field.filename) parts.push(`filename=${quote(field.filename)}`)
+  if (field.contentType) parts.push(`type=${field.contentType}`)
+  return parts.join(';')
+}
+
 export function buildCurlCommand(
   api: ApiItem,
   url: string,
   headers: RequestHeader[],
   body: string,
+  bodyMode: RequestBodyMode = 'raw',
+  formFields: RequestFormField[] = [],
 ): string {
   const parts = [`curl --request ${api.method}`, quoteShell(url)]
-  for (const [name, value] of Object.entries(getEnabledHeaders(headers))) {
+  const enabled = getEnabledHeaders(headers)
+  if (
+    bodyMode === 'raw' &&
+    !['GET', 'HEAD'].includes(api.method) &&
+    body.trim() &&
+    !Object.keys(enabled).some((key) => key.toLowerCase() === 'content-type')
+  )
+    enabled['Content-Type'] = 'application/json'
+  for (const [name, value] of Object.entries(enabled)) {
+    if (bodyMode === 'form-data' && name.toLowerCase() === 'content-type') continue
     parts.push(`--header ${quoteShell(`${name}: ${value}`)}`)
   }
-  if (!['GET', 'DELETE'].includes(api.method) && body.trim()) {
+  if (!['GET', 'HEAD'].includes(api.method) && bodyMode === 'form-data') {
+    for (const field of formFields.filter((item) => item.enabled && item.name.trim())) {
+      const value = field.type === 'file' ? curlFormFile(field) : field.value
+      parts.push(
+        `${field.type === 'file' ? '--form' : '--form-string'} ${quoteShell(`${field.name}=${value}`)}`,
+      )
+    }
+  } else if (!['GET', 'HEAD'].includes(api.method) && body.trim()) {
     parts.push(`--data-raw ${quoteShell(body)}`)
   }
   return parts.join(' \\\n  ')
@@ -170,4 +197,11 @@ export function inferApiAccess(api: ApiItem): {
     corsLabel: api.cors === 'supported' || inferredCors ? '支持 CORS' : 'CORS 未知',
     verified: Boolean(api.docsUrl && api.cors === 'supported'),
   }
+}
+
+export function getStatusTone(status: number): string {
+  if (status >= 200 && status < 300) return 'success'
+  if (status >= 400 && status < 500) return 'warning'
+  if (status >= 500) return 'danger'
+  return 'info'
 }

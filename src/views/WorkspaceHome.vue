@@ -407,6 +407,7 @@ onUnmounted(detachDocumentClickListener)
         <button
           class="icon-action"
           :title="isDark ? '切换亮色模式' : '切换暗色模式'"
+          :aria-label="isDark ? '切换亮色模式' : '切换暗色模式'"
           @click="toggleTheme"
         >
           {{ isDark ? '☀' : '◐' }}

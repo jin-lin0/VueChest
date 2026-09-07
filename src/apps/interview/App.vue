@@ -82,6 +82,15 @@
         </div>
       </section>
 
+      <ReviewPlan
+        :goal="dailyGoal"
+        :completed="todayCompleted"
+        :due="dueCount"
+        :busy="busyMode !== null"
+        @update:goal="updateDailyGoal"
+        @review="startPractice('due')"
+      />
+
       <section class="metric-grid" aria-label="学习数据概览">
         <article class="metric-card metric-total">
           <span class="metric-icon">
@@ -499,6 +508,9 @@
             <div class="attempt-row">
               <span>练习次数</span><strong>{{ currentProgress?.attempts ?? 0 }}</strong>
             </div>
+            <p v-if="currentProgress?.nextReviewAt" class="review-date">
+              下次复习：{{ new Date(currentProgress.nextReviewAt).toLocaleDateString() }}
+            </p>
           </section>
 
           <section class="sidebar-card assessment-card">
@@ -552,7 +564,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import ReviewPlan from './components/ReviewPlan.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CustomSelect, EmptyState, MarkdownView, Skeleton, type SelectOption } from '@/components'
 import { useToast } from '@/composables/useToast'
@@ -568,6 +581,9 @@ import {
   createLearningState,
   filterQuestionsByLearning,
   getLearningStatus,
+  getDueQuestions,
+  todayPracticeCount,
+  normalizeDailyGoal,
   normalizeLearningState,
   setQuestionStatus,
   setLastQuestion,
@@ -576,10 +592,11 @@ import {
   type InterviewLearningState,
   type LearningFilter,
   type LearningStatus,
+  type QuestionProgress,
 } from './progress'
 import { buildQuery } from './utils'
 
-type PracticeMode = 'all' | 'unpracticed' | 'review' | 'favorite'
+type PracticeMode = 'due' | 'all' | 'unpracticed' | 'review' | 'favorite'
 type QuestionListResponse = {
   questions: Question[]
   total: number
@@ -603,6 +620,12 @@ const fetchError = ref('')
 const showDetail = ref(false)
 const showAnswer = ref(false)
 const attemptRecorded = ref(false)
+const attemptBase = ref<QuestionProgress | null>(null)
+const clockNow = ref(Date.now())
+let clockTimer: ReturnType<typeof setInterval> | null = null
+const refreshClock = () => {
+  clockNow.value = Date.now()
+}
 const selectedAnswer = ref<string | null>(null)
 const selectedCategory = ref<string | number>('')
 const selectedDifficulty = ref<string | number>('')
@@ -623,6 +646,7 @@ const difficultyOptions: SelectOption[] = [
 ]
 const statusOptions: SelectOption[] = [
   { value: '', label: '全部状态' },
+  { value: 'due', label: '到期复习' },
   { value: 'unpracticed', label: '未练习' },
   { value: 'learning', label: '练习中' },
   { value: 'review', label: '需复习' },
@@ -633,6 +657,20 @@ const statusOptions: SelectOption[] = [
 const learningStats = computed(() =>
   calculateLearningStats(catalogTotal.value, learningState.value),
 )
+const todayCompleted = computed(() => todayPracticeCount(learningState.value, clockNow.value))
+const dueCount = computed(
+  () =>
+    getDueQuestions(
+      categories.value.flatMap((category) => category.Questions || []),
+      learningState.value,
+      clockNow.value,
+    ).length,
+)
+const dailyGoal = computed(() => normalizeDailyGoal(learningState.value.dailyGoal))
+function updateDailyGoal(value: number) {
+  learningState.value = { ...learningState.value, dailyGoal: normalizeDailyGoal(value) }
+  persistLearningState()
+}
 const favoriteIds = computed(() => new Set(learningState.value.favorites))
 const currentStatus = computed(() =>
   getLearningStatus(learningState.value, currentQuestion.value.id),
@@ -642,11 +680,13 @@ const currentProgress = computed(
 )
 const hasLastQuestion = computed(() => learningState.value.lastQuestionId !== null)
 const primaryPracticeMode = computed<PracticeMode>(() => {
+  if (dueCount.value > 0) return 'due'
   if (learningStats.value.unpracticed > 0) return 'unpracticed'
   if (learningStats.value.review > 0) return 'review'
   return 'all'
 })
 const primaryActionLabel = computed(() => {
+  if (primaryPracticeMode.value === 'due') return '开始到期复习'
   if (primaryPracticeMode.value === 'unpracticed') return '开始今日练习'
   if (primaryPracticeMode.value === 'review') return '开始薄弱复习'
   return '随机巩固一题'
@@ -665,6 +705,7 @@ const activeFilterCount = computed(
 )
 const catalogTitle = computed(() => {
   if (selectedCategory.value) return `${getCategoryName(Number(selectedCategory.value))}题目`
+  if (selectedStatus.value === 'due') return '到期复习题目'
   if (selectedStatus.value === 'review') return '待复习题目'
   if (selectedStatus.value === 'mastered') return '已掌握题目'
   if (selectedStatus.value === 'favorite') return '重点收藏'
@@ -833,12 +874,17 @@ function openQuestion(question: Question, mode: PracticeMode = 'all') {
   selectedAnswer.value = null
   showAnswer.value = false
   attemptRecorded.value = false
+  attemptBase.value = learningState.value.records[String(question.id)]
+    ? { ...learningState.value.records[String(question.id)] }
+    : null
   showDetail.value = true
   rememberQuestion(question.id)
   nextTick(() => document.querySelector('.app-main')?.scrollTo({ top: 0, behavior: 'smooth' }))
 }
 
 async function startPractice(mode: PracticeMode) {
+  if (busyMode.value !== null) return
+  refreshClock()
   busyMode.value = mode
   try {
     let candidate: Question | undefined
@@ -856,10 +902,15 @@ async function startPractice(mode: PracticeMode) {
         mode,
         learningState.value,
       )
-      candidate = filtered[Math.floor(Math.random() * filtered.length)]
+      candidate =
+        mode === 'due'
+          ? (filtered.find((item) => !showDetail.value || item.id !== currentQuestion.value?.id) ??
+            filtered[0])
+          : filtered[Math.floor(Math.random() * filtered.length)]
     }
     if (!candidate) {
       const messages: Record<PracticeMode, string> = {
+        due: '当前筛选范围内没有到期题目，可以练习新题或调整筛选条件',
         all: '当前筛选下暂无题目',
         unpracticed: '当前范围的新题已经练完了，可以复习薄弱项',
         review: '暂无待复习题目，继续保持',
@@ -922,7 +973,13 @@ function toggleAnswer() {
 
 function rateQuestion(status: LearningStatus) {
   ensurePracticed()
-  learningState.value = setQuestionStatus(learningState.value, currentQuestion.value.id, status)
+  learningState.value = setQuestionStatus(
+    learningState.value,
+    currentQuestion.value.id,
+    status,
+    Date.now(),
+    attemptBase.value,
+  )
   persistLearningState()
   const messages: Record<LearningStatus, string> = {
     review: '已加入薄弱复习',
@@ -965,7 +1022,7 @@ async function applyRouteCommand() {
   if (!practice || commandKey === handledRouteCommand) return
   handledRouteCommand = commandKey
   if (practice === 'continue') await continueLastQuestion()
-  else if (['all', 'unpracticed', 'review', 'favorite'].includes(practice)) {
+  else if (['all', 'due', 'unpracticed', 'review', 'favorite'].includes(practice)) {
     await startPractice(practice as PracticeMode)
   }
 }
@@ -977,9 +1034,18 @@ watch([selectedCategory, selectedDifficulty, selectedStatus], () => {
 
 onMounted(async () => {
   loadLearningState()
+  refreshClock()
+  clockTimer = setInterval(refreshClock, 30_000)
+  window.addEventListener('focus', refreshClock)
   await Promise.all([fetchCategories(), fetchQuestions()])
   routeCommandsReady = true
   await applyRouteCommand()
+})
+
+onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer)
+  window.removeEventListener('focus', refreshClock)
+  listRequestId += 1
 })
 
 watch(

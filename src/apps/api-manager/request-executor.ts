@@ -8,6 +8,7 @@ import type { ApiItem } from './defaults'
 import { buildRequestUrl, evaluateAssertions, formatBytes, resolveVariables } from './request-utils'
 import type { SavedRequest, SavedRequestRun } from './types'
 import type { RuntimeVariableRecord } from './collection-workspace'
+import { prepareRequestBody, type RequestFiles } from './request-body'
 
 export const MAX_PREVIEW_BYTES = 512 * 1024
 export const REQUEST_TIMEOUT_MS = 20_000
@@ -23,12 +24,15 @@ interface RequestExecutorDependencies {
   fetch: typeof globalThis.fetch
   now: () => number
   timeoutSignal: (milliseconds: number) => AbortSignal
+  files: RequestFiles
+  signal?: AbortSignal
 }
 
 const defaultDependencies: RequestExecutorDependencies = {
   fetch: globalThis.fetch.bind(globalThis),
   now: () => performance.now(),
   timeoutSignal: (milliseconds) => AbortSignal.timeout(milliseconds),
+  files: {},
 }
 
 export async function parseResponseBody(
@@ -53,20 +57,27 @@ export async function parseResponseBody(
   let text = ''
 
   if (reader) {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      if (!value) continue
-      received += value.length
-      const remaining = maxPreviewBytes - (received - value.length)
-      text += decoder.decode(value.slice(0, Math.max(0, remaining)), { stream: true })
-      if (received >= maxPreviewBytes) {
-        truncated = true
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (!value) continue
+        received += value.length
+        const remaining = maxPreviewBytes - (received - value.length)
+        text += decoder.decode(value.slice(0, Math.max(0, remaining)), { stream: true })
+        if (received > maxPreviewBytes) {
+          truncated = true
+          break
+        }
+      }
+      if (!truncated) text += decoder.decode()
+    } finally {
+      try {
         await reader.cancel()
-        break
+      } finally {
+        reader.releaseLock()
       }
     }
-    text += decoder.decode()
   } else {
     text = await response.text()
     received = new TextEncoder().encode(text).length
@@ -133,33 +144,38 @@ export async function runSavedRequest(
     const rawUrl = resolveVariables(buildRequestUrl(api, saved.paramValues), variables)
     const baseHeaders = resolvedHeaders(saved.headers, variables)
     const authenticated = applyAuth(rawUrl, baseHeaders, saved.auth || { type: 'none' }, variables)
-    const body = resolveVariables(saved.body, variables)
-    const hasBody = api.method !== 'GET' && body.trim() !== ''
-    const hasContentType = Object.keys(authenticated.headers).some(
-      (name) => name.toLowerCase() === 'content-type',
-    )
-    if (hasBody && !hasContentType) authenticated.headers['Content-Type'] = 'application/json'
+    const prepared = prepareRequestBody({
+      method: api.method,
+      body: saved.body,
+      bodyMode: saved.bodyMode,
+      formFields: saved.formFields,
+      files: executor.files,
+      variables,
+      headers: authenticated.headers,
+    })
     requestSnapshot = {
       method: api.method,
       url: authenticated.url,
-      headers: { ...authenticated.headers },
-      body: hasBody ? body : '',
+      headers: prepared.headers,
+      body: prepared.preview,
     }
 
     let response: Response | null = null
     const attempts = Math.min(3, Math.max(0, saved.retryCount || 0)) + 1
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
+        executor.signal?.throwIfAborted()
+        const timeout = executor.timeoutSignal(timeoutMs)
         response = await executor.fetch(authenticated.url, {
           method: api.method,
-          headers: authenticated.headers,
-          body: hasBody ? body : undefined,
-          signal: executor.timeoutSignal(timeoutMs),
+          headers: prepared.headers,
+          body: prepared.body,
+          signal: executor.signal ? AbortSignal.any([executor.signal, timeout]) : timeout,
         })
         if (response.status < 500 || attempt === attempts - 1) break
         await response.body?.cancel()
       } catch (reason) {
-        if (attempt === attempts - 1) throw reason
+        if (attempt === attempts - 1 || executor.signal?.aborted) throw reason
       }
     }
     if (!response) throw new Error('请求没有返回响应')
@@ -183,9 +199,7 @@ export async function runSavedRequest(
       const encoded = new TextEncoder().encode(text)
       size = encoded.byteLength
       truncated = size > MAX_PREVIEW_BYTES
-      previewBody = truncated
-        ? new TextDecoder().decode(encoded.slice(0, MAX_PREVIEW_BYTES))
-        : text
+      previewBody = truncated ? new TextDecoder().decode(encoded.slice(0, MAX_PREVIEW_BYTES)) : text
     }
 
     let data: unknown = text

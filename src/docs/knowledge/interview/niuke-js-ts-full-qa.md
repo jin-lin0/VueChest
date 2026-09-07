@@ -69,6 +69,22 @@ order: 51
 
 ---
 
+### 数组的 pop、push、shift、unshift、split、join 各自的作用是什么（含数组与字符串之间的转换：join 把数组拼成字符串、split 把字符串拆成数组）？
+
+`push/unshift` 分别向数组尾部/头部加入元素，返回新长度；`pop/shift` 分别删除并返回尾部/头部元素，空数组返回 `undefined`。这四个方法都会修改原数组。`join(separator)` 返回字符串，不修改数组；`split(separator, limit)` 是 **String 方法**，不是数组方法。[MDN 数组指南](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Indexed_collections)、[String.split](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split)。
+
+```js
+const items = ['b', 'c']
+items.push('d')       // 3；items 为 ['b', 'c', 'd']
+items.unshift('a')    // 4；items 为 ['a', 'b', 'c', 'd']
+const last = items.pop()   // 'd'
+const first = items.shift() // 'a'
+const text = items.join('|') // 'b|c'
+const parts = text.split('|') // ['b', 'c']
+```
+
+注意：转换通常不保留原类型，`[1, 2].join(',').split(',')` 得到字符串数组；`null/undefined` 在 join 中变为空片段。分隔符出现在字段内时不能直接靠 split 解析 CSV。`split('')` 按 UTF-16 码元拆分，可能拆开 emoji；用户可见字符需要按字素簇处理。
+
 ## 闭包 / 原型 / this
 
 ### 什么是闭包？闭包的作用和缺点是什么？应用场景？闭包导致的内存泄漏怎么定位？

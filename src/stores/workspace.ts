@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { APP_MODULES, STORAGE_KEYS } from '@/config'
-import { getStorage, setStorage } from '@/lib/storage'
+import { getStorage, setStorage, applyStoragePatch } from '@/lib/storage'
 import { api } from '@/lib/request'
 
 export interface WorkspaceItem {
@@ -206,6 +206,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const lastSyncedAt = ref<number | null>(null)
   const cloudSyncEnabled = ref(true)
   let syncTimer: ReturnType<typeof setTimeout> | null = null
+  let contextRevision = 0
+  let pushQueue = Promise.resolve(false)
+
+  function invalidateSync() {
+    contextRevision++
+    if (syncTimer) clearTimeout(syncTimer)
+    syncTimer = null
+  }
 
   const storageKey = (userId: number | null) =>
     `${STORAGE_KEYS.WORKSPACE_CONFIG_PREFIX}:${userId === null ? 'guest' : userId}`
@@ -229,7 +237,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   function saveLayout() {
-    config.value.layoutUpdatedAt = Date.now()
+    config.value.layoutUpdatedAt = Math.max(Date.now(), config.value.layoutUpdatedAt + 1)
     saveLocal()
     scheduleCloudSync()
   }
@@ -254,25 +262,41 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       config.value.layoutUpdatedAt = Date.now()
       saveLocal()
     }
-    syncState.value = 'syncing'
-    try {
-      await api.put('/api/auth/workspace', { config: getCloudConfig() })
-      lastSyncedAt.value = Date.now()
-      syncState.value = 'synced'
-      return true
-    } catch {
-      syncState.value = 'error'
-      return false
-    }
+    const owner = ownerId.value
+    const revision = contextRevision
+    const snapshot = getCloudConfig()
+    const current = () => ownerId.value === owner && contextRevision === revision
+    const operation = pushQueue
+      .catch(() => false)
+      .then(async () => {
+        if (!current()) return false
+        syncState.value = 'syncing'
+        try {
+          await api.put('/api/auth/workspace', { config: snapshot })
+          if (!current()) return false
+          if (config.value.layoutUpdatedAt === snapshot.updatedAt) {
+            lastSyncedAt.value = Date.now()
+            syncState.value = 'synced'
+          }
+          return true
+        } catch {
+          if (current()) syncState.value = 'error'
+          return false
+        }
+      })
+    pushQueue = operation
+    return operation
   }
 
   function bindUserConfig(userId: number) {
     init()
-    if (syncTimer) clearTimeout(syncTimer)
     if (ownerId.value === userId) return
-
+    invalidateSync()
     const saved = getStorage<WorkspaceConfig>(storageKey(userId))
-    if (saved) config.value = normalizeConfig(saved)
+    config.value = normalizeConfig(
+      saved ||
+        (ownerId.value === null ? config.value : getStorage<WorkspaceConfig>(storageKey(null))),
+    )
     ownerId.value = userId
     setStorage(storageKey(userId), clone(config.value))
   }
@@ -280,12 +304,20 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function syncWithServer(userId: number) {
     bindUserConfig(userId)
     cloudSyncEnabled.value = true
+    const revision = ++contextRevision
+    const layoutAtStart = config.value.layoutUpdatedAt
+    const current = () => ownerId.value === userId && revision === contextRevision
 
     syncState.value = 'syncing'
     try {
       const { data } = await api.get<{
         data: { config: WorkspaceCloudConfig; updatedAt: string } | null
       }>('/api/auth/workspace')
+      if (!current()) return
+      if (config.value.layoutUpdatedAt !== layoutAtStart) {
+        await pushToServer()
+        return
+      }
 
       if (data?.config) {
         const remote = normalizeCloudConfig(data.config)
@@ -310,47 +342,78 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
       await pushToServer()
     } catch {
-      syncState.value = 'error'
+      if (current()) syncState.value = 'error'
     }
   }
 
   function switchToUser(userId: number) {
     bindUserConfig(userId)
+    invalidateSync()
     cloudSyncEnabled.value = false
     syncState.value = 'local'
     lastSyncedAt.value = null
   }
 
   function setCloudSyncEnabled(enabled: boolean) {
+    if (cloudSyncEnabled.value !== enabled) invalidateSync()
     cloudSyncEnabled.value = enabled
-    if (!enabled && syncTimer) clearTimeout(syncTimer)
     if (!enabled) syncState.value = 'local'
   }
 
   async function fetchCloudWorkspace(): Promise<WorkspaceCloudConfig | null> {
     if (ownerId.value === null) return null
+    const owner = ownerId.value
+    const revision = contextRevision
     const { data } = await api.get<{
       data: { config: WorkspaceCloudConfig; updatedAt: string } | null
     }>('/api/auth/workspace')
+    if (ownerId.value !== owner || contextRevision !== revision)
+      throw new Error('工作区或账号已变化，请重新操作')
     return data?.config ? normalizeCloudConfig(data.config) : null
   }
 
   async function downloadCloudWorkspace() {
     const remote = await fetchCloudWorkspace()
     if (!remote) throw new Error('云端还没有工作区数据')
-    config.value.workspaces = remote.workspaces
-    config.value.layoutUpdatedAt = remote.updatedAt
-    if (!remote.workspaces.some((item) => item.id === config.value.activeWorkspaceId)) {
-      config.value.activeWorkspaceId = remote.workspaces[0].id
+    await applyCloudWorkspace(remote)
+  }
+
+  async function applyCloudWorkspace(remote: WorkspaceCloudConfig) {
+    const next = clone(config.value)
+    next.workspaces = normalizeCloudConfig(remote).workspaces
+    next.layoutUpdatedAt = remote.updatedAt
+    if (!next.workspaces.some((item) => item.id === next.activeWorkspaceId)) {
+      next.activeWorkspaceId = next.workspaces[0].id
     }
-    saveLocal()
+    await restoreLocalConfig(next)
     lastSyncedAt.value = Date.now()
     syncState.value = 'synced'
   }
 
+  async function restoreLocalConfig(snapshot: WorkspaceConfig) {
+    const owner = ownerId.value
+    invalidateSync()
+    const revision = contextRevision
+    const next = normalizeConfig(clone(snapshot))
+    await applyStoragePatch({ [storageKey(owner)]: next })
+    if (ownerId.value !== owner || revision !== contextRevision)
+      throw new Error('工作区或账号已变化，请重新操作')
+    config.value = next
+    syncState.value = 'local'
+    lastSyncedAt.value = null
+  }
+
   async function deleteCloudWorkspace() {
     if (ownerId.value === null) return
+    const owner = ownerId.value
+    invalidateSync()
+    const revision = contextRevision
+    await pushQueue.catch(() => false)
+    if (ownerId.value !== owner || contextRevision !== revision)
+      throw new Error('账号已切换，请重新操作')
     await api.delete('/api/auth/workspace')
+    if (ownerId.value !== owner || contextRevision !== revision)
+      throw new Error('账号已切换，请重新操作')
     lastSyncedAt.value = null
     syncState.value = 'local'
   }
@@ -358,7 +421,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function switchToGuest() {
     init()
     if (ownerId.value === null) return
-    if (syncTimer) clearTimeout(syncTimer)
+    invalidateSync()
     ownerId.value = null
     cloudSyncEnabled.value = true
     config.value = normalizeConfig(getStorage<WorkspaceConfig>(storageKey(null)))
@@ -376,6 +439,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const currentIds = new Set(config.value.workspaces.map((item) => item.id))
     if (
       workspaces.length !== config.value.workspaces.length ||
+      new Set(workspaces.map((item) => item.id)).size !== workspaces.length ||
       workspaces.some((item) => !currentIds.has(item.id))
     ) {
       return
@@ -525,6 +589,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     setCloudSyncEnabled,
     fetchCloudWorkspace,
     downloadCloudWorkspace,
+    applyCloudWorkspace,
+    restoreLocalConfig,
     deleteCloudWorkspace,
     pushToServer,
     switchToGuest,

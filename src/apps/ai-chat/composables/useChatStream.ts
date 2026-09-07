@@ -1,4 +1,5 @@
 import { API_BASE, getAuthToken } from '@/lib/request'
+import { readSseData } from '@/lib/sse'
 
 export interface ChatStreamMessage {
   role: 'user' | 'assistant' | 'system'
@@ -103,72 +104,48 @@ export function useChatStream() {
       throw new ChatStreamError(msg, code)
     }
 
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('无法读取响应流')
-    }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let done = false
-
+    if (!response.body) throw new ChatStreamError('无法读取响应流', 'INVALID_STREAM')
+    let completed = false
     try {
-      while (!done) {
-        const { done: readDone, value } = await reader.read()
-        if (readDone) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed || !trimmed.startsWith('data: ')) continue
-          const data = trimmed.slice(6)
-          if (data === '[DONE]') {
-            done = true
-            break
-          }
-
-          let json: StreamPayload
-          try {
-            json = JSON.parse(data)
-          } catch {
-            continue
-          }
-          if (json?.error) {
-            throw new ChatStreamError(
-              String(json.error),
-              typeof json.code === 'string' ? json.code : 'AI_STREAM_ERROR',
-            )
-          }
-          if (typeof json.model === 'string') onModelResolved?.(json.model)
-          if (json.persisted) {
-            onPersisted?.({
-              userMessageId:
-                typeof json.persisted.userMessageId === 'number'
-                  ? json.persisted.userMessageId
-                  : null,
-              assistantMessageId:
-                typeof json.persisted.assistantMessageId === 'number'
-                  ? json.persisted.assistantMessageId
-                  : null,
-              title: typeof json.persisted.title === 'string' ? json.persisted.title : '新对话',
-            })
-          }
-          const delta = json?.choices?.[0]?.delta?.content
-          if (typeof delta === 'string' && delta) yield delta
+      for await (const data of readSseData(response.body, signal)) {
+        if (data === '[DONE]') {
+          completed = true
+          break
         }
+        let json: StreamPayload
+        try {
+          json = JSON.parse(data)
+        } catch {
+          continue
+        }
+        if (json?.error) {
+          throw new ChatStreamError(
+            String(json.error),
+            typeof json.code === 'string' ? json.code : 'AI_STREAM_ERROR',
+          )
+        }
+        if (typeof json.model === 'string') onModelResolved?.(json.model)
+        if (json.persisted) {
+          onPersisted?.({
+            userMessageId:
+              typeof json.persisted.userMessageId === 'number'
+                ? json.persisted.userMessageId
+                : null,
+            assistantMessageId:
+              typeof json.persisted.assistantMessageId === 'number'
+                ? json.persisted.assistantMessageId
+                : null,
+            title: typeof json.persisted.title === 'string' ? json.persisted.title : '新对话',
+          })
+        }
+        const delta = json?.choices?.[0]?.delta?.content
+        if (typeof delta === 'string' && delta) yield delta
       }
+      if (!completed) throw new ChatStreamError('AI 响应未正常完成', 'INCOMPLETE_STREAM')
     } catch (error) {
       if (error instanceof ChatStreamError) throw error
       if (error instanceof Error && error.name === 'AbortError') throw error
       throw new ChatStreamError('AI 响应连接中断', 'NETWORK_ERROR')
-    } finally {
-      // 无论正常结束、出错还是被 abort，都取消 reader 释放底层网络流
-      try {
-        await reader.cancel()
-      } catch {}
     }
   }
 

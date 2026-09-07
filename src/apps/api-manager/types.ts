@@ -1,5 +1,6 @@
 import type { AuthConfig, ExtractionResult, ExtractionRule } from './collection-runner'
 import type { ApiItem } from './defaults'
+import type { RequestBodyMode, RequestFormField } from './request-body'
 import type {
   AssertionResult,
   AssertionRule,
@@ -51,6 +52,8 @@ export interface SavedRequest {
   paramValues: Record<string, string>
   headers: RequestHeader[]
   body: string
+  bodyMode?: RequestBodyMode
+  formFields?: RequestFormField[]
   assertions: AssertionRule[]
   auth?: AuthConfig
   extractions?: ExtractionRule[]

@@ -29,7 +29,7 @@ describe('interview progress', () => {
       lastQuestionId: 4,
     })
 
-    expect(state.records).toEqual({
+    expect(state.records).toMatchObject({
       1: { status: 'mastered', attempts: 2, lastPracticedAt: 100 },
     })
     expect(state.favorites).toEqual([1, 4])
@@ -42,7 +42,7 @@ describe('interview progress', () => {
     const secondAttempt = updateQuestionProgress(reviewed, 9, 'review', 200)
     const mastered = setQuestionStatus(secondAttempt, 9, 'mastered', 300)
 
-    expect(mastered.records['9']).toEqual({
+    expect(mastered.records['9']).toMatchObject({
       status: 'mastered',
       attempts: 2,
       lastPracticedAt: 300,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useOverlay } from '../../composables/useOverlay'
 defineOptions({ name: 'VcModal', inheritAttrs: false })
 
@@ -6,6 +7,7 @@ const props = withDefaults(
   defineProps<{
     /** 是否打开（支持 v-model:open） */
     open: boolean
+    returnFocus?: HTMLElement | null
     /** 标题，留空则不显示标题栏（除非提供了 #header 插槽） */
     title?: string
     /** 宽度：数字按 px，字符串原样（如 'min(90vw, 720px)'） */
@@ -33,7 +35,10 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const panel = ref<HTMLElement | null>(null)
 const { close } = useOverlay({
+  element: () => panel.value,
+  returnFocus: () => props.returnFocus || null,
   isOpen: () => props.open,
   onClose: () => {
     emit('update:open', false)
@@ -55,6 +60,9 @@ const { close } = useOverlay({
         <div
           class="vc-modal"
           :style="{ width: typeof width === 'number' ? width + 'px' : width }"
+          ref="panel"
+          tabindex="-1"
+          :aria-label="title || '对话框'"
           role="dialog"
           aria-modal="true"
         >

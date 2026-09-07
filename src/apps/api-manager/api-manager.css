@@ -1,3 +1,4 @@
+/* Shared styles for the workbench panels, confined to the page and its teleported workspace. */
 .api-workbench {
   --lab-navy: #14233f;
   --lab-violet: #6d5dfc;
@@ -14,26 +15,26 @@
     radial-gradient(circle at 12% 0%, rgba(var(--accent-rgb), 0.1), transparent 24%),
     radial-gradient(circle at 94% 8%, rgba(22, 163, 148, 0.09), transparent 20%), var(--bg-page);
 }
-button,
-input,
-textarea {
+:is(.api-workbench, .collection-workspace-modal) button,
+:is(.api-workbench, .collection-workspace-modal) input,
+:is(.api-workbench, .collection-workspace-modal) textarea {
   color: inherit;
   font: inherit;
 }
 
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-a:focus-visible {
+:is(.api-workbench, .collection-workspace-modal) button:focus-visible,
+:is(.api-workbench, .collection-workspace-modal) input:focus-visible,
+:is(.api-workbench, .collection-workspace-modal) textarea:focus-visible,
+:is(.api-workbench, .collection-workspace-modal) a:focus-visible {
   outline: 3px solid rgba(var(--accent-rgb), 0.22);
   outline-offset: 2px;
 }
 
-button {
+:is(.api-workbench, .collection-workspace-modal) button {
   border: 0;
 }
 
-svg {
+:is(.api-workbench, .collection-workspace-modal) svg {
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -41,13 +42,13 @@ svg {
   stroke-width: 1.8;
 }
 
-.topbar,
-.api-shell {
+:is(.api-workbench, .collection-workspace-modal) .topbar,
+:is(.api-workbench, .collection-workspace-modal) .api-shell {
   width: min(1540px, 100%);
   margin: 0 auto;
 }
 
-.topbar {
+:is(.api-workbench, .collection-workspace-modal) .topbar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto;
   align-items: center;
@@ -56,32 +57,32 @@ svg {
   margin-bottom: 16px;
 }
 
-.topbar-leading {
+:is(.api-workbench, .collection-workspace-modal) .topbar-leading {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 12px;
 }
 
-.topbar-title {
+:is(.api-workbench, .collection-workspace-modal) .topbar-title {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 3px;
 }
 
-.topbar-title strong {
+:is(.api-workbench, .collection-workspace-modal) .topbar-title strong {
   color: var(--text-primary);
   font-size: var(--font-size-title-lg);
   letter-spacing: -0.02em;
 }
 
-.topbar-title span {
+:is(.api-workbench, .collection-workspace-modal) .topbar-title span {
   color: var(--text-muted);
   font-size: var(--font-size-meta);
 }
 
-.icon-button {
+:is(.api-workbench, .collection-workspace-modal) .icon-button {
   display: grid;
   width: 42px;
   height: 42px;
@@ -96,22 +97,22 @@ svg {
     border-color var(--transition-fast);
 }
 
-.icon-button:hover {
+:is(.api-workbench, .collection-workspace-modal) .icon-button:hover {
   transform: translateX(-2px);
   border-color: rgba(var(--accent-rgb), 0.42);
 }
 
-.icon-button svg {
+:is(.api-workbench, .collection-workspace-modal) .icon-button svg {
   width: 20px;
 }
 
-.brand-lockup {
+:is(.api-workbench, .collection-workspace-modal) .brand-lockup {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.brand-mark {
+:is(.api-workbench, .collection-workspace-modal) .brand-mark {
   display: grid;
   width: 38px;
   height: 38px;
@@ -124,35 +125,35 @@ svg {
   box-shadow: 0 9px 24px rgba(84, 68, 232, 0.28);
 }
 
-.brand-lockup > span:last-child {
+:is(.api-workbench, .collection-workspace-modal) .brand-lockup > span:last-child {
   display: flex;
   flex-direction: column;
   line-height: 1.05;
 }
 
-.brand-lockup strong {
+:is(.api-workbench, .collection-workspace-modal) .brand-lockup strong {
   color: var(--text-primary);
   font-size: var(--font-size-body);
   letter-spacing: 0.12em;
 }
 
-.brand-lockup small {
+:is(.api-workbench, .collection-workspace-modal) .brand-lockup small {
   margin-top: 6px;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   letter-spacing: 0.08em;
 }
 
-.topbar-actions {
+:is(.api-workbench, .collection-workspace-modal) .topbar-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
 }
 
-.workspace-entry,
-.toolbar-action,
-.toolbar-primary {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry,
+:is(.api-workbench, .collection-workspace-modal) .toolbar-action,
+:is(.api-workbench, .collection-workspace-modal) .toolbar-primary {
   display: inline-flex;
   height: 42px;
   align-items: center;
@@ -166,13 +167,13 @@ svg {
     box-shadow var(--transition-fast);
 }
 
-.workspace-entry:hover,
-.toolbar-action:hover,
-.toolbar-primary:hover {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry:hover,
+:is(.api-workbench, .collection-workspace-modal) .toolbar-action:hover,
+:is(.api-workbench, .collection-workspace-modal) .toolbar-primary:hover {
   transform: translateY(-1px);
 }
 
-.workspace-entry {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry {
   gap: 9px;
   min-width: 166px;
   padding: 0 11px 0 8px;
@@ -182,12 +183,12 @@ svg {
   text-align: left;
 }
 
-.workspace-entry:hover {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry:hover {
   border-color: rgba(var(--accent-rgb), 0.42);
   background: color-mix(in srgb, var(--bg-card) 68%, var(--accent-bg));
 }
 
-.workspace-entry-icon {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry-icon {
   display: grid;
   width: 29px;
   height: 29px;
@@ -198,7 +199,7 @@ svg {
   color: var(--lab-violet);
 }
 
-.workspace-entry > span:nth-child(2) {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry > span:nth-child(2) {
   display: flex;
   min-width: 0;
   flex: 1;
@@ -206,23 +207,23 @@ svg {
   gap: 1px;
 }
 
-.workspace-entry strong {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry strong {
   font-size: var(--font-size-small);
   font-weight: 780;
 }
 
-.workspace-entry small {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   white-space: nowrap;
 }
 
-.workspace-entry > svg {
+:is(.api-workbench, .collection-workspace-modal) .workspace-entry > svg {
   flex: 0 0 auto;
   color: var(--text-muted);
 }
 
-.toolbar-action {
+:is(.api-workbench, .collection-workspace-modal) .toolbar-action {
   gap: 6px;
   padding: 0 13px;
   border: 1px solid var(--border-light);
@@ -232,12 +233,12 @@ svg {
   font-weight: 700;
 }
 
-.toolbar-action:hover {
+:is(.api-workbench, .collection-workspace-modal) .toolbar-action:hover {
   border-color: rgba(var(--accent-rgb), 0.34);
   color: var(--text-primary);
 }
 
-.toolbar-primary {
+:is(.api-workbench, .collection-workspace-modal) .toolbar-primary {
   gap: 6px;
   padding: 0 15px;
   background: var(--lab-violet);
@@ -247,12 +248,12 @@ svg {
   font-weight: 780;
 }
 
-.toolbar-primary:hover {
+:is(.api-workbench, .collection-workspace-modal) .toolbar-primary:hover {
   background: var(--lab-violet-deep);
   box-shadow: 0 10px 22px rgba(84, 68, 232, 0.26);
 }
 
-.catalog-health {
+:is(.api-workbench, .collection-workspace-modal) .catalog-health {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -260,9 +261,9 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.catalog-health i,
-.catalog-footer i,
-.hero-kicker i {
+:is(.api-workbench, .collection-workspace-modal) .catalog-health i,
+:is(.api-workbench, .collection-workspace-modal) .catalog-footer i,
+:is(.api-workbench, .collection-workspace-modal) .hero-kicker i {
   display: inline-block;
   width: 7px;
   height: 7px;
@@ -271,8 +272,8 @@ svg {
   box-shadow: 0 0 0 4px rgba(21, 163, 109, 0.12);
 }
 
-.primary-button,
-.secondary-button {
+:is(.api-workbench, .collection-workspace-modal) .primary-button,
+:is(.api-workbench, .collection-workspace-modal) .secondary-button {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
@@ -289,52 +290,52 @@ svg {
     border-color var(--transition-fast);
 }
 
-.primary-button {
+:is(.api-workbench, .collection-workspace-modal) .primary-button {
   background: linear-gradient(135deg, var(--lab-violet), var(--lab-violet-deep));
   color: #fff;
   box-shadow: 0 11px 24px rgba(84, 68, 232, 0.2);
 }
 
-.primary-button:hover,
-.secondary-button:hover {
+:is(.api-workbench, .collection-workspace-modal) .primary-button:hover,
+:is(.api-workbench, .collection-workspace-modal) .secondary-button:hover {
   transform: translateY(-1px);
 }
 
-.primary-button:hover {
+:is(.api-workbench, .collection-workspace-modal) .primary-button:hover {
   box-shadow: 0 14px 30px rgba(84, 68, 232, 0.3);
 }
 
-.primary-button.compact {
+:is(.api-workbench, .collection-workspace-modal) .primary-button.compact {
   min-height: 40px;
   padding: 0 15px;
   font-size: var(--font-size-small);
 }
 
-.secondary-button {
+:is(.api-workbench, .collection-workspace-modal) .secondary-button {
   border: 1px solid var(--border-light);
   background: var(--bg-card);
   color: var(--text-primary);
 }
 
-.secondary-button:hover {
+:is(.api-workbench, .collection-workspace-modal) .secondary-button:hover {
   border-color: rgba(var(--accent-rgb), 0.36);
 }
 
-.api-shell {
+:is(.api-workbench, .collection-workspace-modal) .api-shell {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
 
-.catalog-panel,
-.workspace-panel {
+:is(.api-workbench, .collection-workspace-modal) .catalog-panel,
+:is(.api-workbench, .collection-workspace-modal) .workspace-panel {
   border: 1px solid var(--border-light);
   background: color-mix(in srgb, var(--bg-card) 96%, transparent);
   box-shadow: 0 18px 46px rgba(20, 35, 63, 0.07);
 }
 
-.catalog-panel {
+:is(.api-workbench, .collection-workspace-modal) .catalog-panel {
   position: sticky;
   top: 16px;
   display: flex;
@@ -345,14 +346,14 @@ svg {
   border-radius: 20px;
 }
 
-.catalog-heading {
+:is(.api-workbench, .collection-workspace-modal) .catalog-heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   padding: 22px 20px 14px;
 }
 
-.section-kicker {
+:is(.api-workbench, .collection-workspace-modal) .section-kicker {
   display: block;
   margin-bottom: 6px;
   color: var(--lab-violet);
@@ -361,16 +362,16 @@ svg {
   letter-spacing: 0.18em;
 }
 
-.catalog-heading h2,
-.section-heading h2,
-.history-drawer-heading h2 {
+:is(.api-workbench, .collection-workspace-modal) .catalog-heading h2,
+:is(.api-workbench, .collection-workspace-modal) .section-heading h2,
+:is(.api-workbench, .collection-workspace-modal) .history-drawer-heading h2 {
   margin: 0;
   color: var(--text-primary);
   font-size: var(--font-size-heading);
   letter-spacing: -0.02em;
 }
 
-.catalog-count {
+:is(.api-workbench, .collection-workspace-modal) .catalog-count {
   display: grid;
   min-width: 34px;
   height: 26px;
@@ -382,7 +383,7 @@ svg {
   font-weight: 750;
 }
 
-.search-box {
+:is(.api-workbench, .collection-workspace-modal) .search-box {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -396,18 +397,18 @@ svg {
     box-shadow var(--transition-fast);
 }
 
-.search-box:focus-within {
+:is(.api-workbench, .collection-workspace-modal) .search-box:focus-within {
   border-color: rgba(var(--accent-rgb), 0.48);
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.09);
 }
 
-.search-box svg {
+:is(.api-workbench, .collection-workspace-modal) .search-box svg {
   width: 17px;
   flex: 0 0 auto;
   color: var(--text-muted);
 }
 
-.search-box input {
+:is(.api-workbench, .collection-workspace-modal) .search-box input {
   min-width: 0;
   height: 40px;
   flex: 1;
@@ -418,11 +419,11 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.search-box input::placeholder {
+:is(.api-workbench, .collection-workspace-modal) .search-box input::placeholder {
   color: var(--text-muted);
 }
 
-.search-box kbd {
+:is(.api-workbench, .collection-workspace-modal) .search-box kbd {
   padding: 3px 5px;
   border: 1px solid var(--border-light);
   border-radius: 5px;
@@ -431,7 +432,7 @@ svg {
   font-family: inherit;
 }
 
-.scope-tabs {
+:is(.api-workbench, .collection-workspace-modal) .scope-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
@@ -441,7 +442,7 @@ svg {
   background: var(--bg-subtle);
 }
 
-.scope-tabs button {
+:is(.api-workbench, .collection-workspace-modal) .scope-tabs button {
   height: 29px;
   border-radius: 7px;
   background: transparent;
@@ -451,25 +452,25 @@ svg {
   font-weight: 700;
 }
 
-.scope-tabs button.active {
+:is(.api-workbench, .collection-workspace-modal) .scope-tabs button.active {
   background: var(--bg-card);
   color: var(--text-primary);
   box-shadow: var(--shadow-xs);
 }
 
-.category-filter {
+:is(.api-workbench, .collection-workspace-modal) .category-filter {
   padding: 0 16px 13px;
   border-bottom: 1px solid var(--border-light);
 }
 
-.catalog-list {
+:is(.api-workbench, .collection-workspace-modal) .catalog-list {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
   padding: 8px;
 }
 
-.catalog-item {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item {
   display: grid;
   width: 100%;
   grid-template-columns: 46px minmax(0, 1fr) auto 16px;
@@ -487,23 +488,23 @@ svg {
     transform var(--transition-fast);
 }
 
-.catalog-item + .catalog-item {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item + .catalog-item {
   margin-top: 2px;
 }
 
-.catalog-item:hover {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item:hover {
   background: var(--bg-hover);
   transform: translateX(2px);
 }
 
-.catalog-item.active {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item.active {
   border-color: rgba(var(--accent-rgb), 0.28);
   background: rgba(var(--accent-rgb), 0.09);
 }
 
-.method-dot,
-.method-chip,
-.method-label {
+:is(.api-workbench, .collection-workspace-modal) .method-dot,
+:is(.api-workbench, .collection-workspace-modal) .method-chip,
+:is(.api-workbench, .collection-workspace-modal) .method-label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -513,51 +514,51 @@ svg {
   letter-spacing: -0.04em;
 }
 
-.method-dot {
+:is(.api-workbench, .collection-workspace-modal) .method-dot {
   width: 46px;
   height: 24px;
   font-size: var(--font-size-caption);
 }
 
-.get {
+:is(.api-workbench, .collection-workspace-modal) .get {
   background: rgba(21, 163, 109, 0.12);
   color: var(--lab-green);
 }
 
-.post {
+:is(.api-workbench, .collection-workspace-modal) .post {
   background: rgba(213, 139, 33, 0.13);
   color: var(--lab-amber);
 }
 
-.put,
-.patch {
+:is(.api-workbench, .collection-workspace-modal) .put,
+:is(.api-workbench, .collection-workspace-modal) .patch {
   background: rgba(109, 93, 252, 0.12);
   color: var(--lab-violet);
 }
 
-.delete {
+:is(.api-workbench, .collection-workspace-modal) .delete {
   background: rgba(220, 90, 100, 0.12);
   color: var(--lab-red);
 }
 
-.catalog-item-copy,
-.catalog-item-title {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-copy,
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-title {
   min-width: 0;
 }
 
-.catalog-item-copy {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-copy {
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
 
-.catalog-item-title {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-title {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.catalog-item-title strong {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-title strong {
   overflow: hidden;
   color: var(--text-primary);
   font-size: var(--font-size-small);
@@ -566,18 +567,18 @@ svg {
   white-space: nowrap;
 }
 
-.catalog-item-title i {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-title i {
   color: var(--lab-violet);
   font-size: var(--font-size-caption);
   font-style: normal;
 }
 
-.catalog-item-copy small {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-copy small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.catalog-pin-button {
+:is(.api-workbench, .collection-workspace-modal) .catalog-pin-button {
   display: grid;
   width: 28px;
   height: 28px;
@@ -594,23 +595,23 @@ svg {
     transform var(--transition-fast);
 }
 
-.catalog-pin-button:hover,
-.catalog-pin-button.active {
+:is(.api-workbench, .collection-workspace-modal) .catalog-pin-button:hover,
+:is(.api-workbench, .collection-workspace-modal) .catalog-pin-button.active {
   background: rgba(213, 139, 33, 0.12);
   color: var(--lab-amber);
   transform: scale(1.06);
 }
 
-.chevron {
+:is(.api-workbench, .collection-workspace-modal) .chevron {
   width: 14px;
   color: var(--text-muted);
 }
 
-.catalog-item.active .chevron {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item.active .chevron {
   color: var(--lab-violet);
 }
 
-.catalog-footer {
+:is(.api-workbench, .collection-workspace-modal) .catalog-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -621,18 +622,18 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.catalog-footer span {
+:is(.api-workbench, .collection-workspace-modal) .catalog-footer span {
   display: inline-flex;
   align-items: center;
   gap: 7px;
 }
 
-.catalog-footer i {
+:is(.api-workbench, .collection-workspace-modal) .catalog-footer i {
   width: 6px;
   height: 6px;
 }
 
-.catalog-footer button {
+:is(.api-workbench, .collection-workspace-modal) .catalog-footer button {
   background: transparent;
   color: var(--lab-violet);
   cursor: pointer;
@@ -640,13 +641,13 @@ svg {
   font-weight: 700;
 }
 
-.catalog-loading {
+:is(.api-workbench, .collection-workspace-modal) .catalog-loading {
   display: grid;
   gap: 8px;
   padding: 4px;
 }
 
-.catalog-loading span {
+:is(.api-workbench, .collection-workspace-modal) .catalog-loading span {
   height: 58px;
   border-radius: 12px;
   background: linear-gradient(90deg, var(--bg-subtle), var(--bg-hover), var(--bg-subtle));
@@ -660,19 +661,19 @@ svg {
   }
 }
 
-.workspace-panel {
+:is(.api-workbench, .collection-workspace-modal) .workspace-panel {
   min-width: 0;
   overflow: hidden;
   border-radius: 22px;
 }
 
-.overview-screen,
-.editor-screen,
-.request-screen {
+:is(.api-workbench, .collection-workspace-modal) .overview-screen,
+:is(.api-workbench, .collection-workspace-modal) .editor-screen,
+:is(.api-workbench, .collection-workspace-modal) .request-screen {
   padding: 24px;
 }
 
-.overview-hero {
+:is(.api-workbench, .collection-workspace-modal) .overview-hero {
   position: relative;
   display: grid;
   min-height: 355px;
@@ -690,7 +691,7 @@ svg {
   box-shadow: 0 24px 54px rgba(20, 35, 63, 0.22);
 }
 
-.overview-hero::after {
+:is(.api-workbench, .collection-workspace-modal) .overview-hero::after {
   position: absolute;
   right: -120px;
   bottom: -220px;
@@ -701,13 +702,13 @@ svg {
   content: '';
 }
 
-.hero-copy,
-.hero-console {
+:is(.api-workbench, .collection-workspace-modal) .hero-copy,
+:is(.api-workbench, .collection-workspace-modal) .hero-console {
   position: relative;
   z-index: 1;
 }
 
-.hero-kicker {
+:is(.api-workbench, .collection-workspace-modal) .hero-kicker {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -717,24 +718,24 @@ svg {
   letter-spacing: 0.15em;
 }
 
-.hero-kicker i {
+:is(.api-workbench, .collection-workspace-modal) .hero-kicker i {
   background: #4ee0c0;
   box-shadow: 0 0 0 4px rgba(78, 224, 192, 0.12);
 }
 
-.hero-copy h1 {
+:is(.api-workbench, .collection-workspace-modal) .hero-copy h1 {
   margin: 22px 0 16px;
   font-size: clamp(38px, 4.3vw, 60px);
   line-height: 1.06;
   letter-spacing: -0.055em;
 }
 
-.hero-copy h1 em {
+:is(.api-workbench, .collection-workspace-modal) .hero-copy h1 em {
   color: #8cf0db;
   font-style: normal;
 }
 
-.hero-copy > p {
+:is(.api-workbench, .collection-workspace-modal) .hero-copy > p {
   max-width: 570px;
   margin: 0;
   color: rgba(255, 255, 255, 0.66);
@@ -742,24 +743,24 @@ svg {
   line-height: 1.85;
 }
 
-.hero-actions {
+:is(.api-workbench, .collection-workspace-modal) .hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 28px;
 }
 
-.hero-actions .secondary-button {
+:is(.api-workbench, .collection-workspace-modal) .hero-actions .secondary-button {
   border-color: rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
-.play-symbol {
+:is(.api-workbench, .collection-workspace-modal) .play-symbol {
   font-size: var(--font-size-caption);
 }
 
-.hero-console {
+:is(.api-workbench, .collection-workspace-modal) .hero-console {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 15px;
@@ -768,7 +769,7 @@ svg {
   transform: rotate(1.5deg);
 }
 
-.console-bar {
+:is(.api-workbench, .collection-workspace-modal) .console-bar {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -777,27 +778,27 @@ svg {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.console-bar span {
+:is(.api-workbench, .collection-workspace-modal) .console-bar span {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: #ff6d6d;
 }
 
-.console-bar span:nth-child(2) {
+:is(.api-workbench, .collection-workspace-modal) .console-bar span:nth-child(2) {
   background: #f4c44e;
 }
-.console-bar span:nth-child(3) {
+:is(.api-workbench, .collection-workspace-modal) .console-bar span:nth-child(3) {
   background: #4bce83;
 }
 
-.console-bar small {
+:is(.api-workbench, .collection-workspace-modal) .console-bar small {
   margin-left: auto;
   color: rgba(255, 255, 255, 0.36);
   font-size: var(--font-size-caption);
 }
 
-.hero-console pre {
+:is(.api-workbench, .collection-workspace-modal) .hero-console pre {
   margin: 0;
   padding: 22px;
   color: #dce7ff;
@@ -810,23 +811,23 @@ svg {
     monospace;
 }
 
-.code-key {
+:is(.api-workbench, .collection-workspace-modal) .code-key {
   color: #a8b7ff;
 }
-.code-string {
+:is(.api-workbench, .collection-workspace-modal) .code-string {
   color: #7fe2c6;
 }
-.code-value {
+:is(.api-workbench, .collection-workspace-modal) .code-value {
   color: #f5c46b;
 }
-.code-number {
+:is(.api-workbench, .collection-workspace-modal) .code-number {
   color: #f6a8b0;
 }
-.code-muted {
+:is(.api-workbench, .collection-workspace-modal) .code-muted {
   color: #7183a6;
 }
 
-.stats-strip {
+:is(.api-workbench, .collection-workspace-modal) .stats-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   margin: 20px 0 34px;
@@ -835,25 +836,25 @@ svg {
   background: var(--bg-card);
 }
 
-.stats-strip > div {
+:is(.api-workbench, .collection-workspace-modal) .stats-strip > div {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 5px 12px;
   padding: 18px 22px;
 }
 
-.stats-strip > div + div {
+:is(.api-workbench, .collection-workspace-modal) .stats-strip > div + div {
   border-left: 1px solid var(--border-light);
 }
 
-.stats-strip span {
+:is(.api-workbench, .collection-workspace-modal) .stats-strip span {
   align-self: end;
   color: var(--text-secondary);
   font-size: var(--font-size-caption);
   font-weight: 700;
 }
 
-.stats-strip strong {
+:is(.api-workbench, .collection-workspace-modal) .stats-strip strong {
   grid-row: span 2;
   align-self: center;
   color: var(--text-primary);
@@ -861,20 +862,20 @@ svg {
   line-height: 1;
 }
 
-.stats-strip small {
+:is(.api-workbench, .collection-workspace-modal) .stats-strip small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.overview-section {
+:is(.api-workbench, .collection-workspace-modal) .overview-section {
   padding: 0 4px;
 }
 
-.overview-section + .overview-section {
+:is(.api-workbench, .collection-workspace-modal) .overview-section + .overview-section {
   margin-top: 38px;
 }
 
-.section-heading {
+:is(.api-workbench, .collection-workspace-modal) .section-heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -882,7 +883,7 @@ svg {
   margin-bottom: 17px;
 }
 
-.section-heading > p {
+:is(.api-workbench, .collection-workspace-modal) .section-heading > p {
   max-width: 380px;
   margin: 0;
   color: var(--text-muted);
@@ -891,13 +892,13 @@ svg {
   text-align: right;
 }
 
-.featured-grid {
+:is(.api-workbench, .collection-workspace-modal) .featured-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.featured-card {
+:is(.api-workbench, .collection-workspace-modal) .featured-card {
   display: flex;
   min-width: 0;
   min-height: 188px;
@@ -914,48 +915,48 @@ svg {
     box-shadow var(--transition-fast);
 }
 
-.featured-card:hover {
+:is(.api-workbench, .collection-workspace-modal) .featured-card:hover {
   transform: translateY(-3px);
   border-color: rgba(var(--accent-rgb), 0.34);
   box-shadow: 0 13px 28px rgba(20, 35, 63, 0.09);
 }
 
-.featured-topline,
-.featured-meta {
+:is(.api-workbench, .collection-workspace-modal) .featured-topline,
+:is(.api-workbench, .collection-workspace-modal) .featured-meta {
   display: flex;
   align-items: center;
 }
 
-.featured-topline {
+:is(.api-workbench, .collection-workspace-modal) .featured-topline {
   justify-content: space-between;
 }
 
-.method-chip {
+:is(.api-workbench, .collection-workspace-modal) .method-chip {
   min-width: 43px;
   height: 23px;
   padding: 0 7px;
   font-size: var(--font-size-caption);
 }
 
-.method-chip.large {
+:is(.api-workbench, .collection-workspace-modal) .method-chip.large {
   min-width: 55px;
   height: 28px;
   font-size: var(--font-size-caption);
 }
 
-.verified-chip {
+:is(.api-workbench, .collection-workspace-modal) .verified-chip {
   color: var(--lab-green);
   font-size: var(--font-size-caption);
   font-weight: 750;
 }
 
-.featured-card > strong {
+:is(.api-workbench, .collection-workspace-modal) .featured-card > strong {
   margin-top: 17px;
   color: var(--text-primary);
   font-size: var(--font-size-body);
 }
 
-.featured-card > p {
+:is(.api-workbench, .collection-workspace-modal) .featured-card > p {
   display: -webkit-box;
   overflow: hidden;
   margin: 8px 0 15px;
@@ -966,39 +967,39 @@ svg {
   -webkit-line-clamp: 3;
 }
 
-.featured-meta {
+:is(.api-workbench, .collection-workspace-modal) .featured-meta {
   gap: 6px;
   margin-top: auto;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.featured-meta span {
+:is(.api-workbench, .collection-workspace-modal) .featured-meta span {
   padding: 3px 6px;
   border-radius: 5px;
   background: var(--bg-subtle);
 }
 
-.featured-meta b {
+:is(.api-workbench, .collection-workspace-modal) .featured-meta b {
   margin-left: auto;
   color: var(--lab-violet);
 }
 
-.inline-heading button,
-.history-drawer-heading button {
+:is(.api-workbench, .collection-workspace-modal) .inline-heading button,
+:is(.api-workbench, .collection-workspace-modal) .history-drawer-heading button {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   font-size: var(--font-size-caption);
 }
 
-.history-list {
+:is(.api-workbench, .collection-workspace-modal) .history-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.history-list > button {
+:is(.api-workbench, .collection-workspace-modal) .history-list > button {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) auto 15px;
   align-items: center;
@@ -1011,18 +1012,18 @@ svg {
   cursor: pointer;
 }
 
-.history-list > button:hover {
+:is(.api-workbench, .collection-workspace-modal) .history-list > button:hover {
   border-color: rgba(var(--accent-rgb), 0.32);
 }
 
-.history-list > button > span:nth-child(2) {
+:is(.api-workbench, .collection-workspace-modal) .history-list > button > span:nth-child(2) {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 4px;
 }
 
-.history-list strong {
+:is(.api-workbench, .collection-workspace-modal) .history-list strong {
   overflow: hidden;
   color: var(--text-primary);
   font-size: var(--font-size-caption);
@@ -1030,19 +1031,19 @@ svg {
   white-space: nowrap;
 }
 
-.history-list small,
-.history-list b {
+:is(.api-workbench, .collection-workspace-modal) .history-list small,
+:is(.api-workbench, .collection-workspace-modal) .history-list b {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   font-weight: 600;
 }
 
-.history-list svg {
+:is(.api-workbench, .collection-workspace-modal) .history-list svg {
   width: 13px;
   color: var(--text-muted);
 }
 
-.history-status {
+:is(.api-workbench, .collection-workspace-modal) .history-status {
   display: inline-flex;
   width: fit-content;
   align-items: center;
@@ -1052,23 +1053,23 @@ svg {
   font-weight: 800;
 }
 
-.history-status i,
-.status-pill i,
-.request-actions > span i {
+:is(.api-workbench, .collection-workspace-modal) .history-status i,
+:is(.api-workbench, .collection-workspace-modal) .status-pill i,
+:is(.api-workbench, .collection-workspace-modal) .request-actions > span i {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: currentColor;
 }
 
-.history-status.success {
+:is(.api-workbench, .collection-workspace-modal) .history-status.success {
   color: var(--lab-green);
 }
-.history-status.danger {
+:is(.api-workbench, .collection-workspace-modal) .history-status.danger {
   color: var(--lab-red);
 }
 
-.history-empty {
+:is(.api-workbench, .collection-workspace-modal) .history-empty {
   display: flex;
   align-items: center;
   gap: 13px;
@@ -1078,7 +1079,7 @@ svg {
   background: var(--bg-subtle);
 }
 
-.history-empty > span {
+:is(.api-workbench, .collection-workspace-modal) .history-empty > span {
   display: grid;
   width: 34px;
   height: 34px;
@@ -1088,25 +1089,25 @@ svg {
   color: var(--lab-violet);
 }
 
-.history-empty strong {
+:is(.api-workbench, .collection-workspace-modal) .history-empty strong {
   color: var(--text-primary);
   font-size: var(--font-size-meta);
 }
 
-.history-empty p {
+:is(.api-workbench, .collection-workspace-modal) .history-empty p {
   margin: 4px 0 0;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
 /* 编辑器 */
-.editor-screen {
+:is(.api-workbench, .collection-workspace-modal) .editor-screen {
   max-width: 1120px;
   margin: 0 auto;
   padding: 36px;
 }
 
-.editor-heading {
+:is(.api-workbench, .collection-workspace-modal) .editor-heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -1115,8 +1116,8 @@ svg {
   border-bottom: 1px solid var(--border-light);
 }
 
-.editor-heading button,
-.back-to-overview {
+:is(.api-workbench, .collection-workspace-modal) .editor-heading button,
+:is(.api-workbench, .collection-workspace-modal) .back-to-overview {
   display: block;
   margin-bottom: 22px;
   background: transparent;
@@ -1126,18 +1127,18 @@ svg {
   font-weight: 650;
 }
 
-.editor-heading h1,
-.endpoint-title-line h1 {
+:is(.api-workbench, .collection-workspace-modal) .editor-heading h1,
+:is(.api-workbench, .collection-workspace-modal) .endpoint-title-line h1 {
   margin: 0;
   color: var(--text-primary);
   letter-spacing: -0.035em;
 }
 
-.editor-heading h1 {
+:is(.api-workbench, .collection-workspace-modal) .editor-heading h1 {
   font-size: var(--font-size-6xl);
 }
 
-.editor-heading p {
+:is(.api-workbench, .collection-workspace-modal) .editor-heading p {
   max-width: 650px;
   margin: 10px 0 0;
   color: var(--text-secondary);
@@ -1145,7 +1146,7 @@ svg {
   line-height: 1.7;
 }
 
-.editor-mark {
+:is(.api-workbench, .collection-workspace-modal) .editor-mark {
   display: grid;
   width: 86px;
   height: 86px;
@@ -1160,28 +1161,28 @@ svg {
     monospace;
 }
 
-.editor-grid {
+:is(.api-workbench, .collection-workspace-modal) .editor-grid {
   display: grid;
   gap: 16px;
   margin-top: 24px;
 }
 
-.editor-card {
+:is(.api-workbench, .collection-workspace-modal) .editor-card {
   padding: 24px;
   border: 1px solid var(--border-light);
   border-radius: 17px;
   background: var(--bg-card);
 }
 
-.card-heading {
+:is(.api-workbench, .collection-workspace-modal) .card-heading {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 22px;
 }
 
-.card-heading > span,
-.step-number {
+:is(.api-workbench, .collection-workspace-modal) .card-heading > span,
+:is(.api-workbench, .collection-workspace-modal) .step-number {
   display: grid;
   width: 31px;
   height: 31px;
@@ -1195,21 +1196,21 @@ svg {
     monospace;
 }
 
-.card-heading h2,
-.runner-card-heading h2 {
+:is(.api-workbench, .collection-workspace-modal) .card-heading h2,
+:is(.api-workbench, .collection-workspace-modal) .runner-card-heading h2 {
   margin: 0;
   color: var(--text-primary);
   font-size: var(--font-size-body);
 }
 
-.card-heading p,
-.runner-card-heading p {
+:is(.api-workbench, .collection-workspace-modal) .card-heading p,
+:is(.api-workbench, .collection-workspace-modal) .runner-card-heading p {
   margin: 4px 0 0;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.card-heading.with-action > button {
+:is(.api-workbench, .collection-workspace-modal) .card-heading.with-action > button {
   margin-left: auto;
   padding: 7px 10px;
   border-radius: 8px;
@@ -1220,16 +1221,16 @@ svg {
   font-weight: 700;
 }
 
-.field-grid {
+:is(.api-workbench, .collection-workspace-modal) .field-grid {
   display: grid;
   gap: 14px;
 }
 
-.two-columns {
+:is(.api-workbench, .collection-workspace-modal) .two-columns {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.field {
+:is(.api-workbench, .collection-workspace-modal) .field {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -1237,22 +1238,22 @@ svg {
   margin-bottom: 15px;
 }
 
-.field > span {
+:is(.api-workbench, .collection-workspace-modal) .field > span {
   color: var(--text-secondary);
   font-size: var(--font-size-caption);
   font-weight: 700;
 }
 
-.field b,
-.runtime-param-info b {
+:is(.api-workbench, .collection-workspace-modal) .field b,
+:is(.api-workbench, .collection-workspace-modal) .runtime-param-info b {
   color: var(--lab-red);
 }
 
-.field input,
-.field textarea,
-.param-fields input,
-.runtime-param input,
-.header-row > input {
+:is(.api-workbench, .collection-workspace-modal) .field input,
+:is(.api-workbench, .collection-workspace-modal) .field textarea,
+:is(.api-workbench, .collection-workspace-modal) .param-fields input,
+:is(.api-workbench, .collection-workspace-modal) .runtime-param input,
+:is(.api-workbench, .collection-workspace-modal) .header-row > input {
   box-sizing: border-box;
   width: 100%;
   border: 1px solid var(--border-light);
@@ -1266,46 +1267,53 @@ svg {
     box-shadow var(--transition-fast);
 }
 
-.field input,
-.param-fields input,
-.runtime-param input,
-.header-row > input {
+:is(.api-workbench, .collection-workspace-modal) .field input,
+:is(.api-workbench, .collection-workspace-modal) .param-fields input,
+:is(.api-workbench, .collection-workspace-modal) .runtime-param input,
+:is(.api-workbench, .collection-workspace-modal) .header-row > input {
   height: 40px;
   padding: 0 12px;
 }
 
-.field textarea {
+:is(.api-workbench, .collection-workspace-modal) .field textarea {
   resize: vertical;
   padding: 11px 12px;
   line-height: 1.6;
 }
 
-.field input:focus,
-.field textarea:focus,
-.param-fields input:focus,
-.runtime-param input:focus,
-.header-row > input:focus {
+:is(.api-workbench, .collection-workspace-modal) .field input:focus,
+:is(.api-workbench, .collection-workspace-modal) .field textarea:focus,
+:is(.api-workbench, .collection-workspace-modal) .param-fields input:focus,
+:is(.api-workbench, .collection-workspace-modal) .runtime-param input:focus,
+:is(.api-workbench, .collection-workspace-modal) .header-row > input:focus {
   border-color: rgba(var(--accent-rgb), 0.5);
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.08);
 }
 
-.method-url-field > div {
+:is(.api-workbench, .collection-workspace-modal) .method-url-field > div {
   display: grid;
   grid-template-columns: 120px minmax(0, 1fr);
   gap: 8px;
 }
 
-.editor-card .field :deep(.custom-select.size-sm .select-trigger),
-.param-fields :deep(.custom-select.size-sm .select-trigger) {
+:is(.api-workbench, .collection-workspace-modal)
+  .editor-card
+  .field
+  .custom-select.size-sm
+  .select-trigger,
+:is(.api-workbench, .collection-workspace-modal)
+  .param-fields
+  .custom-select.size-sm
+  .select-trigger {
   height: 40px;
 }
 
-.field-error {
+:is(.api-workbench, .collection-workspace-modal) .field-error {
   color: var(--lab-red);
   font-size: var(--font-size-caption);
 }
 
-.form-param-row {
+:is(.api-workbench, .collection-workspace-modal) .form-param-row {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto 28px;
   align-items: center;
@@ -1314,21 +1322,21 @@ svg {
   border-top: 1px solid var(--border-light);
 }
 
-.param-index {
+:is(.api-workbench, .collection-workspace-modal) .param-index {
   color: var(--text-muted);
   font:
     700 var(--font-size-caption) ui-monospace,
     monospace;
 }
 
-.param-fields {
+:is(.api-workbench, .collection-workspace-modal) .param-fields {
   display: grid;
   grid-template-columns: 0.85fr 0.75fr 0.8fr 1.6fr;
   gap: 8px;
 }
 
-.required-toggle,
-.row-check {
+:is(.api-workbench, .collection-workspace-modal) .required-toggle,
+:is(.api-workbench, .collection-workspace-modal) .row-check {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1337,15 +1345,15 @@ svg {
   cursor: pointer;
 }
 
-.required-toggle input,
-.row-check input {
+:is(.api-workbench, .collection-workspace-modal) .required-toggle input,
+:is(.api-workbench, .collection-workspace-modal) .row-check input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.required-toggle span,
-.row-check span {
+:is(.api-workbench, .collection-workspace-modal) .required-toggle span,
+:is(.api-workbench, .collection-workspace-modal) .row-check span {
   position: relative;
   width: 26px;
   height: 15px;
@@ -1354,8 +1362,8 @@ svg {
   transition: background var(--transition-fast);
 }
 
-.required-toggle span::after,
-.row-check span::after {
+:is(.api-workbench, .collection-workspace-modal) .required-toggle span::after,
+:is(.api-workbench, .collection-workspace-modal) .row-check span::after {
   position: absolute;
   top: 3px;
   left: 3px;
@@ -1367,18 +1375,18 @@ svg {
   transition: transform var(--transition-fast);
 }
 
-.required-toggle input:checked + span,
-.row-check input:checked + span {
+:is(.api-workbench, .collection-workspace-modal) .required-toggle input:checked + span,
+:is(.api-workbench, .collection-workspace-modal) .row-check input:checked + span {
   background: var(--lab-violet);
 }
 
-.required-toggle input:checked + span::after,
-.row-check input:checked + span::after {
+:is(.api-workbench, .collection-workspace-modal) .required-toggle input:checked + span::after,
+:is(.api-workbench, .collection-workspace-modal) .row-check input:checked + span::after {
   transform: translateX(11px);
 }
 
-.remove-row,
-.header-row > button {
+:is(.api-workbench, .collection-workspace-modal) .remove-row,
+:is(.api-workbench, .collection-workspace-modal) .header-row > button {
   width: 27px;
   height: 27px;
   border-radius: 8px;
@@ -1388,13 +1396,13 @@ svg {
   font-size: var(--font-size-title-lg);
 }
 
-.remove-row:hover,
-.header-row > button:hover {
+:is(.api-workbench, .collection-workspace-modal) .remove-row:hover,
+:is(.api-workbench, .collection-workspace-modal) .header-row > button:hover {
   background: rgba(220, 90, 100, 0.1);
   color: var(--lab-red);
 }
 
-.params-empty {
+:is(.api-workbench, .collection-workspace-modal) .params-empty {
   display: flex;
   min-height: 180px;
   align-items: center;
@@ -1406,7 +1414,7 @@ svg {
   text-align: center;
 }
 
-.params-empty > span {
+:is(.api-workbench, .collection-workspace-modal) .params-empty > span {
   display: grid;
   width: 36px;
   height: 36px;
@@ -1417,19 +1425,19 @@ svg {
   font-size: var(--font-size-title-lg);
 }
 
-.params-empty strong {
+:is(.api-workbench, .collection-workspace-modal) .params-empty strong {
   margin-top: 10px;
   color: var(--text-primary);
   font-size: var(--font-size-meta);
 }
 
-.params-empty p {
+:is(.api-workbench, .collection-workspace-modal) .params-empty p {
   margin: 5px 0 11px;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.params-empty button {
+:is(.api-workbench, .collection-workspace-modal) .params-empty button {
   background: transparent;
   color: var(--lab-violet);
   cursor: pointer;
@@ -1437,14 +1445,14 @@ svg {
   font-weight: 700;
 }
 
-.editor-actions {
+:is(.api-workbench, .collection-workspace-modal) .editor-actions {
   display: flex;
   justify-content: flex-end;
   gap: 9px;
   padding-top: 18px;
 }
 
-.form-banner {
+:is(.api-workbench, .collection-workspace-modal) .form-banner {
   margin: 10px 0;
   padding: 10px 12px;
   border-radius: 9px;
@@ -1452,18 +1460,18 @@ svg {
   line-height: 1.5;
 }
 
-.form-banner.error {
+:is(.api-workbench, .collection-workspace-modal) .form-banner.error {
   border: 1px solid rgba(220, 90, 100, 0.2);
   background: rgba(220, 90, 100, 0.08);
   color: var(--lab-red);
 }
 
 /* 请求工作台 */
-.request-screen {
+:is(.api-workbench, .collection-workspace-modal) .request-screen {
   padding: 28px;
 }
 
-.endpoint-header {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1471,21 +1479,21 @@ svg {
   padding: 2px 3px 23px;
 }
 
-.back-to-overview {
+:is(.api-workbench, .collection-workspace-modal) .back-to-overview {
   margin-bottom: 15px;
 }
 
-.endpoint-title-line {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-title-line {
   display: flex;
   align-items: center;
   gap: 11px;
 }
 
-.endpoint-title-line h1 {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-title-line h1 {
   font-size: clamp(22px, 2.4vw, 31px);
 }
 
-.pin-button {
+:is(.api-workbench, .collection-workspace-modal) .pin-button {
   display: inline-flex;
   height: 29px;
   align-items: center;
@@ -1499,17 +1507,17 @@ svg {
   font-weight: 700;
 }
 
-.pin-button.active {
+:is(.api-workbench, .collection-workspace-modal) .pin-button.active {
   background: rgba(213, 139, 33, 0.12);
   color: var(--lab-amber);
 }
 
-.pin-button span {
+:is(.api-workbench, .collection-workspace-modal) .pin-button span {
   font-size: var(--font-size-title);
   line-height: 1;
 }
 
-.endpoint-heading > p {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-heading > p {
   max-width: 760px;
   margin: 10px 0 0;
   color: var(--text-secondary);
@@ -1517,14 +1525,14 @@ svg {
   line-height: 1.7;
 }
 
-.endpoint-tags {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 12px;
 }
 
-.endpoint-tags span {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-tags span {
   padding: 4px 7px;
   border: 1px solid var(--border-light);
   border-radius: 6px;
@@ -1533,14 +1541,14 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.endpoint-tags span.positive,
-.endpoint-tags span.verified {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-tags span.positive,
+:is(.api-workbench, .collection-workspace-modal) .endpoint-tags span.verified {
   border-color: rgba(21, 163, 109, 0.17);
   background: rgba(21, 163, 109, 0.08);
   color: var(--lab-green);
 }
 
-.endpoint-actions {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-actions {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -1548,8 +1556,8 @@ svg {
   padding-top: 32px;
 }
 
-.endpoint-actions a,
-.endpoint-actions button {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-actions a,
+:is(.api-workbench, .collection-workspace-modal) .endpoint-actions button {
   padding: 8px 10px;
   border: 1px solid var(--border-light);
   border-radius: 8px;
@@ -1561,11 +1569,11 @@ svg {
   font-weight: 650;
 }
 
-.endpoint-actions .danger-text {
+:is(.api-workbench, .collection-workspace-modal) .endpoint-actions .danger-text {
   color: var(--lab-red);
 }
 
-.request-url-bar {
+:is(.api-workbench, .collection-workspace-modal) .request-url-bar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -1577,13 +1585,13 @@ svg {
   background: var(--bg-subtle);
 }
 
-.method-label {
+:is(.api-workbench, .collection-workspace-modal) .method-label {
   min-width: 47px;
   height: 24px;
   font-size: var(--font-size-caption);
 }
 
-.request-url-bar code {
+:is(.api-workbench, .collection-workspace-modal) .request-url-bar code {
   overflow: hidden;
   color: var(--text-primary);
   font:
@@ -1597,14 +1605,14 @@ svg {
   white-space: nowrap;
 }
 
-.runner-grid {
+:is(.api-workbench, .collection-workspace-modal) .runner-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   margin-top: 14px;
 }
 
-.runner-card {
+:is(.api-workbench, .collection-workspace-modal) .runner-card {
   display: flex;
   min-width: 0;
   min-height: 570px;
@@ -1615,7 +1623,7 @@ svg {
   background: var(--bg-card);
 }
 
-.runner-card-heading {
+:is(.api-workbench, .collection-workspace-modal) .runner-card-heading {
   display: flex;
   min-height: 67px;
   align-items: center;
@@ -1624,13 +1632,13 @@ svg {
   padding: 0 16px;
 }
 
-.runner-card-heading > div:first-child {
+:is(.api-workbench, .collection-workspace-modal) .runner-card-heading > div:first-child {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.runner-tabs {
+:is(.api-workbench, .collection-workspace-modal) .runner-tabs {
   display: flex;
   min-height: 39px;
   align-items: end;
@@ -1641,7 +1649,7 @@ svg {
   background: var(--bg-subtle);
 }
 
-.runner-tabs > button {
+:is(.api-workbench, .collection-workspace-modal) .runner-tabs > button {
   position: relative;
   height: 39px;
   padding: 0 2px;
@@ -1652,7 +1660,7 @@ svg {
   font-weight: 700;
 }
 
-.runner-tabs > button span {
+:is(.api-workbench, .collection-workspace-modal) .runner-tabs > button span {
   margin-left: 3px;
   padding: 2px 4px;
   border-radius: 4px;
@@ -1660,11 +1668,11 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.runner-tabs > button.active {
+:is(.api-workbench, .collection-workspace-modal) .runner-tabs > button.active {
   color: var(--lab-violet);
 }
 
-.runner-tabs > button.active::after {
+:is(.api-workbench, .collection-workspace-modal) .runner-tabs > button.active::after {
   position: absolute;
   right: 0;
   bottom: -1px;
@@ -1675,24 +1683,24 @@ svg {
   content: '';
 }
 
-.runner-tabs > button:disabled {
+:is(.api-workbench, .collection-workspace-modal) .runner-tabs > button:disabled {
   opacity: 0.42;
   cursor: not-allowed;
 }
 
-.request-config,
-.response-viewport {
+:is(.api-workbench, .collection-workspace-modal) .request-config,
+:is(.api-workbench, .collection-workspace-modal) .response-viewport {
   min-height: 0;
   flex: 1;
   overflow: auto;
 }
 
-.request-config {
+:is(.api-workbench, .collection-workspace-modal) .request-config {
   max-height: 415px;
   padding: 14px 16px;
 }
 
-.param-table-head {
+:is(.api-workbench, .collection-workspace-modal) .param-table-head {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(150px, 0.75fr);
   gap: 14px;
@@ -1703,7 +1711,7 @@ svg {
   text-transform: uppercase;
 }
 
-.runtime-param {
+:is(.api-workbench, .collection-workspace-modal) .runtime-param {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(150px, 0.75fr);
   align-items: center;
@@ -1712,65 +1720,65 @@ svg {
   border-top: 1px solid var(--border-light);
 }
 
-.runtime-param-info {
+:is(.api-workbench, .collection-workspace-modal) .runtime-param-info {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 5px;
 }
 
-.runtime-param-info strong {
+:is(.api-workbench, .collection-workspace-modal) .runtime-param-info strong {
   color: var(--text-primary);
   font:
     750 var(--font-size-caption) ui-monospace,
     monospace;
 }
 
-.runtime-param-info small {
+:is(.api-workbench, .collection-workspace-modal) .runtime-param-info small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   line-height: 1.45;
 }
 
-.header-table-head,
-.header-row {
+:is(.api-workbench, .collection-workspace-modal) .header-table-head,
+:is(.api-workbench, .collection-workspace-modal) .header-row {
   display: grid;
   grid-template-columns: 35px minmax(100px, 0.8fr) minmax(130px, 1.2fr) 28px;
   align-items: center;
   gap: 7px;
 }
 
-.header-table-head {
+:is(.api-workbench, .collection-workspace-modal) .header-table-head {
   padding-bottom: 8px;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   font-weight: 750;
 }
 
-.header-row {
+:is(.api-workbench, .collection-workspace-modal) .header-row {
   padding: 9px 0;
   border-top: 1px solid var(--border-light);
 }
 
-.row-check {
+:is(.api-workbench, .collection-workspace-modal) .row-check {
   justify-content: center;
 }
 
-.row-check span {
+:is(.api-workbench, .collection-workspace-modal) .row-check span {
   width: 24px;
   height: 14px;
 }
 
-.row-check span::after {
+:is(.api-workbench, .collection-workspace-modal) .row-check span::after {
   width: 8px;
   height: 8px;
 }
 
-.row-check input:checked + span::after {
+:is(.api-workbench, .collection-workspace-modal) .row-check input:checked + span::after {
   transform: translateX(10px);
 }
 
-.add-table-row {
+:is(.api-workbench, .collection-workspace-modal) .add-table-row {
   margin-top: 10px;
   padding: 7px 10px;
   border-radius: 8px;
@@ -1781,13 +1789,13 @@ svg {
   font-weight: 700;
 }
 
-.security-note {
+:is(.api-workbench, .collection-workspace-modal) .security-note {
   margin: 12px 0 0;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.body-editor {
+:is(.api-workbench, .collection-workspace-modal) .body-editor {
   height: 100%;
   min-height: 300px;
   overflow: hidden;
@@ -1796,7 +1804,7 @@ svg {
   background: #111a2b;
 }
 
-.code-editor-bar {
+:is(.api-workbench, .collection-workspace-modal) .code-editor-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1807,7 +1815,7 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.body-editor textarea {
+:is(.api-workbench, .collection-workspace-modal) .body-editor textarea {
   box-sizing: border-box;
   width: 100%;
   height: 270px;
@@ -1826,7 +1834,7 @@ svg {
     monospace;
 }
 
-.config-empty {
+:is(.api-workbench, .collection-workspace-modal) .config-empty {
   display: flex;
   min-height: 285px;
   align-items: center;
@@ -1835,7 +1843,7 @@ svg {
   text-align: center;
 }
 
-.config-empty > span {
+:is(.api-workbench, .collection-workspace-modal) .config-empty > span {
   display: grid;
   width: 38px;
   height: 38px;
@@ -1845,13 +1853,13 @@ svg {
   color: var(--lab-green);
 }
 
-.config-empty strong {
+:is(.api-workbench, .collection-workspace-modal) .config-empty strong {
   margin-top: 11px;
   color: var(--text-primary);
   font-size: var(--font-size-meta);
 }
 
-.config-empty p {
+:is(.api-workbench, .collection-workspace-modal) .config-empty p {
   max-width: 300px;
   margin: 6px 0 0;
   color: var(--text-muted);
@@ -1859,7 +1867,7 @@ svg {
   line-height: 1.6;
 }
 
-.request-actions {
+:is(.api-workbench, .collection-workspace-modal) .request-actions {
   display: flex;
   min-height: 61px;
   align-items: center;
@@ -1868,8 +1876,8 @@ svg {
   border-top: 1px solid var(--border-light);
 }
 
-.send-button,
-.cancel-request-button {
+:is(.api-workbench, .collection-workspace-modal) .send-button,
+:is(.api-workbench, .collection-workspace-modal) .cancel-request-button {
   display: inline-flex;
   min-width: 120px;
   height: 38px;
@@ -1883,21 +1891,21 @@ svg {
   font-weight: 750;
 }
 
-.send-button {
+:is(.api-workbench, .collection-workspace-modal) .send-button {
   background: linear-gradient(135deg, var(--lab-violet), var(--lab-violet-deep));
   box-shadow: 0 8px 20px rgba(84, 68, 232, 0.2);
 }
 
-.cancel-request-button {
+:is(.api-workbench, .collection-workspace-modal) .cancel-request-button {
   background: var(--lab-red);
 }
 
-.send-button span,
-.cancel-request-button span {
+:is(.api-workbench, .collection-workspace-modal) .send-button span,
+:is(.api-workbench, .collection-workspace-modal) .cancel-request-button span {
   font-size: var(--font-size-caption);
 }
 
-.request-actions > span {
+:is(.api-workbench, .collection-workspace-modal) .request-actions > span {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -1905,11 +1913,11 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.request-actions > span i {
+:is(.api-workbench, .collection-workspace-modal) .request-actions > span i {
   color: var(--text-muted);
 }
 
-.request-actions > span i.running {
+:is(.api-workbench, .collection-workspace-modal) .request-actions > span i.running {
   color: var(--lab-violet);
   animation: pulse 1s infinite;
 }
@@ -1921,11 +1929,11 @@ svg {
   }
 }
 
-.response-tabs {
+:is(.api-workbench, .collection-workspace-modal) .response-tabs {
   align-items: center;
 }
 
-.response-metrics {
+:is(.api-workbench, .collection-workspace-modal) .response-metrics {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1936,7 +1944,7 @@ svg {
     monospace;
 }
 
-.status-pill {
+:is(.api-workbench, .collection-workspace-modal) .status-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1945,33 +1953,33 @@ svg {
   font-weight: 800;
 }
 
-.status-pill.success {
+:is(.api-workbench, .collection-workspace-modal) .status-pill.success {
   background: rgba(21, 163, 109, 0.1);
   color: var(--lab-green);
 }
-.status-pill.warning {
+:is(.api-workbench, .collection-workspace-modal) .status-pill.warning {
   background: rgba(213, 139, 33, 0.1);
   color: var(--lab-amber);
 }
-.status-pill.danger {
+:is(.api-workbench, .collection-workspace-modal) .status-pill.danger {
   background: rgba(220, 90, 100, 0.1);
   color: var(--lab-red);
 }
-.status-pill.info {
+:is(.api-workbench, .collection-workspace-modal) .status-pill.info {
   background: rgba(var(--accent-rgb), 0.1);
   color: var(--lab-violet);
 }
 
-.response-viewport {
+:is(.api-workbench, .collection-workspace-modal) .response-viewport {
   position: relative;
   max-height: 463px;
   background: #111a2b;
   color: #d4e0f7;
 }
 
-.response-placeholder,
-.response-loading,
-.response-error {
+:is(.api-workbench, .collection-workspace-modal) .response-placeholder,
+:is(.api-workbench, .collection-workspace-modal) .response-loading,
+:is(.api-workbench, .collection-workspace-modal) .response-error {
   display: flex;
   min-height: 455px;
   box-sizing: border-box;
@@ -1982,7 +1990,7 @@ svg {
   text-align: center;
 }
 
-.response-orbit {
+:is(.api-workbench, .collection-workspace-modal) .response-orbit {
   position: relative;
   display: grid;
   width: 82px;
@@ -1992,7 +2000,7 @@ svg {
   border-radius: 50%;
 }
 
-.response-orbit::after {
+:is(.api-workbench, .collection-workspace-modal) .response-orbit::after {
   position: absolute;
   inset: 12px;
   border: 1px dashed rgba(163, 182, 220, 0.15);
@@ -2000,7 +2008,7 @@ svg {
   content: '';
 }
 
-.response-orbit span {
+:is(.api-workbench, .collection-workspace-modal) .response-orbit span {
   z-index: 1;
   color: #9eaeff;
   font:
@@ -2008,7 +2016,7 @@ svg {
     monospace;
 }
 
-.response-orbit i {
+:is(.api-workbench, .collection-workspace-modal) .response-orbit i {
   position: absolute;
   top: 8px;
   width: 7px;
@@ -2018,7 +2026,7 @@ svg {
   box-shadow: 0 0 12px #6d5dfc;
 }
 
-.response-orbit i:last-child {
+:is(.api-workbench, .collection-workspace-modal) .response-orbit i:last-child {
   top: auto;
   right: 5px;
   bottom: 18px;
@@ -2026,17 +2034,17 @@ svg {
   box-shadow: 0 0 12px #34c7d0;
 }
 
-.response-placeholder > strong,
-.response-loading > strong,
-.response-error > strong {
+:is(.api-workbench, .collection-workspace-modal) .response-placeholder > strong,
+:is(.api-workbench, .collection-workspace-modal) .response-loading > strong,
+:is(.api-workbench, .collection-workspace-modal) .response-error > strong {
   margin-top: 18px;
   color: #eff4ff;
   font-size: var(--font-size-small);
 }
 
-.response-placeholder > p,
-.response-loading > p,
-.response-error > p {
+:is(.api-workbench, .collection-workspace-modal) .response-placeholder > p,
+:is(.api-workbench, .collection-workspace-modal) .response-loading > p,
+:is(.api-workbench, .collection-workspace-modal) .response-error > p {
   max-width: 330px;
   margin: 7px 0 0;
   color: #7484a3;
@@ -2044,7 +2052,7 @@ svg {
   line-height: 1.7;
 }
 
-.placeholder-hints {
+:is(.api-workbench, .collection-workspace-modal) .placeholder-hints {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -2052,7 +2060,7 @@ svg {
   margin-top: 16px;
 }
 
-.placeholder-hints span {
+:is(.api-workbench, .collection-workspace-modal) .placeholder-hints span {
   padding: 4px 7px;
   border: 1px solid rgba(163, 182, 220, 0.1);
   border-radius: 6px;
@@ -2060,7 +2068,7 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.response-loading .pulse-ring {
+:is(.api-workbench, .collection-workspace-modal) .response-loading .pulse-ring {
   width: 43px;
   height: 43px;
   border: 3px solid rgba(109, 93, 252, 0.2);
@@ -2075,13 +2083,13 @@ svg {
   }
 }
 
-.response-loading > div {
+:is(.api-workbench, .collection-workspace-modal) .response-loading > div {
   display: flex;
   gap: 4px;
   margin-top: 15px;
 }
 
-.response-loading > div i {
+:is(.api-workbench, .collection-workspace-modal) .response-loading > div i {
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -2089,10 +2097,10 @@ svg {
   animation: blink 1s infinite alternate;
 }
 
-.response-loading > div i:nth-child(2) {
+:is(.api-workbench, .collection-workspace-modal) .response-loading > div i:nth-child(2) {
   animation-delay: 0.2s;
 }
-.response-loading > div i:nth-child(3) {
+:is(.api-workbench, .collection-workspace-modal) .response-loading > div i:nth-child(3) {
   animation-delay: 0.4s;
 }
 @keyframes blink {
@@ -2101,7 +2109,7 @@ svg {
   }
 }
 
-.response-error > span {
+:is(.api-workbench, .collection-workspace-modal) .response-error > span {
   display: grid;
   width: 44px;
   height: 44px;
@@ -2114,7 +2122,7 @@ svg {
   font-weight: 800;
 }
 
-.response-error button {
+:is(.api-workbench, .collection-workspace-modal) .response-error button {
   margin-top: 15px;
   padding: 7px 11px;
   border-radius: 8px;
@@ -2124,21 +2132,21 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.truncate-banner {
+:is(.api-workbench, .collection-workspace-modal) .truncate-banner {
   padding: 9px 13px;
   background: rgba(213, 139, 33, 0.16);
   color: #f0c273;
   font-size: var(--font-size-caption);
 }
 
-.response-body pre {
+:is(.api-workbench, .collection-workspace-modal) .response-body pre {
   margin: 0;
   padding: 16px;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.response-body code {
+:is(.api-workbench, .collection-workspace-modal) .response-body code {
   color: #cddaf2;
   font:
     var(--font-size-caption) / 1.7 ui-monospace,
@@ -2149,7 +2157,7 @@ svg {
     monospace;
 }
 
-.response-body img {
+:is(.api-workbench, .collection-workspace-modal) .response-body img {
   display: block;
   max-width: calc(100% - 32px);
   max-height: 420px;
@@ -2158,11 +2166,11 @@ svg {
   object-fit: contain;
 }
 
-.response-headers-table {
+:is(.api-workbench, .collection-workspace-modal) .response-headers-table {
   padding: 10px 15px;
 }
 
-.response-headers-table > div {
+:is(.api-workbench, .collection-workspace-modal) .response-headers-table > div {
   display: grid;
   grid-template-columns: minmax(115px, 0.5fr) minmax(0, 1.5fr);
   gap: 13px;
@@ -2170,14 +2178,14 @@ svg {
   border-bottom: 1px solid rgba(163, 182, 220, 0.1);
 }
 
-.response-headers-table strong {
+:is(.api-workbench, .collection-workspace-modal) .response-headers-table strong {
   color: #91a3c4;
   font:
     700 var(--font-size-caption) ui-monospace,
     monospace;
 }
 
-.response-headers-table code {
+:is(.api-workbench, .collection-workspace-modal) .response-headers-table code {
   overflow-wrap: anywhere;
   color: #d4e0f7;
   font:
@@ -2185,7 +2193,7 @@ svg {
     monospace;
 }
 
-.request-history-drawer {
+:is(.api-workbench, .collection-workspace-modal) .request-history-drawer {
   margin-top: 14px;
   padding: 17px;
   border: 1px solid var(--border-light);
@@ -2193,24 +2201,24 @@ svg {
   background: var(--bg-card);
 }
 
-.history-drawer-heading {
+:is(.api-workbench, .collection-workspace-modal) .history-drawer-heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
   margin-bottom: 12px;
 }
 
-.history-drawer-heading h2 {
+:is(.api-workbench, .collection-workspace-modal) .history-drawer-heading h2 {
   font-size: var(--font-size-body);
 }
 
-.compact-history {
+:is(.api-workbench, .collection-workspace-modal) .compact-history {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
-.compact-history button {
+:is(.api-workbench, .collection-workspace-modal) .compact-history button {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr) 35px 50px 70px;
   align-items: center;
@@ -2222,7 +2230,7 @@ svg {
   cursor: pointer;
 }
 
-.compact-history strong {
+:is(.api-workbench, .collection-workspace-modal) .compact-history strong {
   overflow: hidden;
   color: var(--text-primary);
   font-size: var(--font-size-caption);
@@ -2230,19 +2238,19 @@ svg {
   white-space: nowrap;
 }
 
-.compact-history small,
-.compact-history button > span:nth-last-child(2),
-.compact-history time {
+:is(.api-workbench, .collection-workspace-modal) .compact-history small,
+:is(.api-workbench, .collection-workspace-modal) .compact-history button > span:nth-last-child(2),
+:is(.api-workbench, .collection-workspace-modal) .compact-history time {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   white-space: nowrap;
 }
 
-.compact-history time {
+:is(.api-workbench, .collection-workspace-modal) .compact-history time {
   text-align: right;
 }
 
-.compact-history-empty {
+:is(.api-workbench, .collection-workspace-modal) .compact-history-empty {
   margin: 0;
   padding: 12px;
   border-radius: 9px;
@@ -2252,240 +2260,240 @@ svg {
 }
 
 /* 可读性基线：工作台需要长时间阅读，辅助信息也不使用“展示稿式”微缩字号。 */
-.brand-lockup strong {
+:is(.api-workbench, .collection-workspace-modal) .brand-lockup strong {
   font-size: var(--font-size-title);
 }
 
-.brand-lockup small,
-.catalog-health {
+:is(.api-workbench, .collection-workspace-modal) .brand-lockup small,
+:is(.api-workbench, .collection-workspace-modal) .catalog-health {
   font-size: var(--font-size-small);
 }
 
-.primary-button,
-.secondary-button {
+:is(.api-workbench, .collection-workspace-modal) .primary-button,
+:is(.api-workbench, .collection-workspace-modal) .secondary-button {
   font-size: var(--font-size-body);
 }
 
-.primary-button.compact {
+:is(.api-workbench, .collection-workspace-modal) .primary-button.compact {
   font-size: var(--font-size-control);
 }
 
-.section-kicker,
-.hero-kicker {
+:is(.api-workbench, .collection-workspace-modal) .section-kicker,
+:is(.api-workbench, .collection-workspace-modal) .hero-kicker {
   font-size: var(--font-size-meta);
 }
 
-.catalog-heading h2,
-.section-heading h2 {
+:is(.api-workbench, .collection-workspace-modal) .catalog-heading h2,
+:is(.api-workbench, .collection-workspace-modal) .section-heading h2 {
   font-size: var(--font-size-heading);
 }
 
-.catalog-count {
+:is(.api-workbench, .collection-workspace-modal) .catalog-count {
   font-size: var(--font-size-control);
 }
 
-.search-box input {
+:is(.api-workbench, .collection-workspace-modal) .search-box input {
   font-size: var(--font-size-body);
 }
 
-.search-box kbd,
-.scope-tabs button {
+:is(.api-workbench, .collection-workspace-modal) .search-box kbd,
+:is(.api-workbench, .collection-workspace-modal) .scope-tabs button {
   font-size: var(--font-size-small);
 }
 
-.method-dot,
-.method-chip,
-.method-label {
+:is(.api-workbench, .collection-workspace-modal) .method-dot,
+:is(.api-workbench, .collection-workspace-modal) .method-chip,
+:is(.api-workbench, .collection-workspace-modal) .method-label {
   font-size: var(--font-size-meta);
 }
 
-.method-chip.large {
+:is(.api-workbench, .collection-workspace-modal) .method-chip.large {
   font-size: var(--font-size-small);
 }
 
-.catalog-item-title strong {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-title strong {
   font-size: var(--font-size-body);
 }
 
-.catalog-item-title i,
-.catalog-item-copy small {
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-title i,
+:is(.api-workbench, .collection-workspace-modal) .catalog-item-copy small {
   font-size: var(--font-size-meta);
 }
 
-.catalog-footer,
-.catalog-footer button {
+:is(.api-workbench, .collection-workspace-modal) .catalog-footer,
+:is(.api-workbench, .collection-workspace-modal) .catalog-footer button {
   font-size: var(--font-size-meta);
 }
 
-.hero-copy > p {
+:is(.api-workbench, .collection-workspace-modal) .hero-copy > p {
   font-size: var(--font-size-body-lg);
 }
 
-.hero-console pre {
+:is(.api-workbench, .collection-workspace-modal) .hero-console pre {
   font-size: var(--font-size-control);
 }
 
-.console-bar small,
-.stats-strip small,
-.featured-meta,
-.verified-chip {
+:is(.api-workbench, .collection-workspace-modal) .console-bar small,
+:is(.api-workbench, .collection-workspace-modal) .stats-strip small,
+:is(.api-workbench, .collection-workspace-modal) .featured-meta,
+:is(.api-workbench, .collection-workspace-modal) .verified-chip {
   font-size: var(--font-size-meta);
 }
 
-.stats-strip span,
-.section-heading > p {
+:is(.api-workbench, .collection-workspace-modal) .stats-strip span,
+:is(.api-workbench, .collection-workspace-modal) .section-heading > p {
   font-size: var(--font-size-control);
 }
 
-.featured-card {
+:is(.api-workbench, .collection-workspace-modal) .featured-card {
   min-height: 220px;
 }
 
-.featured-card > strong {
+:is(.api-workbench, .collection-workspace-modal) .featured-card > strong {
   font-size: var(--font-size-title-lg);
 }
 
-.featured-card > p {
+:is(.api-workbench, .collection-workspace-modal) .featured-card > p {
   font-size: var(--font-size-control);
 }
 
-.inline-heading button,
-.history-drawer-heading button {
+:is(.api-workbench, .collection-workspace-modal) .inline-heading button,
+:is(.api-workbench, .collection-workspace-modal) .history-drawer-heading button {
   font-size: var(--font-size-small);
 }
 
-.history-list strong,
-.history-empty strong {
+:is(.api-workbench, .collection-workspace-modal) .history-list strong,
+:is(.api-workbench, .collection-workspace-modal) .history-empty strong {
   font-size: var(--font-size-control);
 }
 
-.history-list small,
-.history-list b,
-.history-status,
-.history-empty p {
+:is(.api-workbench, .collection-workspace-modal) .history-list small,
+:is(.api-workbench, .collection-workspace-modal) .history-list b,
+:is(.api-workbench, .collection-workspace-modal) .history-status,
+:is(.api-workbench, .collection-workspace-modal) .history-empty p {
   font-size: var(--font-size-meta);
 }
 
-.editor-heading button,
-.back-to-overview {
+:is(.api-workbench, .collection-workspace-modal) .editor-heading button,
+:is(.api-workbench, .collection-workspace-modal) .back-to-overview {
   font-size: var(--font-size-control);
 }
 
-.editor-heading p,
-.endpoint-heading > p {
+:is(.api-workbench, .collection-workspace-modal) .editor-heading p,
+:is(.api-workbench, .collection-workspace-modal) .endpoint-heading > p {
   font-size: var(--font-size-body);
 }
 
-.card-heading h2,
-.runner-card-heading h2 {
+:is(.api-workbench, .collection-workspace-modal) .card-heading h2,
+:is(.api-workbench, .collection-workspace-modal) .runner-card-heading h2 {
   font-size: var(--font-size-title-lg);
 }
 
-.card-heading p,
-.runner-card-heading p,
-.field-error {
+:is(.api-workbench, .collection-workspace-modal) .card-heading p,
+:is(.api-workbench, .collection-workspace-modal) .runner-card-heading p,
+:is(.api-workbench, .collection-workspace-modal) .field-error {
   font-size: var(--font-size-small);
 }
 
-.card-heading.with-action > button,
-.field > span,
-.required-toggle,
-.params-empty strong,
-.params-empty button,
-.endpoint-actions a,
-.endpoint-actions button,
-.runtime-param-info strong,
-.send-button,
-.cancel-request-button {
+:is(.api-workbench, .collection-workspace-modal) .card-heading.with-action > button,
+:is(.api-workbench, .collection-workspace-modal) .field > span,
+:is(.api-workbench, .collection-workspace-modal) .required-toggle,
+:is(.api-workbench, .collection-workspace-modal) .params-empty strong,
+:is(.api-workbench, .collection-workspace-modal) .params-empty button,
+:is(.api-workbench, .collection-workspace-modal) .endpoint-actions a,
+:is(.api-workbench, .collection-workspace-modal) .endpoint-actions button,
+:is(.api-workbench, .collection-workspace-modal) .runtime-param-info strong,
+:is(.api-workbench, .collection-workspace-modal) .send-button,
+:is(.api-workbench, .collection-workspace-modal) .cancel-request-button {
   font-size: var(--font-size-control);
 }
 
-.field input,
-.field textarea,
-.param-fields input,
-.runtime-param input,
-.header-row > input {
+:is(.api-workbench, .collection-workspace-modal) .field input,
+:is(.api-workbench, .collection-workspace-modal) .field textarea,
+:is(.api-workbench, .collection-workspace-modal) .param-fields input,
+:is(.api-workbench, .collection-workspace-modal) .runtime-param input,
+:is(.api-workbench, .collection-workspace-modal) .header-row > input {
   font-size: var(--font-size-body);
 }
 
-.param-index,
-.params-empty p,
-.endpoint-tags span,
-.request-url-bar code,
-.param-table-head,
-.header-table-head,
-.add-table-row,
-.security-note,
-.runner-tabs > button,
-.request-actions > span,
-.response-placeholder > p,
-.response-loading > p,
-.response-error > p,
-.placeholder-hints span,
-.truncate-banner,
-.compact-history-empty {
+:is(.api-workbench, .collection-workspace-modal) .param-index,
+:is(.api-workbench, .collection-workspace-modal) .params-empty p,
+:is(.api-workbench, .collection-workspace-modal) .endpoint-tags span,
+:is(.api-workbench, .collection-workspace-modal) .request-url-bar code,
+:is(.api-workbench, .collection-workspace-modal) .param-table-head,
+:is(.api-workbench, .collection-workspace-modal) .header-table-head,
+:is(.api-workbench, .collection-workspace-modal) .add-table-row,
+:is(.api-workbench, .collection-workspace-modal) .security-note,
+:is(.api-workbench, .collection-workspace-modal) .runner-tabs > button,
+:is(.api-workbench, .collection-workspace-modal) .request-actions > span,
+:is(.api-workbench, .collection-workspace-modal) .response-placeholder > p,
+:is(.api-workbench, .collection-workspace-modal) .response-loading > p,
+:is(.api-workbench, .collection-workspace-modal) .response-error > p,
+:is(.api-workbench, .collection-workspace-modal) .placeholder-hints span,
+:is(.api-workbench, .collection-workspace-modal) .truncate-banner,
+:is(.api-workbench, .collection-workspace-modal) .compact-history-empty {
   font-size: var(--font-size-meta);
 }
 
-.form-banner,
-.runtime-param-info small,
-.code-editor-bar,
-.response-body code,
-.response-headers-table strong,
-.response-headers-table code {
+:is(.api-workbench, .collection-workspace-modal) .form-banner,
+:is(.api-workbench, .collection-workspace-modal) .runtime-param-info small,
+:is(.api-workbench, .collection-workspace-modal) .code-editor-bar,
+:is(.api-workbench, .collection-workspace-modal) .response-body code,
+:is(.api-workbench, .collection-workspace-modal) .response-headers-table strong,
+:is(.api-workbench, .collection-workspace-modal) .response-headers-table code {
   font-size: var(--font-size-small);
 }
 
-.body-editor textarea {
+:is(.api-workbench, .collection-workspace-modal) .body-editor textarea {
   font-size: var(--font-size-control);
 }
 
-.response-placeholder > strong,
-.response-loading > strong,
-.response-error > strong {
+:is(.api-workbench, .collection-workspace-modal) .response-placeholder > strong,
+:is(.api-workbench, .collection-workspace-modal) .response-loading > strong,
+:is(.api-workbench, .collection-workspace-modal) .response-error > strong {
   font-size: var(--font-size-body-lg);
 }
 
-.status-pill,
-.response-metrics {
+:is(.api-workbench, .collection-workspace-modal) .status-pill,
+:is(.api-workbench, .collection-workspace-modal) .response-metrics {
   font-size: var(--font-size-meta);
 }
 
-.history-drawer-heading h2 {
+:is(.api-workbench, .collection-workspace-modal) .history-drawer-heading h2 {
   font-size: var(--font-size-title-lg);
 }
 
-.compact-history strong {
+:is(.api-workbench, .collection-workspace-modal) .compact-history strong {
   font-size: var(--font-size-small);
 }
 
-.compact-history small,
-.compact-history button > span:nth-last-child(2),
-.compact-history time {
+:is(.api-workbench, .collection-workspace-modal) .compact-history small,
+:is(.api-workbench, .collection-workspace-modal) .compact-history button > span:nth-last-child(2),
+:is(.api-workbench, .collection-workspace-modal) .compact-history time {
   font-size: var(--font-size-caption);
 }
 
 @media (max-width: 1260px) {
-  .api-shell {
+  :is(.api-workbench, .collection-workspace-modal) .api-shell {
     grid-template-columns: 288px minmax(0, 1fr);
   }
-  .overview-hero {
+  :is(.api-workbench, .collection-workspace-modal) .overview-hero {
     grid-template-columns: 1fr 300px;
     padding: 36px;
   }
-  .featured-grid {
+  :is(.api-workbench, .collection-workspace-modal) .featured-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .runner-grid {
+  :is(.api-workbench, .collection-workspace-modal) .runner-grid {
     grid-template-columns: 1fr;
   }
-  .runner-card {
+  :is(.api-workbench, .collection-workspace-modal) .runner-card {
     min-height: 540px;
   }
-  .request-config {
+  :is(.api-workbench, .collection-workspace-modal) .request-config {
     max-height: 390px;
   }
-  .response-viewport {
+  :is(.api-workbench, .collection-workspace-modal) .response-viewport {
     max-height: 430px;
   }
 }
@@ -2494,202 +2502,202 @@ svg {
   .api-workbench {
     padding: 12px 12px 48px;
   }
-  .api-shell {
+  :is(.api-workbench, .collection-workspace-modal) .api-shell {
     grid-template-columns: 1fr;
   }
-  .catalog-panel {
+  :is(.api-workbench, .collection-workspace-modal) .catalog-panel {
     position: static;
     height: auto;
     min-height: 0;
   }
-  .catalog-list {
+  :is(.api-workbench, .collection-workspace-modal) .catalog-list {
     max-height: 360px;
   }
-  .overview-hero {
+  :is(.api-workbench, .collection-workspace-modal) .overview-hero {
     grid-template-columns: 1fr;
   }
-  .hero-console {
+  :is(.api-workbench, .collection-workspace-modal) .hero-console {
     display: none;
   }
-  .stats-strip {
+  :is(.api-workbench, .collection-workspace-modal) .stats-strip {
     grid-template-columns: repeat(2, 1fr);
   }
-  .stats-strip > div:nth-child(3) {
+  :is(.api-workbench, .collection-workspace-modal) .stats-strip > div:nth-child(3) {
     border-left: 0;
     border-top: 1px solid var(--border-light);
   }
-  .stats-strip > div:nth-child(4) {
+  :is(.api-workbench, .collection-workspace-modal) .stats-strip > div:nth-child(4) {
     border-top: 1px solid var(--border-light);
   }
-  .history-list {
+  :is(.api-workbench, .collection-workspace-modal) .history-list {
     grid-template-columns: 1fr;
   }
-  .endpoint-header {
+  :is(.api-workbench, .collection-workspace-modal) .endpoint-header {
     flex-direction: column;
   }
-  .endpoint-actions {
+  :is(.api-workbench, .collection-workspace-modal) .endpoint-actions {
     padding-top: 0;
   }
-  .param-fields {
+  :is(.api-workbench, .collection-workspace-modal) .param-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .compact-history {
+  :is(.api-workbench, .collection-workspace-modal) .compact-history {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
-  .topbar {
+  :is(.api-workbench, .collection-workspace-modal) .topbar {
     grid-template-columns: auto 1fr auto;
     gap: 10px;
   }
-  .topbar .brand-lockup {
+  :is(.api-workbench, .collection-workspace-modal) .topbar .brand-lockup {
     justify-self: start;
   }
-  .brand-lockup small,
-  .catalog-health,
-  .topbar-actions .primary-button span {
+  :is(.api-workbench, .collection-workspace-modal) .brand-lockup small,
+  :is(.api-workbench, .collection-workspace-modal) .catalog-health,
+  :is(.api-workbench, .collection-workspace-modal) .topbar-actions .primary-button span {
     display: none;
   }
-  .topbar-actions {
+  :is(.api-workbench, .collection-workspace-modal) .topbar-actions {
     gap: 0;
   }
-  .topbar-actions .primary-button {
+  :is(.api-workbench, .collection-workspace-modal) .topbar-actions .primary-button {
     width: 40px;
     padding: 0;
     font-size: 0;
   }
-  .topbar-actions .primary-button::after {
+  :is(.api-workbench, .collection-workspace-modal) .topbar-actions .primary-button::after {
     content: '+';
     font-size: var(--font-size-heading);
   }
-  .overview-screen,
-  .request-screen {
+  :is(.api-workbench, .collection-workspace-modal) .overview-screen,
+  :is(.api-workbench, .collection-workspace-modal) .request-screen {
     padding: 14px;
   }
-  .overview-hero {
+  :is(.api-workbench, .collection-workspace-modal) .overview-hero {
     min-height: 390px;
     padding: 28px 24px;
   }
-  .hero-copy h1 {
+  :is(.api-workbench, .collection-workspace-modal) .hero-copy h1 {
     font-size: var(--font-size-8xl);
   }
-  .hero-actions {
+  :is(.api-workbench, .collection-workspace-modal) .hero-actions {
     align-items: stretch;
     flex-direction: column;
   }
-  .stats-strip {
+  :is(.api-workbench, .collection-workspace-modal) .stats-strip {
     grid-template-columns: 1fr;
   }
-  .stats-strip > div + div,
-  .stats-strip > div:nth-child(3) {
+  :is(.api-workbench, .collection-workspace-modal) .stats-strip > div + div,
+  :is(.api-workbench, .collection-workspace-modal) .stats-strip > div:nth-child(3) {
     border-top: 1px solid var(--border-light);
     border-left: 0;
   }
-  .featured-grid {
+  :is(.api-workbench, .collection-workspace-modal) .featured-grid {
     grid-template-columns: 1fr;
   }
-  .section-heading {
+  :is(.api-workbench, .collection-workspace-modal) .section-heading {
     align-items: flex-start;
     flex-direction: column;
   }
-  .section-heading > p {
+  :is(.api-workbench, .collection-workspace-modal) .section-heading > p {
     text-align: left;
   }
-  .editor-screen {
+  :is(.api-workbench, .collection-workspace-modal) .editor-screen {
     padding: 20px 14px;
   }
-  .editor-mark {
+  :is(.api-workbench, .collection-workspace-modal) .editor-mark {
     display: none;
   }
-  .two-columns,
-  .method-url-field > div {
+  :is(.api-workbench, .collection-workspace-modal) .two-columns,
+  :is(.api-workbench, .collection-workspace-modal) .method-url-field > div {
     grid-template-columns: 1fr;
   }
-  .form-param-row {
+  :is(.api-workbench, .collection-workspace-modal) .form-param-row {
     grid-template-columns: 24px minmax(0, 1fr) 28px;
   }
-  .param-fields {
+  :is(.api-workbench, .collection-workspace-modal) .param-fields {
     grid-template-columns: 1fr;
   }
-  .required-toggle {
+  :is(.api-workbench, .collection-workspace-modal) .required-toggle {
     grid-column: 2;
   }
-  .remove-row {
+  :is(.api-workbench, .collection-workspace-modal) .remove-row {
     grid-column: 3;
     grid-row: 1;
   }
-  .editor-actions {
+  :is(.api-workbench, .collection-workspace-modal) .editor-actions {
     flex-direction: column-reverse;
   }
-  .editor-actions button {
+  :is(.api-workbench, .collection-workspace-modal) .editor-actions button {
     width: 100%;
   }
-  .endpoint-title-line {
+  :is(.api-workbench, .collection-workspace-modal) .endpoint-title-line {
     flex-wrap: wrap;
   }
-  .endpoint-actions {
+  :is(.api-workbench, .collection-workspace-modal) .endpoint-actions {
     flex-wrap: wrap;
   }
-  .request-url-bar {
+  :is(.api-workbench, .collection-workspace-modal) .request-url-bar {
     grid-template-columns: auto minmax(0, 1fr);
   }
-  .request-url-bar :deep(.copy-btn) {
+  :is(.api-workbench, .collection-workspace-modal) .request-url-bar .copy-btn {
     grid-column: 1 / -1;
     width: 100%;
     justify-content: center;
   }
-  .runner-card-heading {
+  :is(.api-workbench, .collection-workspace-modal) .runner-card-heading {
     align-items: flex-start;
     padding: 14px;
   }
-  .runner-card-heading > :deep(.copy-btn) {
+  :is(.api-workbench, .collection-workspace-modal) .runner-card-heading > .copy-btn {
     display: none;
   }
-  .response-metrics {
+  :is(.api-workbench, .collection-workspace-modal) .response-metrics {
     display: none;
   }
-  .runtime-param,
-  .param-table-head {
+  :is(.api-workbench, .collection-workspace-modal) .runtime-param,
+  :is(.api-workbench, .collection-workspace-modal) .param-table-head {
     grid-template-columns: 1fr;
   }
-  .runtime-param {
+  :is(.api-workbench, .collection-workspace-modal) .runtime-param {
     align-items: stretch;
   }
-  .header-table-head {
+  :is(.api-workbench, .collection-workspace-modal) .header-table-head {
     display: none;
   }
-  .header-row {
+  :is(.api-workbench, .collection-workspace-modal) .header-row {
     grid-template-columns: 30px minmax(0, 1fr) 28px;
   }
-  .header-row > input:nth-of-type(2) {
+  :is(.api-workbench, .collection-workspace-modal) .header-row > input:nth-of-type(2) {
     grid-column: 2;
   }
-  .header-row > button {
+  :is(.api-workbench, .collection-workspace-modal) .header-row > button {
     grid-column: 3;
     grid-row: 1;
   }
-  .request-actions {
+  :is(.api-workbench, .collection-workspace-modal) .request-actions {
     align-items: stretch;
     flex-direction: column;
     padding: 12px 14px;
   }
-  .send-button,
-  .cancel-request-button {
+  :is(.api-workbench, .collection-workspace-modal) .send-button,
+  :is(.api-workbench, .collection-workspace-modal) .cancel-request-button {
     width: 100%;
   }
-  .compact-history button {
+  :is(.api-workbench, .collection-workspace-modal) .compact-history button {
     grid-template-columns: 48px minmax(0, 1fr) 38px 50px;
   }
-  .compact-history time {
+  :is(.api-workbench, .collection-workspace-modal) .compact-history time {
     display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :is(.api-workbench, .collection-workspace-modal) *,
+  :is(.api-workbench, .collection-workspace-modal) *::before,
+  :is(.api-workbench, .collection-workspace-modal) *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -2698,7 +2706,7 @@ svg {
 }
 
 /* API 工作区：环境、集合与自动断言 */
-.environment-switcher {
+:is(.api-workbench, .collection-workspace-modal) .environment-switcher {
   display: flex;
   min-width: 0;
   flex: 0 0 auto;
@@ -2709,27 +2717,27 @@ svg {
   border-radius: 10px;
   background: var(--bg-card);
 }
-.environment-switcher > span {
+:is(.api-workbench, .collection-workspace-modal) .environment-switcher > span {
   color: var(--accent);
   font-size: var(--font-size-caption);
   font-weight: 900;
   letter-spacing: 0.12em;
 }
-.environment-switcher :deep(.custom-select) {
+:is(.api-workbench, .collection-workspace-modal) .environment-switcher .custom-select {
   flex: 0 0 116px;
   min-width: 116px;
 }
-.secondary-button.compact {
+:is(.api-workbench, .collection-workspace-modal) .secondary-button.compact {
   padding: 8px 11px;
   white-space: nowrap;
 }
 
-.saved-request-grid {
+:is(.api-workbench, .collection-workspace-modal) .saved-request-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
-.saved-request-grid > button {
+:is(.api-workbench, .collection-workspace-modal) .saved-request-grid > button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -2743,54 +2751,54 @@ svg {
   text-align: left;
   transition: 0.2s ease;
 }
-.saved-request-grid > button:hover {
+:is(.api-workbench, .collection-workspace-modal) .saved-request-grid > button:hover {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border-light));
   transform: translateY(-2px);
 }
-.saved-color {
+:is(.api-workbench, .collection-workspace-modal) .saved-color {
   width: 8px;
   height: 32px;
   border-radius: 999px;
   background: var(--accent);
 }
-.saved-request-grid span:nth-child(2) {
+:is(.api-workbench, .collection-workspace-modal) .saved-request-grid span:nth-child(2) {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-.saved-request-grid strong {
+:is(.api-workbench, .collection-workspace-modal) .saved-request-grid strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.saved-request-grid small,
-.saved-request-grid b {
+:is(.api-workbench, .collection-workspace-modal) .saved-request-grid small,
+:is(.api-workbench, .collection-workspace-modal) .saved-request-grid b {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.assertion-editor {
+:is(.api-workbench, .collection-workspace-modal) .assertion-editor {
   min-height: 250px;
   padding: 14px;
 }
-.assertion-head,
-.assertion-row {
+:is(.api-workbench, .collection-workspace-modal) .assertion-head,
+:is(.api-workbench, .collection-workspace-modal) .assertion-row {
   display: grid;
   grid-template-columns: 52px minmax(150px, 0.8fr) minmax(160px, 1fr) 32px;
   align-items: center;
   gap: 8px;
 }
-.assertion-head {
+:is(.api-workbench, .collection-workspace-modal) .assertion-head {
   padding: 0 7px 7px;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   font-weight: 800;
 }
-.assertion-row {
+:is(.api-workbench, .collection-workspace-modal) .assertion-row {
   padding: 7px;
   border-top: 1px solid var(--border-light);
 }
-.assertion-row > input {
+:is(.api-workbench, .collection-workspace-modal) .assertion-row > input {
   min-width: 0;
   padding: 9px 10px;
   border: 1px solid var(--border-light);
@@ -2799,18 +2807,18 @@ svg {
   background: var(--bg-page);
   color: var(--text-primary);
 }
-.assertion-row > button {
+:is(.api-workbench, .collection-workspace-modal) .assertion-row > button {
   border: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
 }
-.assertion-results {
+:is(.api-workbench, .collection-workspace-modal) .assertion-results {
   display: grid;
   gap: 9px;
   padding: 16px;
 }
-.assertion-results > div {
+:is(.api-workbench, .collection-workspace-modal) .assertion-results > div {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
@@ -2819,7 +2827,7 @@ svg {
   border: 1px solid var(--border-light);
   border-radius: 11px;
 }
-.assertion-results > div > span {
+:is(.api-workbench, .collection-workspace-modal) .assertion-results > div > span {
   display: grid;
   width: 26px;
   height: 26px;
@@ -2827,56 +2835,56 @@ svg {
   border-radius: 50%;
   font-weight: 900;
 }
-.assertion-results .passed > span {
+:is(.api-workbench, .collection-workspace-modal) .assertion-results .passed > span {
   background: var(--success-bg);
   color: var(--success);
 }
-.assertion-results .failed > span {
+:is(.api-workbench, .collection-workspace-modal) .assertion-results .failed > span {
   background: var(--danger-bg);
   color: var(--danger);
 }
-.assertion-results small {
+:is(.api-workbench, .collection-workspace-modal) .assertion-results small {
   color: var(--text-muted);
 }
 
-.workspace-manager {
+:is(.api-workbench, .collection-workspace-modal) .workspace-manager {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
-.manager-section {
+:is(.api-workbench, .collection-workspace-modal) .manager-section {
   min-width: 0;
   padding: 16px;
   border: 1px solid var(--border-light);
   border-radius: 15px;
   background: var(--bg-subtle);
 }
-.manager-heading h3 {
+:is(.api-workbench, .collection-workspace-modal) .manager-heading h3 {
   margin: 3px 0 2px;
   color: var(--text-primary);
 }
-.manager-heading p {
+:is(.api-workbench, .collection-workspace-modal) .manager-heading p {
   color: var(--text-secondary);
   font-size: var(--font-size-meta);
 }
-.manager-heading code {
+:is(.api-workbench, .collection-workspace-modal) .manager-heading code {
   color: var(--accent);
 }
-.manager-toolbar,
-.save-current-row {
+:is(.api-workbench, .collection-workspace-modal) .manager-toolbar,
+:is(.api-workbench, .collection-workspace-modal) .save-current-row {
   display: grid;
   align-items: center;
   grid-template-columns: 150px minmax(0, 1fr) auto;
   gap: 7px;
   margin-top: 14px;
 }
-.manager-toolbar :deep(.custom-select) {
+:is(.api-workbench, .collection-workspace-modal) .manager-toolbar .custom-select {
   width: 100%;
   min-width: 150px;
 }
-.manager-toolbar > input,
-.save-current-row > input,
-.variable-row > input {
+:is(.api-workbench, .collection-workspace-modal) .manager-toolbar > input,
+:is(.api-workbench, .collection-workspace-modal) .save-current-row > input,
+:is(.api-workbench, .collection-workspace-modal) .variable-row > input {
   box-sizing: border-box;
   min-width: 0;
   height: 34px;
@@ -2887,10 +2895,10 @@ svg {
   background: var(--bg-card);
   color: var(--text-primary);
 }
-.manager-toolbar > button,
-.save-current-row > button,
-.manager-footer > button,
-.manager-saved-list button {
+:is(.api-workbench, .collection-workspace-modal) .manager-toolbar > button,
+:is(.api-workbench, .collection-workspace-modal) .save-current-row > button,
+:is(.api-workbench, .collection-workspace-modal) .manager-footer > button,
+:is(.api-workbench, .collection-workspace-modal) .manager-saved-list button {
   box-sizing: border-box;
   height: 34px;
   padding: 0 10px;
@@ -2901,48 +2909,48 @@ svg {
   cursor: pointer;
   white-space: nowrap;
 }
-.manager-toolbar > .danger-text {
+:is(.api-workbench, .collection-workspace-modal) .manager-toolbar > .danger-text {
   grid-column: 1 / -1;
   justify-self: start;
 }
-.variable-table {
+:is(.api-workbench, .collection-workspace-modal) .variable-table {
   margin-top: 13px;
   overflow-x: auto;
 }
-.variable-head,
-.variable-row {
+:is(.api-workbench, .collection-workspace-modal) .variable-head,
+:is(.api-workbench, .collection-workspace-modal) .variable-row {
   display: grid;
   grid-template-columns: 52px minmax(100px, 0.6fr) minmax(150px, 1fr) 30px;
   align-items: center;
   gap: 7px;
 }
-.variable-head {
+:is(.api-workbench, .collection-workspace-modal) .variable-head {
   padding: 0 7px 6px;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   font-weight: 800;
 }
-.variable-row {
+:is(.api-workbench, .collection-workspace-modal) .variable-row {
   padding: 7px;
   border-top: 1px solid var(--border-light);
 }
-.variable-row > button {
+:is(.api-workbench, .collection-workspace-modal) .variable-row > button {
   border: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
 }
-.save-current-row {
+:is(.api-workbench, .collection-workspace-modal) .save-current-row {
   grid-template-columns: minmax(0, 1fr) auto auto;
 }
-.manager-saved-list {
+:is(.api-workbench, .collection-workspace-modal) .manager-saved-list {
   display: grid;
   gap: 6px;
   max-height: 260px;
   overflow: auto;
   margin-top: 12px;
 }
-.manager-saved-list > div {
+:is(.api-workbench, .collection-workspace-modal) .manager-saved-list > div {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
@@ -2952,21 +2960,21 @@ svg {
   border-radius: 10px;
   background: var(--bg-card);
 }
-.manager-saved-list > div > span:nth-child(2) {
+:is(.api-workbench, .collection-workspace-modal) .manager-saved-list > div > span:nth-child(2) {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-.manager-saved-list strong {
+:is(.api-workbench, .collection-workspace-modal) .manager-saved-list strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.manager-saved-list small {
+:is(.api-workbench, .collection-workspace-modal) .manager-saved-list small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
-.manager-footer {
+:is(.api-workbench, .collection-workspace-modal) .manager-footer {
   grid-column: 1/-1;
   display: flex;
   justify-content: flex-end;
@@ -2974,45 +2982,45 @@ svg {
 }
 
 @media (max-width: 940px) {
-  .environment-switcher {
+  :is(.api-workbench, .collection-workspace-modal) .environment-switcher {
     display: none;
   }
-  .workspace-manager {
+  :is(.api-workbench, .collection-workspace-modal) .workspace-manager {
     grid-template-columns: 1fr;
   }
-  .manager-footer {
+  :is(.api-workbench, .collection-workspace-modal) .manager-footer {
     grid-column: 1;
   }
 }
 @media (max-width: 640px) {
-  .topbar-actions > .secondary-button.compact {
+  :is(.api-workbench, .collection-workspace-modal) .topbar-actions > .secondary-button.compact {
     display: none;
   }
-  .saved-request-grid {
+  :is(.api-workbench, .collection-workspace-modal) .saved-request-grid {
     grid-template-columns: 1fr;
   }
-  .manager-toolbar {
+  :is(.api-workbench, .collection-workspace-modal) .manager-toolbar {
     grid-template-columns: 1fr;
   }
-  .manager-toolbar :deep(.custom-select) {
+  :is(.api-workbench, .collection-workspace-modal) .manager-toolbar .custom-select {
     min-width: 0;
   }
-  .manager-toolbar > .danger-text {
+  :is(.api-workbench, .collection-workspace-modal) .manager-toolbar > .danger-text {
     grid-column: 1;
   }
-  .variable-head,
-  .variable-row {
+  :is(.api-workbench, .collection-workspace-modal) .variable-head,
+  :is(.api-workbench, .collection-workspace-modal) .variable-row {
     min-width: 340px;
   }
-  .assertion-head,
-  .assertion-row {
+  :is(.api-workbench, .collection-workspace-modal) .assertion-head,
+  :is(.api-workbench, .collection-workspace-modal) .assertion-row {
     grid-template-columns: 42px minmax(100px, 1fr) minmax(100px, 1fr) 28px;
   }
 }
 
 /* Extended request policies, auth and collection runner */
-.auth-editor,
-.extraction-editor {
+:is(.api-workbench, .collection-workspace-modal) .auth-editor,
+:is(.api-workbench, .collection-workspace-modal) .extraction-editor {
   display: grid;
   grid-template-columns: minmax(120px, 0.6fr) repeat(3, minmax(100px, 1fr));
   gap: 8px;
@@ -3024,13 +3032,13 @@ svg {
   background: var(--bg-subtle);
 }
 
-.auth-editor > strong,
-.extraction-editor > strong,
-.extraction-editor > .add-table-row {
+:is(.api-workbench, .collection-workspace-modal) .auth-editor > strong,
+:is(.api-workbench, .collection-workspace-modal) .extraction-editor > strong,
+:is(.api-workbench, .collection-workspace-modal) .extraction-editor > .add-table-row {
   grid-column: 1 / -1;
 }
 
-.extraction-row {
+:is(.api-workbench, .collection-workspace-modal) .extraction-row {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: 28px 1fr 1fr 32px;
@@ -3038,42 +3046,42 @@ svg {
   align-items: center;
 }
 
-.extraction-editor.standalone {
+:is(.api-workbench, .collection-workspace-modal) .extraction-editor.standalone {
   display: block;
   min-height: 250px;
   margin-top: 0;
   padding: 16px;
 }
 
-.extraction-intro {
+:is(.api-workbench, .collection-workspace-modal) .extraction-intro {
   margin-bottom: 14px;
   padding: 12px 14px;
   border-radius: 10px;
   background: rgba(var(--accent-rgb), 0.08);
 }
 
-.extraction-intro strong {
+:is(.api-workbench, .collection-workspace-modal) .extraction-intro strong {
   color: var(--text-primary);
   font-size: var(--font-size-meta);
 }
 
-.extraction-intro p {
+:is(.api-workbench, .collection-workspace-modal) .extraction-intro p {
   margin: 5px 0 0;
   color: var(--text-secondary);
   font-size: var(--font-size-caption);
   line-height: 1.6;
 }
 
-.extraction-intro code {
+:is(.api-workbench, .collection-workspace-modal) .extraction-intro code {
   color: var(--accent);
 }
 
-.extraction-editor.standalone .extraction-row {
+:is(.api-workbench, .collection-workspace-modal) .extraction-editor.standalone .extraction-row {
   padding: 9px 0;
   border-top: 1px solid var(--border-light);
 }
 
-.extraction-row > input {
+:is(.api-workbench, .collection-workspace-modal) .extraction-row > input {
   min-width: 0;
   padding: 9px 10px;
   border: 1px solid var(--border-light);
@@ -3083,25 +3091,25 @@ svg {
   color: var(--text-primary);
 }
 
-.extraction-row > input:focus {
+:is(.api-workbench, .collection-workspace-modal) .extraction-row > input:focus {
   border-color: var(--accent);
 }
 
-.extraction-row > button {
+:is(.api-workbench, .collection-workspace-modal) .extraction-row > button {
   border: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
 }
 
-.config-empty.compact {
+:is(.api-workbench, .collection-workspace-modal) .config-empty.compact {
   min-height: 80px;
   margin: 10px 0 0;
   border: 1px dashed var(--border-light);
   border-radius: 10px;
 }
 
-.request-policy {
+:is(.api-workbench, .collection-workspace-modal) .request-policy {
   display: flex;
   gap: 12px;
   padding: 8px 14px 0;
@@ -3109,27 +3117,27 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.request-policy label {
+:is(.api-workbench, .collection-workspace-modal) .request-policy label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.request-policy input {
+:is(.api-workbench, .collection-workspace-modal) .request-policy input {
   width: 86px;
 }
 
-.collection-results {
+:is(.api-workbench, .collection-workspace-modal) .collection-results {
   display: grid;
   gap: 6px;
   margin-top: 12px;
 }
 
-.manager-saved-list > div {
+:is(.api-workbench, .collection-workspace-modal) .manager-saved-list > div {
   grid-template-columns: auto minmax(0, 1fr) repeat(4, auto);
 }
 
-.collection-guide {
+:is(.api-workbench, .collection-workspace-modal) .collection-guide {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
@@ -3138,7 +3146,7 @@ svg {
   list-style: none;
 }
 
-.collection-guide li {
+:is(.api-workbench, .collection-workspace-modal) .collection-guide li {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -3151,7 +3159,7 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.collection-guide b {
+:is(.api-workbench, .collection-workspace-modal) .collection-guide b {
   display: grid;
   width: 20px;
   height: 20px;
@@ -3163,44 +3171,47 @@ svg {
   font-size: var(--font-size-caption);
 }
 
-.collection-manager .manager-toolbar {
+:is(.api-workbench, .collection-workspace-modal) .collection-manager .manager-toolbar {
   display: flex;
   flex-wrap: wrap;
 }
 
-.collection-manager .manager-toolbar :deep(.custom-select) {
+:is(.api-workbench, .collection-workspace-modal)
+  .collection-manager
+  .manager-toolbar
+  .custom-select {
   flex: 0 0 150px;
 }
 
-.collection-manager .manager-toolbar > input {
+:is(.api-workbench, .collection-workspace-modal) .collection-manager .manager-toolbar > input {
   flex: 1 1 120px;
 }
 
-.manager-saved-list > .collection-empty {
+:is(.api-workbench, .collection-workspace-modal) .manager-saved-list > .collection-empty {
   display: block;
   padding: 20px 14px;
   border-style: dashed;
   text-align: center;
 }
 
-.collection-empty strong {
+:is(.api-workbench, .collection-workspace-modal) .collection-empty strong {
   color: var(--text-primary);
   font-size: var(--font-size-meta);
 }
 
-.collection-empty p {
+:is(.api-workbench, .collection-workspace-modal) .collection-empty p {
   margin: 5px 0 0;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.manager-toolbar button:disabled,
-.save-current-row button:disabled {
+:is(.api-workbench, .collection-workspace-modal) .manager-toolbar button:disabled,
+:is(.api-workbench, .collection-workspace-modal) .save-current-row button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.collection-results > div {
+:is(.api-workbench, .collection-workspace-modal) .collection-results > div {
   display: grid;
   grid-template-columns: 24px minmax(140px, 1fr) auto auto;
   gap: 8px;
@@ -3211,63 +3222,69 @@ svg {
   color: var(--text-secondary);
 }
 
-.collection-results > div.failed {
+:is(.api-workbench, .collection-workspace-modal) .collection-results > div.failed {
   background: var(--danger-bg);
   color: var(--danger);
 }
 
 @media (max-width: 720px) {
-  .auth-editor {
+  :is(.api-workbench, .collection-workspace-modal) .auth-editor {
     grid-template-columns: 1fr;
   }
 
-  .auth-editor > * {
+  :is(.api-workbench, .collection-workspace-modal) .auth-editor > * {
     grid-column: 1;
   }
 
-  .save-current-row,
-  .collection-guide {
+  :is(.api-workbench, .collection-workspace-modal) .save-current-row,
+  :is(.api-workbench, .collection-workspace-modal) .collection-guide {
     grid-template-columns: 1fr;
   }
 
-  .manager-saved-list > div {
+  :is(.api-workbench, .collection-workspace-modal) .manager-saved-list > div {
     grid-template-columns: auto minmax(0, 1fr) repeat(3, auto);
   }
 
-  .manager-saved-list > div > button:first-of-type {
+  :is(.api-workbench, .collection-workspace-modal)
+    .manager-saved-list
+    > div
+    > button:first-of-type {
     grid-column: 2 / -1;
   }
 
-  .collection-manager .manager-toolbar :deep(.custom-select),
-  .collection-manager .manager-toolbar > input {
+  :is(.api-workbench, .collection-workspace-modal)
+    .collection-manager
+    .manager-toolbar
+    .custom-select,
+  :is(.api-workbench, .collection-workspace-modal) .collection-manager .manager-toolbar > input {
     flex: 1 1 100%;
   }
 }
 
 /* Collection flow workspace */
-:global(.collection-workspace-modal) {
+.collection-workspace-modal {
   --vc-modal-overlay-pad: 16px;
   --vc-modal-overlay: rgba(12, 18, 32, 0.56);
   --vc-modal-overlay-blur: blur(7px);
   --lab-violet: #6255e8;
 }
 
-:global(.collection-workspace-modal .vc-modal) {
+.collection-workspace-modal .vc-modal {
   height: min(995px, calc(100vh - 32px));
   border: 1px solid color-mix(in srgb, var(--border-light) 84%, transparent);
 }
 
-:global(.collection-workspace-modal .vc-modal__header) {
+.collection-workspace-modal .vc-modal__header {
   min-height: 64px;
 }
 
-:global(.collection-workspace-modal .vc-modal__body) {
+.collection-workspace-modal .vc-modal__body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-.flow-workspace-topbar {
+:is(.api-workbench, .collection-workspace-modal) .flow-workspace-topbar {
   display: grid;
   width: 100%;
   min-width: 0;
@@ -3276,7 +3293,7 @@ svg {
   background: var(--bg-card);
 }
 
-.flow-brand {
+:is(.api-workbench, .collection-workspace-modal) .flow-brand {
   display: flex;
   height: 64px;
   align-items: center;
@@ -3286,7 +3303,7 @@ svg {
   color: var(--text-primary);
 }
 
-.flow-brand > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-brand > span {
   display: grid;
   width: 32px;
   height: 32px;
@@ -3296,12 +3313,12 @@ svg {
   color: #fff;
 }
 
-.flow-brand strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-brand strong {
   font-size: var(--font-size-body-lg);
   letter-spacing: 0.02em;
 }
 
-.flow-collection-title {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-title {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -3309,7 +3326,7 @@ svg {
   padding: 0 18px;
 }
 
-.flow-collection-title input {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-title input {
   min-width: 100px;
   max-width: 320px;
   padding: 7px 9px;
@@ -3322,13 +3339,13 @@ svg {
   font-weight: 760;
 }
 
-.flow-collection-title input:hover,
-.flow-collection-title input:focus {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-title input:hover,
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-title input:focus {
   border-color: var(--border-light);
   background: var(--bg-subtle);
 }
 
-.flow-collection-title > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-title > span {
   padding: 4px 8px;
   border-radius: 7px;
   background: var(--bg-subtle);
@@ -3337,13 +3354,13 @@ svg {
   white-space: nowrap;
 }
 
-.flow-collection-title > button,
-.flow-close-action,
-.flow-sidebar-heading button,
-.flow-new-collection button,
-.flow-stage header > button,
-.flow-step-inspector header > button,
-.flow-variable-sidebar header button {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-title > button,
+:is(.api-workbench, .collection-workspace-modal) .flow-close-action,
+:is(.api-workbench, .collection-workspace-modal) .flow-sidebar-heading button,
+:is(.api-workbench, .collection-workspace-modal) .flow-new-collection button,
+:is(.api-workbench, .collection-workspace-modal) .flow-stage header > button,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector header > button,
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar header button {
   display: inline-grid;
   width: 32px;
   height: 32px;
@@ -3356,17 +3373,17 @@ svg {
   cursor: pointer;
 }
 
-.flow-collection-title > button:hover,
-.flow-close-action:hover,
-.flow-sidebar-heading button:hover,
-.flow-stage header > button:hover,
-.flow-step-inspector header > button:hover,
-.flow-variable-sidebar header button:hover {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-title > button:hover,
+:is(.api-workbench, .collection-workspace-modal) .flow-close-action:hover,
+:is(.api-workbench, .collection-workspace-modal) .flow-sidebar-heading button:hover,
+:is(.api-workbench, .collection-workspace-modal) .flow-stage header > button:hover,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector header > button:hover,
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar header button:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-.flow-topbar-actions {
+:is(.api-workbench, .collection-workspace-modal) .flow-topbar-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -3374,9 +3391,11 @@ svg {
   padding: 0 14px;
 }
 
-.flow-topbar-actions > button:not(.flow-close-action),
-.flow-editor-heading button,
-.flow-empty-state button {
+:is(.api-workbench, .collection-workspace-modal)
+  .flow-topbar-actions
+  > button:not(.flow-close-action),
+:is(.api-workbench, .collection-workspace-modal) .flow-editor-heading button,
+:is(.api-workbench, .collection-workspace-modal) .flow-empty-state button {
   display: inline-flex;
   height: 34px;
   align-items: center;
@@ -3393,21 +3412,21 @@ svg {
   white-space: nowrap;
 }
 
-.flow-topbar-actions > button.flow-run-action {
+:is(.api-workbench, .collection-workspace-modal) .flow-topbar-actions > button.flow-run-action {
   min-width: 106px;
   border-color: var(--lab-violet);
   background: var(--lab-violet);
   color: #fff;
 }
 
-.flow-topbar-actions button:disabled,
-.flow-editor-heading button:disabled,
-.flow-empty-state button:disabled {
+:is(.api-workbench, .collection-workspace-modal) .flow-topbar-actions button:disabled,
+:is(.api-workbench, .collection-workspace-modal) .flow-editor-heading button:disabled,
+:is(.api-workbench, .collection-workspace-modal) .flow-empty-state button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.flow-workspace-shell {
+:is(.api-workbench, .collection-workspace-modal) .flow-workspace-shell {
   display: grid;
   position: relative;
   min-height: 0;
@@ -3417,20 +3436,20 @@ svg {
   font-size: var(--font-size-body-lg);
 }
 
-.flow-collection-sidebar,
-.flow-variable-sidebar {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-sidebar,
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar {
   min-width: 0;
   background: color-mix(in srgb, var(--bg-subtle) 55%, var(--bg-card));
 }
 
-.flow-collection-sidebar {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-sidebar {
   display: flex;
   min-height: 0;
   flex-direction: column;
   border-right: 1px solid var(--border-light);
 }
 
-.flow-sidebar-heading {
+:is(.api-workbench, .collection-workspace-modal) .flow-sidebar-heading {
   display: flex;
   min-height: 54px;
   align-items: center;
@@ -3443,17 +3462,17 @@ svg {
   letter-spacing: 0.08em;
 }
 
-.flow-new-collection {
+:is(.api-workbench, .collection-workspace-modal) .flow-new-collection {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 32px 32px;
   gap: 6px;
   padding: 0 12px 8px;
 }
 
-.flow-new-collection input,
-.flow-rule-row > input,
-.flow-step-inspector header input,
-.flow-environment-list input {
+:is(.api-workbench, .collection-workspace-modal) .flow-new-collection input,
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-row > input,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector header input,
+:is(.api-workbench, .collection-workspace-modal) .flow-environment-list input {
   box-sizing: border-box;
   min-width: 0;
   height: 34px;
@@ -3466,30 +3485,30 @@ svg {
   font-size: var(--font-size-control);
 }
 
-.flow-new-collection input:focus,
-.flow-rule-row > input:focus,
-.flow-step-inspector header input:focus,
-.flow-environment-list input:focus {
+:is(.api-workbench, .collection-workspace-modal) .flow-new-collection input:focus,
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-row > input:focus,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector header input:focus,
+:is(.api-workbench, .collection-workspace-modal) .flow-environment-list input:focus {
   border-color: var(--lab-violet);
   box-shadow: 0 0 0 2px rgba(84, 68, 232, 0.1);
 }
 
-.flow-new-collection button {
+:is(.api-workbench, .collection-workspace-modal) .flow-new-collection button {
   background: rgba(84, 68, 232, 0.1);
   color: var(--lab-violet);
 }
 
-.flow-new-collection button.cancel {
+:is(.api-workbench, .collection-workspace-modal) .flow-new-collection button.cancel {
   background: transparent;
   color: var(--text-muted);
 }
 
-.flow-new-collection button.cancel:hover {
+:is(.api-workbench, .collection-workspace-modal) .flow-new-collection button.cancel:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-.flow-collection-list {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-list {
   display: grid;
   align-content: start;
   gap: 4px;
@@ -3498,7 +3517,7 @@ svg {
   padding: 0 9px 12px;
 }
 
-.flow-collection-list > button {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-list > button {
   display: grid;
   width: 100%;
   min-width: 0;
@@ -3514,16 +3533,16 @@ svg {
   text-align: left;
 }
 
-.flow-collection-list > button:hover {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-list > button:hover {
   background: var(--bg-hover);
 }
 
-.flow-collection-list > button.active {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-list > button.active {
   background: rgba(84, 68, 232, 0.1);
   color: var(--lab-violet);
 }
 
-.flow-collection-list span {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-list span {
   overflow: hidden;
   font-size: var(--font-size-body);
   font-weight: 680;
@@ -3531,7 +3550,7 @@ svg {
   white-space: nowrap;
 }
 
-.flow-collection-list b {
+:is(.api-workbench, .collection-workspace-modal) .flow-collection-list b {
   display: grid;
   min-width: 23px;
   height: 21px;
@@ -3542,7 +3561,7 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.flow-sidebar-footer {
+:is(.api-workbench, .collection-workspace-modal) .flow-sidebar-footer {
   display: flex;
   gap: 6px;
   margin-top: auto;
@@ -3550,7 +3569,7 @@ svg {
   border-top: 1px solid var(--border-light);
 }
 
-.flow-sidebar-footer button {
+:is(.api-workbench, .collection-workspace-modal) .flow-sidebar-footer button {
   display: inline-flex;
   flex: 1;
   height: 32px;
@@ -3565,7 +3584,7 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.collection-context-dismiss {
+:is(.api-workbench, .collection-workspace-modal) .collection-context-dismiss {
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -3573,7 +3592,7 @@ svg {
   cursor: default;
 }
 
-.collection-context-menu {
+:is(.api-workbench, .collection-workspace-modal) .collection-context-menu {
   position: fixed;
   z-index: 41;
   display: grid;
@@ -3586,7 +3605,7 @@ svg {
   box-shadow: 0 16px 40px rgba(22, 30, 50, 0.2);
 }
 
-.collection-context-menu strong {
+:is(.api-workbench, .collection-workspace-modal) .collection-context-menu strong {
   overflow: hidden;
   padding: 6px 8px 8px;
   color: var(--text-muted);
@@ -3596,7 +3615,7 @@ svg {
   white-space: nowrap;
 }
 
-.collection-context-menu button {
+:is(.api-workbench, .collection-workspace-modal) .collection-context-menu button {
   display: flex;
   height: 34px;
   align-items: center;
@@ -3610,16 +3629,16 @@ svg {
   text-align: left;
 }
 
-.collection-context-menu button:hover {
+:is(.api-workbench, .collection-workspace-modal) .collection-context-menu button:hover {
   background: var(--danger-bg);
 }
 
-.collection-context-menu button:disabled {
+:is(.api-workbench, .collection-workspace-modal) .collection-context-menu button:disabled {
   opacity: 0.42;
   cursor: not-allowed;
 }
 
-.flow-editor-main {
+:is(.api-workbench, .collection-workspace-modal) .flow-editor-main {
   display: grid;
   min-width: 0;
   min-height: 0;
@@ -3627,7 +3646,7 @@ svg {
   background: var(--bg-card);
 }
 
-.flow-editor-heading {
+:is(.api-workbench, .collection-workspace-modal) .flow-editor-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3636,29 +3655,29 @@ svg {
   border-bottom: 1px solid var(--border-light);
 }
 
-.flow-editor-heading > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-editor-heading > div {
   display: flex;
   align-items: center;
   gap: 9px;
 }
 
-.flow-editor-heading strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-editor-heading strong {
   color: var(--text-primary);
   font-size: var(--font-size-title);
 }
 
-.flow-editor-heading span {
+:is(.api-workbench, .collection-workspace-modal) .flow-editor-heading span {
   color: var(--success);
   font-size: var(--font-size-small);
 }
 
-.flow-editor-heading button {
+:is(.api-workbench, .collection-workspace-modal) .flow-editor-heading button {
   height: 30px;
   padding: 0 10px;
   font-size: var(--font-size-small);
 }
 
-.flow-canvas {
+:is(.api-workbench, .collection-workspace-modal) .flow-canvas {
   min-width: 0;
   min-height: 0;
   overflow: auto;
@@ -3667,7 +3686,7 @@ svg {
     color-mix(in srgb, var(--bg-subtle) 45%, var(--bg-card));
 }
 
-.flow-stage-track {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-track {
   display: flex;
   width: max-content;
   min-width: 100%;
@@ -3677,7 +3696,7 @@ svg {
   padding: 24px;
 }
 
-.flow-stage {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage {
   display: grid;
   width: 250px;
   min-height: 380px;
@@ -3691,24 +3710,24 @@ svg {
   cursor: pointer;
 }
 
-.flow-stage:hover {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage:hover {
   border-color: color-mix(in srgb, var(--lab-violet) 40%, var(--border-light));
 }
 
-.flow-stage.selected {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage.selected {
   border-color: var(--lab-violet);
   box-shadow: 0 0 0 2px rgba(84, 68, 232, 0.1);
 }
 
-.flow-stage.running {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage.running {
   box-shadow: 0 0 0 3px rgba(84, 68, 232, 0.16);
 }
 
-.flow-stage.failed {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage.failed {
   border-color: color-mix(in srgb, var(--danger) 65%, var(--border-light));
 }
 
-.flow-stage > header {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage > header {
   display: grid;
   min-height: 50px;
   grid-template-columns: 24px 25px auto minmax(0, 1fr) auto 26px;
@@ -3718,8 +3737,8 @@ svg {
   border-bottom: 1px solid var(--border-light);
 }
 
-.flow-stage .method-badge,
-.flow-step-inspector .method-badge {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage .method-badge,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector .method-badge {
   display: inline-flex;
   min-width: 34px;
   height: 23px;
@@ -3733,35 +3752,35 @@ svg {
   font-weight: 820;
 }
 
-.flow-stage .method-post,
-.flow-step-inspector .method-post {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage .method-post,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector .method-post {
   background: rgba(21, 163, 109, 0.12);
 }
 
-.flow-stage .method-put,
-.flow-stage .method-patch,
-.flow-step-inspector .method-put,
-.flow-step-inspector .method-patch {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage .method-put,
+:is(.api-workbench, .collection-workspace-modal) .flow-stage .method-patch,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector .method-put,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector .method-patch {
   background: rgba(217, 119, 6, 0.1);
   color: #b45309;
 }
 
-.flow-stage .method-delete,
-.flow-step-inspector .method-delete {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage .method-delete,
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector .method-delete {
   background: var(--danger-bg);
   color: var(--danger);
 }
 
-.flow-stage header > button {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage header > button {
   width: 24px;
   height: 28px;
 }
 
-.flow-drag-handle {
+:is(.api-workbench, .collection-workspace-modal) .flow-drag-handle {
   cursor: grab !important;
 }
 
-.flow-stage-number {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-number {
   display: grid;
   width: 23px;
   height: 23px;
@@ -3773,24 +3792,24 @@ svg {
   font-weight: 800;
 }
 
-.flow-stage > header > strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage > header > strong {
   overflow: hidden;
   font-size: var(--font-size-body-lg);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.flow-stage-status {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-status {
   color: var(--danger);
   font-size: var(--font-size-meta);
   font-weight: 800;
 }
 
-.flow-stage-status.success {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-status.success {
   color: var(--success);
 }
 
-.flow-stage > code {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage > code {
   display: block;
   overflow: hidden;
   padding: 13px;
@@ -3800,13 +3819,13 @@ svg {
   white-space: nowrap;
 }
 
-.flow-stage-variables {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-variables {
   display: grid;
   grid-template-rows: repeat(2, minmax(0, 1fr));
   border-top: 1px solid var(--border-light);
 }
 
-.flow-stage-variables > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-variables > div {
   display: flex;
   min-height: 0;
   align-content: flex-start;
@@ -3816,18 +3835,18 @@ svg {
   padding: 9px 12px;
 }
 
-.flow-stage-variables > div + div {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-variables > div + div {
   border-top: 1px solid var(--border-light);
 }
 
-.flow-stage-variables > div > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-variables > div > span {
   width: 100%;
   color: var(--text-muted);
   font-size: var(--font-size-small);
   font-weight: 760;
 }
 
-.flow-stage-variables b {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-variables b {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -3839,24 +3858,24 @@ svg {
   font-weight: 700;
 }
 
-.flow-stage-variables b.output {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-variables b.output {
   background: rgba(21, 163, 109, 0.09);
   color: var(--success);
 }
 
-.flow-stage-variables b small {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-variables b small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   font-weight: 500;
 }
 
-.flow-stage-variables em {
+:is(.api-workbench, .collection-workspace-modal) .flow-stage-variables em {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   font-style: normal;
 }
 
-.flow-connector {
+:is(.api-workbench, .collection-workspace-modal) .flow-connector {
   display: flex;
   width: 82px;
   align-items: center;
@@ -3866,7 +3885,7 @@ svg {
   color: var(--lab-violet);
 }
 
-.flow-connector span {
+:is(.api-workbench, .collection-workspace-modal) .flow-connector span {
   max-width: 70px;
   overflow: hidden;
   padding: 4px 6px;
@@ -3878,7 +3897,7 @@ svg {
   white-space: nowrap;
 }
 
-.flow-empty-state {
+:is(.api-workbench, .collection-workspace-modal) .flow-empty-state {
   display: grid;
   min-height: 100%;
   place-items: center;
@@ -3887,12 +3906,12 @@ svg {
   color: var(--text-muted);
 }
 
-.flow-empty-state strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-empty-state strong {
   color: var(--text-primary);
   font-size: var(--font-size-body-lg);
 }
 
-.flow-step-inspector {
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector {
   min-width: 0;
   min-height: 0;
   overflow: auto;
@@ -3900,7 +3919,7 @@ svg {
   background: var(--bg-card);
 }
 
-.flow-step-inspector > header {
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector > header {
   display: flex;
   min-height: 48px;
   align-items: center;
@@ -3908,21 +3927,21 @@ svg {
   padding: 0 16px;
 }
 
-.flow-step-inspector > header > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector > header > div {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 8px;
 }
 
-.flow-step-inspector header input {
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector header input {
   width: min(300px, 32vw);
   border-color: transparent;
   font-size: var(--font-size-control);
   font-weight: 720;
 }
 
-.flow-step-inspector header > button {
+:is(.api-workbench, .collection-workspace-modal) .flow-step-inspector header > button {
   display: inline-flex;
   width: auto;
   gap: 5px;
@@ -3930,7 +3949,7 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.flow-inspector-tabs {
+:is(.api-workbench, .collection-workspace-modal) .flow-inspector-tabs {
   display: flex;
   min-height: 40px;
   align-items: flex-end;
@@ -3940,7 +3959,7 @@ svg {
   border-bottom: 1px solid var(--border-light);
 }
 
-.flow-inspector-tabs button {
+:is(.api-workbench, .collection-workspace-modal) .flow-inspector-tabs button {
   display: inline-flex;
   height: 40px;
   align-items: center;
@@ -3955,41 +3974,41 @@ svg {
   font-weight: 700;
 }
 
-.flow-inspector-tabs button.active {
+:is(.api-workbench, .collection-workspace-modal) .flow-inspector-tabs button.active {
   border-bottom-color: var(--lab-violet);
   color: var(--lab-violet);
 }
 
-.flow-inspector-tabs span {
+:is(.api-workbench, .collection-workspace-modal) .flow-inspector-tabs span {
   color: inherit;
   font-size: var(--font-size-caption);
 }
 
-.flow-request-summary {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-summary {
   display: grid;
   gap: 12px;
   padding: 16px;
 }
 
-.flow-request-summary > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-summary > div {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.flow-request-summary > div > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-summary > div > span {
   width: 80px;
   color: var(--text-muted);
   font-size: var(--font-size-small);
 }
 
-.flow-request-summary code {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-summary code {
   color: var(--text-secondary);
   font-size: var(--font-size-small);
 }
 
-.flow-request-summary b {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-summary b {
   display: inline-flex;
   align-items: center;
   gap: 1px;
@@ -4000,26 +4019,26 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.flow-request-summary small {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-summary small {
   margin-left: 5px;
   color: var(--text-muted);
   font-weight: 500;
 }
 
-.flow-request-summary em {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-summary em {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
   font-style: normal;
 }
 
-.flow-inline-pairs {
+:is(.api-workbench, .collection-workspace-modal) .flow-inline-pairs {
   display: grid;
   min-width: 0;
   flex: 1;
   gap: 6px;
 }
 
-.flow-inline-pairs code {
+:is(.api-workbench, .collection-workspace-modal) .flow-inline-pairs code {
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(100px, 0.35fr) minmax(0, 1fr);
@@ -4030,17 +4049,17 @@ svg {
   overflow-wrap: anywhere;
 }
 
-.flow-inline-pairs code strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-inline-pairs code strong {
   color: var(--text-primary);
   font-family: inherit;
   font-size: var(--font-size-meta);
 }
 
-.flow-request-summary > .flow-request-body-row {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-summary > .flow-request-body-row {
   align-items: flex-start;
 }
 
-.flow-request-body-row pre {
+:is(.api-workbench, .collection-workspace-modal) .flow-request-body-row pre {
   min-width: 0;
   max-height: 170px;
   flex: 1;
@@ -4054,7 +4073,7 @@ svg {
   overflow-wrap: anywhere;
 }
 
-.flow-config-hint {
+:is(.api-workbench, .collection-workspace-modal) .flow-config-hint {
   margin: 0;
   padding: 9px 11px;
   border-radius: 8px;
@@ -4063,12 +4082,12 @@ svg {
   font-size: var(--font-size-meta);
 }
 
-.flow-response-result {
+:is(.api-workbench, .collection-workspace-modal) .flow-response-result {
   min-height: 0;
   padding: 12px 16px 18px;
 }
 
-.flow-result-metrics {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-metrics {
   display: flex;
   min-height: 34px;
   align-items: center;
@@ -4077,12 +4096,12 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.flow-result-metrics > span:not(.status-pill) {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-metrics > span:not(.status-pill) {
   padding-left: 10px;
   border-left: 1px solid var(--border-light);
 }
 
-.flow-result-toolbar {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-toolbar {
   display: flex;
   min-height: 38px;
   align-items: center;
@@ -4092,13 +4111,13 @@ svg {
   border-bottom: 1px solid var(--border-light);
 }
 
-.flow-result-toolbar > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-toolbar > div {
   display: flex;
   align-self: stretch;
   gap: 16px;
 }
 
-.flow-result-toolbar > div > button {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-toolbar > div > button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -4111,20 +4130,20 @@ svg {
   font-weight: 700;
 }
 
-.flow-result-toolbar > div > button.active {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-toolbar > div > button.active {
   border-bottom-color: var(--lab-violet);
   color: var(--lab-violet);
 }
 
-.flow-result-toolbar button span {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-toolbar button span {
   font-size: var(--font-size-caption);
 }
 
-.flow-result-toolbar :deep(.copy-btn) {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-toolbar .copy-btn {
   padding: 4px 8px;
 }
 
-.flow-response-body {
+:is(.api-workbench, .collection-workspace-modal) .flow-response-body {
   max-height: 260px;
   overflow: auto;
   margin: 10px 0 0;
@@ -4142,14 +4161,14 @@ svg {
   overflow-wrap: anywhere;
 }
 
-.flow-response-headers {
+:is(.api-workbench, .collection-workspace-modal) .flow-response-headers {
   display: grid;
   max-height: 250px;
   overflow: auto;
   margin-top: 8px;
 }
 
-.flow-response-headers > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-response-headers > div {
   display: grid;
   grid-template-columns: minmax(120px, 0.35fr) minmax(0, 1fr);
   gap: 12px;
@@ -4158,17 +4177,17 @@ svg {
   font-size: var(--font-size-small);
 }
 
-.flow-response-headers strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-response-headers strong {
   color: var(--text-primary);
 }
 
-.flow-response-headers code {
+:is(.api-workbench, .collection-workspace-modal) .flow-response-headers code {
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
 
-.flow-response-headers p,
-.flow-result-empty {
+:is(.api-workbench, .collection-workspace-modal) .flow-response-headers p,
+:is(.api-workbench, .collection-workspace-modal) .flow-result-empty {
   margin: 0;
   padding: 24px 4px;
   color: var(--text-muted);
@@ -4176,7 +4195,7 @@ svg {
   text-align: center;
 }
 
-.flow-result-warning {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-warning {
   margin-top: 8px;
   padding: 8px 10px;
   border-radius: 7px;
@@ -4185,8 +4204,8 @@ svg {
   font-size: var(--font-size-meta);
 }
 
-.flow-result-error,
-.flow-result-placeholder {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-error,
+:is(.api-workbench, .collection-workspace-modal) .flow-result-placeholder {
   display: flex;
   align-items: center;
   gap: 11px;
@@ -4196,11 +4215,11 @@ svg {
   background: var(--bg-subtle);
 }
 
-.flow-result-error {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-error {
   background: var(--danger-bg);
 }
 
-.flow-result-error > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-error > span {
   display: grid;
   width: 30px;
   height: 30px;
@@ -4212,52 +4231,52 @@ svg {
   font-weight: 900;
 }
 
-.flow-result-error strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-error strong {
   color: var(--danger);
 }
 
-.flow-result-error p,
-.flow-result-placeholder p {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-error p,
+:is(.api-workbench, .collection-workspace-modal) .flow-result-placeholder p {
   margin: 3px 0 0;
   color: var(--text-muted);
   font-size: var(--font-size-small);
 }
 
-.flow-result-placeholder {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-placeholder {
   color: var(--lab-violet);
 }
 
-.flow-result-placeholder strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-result-placeholder strong {
   color: var(--text-primary);
   font-size: var(--font-size-control);
 }
 
-.flow-rule-editor {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-editor {
   padding: 12px 16px 18px;
 }
 
-.flow-rule-head,
-.flow-rule-row {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-head,
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-row {
   display: grid;
   grid-template-columns: 42px minmax(150px, 1fr) 28px minmax(150px, 1fr) 32px;
   align-items: center;
   gap: 8px;
 }
 
-.flow-rule-head {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-head {
   padding: 0 6px 7px;
   color: var(--text-muted);
   font-size: var(--font-size-small);
   font-weight: 750;
 }
 
-.flow-rule-row {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-row {
   padding: 8px 6px;
   border-top: 1px solid var(--border-light);
   color: var(--text-muted);
 }
 
-.flow-rule-row > button {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-row > button {
   display: grid;
   width: 30px;
   height: 30px;
@@ -4269,17 +4288,17 @@ svg {
   cursor: pointer;
 }
 
-.flow-rule-row > button:hover {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-row > button:hover {
   background: var(--danger-bg);
   color: var(--danger);
 }
 
-.flow-rule-head.assertion,
-.flow-rule-row.assertion {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-head.assertion,
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-row.assertion {
   grid-template-columns: 42px minmax(160px, 1fr) minmax(160px, 1fr) 32px;
 }
 
-.flow-add-rule {
+:is(.api-workbench, .collection-workspace-modal) .flow-add-rule {
   display: inline-flex;
   height: 32px;
   align-items: center;
@@ -4295,14 +4314,14 @@ svg {
   font-weight: 700;
 }
 
-.flow-rule-run-results {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results {
   margin-top: 14px;
   overflow: hidden;
   border: 1px solid var(--border-light);
   border-radius: 9px;
 }
 
-.flow-rule-run-results > header {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > header {
   display: flex;
   min-height: 36px;
   align-items: center;
@@ -4311,17 +4330,17 @@ svg {
   background: var(--bg-subtle);
 }
 
-.flow-rule-run-results > header strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > header strong {
   color: var(--text-primary);
   font-size: var(--font-size-small);
 }
 
-.flow-rule-run-results > header span {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > header span {
   color: var(--text-muted);
   font-size: var(--font-size-meta);
 }
 
-.flow-rule-run-results > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > div {
   display: grid;
   grid-template-columns: 25px minmax(140px, 0.7fr) minmax(0, 1fr);
   align-items: center;
@@ -4330,7 +4349,7 @@ svg {
   border-top: 1px solid var(--border-light);
 }
 
-.flow-rule-run-results > div > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > div > span {
   display: grid;
   width: 22px;
   height: 22px;
@@ -4340,33 +4359,33 @@ svg {
   font-weight: 900;
 }
 
-.flow-rule-run-results > div.passed > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > div.passed > span {
   background: var(--success-bg);
   color: var(--success);
 }
 
-.flow-rule-run-results > div.failed > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > div.failed > span {
   background: var(--danger-bg);
   color: var(--danger);
 }
 
-.flow-rule-run-results > div > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > div > div {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
 
-.flow-rule-run-results strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results strong {
   color: var(--text-primary);
   font-size: var(--font-size-small);
 }
 
-.flow-rule-run-results small {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.flow-rule-run-results code {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results code {
   min-width: 0;
   overflow: hidden;
   color: var(--text-secondary);
@@ -4375,24 +4394,24 @@ svg {
   white-space: nowrap;
 }
 
-.flow-rule-run-results > p {
+:is(.api-workbench, .collection-workspace-modal) .flow-rule-run-results > p {
   margin: 0;
   padding: 14px 11px;
   color: var(--text-muted);
   font-size: var(--font-size-meta);
 }
 
-.flow-variable-sidebar {
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar {
   min-height: 0;
   overflow: auto;
   border-left: 1px solid var(--border-light);
 }
 
-.flow-variable-sidebar > section + section {
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar > section + section {
   border-top: 1px solid var(--border-light);
 }
 
-.flow-variable-sidebar section > header {
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar section > header {
   display: flex;
   min-height: 50px;
   align-items: center;
@@ -4400,18 +4419,18 @@ svg {
   padding: 0 13px;
 }
 
-.flow-variable-sidebar header > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar header > div {
   display: flex;
   align-items: center;
   gap: 7px;
 }
 
-.flow-variable-sidebar header strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar header strong {
   color: var(--text-primary);
   font-size: var(--font-size-body);
 }
 
-.flow-variable-sidebar header > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar header > span {
   display: grid;
   min-width: 21px;
   height: 20px;
@@ -4422,19 +4441,19 @@ svg {
   font-size: var(--font-size-meta);
 }
 
-.flow-run-overview > header > span.failed {
+:is(.api-workbench, .collection-workspace-modal) .flow-run-overview > header > span.failed {
   background: var(--danger-bg);
   color: var(--danger);
 }
 
-.flow-overview-metrics {
+:is(.api-workbench, .collection-workspace-modal) .flow-overview-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
   padding: 0 12px 9px;
 }
 
-.flow-overview-metrics > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-overview-metrics > div {
   display: grid;
   gap: 4px;
   padding: 10px;
@@ -4443,21 +4462,21 @@ svg {
   background: var(--bg-subtle);
 }
 
-.flow-overview-metrics span {
+:is(.api-workbench, .collection-workspace-modal) .flow-overview-metrics span {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
 
-.flow-overview-metrics strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-overview-metrics strong {
   color: var(--success);
   font-size: var(--font-size-control);
 }
 
-.flow-overview-metrics strong.failed {
+:is(.api-workbench, .collection-workspace-modal) .flow-overview-metrics strong.failed {
   color: var(--danger);
 }
 
-.flow-final-result-button {
+:is(.api-workbench, .collection-workspace-modal) .flow-final-result-button {
   display: flex;
   width: calc(100% - 24px);
   height: 32px;
@@ -4474,12 +4493,12 @@ svg {
   font-weight: 700;
 }
 
-.flow-runtime-list {
+:is(.api-workbench, .collection-workspace-modal) .flow-runtime-list {
   display: grid;
   padding: 0 12px 12px;
 }
 
-.flow-runtime-list > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-runtime-list > div {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);
   gap: 8px;
@@ -4487,7 +4506,7 @@ svg {
   border-top: 1px solid var(--border-light);
 }
 
-.flow-runtime-list > div > span {
+:is(.api-workbench, .collection-workspace-modal) .flow-runtime-list > div > span {
   display: grid;
   width: 22px;
   height: 22px;
@@ -4499,13 +4518,13 @@ svg {
   font-weight: 850;
 }
 
-.flow-runtime-list > div > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-runtime-list > div > div {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
-.flow-runtime-list strong {
+:is(.api-workbench, .collection-workspace-modal) .flow-runtime-list strong {
   overflow: hidden;
   color: var(--text-primary);
   font-size: var(--font-size-body);
@@ -4513,12 +4532,12 @@ svg {
   white-space: nowrap;
 }
 
-.flow-runtime-list small {
+:is(.api-workbench, .collection-workspace-modal) .flow-runtime-list small {
   color: var(--text-muted);
   font-size: var(--font-size-meta);
 }
 
-.flow-runtime-list code {
+:is(.api-workbench, .collection-workspace-modal) .flow-runtime-list code {
   overflow: hidden;
   color: var(--text-secondary);
   font-size: var(--font-size-small);
@@ -4526,33 +4545,33 @@ svg {
   white-space: nowrap;
 }
 
-.flow-variable-empty {
+:is(.api-workbench, .collection-workspace-modal) .flow-variable-empty {
   margin: 0;
   padding: 6px 14px 20px;
   color: var(--text-muted);
   font-size: var(--font-size-small);
 }
 
-.flow-environment-list {
+:is(.api-workbench, .collection-workspace-modal) .flow-environment-list {
   display: grid;
   gap: 7px;
   padding: 0 12px 14px;
 }
 
-.flow-environment-list > div {
+:is(.api-workbench, .collection-workspace-modal) .flow-environment-list > div {
   display: grid;
   grid-template-columns: 27px minmax(0, 0.75fr) minmax(0, 1fr) 24px;
   align-items: center;
   gap: 5px;
 }
 
-.flow-environment-list input {
+:is(.api-workbench, .collection-workspace-modal) .flow-environment-list input {
   height: 30px;
   padding: 0 7px;
   font-size: var(--font-size-small);
 }
 
-.flow-environment-list > div > button {
+:is(.api-workbench, .collection-workspace-modal) .flow-environment-list > div > button {
   display: grid;
   width: 24px;
   height: 24px;
@@ -4564,7 +4583,7 @@ svg {
   cursor: pointer;
 }
 
-.flow-environment-list > button {
+:is(.api-workbench, .collection-workspace-modal) .flow-environment-list > button {
   display: inline-flex;
   width: fit-content;
   height: 30px;
@@ -4580,166 +4599,166 @@ svg {
 }
 
 @media (max-width: 1100px) {
-  .flow-workspace-topbar {
+  :is(.api-workbench, .collection-workspace-modal) .flow-workspace-topbar {
     grid-template-columns: 180px minmax(180px, 1fr) auto;
   }
 
-  .flow-workspace-shell {
+  :is(.api-workbench, .collection-workspace-modal) .flow-workspace-shell {
     grid-template-columns: 170px minmax(0, 1fr) 220px;
   }
 
-  .flow-brand {
+  :is(.api-workbench, .collection-workspace-modal) .flow-brand {
     padding: 0 14px;
   }
 
-  .flow-variable-sidebar {
+  :is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar {
     display: block;
     grid-column: auto;
     border-top: 0;
     border-left: 1px solid var(--border-light);
   }
 
-  .flow-editor-main {
+  :is(.api-workbench, .collection-workspace-modal) .flow-editor-main {
     min-height: 0;
   }
 }
 
 @media (max-width: 760px) {
-  :global(.collection-workspace-modal) {
+  .collection-workspace-modal {
     --vc-modal-overlay-pad: 0;
     --vc-modal-radius: 0;
     --vc-modal-max-h: 100vh;
   }
 
-  :global(.collection-workspace-modal .vc-modal) {
+  .collection-workspace-modal .vc-modal {
     width: 100vw !important;
     height: 100vh;
   }
 
-  .flow-workspace-topbar {
+  :is(.api-workbench, .collection-workspace-modal) .flow-workspace-topbar {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .flow-brand {
+  :is(.api-workbench, .collection-workspace-modal) .flow-brand {
     display: none;
   }
 
-  .flow-collection-title {
+  :is(.api-workbench, .collection-workspace-modal) .flow-collection-title {
     padding-left: 10px;
   }
 
-  .flow-collection-title > span,
-  .flow-collection-title > button,
-  .flow-topbar-actions :deep(.custom-select),
-  .flow-secondary-action {
+  :is(.api-workbench, .collection-workspace-modal) .flow-collection-title > span,
+  :is(.api-workbench, .collection-workspace-modal) .flow-collection-title > button,
+  :is(.api-workbench, .collection-workspace-modal) .flow-topbar-actions .custom-select,
+  :is(.api-workbench, .collection-workspace-modal) .flow-secondary-action {
     display: none;
   }
 
-  .flow-topbar-actions {
+  :is(.api-workbench, .collection-workspace-modal) .flow-topbar-actions {
     padding: 0 8px;
   }
 
-  .flow-workspace-shell {
+  :is(.api-workbench, .collection-workspace-modal) .flow-workspace-shell {
     display: block;
     overflow: auto;
   }
 
-  .flow-collection-sidebar {
+  :is(.api-workbench, .collection-workspace-modal) .flow-collection-sidebar {
     display: block;
     border-right: 0;
     border-bottom: 1px solid var(--border-light);
   }
 
-  .flow-sidebar-heading,
-  .flow-sidebar-footer {
+  :is(.api-workbench, .collection-workspace-modal) .flow-sidebar-heading,
+  :is(.api-workbench, .collection-workspace-modal) .flow-sidebar-footer {
     display: none;
   }
 
-  .flow-collection-list {
+  :is(.api-workbench, .collection-workspace-modal) .flow-collection-list {
     display: flex;
     overflow-x: auto;
     padding: 8px;
   }
 
-  .flow-collection-list > button {
+  :is(.api-workbench, .collection-workspace-modal) .flow-collection-list > button {
     width: auto;
     min-width: 150px;
   }
 
-  .flow-editor-main {
+  :is(.api-workbench, .collection-workspace-modal) .flow-editor-main {
     min-height: 720px;
     grid-template-rows: 50px minmax(280px, 1fr) minmax(290px, 0.9fr);
   }
 
-  .flow-variable-sidebar {
+  :is(.api-workbench, .collection-workspace-modal) .flow-variable-sidebar {
     display: block;
   }
 
-  .flow-stage-track {
+  :is(.api-workbench, .collection-workspace-modal) .flow-stage-track {
     justify-content: flex-start;
   }
 
-  .flow-rule-head {
+  :is(.api-workbench, .collection-workspace-modal) .flow-rule-head {
     display: none;
   }
 
-  .flow-rule-row,
-  .flow-rule-row.assertion {
+  :is(.api-workbench, .collection-workspace-modal) .flow-rule-row,
+  :is(.api-workbench, .collection-workspace-modal) .flow-rule-row.assertion {
     grid-template-columns: 32px minmax(0, 1fr) 24px;
   }
 
-  .flow-rule-row > input:last-of-type,
-  .flow-rule-row.assertion > input {
+  :is(.api-workbench, .collection-workspace-modal) .flow-rule-row > input:last-of-type,
+  :is(.api-workbench, .collection-workspace-modal) .flow-rule-row.assertion > input {
     grid-column: 2;
   }
 
-  .flow-rule-row > button {
+  :is(.api-workbench, .collection-workspace-modal) .flow-rule-row > button {
     grid-column: 3;
     grid-row: 1;
   }
 }
 
 @media (max-width: 700px) {
-  .topbar-title span,
-  .workspace-entry small {
+  :is(.api-workbench, .collection-workspace-modal) .topbar-title span,
+  :is(.api-workbench, .collection-workspace-modal) .workspace-entry small {
     display: none;
   }
 }
 
 @media (max-width: 560px) {
-  .topbar {
+  :is(.api-workbench, .collection-workspace-modal) .topbar {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
   }
 
-  .topbar-leading {
+  :is(.api-workbench, .collection-workspace-modal) .topbar-leading {
     gap: 8px;
   }
 
-  .topbar-title strong {
+  :is(.api-workbench, .collection-workspace-modal) .topbar-title strong {
     font-size: var(--font-size-body-lg);
   }
 
-  .topbar-actions {
+  :is(.api-workbench, .collection-workspace-modal) .topbar-actions {
     gap: 6px;
   }
 
-  .workspace-entry,
-  .toolbar-action,
-  .toolbar-primary {
+  :is(.api-workbench, .collection-workspace-modal) .workspace-entry,
+  :is(.api-workbench, .collection-workspace-modal) .toolbar-action,
+  :is(.api-workbench, .collection-workspace-modal) .toolbar-primary {
     width: 40px;
     min-width: 40px;
     padding: 0;
   }
 
-  .workspace-entry > span:nth-child(2),
-  .workspace-entry > svg,
-  .toolbar-action > span,
-  .toolbar-primary > span {
+  :is(.api-workbench, .collection-workspace-modal) .workspace-entry > span:nth-child(2),
+  :is(.api-workbench, .collection-workspace-modal) .workspace-entry > svg,
+  :is(.api-workbench, .collection-workspace-modal) .toolbar-action > span,
+  :is(.api-workbench, .collection-workspace-modal) .toolbar-primary > span {
     display: none;
   }
 
-  .workspace-entry-icon {
+  :is(.api-workbench, .collection-workspace-modal) .workspace-entry-icon {
     width: 28px;
     height: 28px;
   }

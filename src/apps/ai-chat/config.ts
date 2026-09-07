@@ -59,6 +59,7 @@ export async function fetchConversationPage(
     page?: number
     limit?: number
   } = {},
+  signal?: AbortSignal,
 ): Promise<ConversationPage> {
   const params = new URLSearchParams({
     page: String(options.page || 1),
@@ -68,7 +69,7 @@ export async function fetchConversationPage(
   const res = await api.get<{
     data: ConversationSummary[]
     pagination?: { page: number; total: number; hasMore: boolean }
-  }>(`/api/ai-chat/conversations?${params}`)
+  }>(`/api/ai-chat/conversations?${params}`, { signal })
   return {
     items: res.data || [],
     page: res.pagination?.page || 1,
@@ -89,7 +90,10 @@ export async function deleteConversation(id: string): Promise<void> {
   await api.delete(`/api/ai-chat/conversations/${encodeURIComponent(id)}`)
 }
 
-export async function fetchConversation(id: string): Promise<{
+export async function fetchConversation(
+  id: string,
+  signal?: AbortSignal,
+): Promise<{
   messages: ChatMessage[]
   provider: string | null
   model: string | null
@@ -97,6 +101,6 @@ export async function fetchConversation(id: string): Promise<{
 }> {
   const res = await api.get<{
     data: { messages: ChatMessage[]; provider: string | null; model: string | null; title: string }
-  }>(`/api/ai-chat/conversations/${id}/messages`)
+  }>(`/api/ai-chat/conversations/${id}/messages`, { signal })
   return res.data
 }

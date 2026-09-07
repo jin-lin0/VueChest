@@ -44,6 +44,7 @@
           class="select-dropdown"
           v-if="isOpen"
           ref="dropdownRef"
+          :data-overlay-owner="`${selectId}-trigger`"
           :style="dropdownStyle"
           :data-placement="dropdownPlacement"
           @click.stop

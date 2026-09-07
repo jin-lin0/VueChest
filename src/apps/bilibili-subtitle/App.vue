@@ -21,7 +21,9 @@ import { api } from '@/lib/request'
 import { getStorage, setStorage, removeStorage } from '@/lib/storage'
 import { copyToClipboard } from '@/utils/clipboard'
 import { downloadFile } from '@/utils/common'
-import { CustomSelect, MarkdownView, Tooltip } from '@/components'
+import CustomSelect from '@/components/common/CustomSelect.vue'
+import MarkdownView from '@/components/common/MarkdownView.vue'
+import Tooltip from '@/components/common/Tooltip.vue'
 import { useBilibiliAnalysis } from './composables/useBilibiliAnalysis'
 import AnalysisFollowUp from './components/AnalysisFollowUp.vue'
 import BilibiliCredentialPanel from './components/BilibiliCredentialPanel.vue'
@@ -642,7 +644,7 @@ function clearAnalysisCache() {
           </div>
           <p v-if="analysisError" class="error-message">
             {{ analysisError }}
-            <button v-if="!analyzing" type="button" @click="startAnalysis">重试</button>
+            <button v-if="!analyzing" type="button" @click="runAnalysis(true)">重试未完成项</button>
           </p>
         </div>
 
@@ -671,11 +673,19 @@ function clearAnalysisCache() {
               <span v-if="item.cached">缓存结果</span>
             </header>
             <div class="analysis-content">
-              <MarkdownView v-if="item.content" :content="item.content" />
-              <p v-else class="stream-preparing">{{ analysisStatus || '正在连接 AI…' }}</p>
+              <MarkdownView
+                v-if="item.content"
+                :content="item.content"
+                :streaming="item.streaming"
+              />
+              <p v-else-if="item.streaming" class="stream-preparing">
+                {{ analysisStatus || '正在连接 AI…' }}
+              </p>
               <i v-if="item.streaming && item.content" class="stream-cursor" aria-hidden="true"></i>
             </div>
+            <p v-if="item.error" class="error-message" role="status">{{ item.error }}</p>
             <AnalysisFollowUp
+              v-if="item.content && !item.streaming && !item.error"
               :thread="analysisThreadFor(item.id)"
               @ask="askAnalysisQuestion(item, $event)"
             />
