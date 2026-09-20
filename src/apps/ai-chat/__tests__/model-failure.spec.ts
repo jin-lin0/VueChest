@@ -4,21 +4,27 @@ import { findNextAvailableModel, resolveModelFailure } from '../model-failure'
 
 const models: ModelOption[] = [
   { id: 'vendor/first:free', name: 'First' },
-  { id: 'vendor/limited:free', name: 'Limited', health: 'cooldown' },
+  { id: 'vendor/limited:free', name: 'Limited' },
   { id: 'vendor/second:free', name: 'Second' },
 ]
 
 describe('AI model failure notice', () => {
-  it('suggests the next healthy model and skips cooldown entries', () => {
-    expect(findNextAvailableModel(models, 'vendor/first:free')?.id).toBe('vendor/second:free')
+  it('suggests the next available model in list order', () => {
+    expect(findNextAvailableModel(models, 'vendor/first:free')?.id).toBe('vendor/limited:free')
     expect(resolveModelFailure(models, 'vendor/first:free', 'NETWORK_ERROR')).toMatchObject({
-      message: '模型「First」连接中断，未收到完整响应。建议切换到「Second」后重试。',
-      suggestedModel: { id: 'vendor/second:free' },
+      message: '模型「First」连接中断，未收到完整响应。建议切换到「Limited」后重试。',
+      suggestedModel: { id: 'vendor/limited:free' },
     })
   })
 
-  it('wraps to the first healthy model when the last model fails', () => {
+  it('wraps to the first model when the last one fails', () => {
     expect(findNextAvailableModel(models, 'vendor/second:free')?.id).toBe('vendor/first:free')
+  })
+
+  it('does not suggest switching when the provider has a single model', () => {
+    expect(findNextAvailableModel([{ id: 'openrouter/free', name: 'Free' }], 'openrouter/free')).toBe(
+      null,
+    )
   })
 
   it('does not suggest switching for context or authentication errors', () => {

@@ -23,6 +23,24 @@ const SWITCHABLE_CODES = new Set([
   'AI_REQUEST_FAILED',
 ])
 
+/**
+ * 这些错误码出现在「已经收到部分回答」的场景时，意味着回答被打断
+ * 而非请求失败，前端应降级为警告提示而不是红色报错。
+ */
+export const PARTIAL_ANSWER_WARNING_CODES = new Set([
+  'NETWORK_ERROR',
+  'INCOMPLETE_STREAM',
+  'STREAM_INTERRUPTED',
+  'RATE_LIMIT',
+  'QUOTA_EXHAUSTED',
+  'UPSTREAM_UNAVAILABLE',
+  'UPSTREAM_NETWORK',
+  'AI_TIMEOUT',
+  'EMPTY_RESPONSE',
+  'UPSTREAM_ERROR',
+  'AI_STREAM_ERROR',
+])
+
 function failureReason(code: string) {
   switch (code) {
     case 'INCOMPLETE_STREAM':
@@ -79,7 +97,7 @@ export function findNextAvailableModel(
   const failedIndex = models.findIndex((model) => model.id === failedModelId)
   const ordered =
     failedIndex >= 0 ? [...models.slice(failedIndex + 1), ...models.slice(0, failedIndex)] : models
-  return ordered.find((model) => model.id !== failedModelId && model.health !== 'cooldown') ?? null
+  return ordered.find((model) => model.id !== failedModelId) ?? null
 }
 
 export function resolveModelFailure(

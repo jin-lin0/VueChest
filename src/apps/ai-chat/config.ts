@@ -3,10 +3,6 @@ import { api } from '@/lib/request'
 export interface ModelOption {
   id: string
   name: string
-  contextLength?: number | null
-  expirationDate?: string | null
-  health?: 'healthy' | 'cooldown'
-  cooldownUntil?: number | null
 }
 
 export interface ProviderMeta {

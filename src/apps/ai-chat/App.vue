@@ -24,7 +24,7 @@ import {
 } from './config'
 import { suggestionPool } from './suggestions'
 import { ChatStreamError, useChatStream } from './composables/useChatStream'
-import { resolveModelFailure } from './model-failure'
+import { PARTIAL_ANSWER_WARNING_CODES, resolveModelFailure } from './model-failure'
 import {
   conversationToJson,
   conversationToMarkdown,
@@ -80,26 +80,31 @@ const providerOptions = computed<SelectOption[]>(() =>
   providers.value.map((p) => ({ value: p.id, label: p.name })),
 )
 const modelOptions = computed<SelectOption[]>(() =>
-  currentProvider.value.models.map((model, index) => {
-    const recommended = currentProvider.value.id === 'openrouter' && index === 0 ? '推荐 · ' : ''
-    const expiration = model.expirationDate ? ` · 免费至 ${model.expirationDate.slice(0, 10)}` : ''
-    const health = model.health === 'cooldown' ? ' · 近期受限' : ''
-    return { value: model.id, label: `${recommended}${model.name}${expiration}${health}` }
-  }),
+  currentProvider.value.models.map((model) => ({
+    value: model.id,
+    label: model.name,
+  })),
 )
 
 const showSidebar = ref(true)
 const error = ref('')
 const suggestedModel = ref<ModelOption | null>(null)
+const errorLevel = ref<'error' | 'warning'>('error')
 
-function showError(message: string, suggestion: ModelOption | null = null) {
+function showError(
+  message: string,
+  suggestion: ModelOption | null = null,
+  level: 'error' | 'warning' = 'error',
+) {
   error.value = message
   suggestedModel.value = suggestion
+  errorLevel.value = level
 }
 
 function clearError() {
   error.value = ''
   suggestedModel.value = null
+  errorLevel.value = 'error'
 }
 
 function switchToSuggestedModel() {
@@ -539,8 +544,17 @@ const sendMessage = async (options: SendOptions = {}) => {
     if (!isCurrentStream() || (err instanceof Error && err.name === 'AbortError')) return
     const code = err instanceof ChatStreamError ? err.code : 'AI_STREAM_ERROR'
     const failedModelId = resolvedRequestModelId || requestModelId
-    const notice = resolveModelFailure(requestProvider.models, failedModelId, code)
-    showError(notice.message, notice.suggestedModel)
+    const hasPartialAnswer = Boolean(assistantMessage.content.trim())
+    if (hasPartialAnswer && code === 'PERSISTENCE_FAILED') {
+      // 回答已完整收到，只是落库失败，不该用红色报错吓用户。
+      showError('回答已生成，但保存会话失败，请刷新后检查记录。', null, 'warning')
+    } else if (hasPartialAnswer && PARTIAL_ANSWER_WARNING_CODES.has(code)) {
+      // 已经收到部分回答：降级为警告，保留内容供复制/重新生成。
+      showError('回答可能不完整，已保留收到的部分内容，可点击重新生成。', null, 'warning')
+    } else {
+      const notice = resolveModelFailure(requestProvider.models, failedModelId, code)
+      showError(notice.message, notice.suggestedModel)
+    }
     // 保留已收到的部分回答供复制；错误提示不作为下一轮对话上下文。
     if (!assistantMessage.content) {
       currentMessages.value = rollbackMessages
@@ -941,7 +955,7 @@ onUnmounted(() => {
         </button>
       </Transition>
 
-      <div v-if="error" class="error-bar">
+      <div v-if="error" class="error-bar" :class="{ warning: errorLevel === 'warning' }">
         <span>{{ error }}</span>
         <div class="error-actions">
           <button
@@ -1344,6 +1358,24 @@ onUnmounted(() => {
 .error-bar > span {
   flex: 1;
   min-width: 0;
+}
+
+.error-bar.warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.error-bar.warning .error-switch {
+  border-color: color-mix(in srgb, var(--warning) 35%, transparent);
+  color: var(--warning);
+}
+
+.error-bar.warning .error-switch:hover {
+  border-color: var(--warning);
+}
+
+.error-bar.warning .error-dismiss {
+  color: var(--warning);
 }
 
 .error-actions {

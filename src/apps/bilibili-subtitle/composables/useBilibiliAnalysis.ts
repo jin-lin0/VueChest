@@ -79,9 +79,9 @@ export function useBilibiliAnalysis(
     providers.value.map((provider) => ({ value: provider.id, label: provider.name })),
   )
   const analysisModelOptions = computed(() =>
-    (currentAnalysisProvider.value?.models || []).map((model, index) => ({
+    (currentAnalysisProvider.value?.models || []).map((model) => ({
       value: model.id,
-      label: `${index === 0 && analysisProvider.value === 'openrouter' ? '推荐 · ' : ''}${model.name}`,
+      label: model.name,
     })),
   )
 
