@@ -601,21 +601,11 @@ export const useStockStore = defineStore('stock', () => {
     type: KlinePeriod = 'day',
     count: number = KLINE_HISTORY_COUNTS[type],
   ): Promise<KlineData[]> => {
-    const symbol = toSymbol(code)
-    const url = `https://web.ifzq.gtimg.cn/appstock/app/kline/kline?param=${symbol},${type},,,${count},&qfq=1`
-
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`请求失败: ${response.status}`)
-    }
-
-    const text = await response.text()
-    const data = JSON.parse(text)
-    if (data.code !== 0 || !data.data?.[symbol]?.[type]) {
-      throw new Error('未找到K线数据')
-    }
-
-    return normalizeKlineRows(data.data[symbol][type])
+    const { data } = await api.get<{ data: unknown }>(
+      `/api/research-stocks/${code}/kline?period=${type}&count=${count}`,
+      { auth: false },
+    )
+    return normalizeKlineRows(data)
   }
 
   const queryStockByDate = async () => {

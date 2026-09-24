@@ -18,6 +18,8 @@ type ResearchPanel =
   | 'financials'
   | 'notices'
   | 'journal'
+  | 'westockStock'
+  | 'westockDiscover'
 const router = useRouter()
 const route = useRoute()
 const stock = useStockStore()
@@ -30,6 +32,8 @@ const BacktestPanel = defineAsyncComponent(() => import('./components/BacktestPa
 const FinancialsPanel = defineAsyncComponent(() => import('./components/FinancialsPanel.vue'))
 const NoticesPanel = defineAsyncComponent(() => import('./components/NoticesPanel.vue'))
 const JournalPanel = defineAsyncComponent(() => import('./components/JournalPanel.vue'))
+const WestockStockPanel = defineAsyncComponent(() => import('./components/WestockStockPanel.vue'))
+const WestockDiscoverPanel = defineAsyncComponent(() => import('./components/WestockDiscoverPanel.vue'))
 
 const activePanel = ref<ResearchPanel>('overview')
 const activePeriod = ref<KlinePeriod>('day')
@@ -69,8 +73,11 @@ const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number
     label: '研究笔记',
     count: () => stock.alerts.filter((item) => item.code === stock.stockCode).length,
   },
+  { id: 'westockStock', label: '个股深度' },
+  { id: 'westockDiscover', label: '数据发现' },
 ]
-const panelNeedsStock = (panel: ResearchPanel) => panel !== 'overview' && panel !== 'portfolio'
+const panelNeedsStock = (panel: ResearchPanel) =>
+  panel !== 'overview' && panel !== 'portfolio' && panel !== 'westockDiscover'
 const panelIds = new Set<ResearchPanel>(panelItems.map((item) => item.id))
 
 const debouncedSearch = debounce(() => {
@@ -359,6 +366,10 @@ watch(
         </nav>
 
         <PortfolioPanel v-if="activePanel === 'portfolio'" @open-stock="openPositionResearch" />
+
+        <WestockStockPanel v-else-if="activePanel === 'westockStock'" />
+
+        <WestockDiscoverPanel v-else-if="activePanel === 'westockDiscover'" />
 
         <div v-else-if="!stock.result && !stock.isLoading" class="welcome-state compact-empty">
           <div class="empty-heading">
