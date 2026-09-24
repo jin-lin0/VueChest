@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { westockCommand, westockExec } from '@/stores/westock'
+import { RouterLink } from 'vue-router'
+import { isWestockAuthError, westockCommand, westockExec } from '@/stores/westock'
 import type { WestockResult as WestockResultData } from '@/stores/westock'
 import { useToast } from '@/composables/useToast'
 import WestockResult from './WestockResult.vue'
@@ -30,10 +31,12 @@ const activeSection = ref<Section>('strategy')
 const catalogs = reactive<Record<string, CatItem[]>>({})
 const catalogLoading = ref(true)
 const catalogError = ref<string | null>(null)
+const catalogUnauthorized = ref(false)
 
 const result = ref<WestockResultData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const unauthorized = ref(false)
 
 // 通用筛选项
 const commonDate = ref('')
@@ -92,34 +95,48 @@ function grouped(items: CatItem[]): Array<{ group: string; items: CatItem[] }> {
 
 const strategyGroups = computed(() => grouped(catalogs.strategy ?? []))
 const rankingGroups = computed(() => grouped(catalogs.ranking ?? []))
-const labelGroups = computed(() => grouped(catalogs.label ?? []))
 const eventGroups = computed(() => grouped(catalogs.event ?? []))
 const filterPresets = computed(() => catalogs.filter ?? [])
 
 async function loadCatalogs() {
   catalogLoading.value = true
   catalogError.value = null
-  const tasks: Array<[string, Section | 'filter', string[]]> = [
-    ['strategy', 'strategy', ['strategy', '--list']],
-    ['ranking', 'ranking', ['ranking', '--list']],
-    ['label', 'label', ['label', '--list']],
-    ['event', 'event', ['event', '--list']],
-    ['filter', 'filter', ['filter', '--list-presets']],
+  catalogUnauthorized.value = false
+  const tasks: Array<[string, string[]]> = [
+    ['strategy', ['strategy', '--list']],
+    ['ranking', ['ranking', '--list']],
+    ['label', ['label', '--list']],
+    ['event', ['event', '--list']],
+    ['filter', ['filter', '--list-presets']],
   ]
+  const failures: string[] = []
   try {
-    const results = await Promise.all(
-      tasks.map(([key, , args]) => westockExec('screen', args).then((r) => [key, r] as const)),
-    )
-    for (const [key, r] of results) {
-      const text = r.kind === 'text' ? r.text ?? '' : JSON.stringify(r.data ?? '')
-      catalogs[key] = parseList(text, key as 'strategy' | 'label' | 'event' | 'ranking' | 'filter')
+    // 串行加载：每次 exec 都会在服务端 spawn 一个子进程，5 个并发会直接占满
+    // 服务端的并发闸门，拖慢首屏并挤掉用户主动发起的查询。
+    for (const [key, args] of tasks) {
+      try {
+        const r = await westockExec('screen', args)
+        const text = r.kind === 'text' ? r.text ?? '' : JSON.stringify(r.data ?? '')
+        catalogs[key] = parseList(text, key as 'strategy' | 'label' | 'event' | 'ranking' | 'filter')
+        if (!r.success) failures.push(key)
+      } catch (e) {
+        // 未登录时后续请求也必然失败，直接停下并给出登录入口。
+        if (isWestockAuthError(e)) {
+          catalogUnauthorized.value = true
+          catalogError.value = e instanceof Error ? e.message : '请先登录后使用'
+          return
+        }
+        // 单个目录取不到不该拖垮其余目录（例如某类策略当天无返回）。
+        failures.push(key)
+      }
+    }
+    if (failures.length === tasks.length) {
+      catalogError.value = '目录加载失败，请稍后重试'
     }
     if (!sel.strategy && catalogs.strategy?.length) sel.strategy = catalogs.strategy[0].id
     if (!sel.ranking && catalogs.ranking?.length) sel.ranking = catalogs.ranking[0].id
     if (!sel.filter && catalogs.filter?.length) sel.filter = catalogs.filter[0].id
     if (!sel.event && catalogs.event?.length) sel.event = catalogs.event[0].id
-  } catch (e) {
-    catalogError.value = e instanceof Error ? e.message : '目录加载失败'
   } finally {
     catalogLoading.value = false
   }
@@ -128,11 +145,13 @@ async function loadCatalogs() {
 async function run(cmd: Section | 'advanced', extra: Record<string, string> = {}) {
   loading.value = true
   error.value = null
+  unauthorized.value = false
   try {
     const res = await westockCommand(cmd, extra)
     result.value = res
     if (!res.success) error.value = res.error || '请求未成功'
   } catch (e) {
+    unauthorized.value = isWestockAuthError(e)
     error.value = e instanceof Error ? e.message : '请求失败'
   } finally {
     loading.value = false
@@ -189,11 +208,13 @@ async function runAdvanced() {
   }
   loading.value = true
   error.value = null
+  unauthorized.value = false
   try {
     const res = await westockExec(advEngine.value, args)
     result.value = res
     if (!res.success) error.value = res.error || '请求未成功'
   } catch (e) {
+    unauthorized.value = isWestockAuthError(e)
     error.value = e instanceof Error ? e.message : '请求失败'
   } finally {
     loading.value = false
@@ -230,7 +251,8 @@ onMounted(loadCatalogs)
     <div v-else-if="catalogError" class="ws-state error">
       <span>!</span>
       <p>{{ catalogError }}</p>
-      <button type="button" @click="loadCatalogs">重试</button>
+      <RouterLink v-if="catalogUnauthorized" class="ws-login" to="/login">去登录</RouterLink>
+      <button v-else type="button" @click="loadCatalogs">重试</button>
     </div>
 
     <template v-else>
@@ -353,7 +375,12 @@ onMounted(loadCatalogs)
         <button type="button" class="ws-run" @click="runSearch">搜索</button>
       </div>
 
-      <WestockResult :result="result" :loading="loading" :error="error" />
+      <WestockResult
+        :result="result"
+        :loading="loading"
+        :error="error"
+        :unauthorized="unauthorized"
+      />
 
       <details class="ws-advanced">
         <summary>高级模式（直接拼接 westock 参数）</summary>
@@ -526,6 +553,15 @@ onMounted(loadCatalogs)
   background: var(--bg-card);
   color: var(--text-primary);
   cursor: pointer;
+}
+.ws-login {
+  padding: 6px 16px;
+  border-radius: 9px;
+  background: #0f766e;
+  color: #fff;
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  text-decoration: none;
 }
 .ws-spinner {
   width: 36px;

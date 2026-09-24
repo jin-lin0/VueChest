@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useStockStore } from '@/stores/stock'
-import { westockCommand } from '@/stores/westock'
+import { isWestockAuthError, westockCommand } from '@/stores/westock'
 import type { WestockResult as WestockResultData } from '@/stores/westock'
 import WestockResult from './WestockResult.vue'
 
@@ -128,6 +128,7 @@ const selState = reactive<Record<string, string>>({})
 const result = ref<WestockResultData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const unauthorized = ref(false)
 
 const code = computed(() => stock.formattedCode)
 const activeCmd = computed(() => STOCK_CMDS.find((c) => c.id === activeTab.value)!)
@@ -184,11 +185,13 @@ async function run() {
   }
   loading.value = true
   error.value = null
+  unauthorized.value = false
   try {
     const res = await westockCommand(cmd.id, buildParams(cmd))
     result.value = res
     if (!res.success) error.value = res.error || '请求未成功'
   } catch (e) {
+    unauthorized.value = isWestockAuthError(e)
     error.value = e instanceof Error ? e.message : '请求失败'
   } finally {
     loading.value = false
@@ -252,7 +255,12 @@ watch(
       <button type="button" class="ws-run" @click="run()">刷新</button>
     </div>
 
-    <WestockResult :result="result" :loading="loading" :error="error" />
+    <WestockResult
+      :result="result"
+      :loading="loading"
+      :error="error"
+      :unauthorized="unauthorized"
+    />
 
     <p class="ws-foot">
       数据来自腾讯 westock 网关，仅供研究学习，不构成投资建议。

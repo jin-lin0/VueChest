@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
+import { RouterLink } from 'vue-router'
 import type { WestockResult, WestockTableRow } from '@/stores/westock'
 import type { KlineData } from '@/stores/stock'
 
@@ -9,6 +10,7 @@ const props = defineProps<{
   result: WestockResult | null
   loading?: boolean
   error?: string | null
+  unauthorized?: boolean
 }>()
 
 const isKline = computed(() => {
@@ -90,6 +92,7 @@ async function copyRaw() {
     <div v-else-if="error" class="ws-state error">
       <span>!</span>
       <p>{{ error }}</p>
+      <RouterLink v-if="unauthorized" class="ws-login" to="/login">去登录</RouterLink>
     </div>
 
     <div v-else-if="!result" class="ws-state">
@@ -176,6 +179,15 @@ async function copyRaw() {
   border-radius: 50%;
   background: var(--bg-subtle);
   font-weight: 900;
+}
+.ws-login {
+  padding: 6px 16px;
+  border-radius: 9px;
+  background: #0f766e;
+  color: #fff;
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  text-decoration: none;
 }
 .ws-spinner {
   width: 36px;
