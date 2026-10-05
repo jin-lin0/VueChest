@@ -228,6 +228,43 @@ const dataCommands = computed<CommandItem[]>(() =>
   })),
 )
 
+// 帮助文档检索：文档注册表内联了全部 Markdown，体积较大，
+// 因此只在用户真正输入关键词时才懒加载，避免进入首屏依赖。
+const docsCommands = ref<CommandItem[]>([])
+let docsLoaded = false
+let docsLoading: Promise<void> | null = null
+
+function ensureDocCommands(): Promise<void> {
+  if (docsLoaded) return Promise.resolve()
+  if (docsLoading) return docsLoading
+  docsLoading = (async () => {
+    try {
+      const [{ allDocs }, { isFolder }] = await Promise.all([
+        import('@/docs'),
+        import('@/docs/types'),
+      ])
+      docsCommands.value = allDocs
+        .filter((doc) => !isFolder(doc) && (doc.content || doc.loadContent))
+        .map((doc) => ({
+          id: `doc-${doc.id}`,
+          type: 'navigation' as const,
+          label: doc.title,
+          description: '帮助文档',
+          icon: '▤',
+          route: `/docs?doc=${encodeURIComponent(doc.id)}`,
+          keywords: `文档 帮助 docs guide ${doc.title} ${doc.id}`,
+          kindLabel: '文档',
+        }))
+      docsLoaded = true
+    } catch {
+      // 文档检索不可用不影响其它命令
+    } finally {
+      docsLoading = null
+    }
+  })()
+  return docsLoading
+}
+
 const appActionCommands = computed<CommandItem[]>(() => {
   // App 内的动态命令（如流水线预设）需要在每次打开面板时重新读取。
   void commandCatalogVersion.value
@@ -255,6 +292,7 @@ const allCommands = computed(() => [
   ...workspaceCommands.value,
   ...navigationCommands.value,
   ...dataCommands.value,
+  ...docsCommands.value,
 ])
 
 const results = computed(() => {
@@ -368,6 +406,8 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 watch(query, () => {
   selectedIndex.value = 0
+  // 输入两个及以上字符才触发文档懒加载，避免打开面板就下载文档注册表
+  if (query.value.trim().length >= 2) void ensureDocCommands()
 })
 
 onMounted(() => {
@@ -392,7 +432,7 @@ onUnmounted(() => {
               ref="inputRef"
               v-model="query"
               type="text"
-              placeholder="搜索应用、页面或操作…"
+              placeholder="搜索应用、页面、操作或文档…"
               autocomplete="off"
               aria-label="搜索命令"
             />
@@ -417,11 +457,8 @@ onUnmounted(() => {
               </span>
               <span class="item-kind">
                 {{
-                  item.type === 'action'
-                    ? item.kindLabel || '操作'
-                    : item.type === 'app'
-                      ? '应用'
-                      : '页面'
+                  item.kindLabel ||
+                  (item.type === 'action' ? '操作' : item.type === 'app' ? '应用' : '页面')
                 }}
               </span>
             </button>
