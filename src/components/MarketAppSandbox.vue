@@ -21,6 +21,7 @@ import {
   handleSandboxMessage,
   type SandboxCapabilities,
 } from '@/lib/sandbox-bridge'
+import { normalizePermissions, type SandboxPermission } from '@/lib/sandbox-permissions'
 
 defineOptions({ name: 'MarketAppSandbox' })
 
@@ -36,9 +37,10 @@ const router = useRouter()
 const sandboxAttr = 'allow-scripts allow-forms allow-popups allow-modals'
 const sandboxSrc = `${import.meta.env.BASE_URL}sandbox.html`
 
-// 能力白名单：默认拒绝一切网络。运行时从应用元数据（已安装记录或详情）注入
-// 其声明的 allowNetwork，第三方应用必须显式声明域名白名单才会被放行。
-const caps: SandboxCapabilities = { allowNetwork: [] }
+// 能力白名单：网络默认拒绝一切域名；能力权限默认全不授予。
+// 运行时从应用元数据（已安装记录或详情）注入其声明的 allowNetwork 与 permissions，
+// 第三方应用必须显式声明、且用户安装时已确认，才会被放行。
+const caps: SandboxCapabilities = { allowNetwork: [], permissions: [] }
 
 let bootstrapped = false
 
@@ -63,24 +65,28 @@ const onMessage = (ev: MessageEvent) => {
     return
   }
 
-  handleSandboxMessage(msg, props.appId, caps, (resp) => postToFrame(resp))
+  void handleSandboxMessage(msg, props.appId, caps, (resp) => postToFrame(resp))
 }
 
 async function bootstrap() {
   if (bootstrapped) return
   bootstrapped = true
 
-  // 解析联网白名单：优先取本地已安装记录（离线可用），否则实时拉详情。
-  // 这一份来自服务端 app 元数据（上传/审核时声明），是受信任真源，非 bundle 自声明。
-  let allowNetwork: string[] = []
+  // 解析联网白名单与能力权限：优先取本地已安装记录（离线可用），缺项时实时拉详情。
+  // 这两份都来自服务端 app 元数据（上传/审核时声明），是受信任真源，非 bundle 自声明。
   const entry = market.installedApps.find((a) => a.id === Number(props.appId))
-  if (entry?.allowNetwork?.length) {
-    allowNetwork = entry.allowNetwork
-  } else {
+  let allowNetwork: string[] = entry?.allowNetwork || []
+  let permissions: SandboxPermission[] = normalizePermissions(entry?.permissions)
+  // 只有「记录不存在」或「字段根本没落盘」（旧版本安装的记录）才回源。
+  // 不能按数组为空判断：应用合法地可以「声明了能力权限但不联网」（如 ai-notes），
+  // 那样每次进沙箱都会白拉一次详情。
+  if (!Array.isArray(entry?.allowNetwork) || !Array.isArray(entry?.permissions)) {
     const detail = await market.fetchAppDetail(Number(props.appId))
-    allowNetwork = detail?.allowNetwork || []
+    if (!Array.isArray(entry?.allowNetwork)) allowNetwork = detail?.allowNetwork || []
+    if (!Array.isArray(entry?.permissions)) permissions = normalizePermissions(detail?.permissions)
   }
   caps.allowNetwork = allowNetwork
+  caps.permissions = permissions
 
   // 本地无缓存（如跨设备 / 清过 storage / 直接深度链接）时，从服务端按需拉取并缓存
   let code = getStorage<string>(`market-bundle-${props.appId}`, '')
@@ -98,6 +104,7 @@ async function bootstrap() {
       appId: props.appId,
       bundle: code,
       storage,
+      permissions,
       theme: isDark.value,
       // 供沙箱把回包 postMessage 钉死到父站 origin，避免被无关页面接收
       parentOrigin: window.location.origin,

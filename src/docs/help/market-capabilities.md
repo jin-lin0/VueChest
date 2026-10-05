@@ -1,12 +1,14 @@
 # 市场应用可用能力（运行时桥）
 
-本章面向**开发者**，系统性地列出 VueChest 通过**运行时桥（Runtime Bridge）**向市场应用暴露的全部能力，以及如何正确使用它们。市场应用是被注入主页面执行的纯 JS（IIFE），它与宿主共享同一个页面上下文，因此可以直接复用宿主提供的这些运行时对象。
+本章面向**开发者**，系统性地列出 VueChest 通过**运行时桥（Runtime Bridge）**向市场应用暴露的全部能力，以及如何正确使用它们。
+
+> ⚠️ **执行环境**：市场应用**不再**被注入主页面执行。bundle 运行在带 `sandbox="allow-scripts"` 的 **iframe**（opaque origin）内，与宿主页面彻底隔离 —— 碰不到宿主 DOM，也没有同源存储 / cookie。宿主在 iframe 文档里挂载 `window.__VueChest__` 等对象，应用只能通过**受限的运行时桥**访问宿主能力；越权调用会被拒绝。隔离机制详见 [沙箱机制](./market-sandbox.md)。
 
 > 前置阅读：[应用包开发规范](./market-spec.md)。本章聚焦"运行时能提供什么"，规范章聚焦"包该怎么构建"。
 
 ## 1. 两个全局入口
 
-宿主在应用启动时向 `window` 挂载了两个全局对象，市场应用可直接读取：
+沙箱文档加载时会向 `window` 挂载两个全局对象，市场应用可直接读取：
 
 | 全局对象               | 用途                                                            |
 | ---------------------- | --------------------------------------------------------------- |
@@ -24,7 +26,7 @@
 | `Vue`                  | 模块     | 宿主的 Vue（`import * as Vue`），**必须复用它**，不要自带 Vue |
 | `VueRouter`            | —        | **不提供（恒为 `undefined`）**：沙箱内无内部路由能力，请勿依赖 vue-router |
 | `Pinia`                | 模块     | 宿主的 Pinia 模块（含 `defineStore`），用于跨应用共享状态     |
-| `storage`              | object   | 本地存储能力：`{ getStorage, setStorage }`（见下文）          |
+| `storage`              | object   | 本地存储能力：`{ getStorage, setStorage, removeStorage }`（见下文） |
 | `theme`                | AppTheme | 主题对象，与 `window.__APP_THEME__` 指向**同一个实例**        |
 | `defineComponent`      | fn       | Vue API 快捷再导出                                            |
 | `defineAsyncComponent` | fn       | Vue API 快捷再导出                                            |
@@ -40,12 +42,9 @@
 
 ### 2.1 时序说明（重要）
 
-`__VueChest__` 的字段**并非同一时刻全部就绪**：
+沙箱文档的引导脚本是**同步执行**的，因此 `__VueChest__` 上的字段在 bundle 开始执行时就已经全部挂载完毕：`Vue`、`Pinia`、`storage`、`theme` 及各类 Vue API 再导出都可直接使用（`VueRouter` 恒为 `undefined`，无路由能力）。
 
-- **首屏同步阶段**即可用：`Vue`、`theme` 以及上面列出的各类 Vue API 再导出（`VueRouter` 恒为 `undefined`，无路由能力）。
-- **存储初始化完成后**才追加：`Pinia` 与 `storage`（它们在 `initStorage()` 完成后挂载）。
-
-由于市场应用是在"用户安装 / 进入路由"时才加载的，此时宿主早已启动完毕，因此实际使用中 `Pinia` 与 `storage` 一般都已就绪。若你要在极早期访问，请做好判空。
+唯一需要注意的是**数据的时序**：`storage.getStorage` 读的是宿主在 `bootstrap` 消息里注入的**快照**，该快照在 bundle 执行前已写入，所以首屏即可同步读到已持久化的值；而 `setStorage` 是**异步落盘**到宿主的，调用后不要立刻假设宿主侧已写完（应用内的同步读走的是本地缓存，立即读回没问题）。
 
 ## 3. 本地存储 `__VueChest__.storage`
 
@@ -87,7 +86,57 @@ store.inc()
 
 > 若用到 Pinia，构建时同样应把 `pinia` 外部化为 `window.__VueChest__.Pinia`（详见 [应用包开发规范](./market-spec.md)）。
 
-## 5. 主题能力
+## 5. 需授权能力（`meta.permissions`）
+
+除本地存储外，以下能力**默认关闭**：应用必须在应用包的 `meta.permissions` 里声明，安装（或更新时新增）时由用户确认后才生效。未声明或用户未确认的调用会被宿主桥直接拒绝（返回 rejected 的 Promise）。
+
+```js
+export default {
+  component: App,
+  route: '/m/notes',
+  meta: {
+    name: '云笔记',
+    icon: '📝',
+    description: '本地优先、可跨设备同步的笔记',
+    version: '1.0.0',
+    // 声明需要的能力；未列出的能力调用会被拒绝
+    permissions: ['cloud', 'notify'],
+  },
+}
+```
+
+| 权限键      | 对应 API                                    | 说明                                                             | 需登录 |
+| ----------- | ------------------------------------------- | ---------------------------------------------------------------- | ------ |
+| `notify`    | `__VueChest__.notify({ body, level })`      | 弹宿主 Toast；`level` ∈ `success` / `error` / `warning` / `info` | 否     |
+| `clipboard` | `__VueChest__.clipboard.write(txt)` / `.read()` | 读写系统剪贴板                                               | 否     |
+| `profile`   | `__VueChest__.user.profile()`               | 读取当前用户 `{ id, username, avatar }`                          | 是     |
+| `cloud`     | `__VueChest__.cloud.get/set/remove/list`    | 云端键值存储，跨设备同步（按「用户 + 应用」双重隔离）            | 是     |
+| `ai`        | `__VueChest__.ai.chat(messages, { model })` | 调用站内 AI 模型，返回 `{ content, model }`                      | 是     |
+| `files`     | `__VueChest__.files.upload(file)`           | 上传附件到站内存储，返回 `{ key, url, size, contentType }`       | 是     |
+
+运行时可用 `window.__VueChest__.permissions` 读取**本次实际被授予**的权限数组，据此做能力降级：
+
+```js
+const { cloud, permissions } = window.__VueChest__
+
+if (permissions.includes('cloud')) {
+  await cloud.set('draft', { text: '...' }) // 跨设备保存
+} else {
+  // 未授权：降级为本地 storage
+  window.__VueChest__.storage.setStorage('draft', { text: '...' })
+}
+```
+
+**边界与配额**
+
+- `cloud`：单个 key ≤ 120 字符，单条 value 序列化后 ≤ 200,000 字符；
+- `ai.chat`：每次最多 20 条消息、单条 ≤ 8000 字符，服务端非流式返回；
+- `files.upload`：单文件 ≤ 4MB，仅放行常见图片 / 文档 / 压缩包类型；
+- `cloud` 与 `ai` 均按登录用户计量，未登录调用会直接失败。
+
+> ⚠️ **权限变更需重新授权**：新版本若新增了权限，更新时会提示「本次新增权限」并要求用户确认，未确认不会写入本地。
+
+## 6. 主题能力
 
 市场应用可以跟随站点的深色 / 浅色模式。主题能力有两条通道，指向同一个 `AppTheme` 对象：
 
@@ -134,12 +183,31 @@ const off = theme.onChange(() => paint())
 
 主题变量的完整清单与用法，见 [主题变量与深色模式](./theme-variables.md)。
 
-## 6. 使用建议与边界
+## 7. 网络能力（fetch 白名单代理）
+
+沙箱是 opaque origin，应用**无法直接 `fetch`**（会被 CORS 拦截）。宿主的引导脚本重写了沙箱内的 `window.fetch`，把它转成经宿主代理的请求：
+
+```js
+// 用法与标准 fetch 完全一致，返回标准 Response
+const res = await fetch('https://api.example.com/quote?symbol=600519')
+const data = await res.json()
+```
+
+放行规则：
+
+- 只有命中应用声明的**域名白名单**（`allowNetwork`）才会放行，其余域名一律拒绝，`fetch` 会 reject；
+- 白名单支持精确域名（`api.example.com`）与通配子域（`*.example.com`）；
+- 单次请求超时 **15s**；代理回包会还原 `status` / `statusText` / `headers` / `body`，与原生 `Response` 行为一致。
+
+> ⚠️ **白名单不由 bundle 自声明**，而是在你**上传应用时填写「联网域名白名单」**、经管理员审核后写入服务端 `market_apps.allowNetwork`。需要联网的应用请提前把域名列清楚，否则运行时 fetch 必然失败。
+
+## 8. 使用建议与边界
 
 - **不要自带 Vue / Pinia**：务必外部化，复用宿主实例，否则会与主站冲突。
 - **key 加前缀**：本地存储的键名带上应用前缀，避免冲突。
 - **订阅要清理**：`onChange` 返回的取消函数应在应用卸载时调用，避免内存泄漏。
-- **安全须知**：市场应用运行在 **iframe 沙箱**（`sandbox="allow-scripts"`，opaque origin）内，与主站彻底隔离。存储按应用命名空间隔离，网络默认拒绝（需白名单放行）。详见 [沙箱机制](./market-sandbox.md)。
+- **按权限降级**：需要云端能力时先看 `__VueChest__.permissions`，未授权时退回本地存储，避免功能整体不可用。
+- **安全须知**：市场应用运行在 **iframe 沙箱**（`sandbox="allow-scripts"`，opaque origin）内，与主站彻底隔离。存储按应用命名空间隔离，网络默认拒绝（需白名单放行），能力权限默认不授予（需声明 + 用户确认）。详见 [沙箱机制](./market-sandbox.md)。
 
 ## 相关文档
 

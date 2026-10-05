@@ -46,6 +46,7 @@
 
       // ---- 运行时桥状态 ----
       var storageCache = Object.create(null); // 命名空间内存储快照（读同步）
+      var grantedPermissions = []; // 已授权的能力权限（bootstrap 注入，供应用自查）
       var isDark = false;
       var themeSubscribers = new Set();
       var pending = Object.create(null); // 请求 id -> {resolve, reject, isFetch}
@@ -113,8 +114,73 @@
             delete storageCache[key];
             requestCapability('storage.remove', [key]);
           }
+        },
+
+        // ---- 以下为「需授权能力」：应用必须在 meta.permissions 声明、且用户安装时已确认，
+        //      否则宿主桥会直接拒绝（返回 rejected 的 Promise）。----
+
+        // 站内通知（宿主 Toast）
+        notify: function (payload) {
+          return requestCapability('notify', [payload || {}]);
+        },
+        // 系统剪贴板
+        clipboard: {
+          write: function (text) {
+            return requestCapability('clipboard.write', [String(text == null ? '' : text)]);
+          },
+          read: function () {
+            return requestCapability('clipboard.read', []);
+          }
+        },
+        // 当前登录用户（只读）
+        user: {
+          profile: function () {
+            return requestCapability('profile', []);
+          }
+        },
+        // 云端键值存储（需登录）：与本地 storage 不同，会跨设备同步
+        cloud: {
+          get: function (key) {
+            return requestCapability('cloud.get', [String(key)]);
+          },
+          set: function (key, value) {
+            return requestCapability('cloud.set', [String(key), value]);
+          },
+          remove: function (key) {
+            return requestCapability('cloud.remove', [String(key)]);
+          },
+          list: function () {
+            return requestCapability('cloud.list', []);
+          }
+        },
+        // AI 文本生成（需登录）：返回 { content, model }
+        ai: {
+          chat: function (messages, options) {
+            return requestCapability('ai.chat', [
+              { messages: messages || [], model: options && options.model }
+            ]);
+          }
+        },
+        // 文件上传（需登录）：返回 { key, url, size, contentType }
+        files: {
+          upload: function (file) {
+            if (!file || typeof file.arrayBuffer !== 'function') {
+              return Promise.reject(new Error('files.upload 需要一个 File 对象'));
+            }
+            return file.arrayBuffer().then(function (buffer) {
+              return requestCapability('files.upload', [
+                {
+                  name: file.name,
+                  contentType: file.type || 'application/octet-stream',
+                  data: buffer
+                }
+              ]);
+            });
+          }
         }
       };
+      // 已授权权限列表：bootstrap 后填充，应用可据此做能力降级
+      window.__VueChest__.permissions = grantedPermissions;
       window.__APP_THEME__ = appTheme;
 
       // ---- 网络代理：沙箱为 opaque origin，直接 fetch 会被 CORS 拦截，
@@ -154,6 +220,8 @@
           case 'bootstrap':
             if (typeof msg.parentOrigin === 'string') hostOrigin = msg.parentOrigin;
             storageCache = msg.storage || {};
+            grantedPermissions = Array.isArray(msg.permissions) ? msg.permissions : [];
+            window.__VueChest__.permissions = grantedPermissions;
             isDark = !!msg.theme;
             // 在沙箱文档根上切换 dark class，市场应用即可用 :global(html.dark) 适配暗色
             document.documentElement.classList.toggle('dark', isDark);

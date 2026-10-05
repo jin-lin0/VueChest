@@ -26,12 +26,13 @@
 
 `meta` 字段说明：
 
-| 字段          | 类型   | 必填   | 说明                                                               |
-| ------------- | ------ | ------ | ------------------------------------------------------------------ |
-| `name`        | string | **是** | 应用名称；缺失时服务端会拒绝创建（"名称、图标和应用文件不能为空"） |
-| `icon`        | string | **是** | 应用图标（如 emoji）；缺失时服务端拒绝创建                         |
-| `description` | string | 建议   | 应用描述；缺省时按空串 `''` 处理                                   |
-| `version`     | string | 否     | 版本号；缺省时回退为 `1.0.0`                                       |
+| 字段          | 类型     | 必填   | 说明                                                               |
+| ------------- | -------- | ------ | ------------------------------------------------------------------ |
+| `name`        | string   | **是** | 应用名称；缺失时服务端会拒绝创建（"名称、图标和应用文件不能为空"） |
+| `icon`        | string   | **是** | 应用图标（如 emoji）；缺失时服务端拒绝创建                         |
+| `description` | string   | 建议   | 应用描述；缺省时按空串 `''` 处理                                   |
+| `version`     | string   | 否     | 版本号；缺省时回退为 `1.0.0`                                       |
+| `permissions` | string[] | 否     | 声明的能力权限（`notify` / `clipboard` / `profile` / `cloud` / `ai` / `files`），安装时需用户确认；详见 [可用能力](./market-capabilities.md#5-需授权能力metapermissions) |
 
 > 说明：上传页面**不提供**这些字段的输入框，它们全部从 `meta` 自动解析回填。因此 `name`、`icon` 实际上是"上传时的必填内容"（写在包里）。详见 [如何上传应用到市场](./market-upload.md)。
 
@@ -45,6 +46,8 @@ export interface MarketAppMeta {
   icon: string
   description: string
   version?: string
+  /** 声明的能力权限，安装时需用户确认 */
+  permissions?: string[]
 }
 
 export interface MarketAppDefinition {
@@ -72,8 +75,10 @@ VueChest 在运行时会按如下方式加载应用包：
 - `window.__VueChest__.Vue` —— 宿主的 Vue（务必复用，勿自带）
 - `window.__VueChest__.VueRouter` —— 沙箱内**不提供 / 恒为 `undefined`**。市场应用运行在封闭 iframe 内，**没有内部路由能力**：应用只能渲染一个 `component`，页内跳转请用条件渲染 / 状态切换，不要依赖 vue-router（`useRouter` / `<router-view>` 不可用）。
 - `window.__VueChest__.Pinia` —— 宿主的 Pinia 模块（含 `defineStore`，跨应用共享状态）
-- `window.__VueChest__.storage` —— 本地存储能力 `{ getStorage, setStorage }`（沙箱内按应用命名空间隔离）
+- `window.__VueChest__.storage` —— 本地存储能力 `{ getStorage, setStorage, removeStorage }`（沙箱内按应用命名空间隔离）
 - `window.__VueChest__.theme` —— 主题对象（`AppTheme`）
+- `window.__VueChest__.permissions` —— 本次实际被授予的能力权限数组
+- 需授权能力（须在 `meta.permissions` 声明并经用户确认）：`notify` / `clipboard` / `user.profile` / `cloud` / `ai` / `files`
 - 另外还再导出了常用 Vue API：`defineComponent` / `defineAsyncComponent` / `h` / `ref` / `computed` / `reactive` / `watch` / `onMounted` / `onUnmounted`
 - `window.__APP_THEME__` —— 供市场 app 跟随深色模式（与 `__VueChest__.theme` 同一实例）
 

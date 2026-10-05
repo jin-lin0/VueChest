@@ -5,6 +5,8 @@ export interface MarketAppMeta {
   icon: string
   description: string
   version?: string
+  /** 声明的能力权限（notify / clipboard / profile / cloud / ai / files），安装时需用户确认 */
+  permissions?: string[]
 }
 
 export interface MarketAppDefinition {

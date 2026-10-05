@@ -235,7 +235,30 @@ describe('market app updates', () => {
     )
     const store = useMarketStore()
     store.initInstalledApps()
-    await expect(store.updateApp(1)).rejects.toThrow('新增联网权限')
+    await expect(store.updateApp(1)).rejects.toThrow('新版本新增权限 —— 联网域名：new.example.com')
+    expect(mocks.applyPatch).not.toHaveBeenCalled()
+    expect(mocks.storage.get('market-bundle-1')).toBe('old bundle')
+  })
+
+  it('blocks the update when a new capability permission is requested', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('expanded bundle')))
+    const original = mocks.apiGet.getMockImplementation()!
+    mocks.apiGet.mockImplementation((path: string) =>
+      path.endsWith('/download')
+        ? Promise.resolve({
+            data: {
+              fileUrl: 'https://cdn.example.com/app.js',
+              version: '2.0.0',
+              name: '测试',
+              allowNetwork: [],
+              permissions: ['cloud'],
+            },
+          })
+        : original(path),
+    )
+    const store = useMarketStore()
+    store.initInstalledApps()
+    await expect(store.updateApp(1)).rejects.toThrow('能力权限：云端存储')
     expect(mocks.applyPatch).not.toHaveBeenCalled()
     expect(mocks.storage.get('market-bundle-1')).toBe('old bundle')
   })

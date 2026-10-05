@@ -1,0 +1,8 @@
+{
+  "name": "AI 速记",
+  "icon": "📝",
+  "description": "本地优先、可跨设备同步的速记本，支持 AI 摘要与润色",
+  "category": "效率",
+  "version": "1.0.0",
+  "permissions": ["cloud", "ai", "notify", "clipboard"]
+}

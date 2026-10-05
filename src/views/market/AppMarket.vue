@@ -31,6 +31,11 @@ const filteredApps = computed(() => {
 
 const currentPage = ref(1)
 
+// 热门榜只在「全部」且未搜索时展示，避免与筛选结果互相干扰
+const showRanking = computed(
+  () => activeCategory.value === '全部' && !searchQuery.value.trim() && market.ranking.length > 0,
+)
+
 function loadApps() {
   return market.fetchApps({
     category: activeCategory.value !== '全部' ? activeCategory.value : undefined,
@@ -83,13 +88,15 @@ async function handleUpdate(appId: number) {
 onMounted(async () => {
   loadApps()
   void market.checkForUpdates()
+  void market.fetchRanking(8)
   // 分类 tab 消费后端枚举（GET /api/market/categories），兜底默认类目
   try {
-    const data = await api.get<{ name: string }[]>('/api/market/categories', {
+    const res = await api.get<{ data: { name: string }[] }>('/api/market/categories', {
       auth: false,
     })
-    if (Array.isArray(data) && data.length) {
-      const names = data.map((c) => c.name).filter(Boolean)
+    const list = res.data
+    if (Array.isArray(list) && list.length) {
+      const names = list.map((c) => c.name).filter(Boolean)
       const merged = ['全部', ...names]
       DEFAULT_CATEGORIES.slice(1).forEach((c) => {
         if (!merged.includes(c)) merged.push(c)
@@ -145,6 +152,35 @@ onMounted(async () => {
         {{ cat }}
       </button>
     </div>
+
+    <section v-if="showRanking" class="ranking">
+      <div class="ranking-head">
+        <h2>热门榜</h2>
+        <span class="ranking-sub">按下载量排序 · 评分来自用户评论</span>
+      </div>
+      <ol class="ranking-list">
+        <li
+          v-for="(item, index) in market.ranking"
+          :key="item.id"
+          class="ranking-item"
+          @click="goDetail(item.id)"
+        >
+          <span class="rank-no" :class="{ top: index < 3 }">{{ index + 1 }}</span>
+          <span class="rank-icon">{{ item.icon }}</span>
+          <span class="rank-name">
+            {{ item.name }}
+            <span v-if="item.isOfficial" class="official-badge">官方</span>
+          </span>
+          <span class="rank-rating">
+            <template v-if="item.rating.average !== null">
+              ★ {{ item.rating.average }}（{{ item.rating.count }}）
+            </template>
+            <template v-else>暂无评分</template>
+          </span>
+          <span class="rank-downloads">{{ item.downloads }} 次</span>
+        </li>
+      </ol>
+    </section>
 
     <div v-if="market.isLoading" class="loading-state market-skel">
       <div class="skel-grid">
@@ -287,6 +323,94 @@ onMounted(async () => {
   .updates-btn {
     justify-content: center;
   }
+}
+
+.ranking {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--bg-glass-soft);
+  border-radius: var(--radius-lg);
+  background: var(--bg-glass);
+}
+
+.ranking-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.ranking-head h2 {
+  margin: 0;
+  font-size: var(--font-size-heading);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ranking-sub {
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+.ranking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.25rem 1.5rem;
+}
+
+.ranking-item {
+  display: grid;
+  grid-template-columns: 22px 24px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-body);
+}
+
+.ranking-item:hover {
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.rank-no {
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.rank-no.top {
+  color: var(--accent);
+}
+
+.rank-icon {
+  font-size: var(--font-size-body-lg);
+  text-align: center;
+}
+
+.rank-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.rank-rating {
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+}
+
+.rank-downloads {
+  color: var(--text-secondary);
+  font-size: var(--font-size-small);
+  white-space: nowrap;
 }
 
 .market-container {

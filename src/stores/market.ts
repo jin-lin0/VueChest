@@ -4,6 +4,12 @@ import { getStorage, setStorage, applyStoragePatch } from '@/lib/storage'
 import { api } from '@/lib/request'
 import { useAuthStore } from '@/stores/auth'
 import { addedNetworkPermissions, sha256Hex, verifyBundleIntegrity } from '@/lib/bundle-integrity'
+import {
+  addedPermissions,
+  normalizePermissions,
+  permissionLabels,
+  type SandboxPermission,
+} from '@/lib/sandbox-permissions'
 
 export interface MarketAppItem {
   id: number
@@ -22,6 +28,8 @@ export interface MarketAppItem {
   status?: string
   /** 允许访问的网络域名白名单（沙箱联网能力用，由上传/审核时声明） */
   allowNetwork?: string[]
+  /** 声明的能力权限（notify / clipboard / cloud / ai / files / profile），经用户安装确认后生效 */
+  permissions?: string[]
   /** 经审核版本的应用包 SHA-256；旧版数据可能为空 */
   sha256?: string | null
   createdAt: string
@@ -39,6 +47,8 @@ export interface InstalledApp {
   updatedAt?: number
   /** 允许访问的网络域名白名单，随详情写入，供沙箱 caps 读取 */
   allowNetwork?: string[]
+  /** 已授权的能力权限，随详情写入，供沙箱 caps 读取 */
+  permissions?: string[]
   sha256?: string | null
 }
 
@@ -48,6 +58,7 @@ export interface MarketAppVersion {
   size?: number
   releaseNotes?: string
   allowNetwork?: string[]
+  permissions?: string[]
   sha256?: string | null
   status: 'active' | 'yanked'
   createdAt: string
@@ -69,6 +80,18 @@ export interface AppUpdateInfo {
 export interface AppRollbackPoint {
   entry: InstalledApp
   savedAt: number
+}
+
+export interface MarketRankingItem {
+  id: number
+  name: string
+  icon: string
+  description: string
+  category: string
+  version: string
+  downloads: number
+  isOfficial: boolean
+  rating: { average: number | null; count: number }
 }
 
 export interface MarketComment {
@@ -140,6 +163,7 @@ function installedRoutePath(appId: number | string): string {
 
 export const useMarketStore = defineStore('market', () => {
   const availableApps = ref<MarketAppItem[]>([])
+  const ranking = ref<MarketRankingItem[]>([])
   const isLoading = ref(false)
   const fetchError = ref('')
 
@@ -236,6 +260,19 @@ export const useMarketStore = defineStore('market', () => {
     }
   }
 
+  /** 热门榜：按下载量排序的已上架应用，附带评分聚合。 */
+  async function fetchRanking(limit = 8) {
+    try {
+      const res = await api.get<{ data: { items: MarketRankingItem[] } }>(
+        `/api/market/ranking?limit=${limit}`,
+        { auth: false },
+      )
+      ranking.value = res.data.items || []
+    } catch (e) {
+      console.error('Failed to fetch market ranking:', e)
+    }
+  }
+
   async function fetchAppDetail(id: number): Promise<MarketAppItem | null> {
     try {
       const res = await api.get<{ data: MarketAppItem }>(`/api/market/apps/${id}`, { auth: false })
@@ -262,6 +299,7 @@ export const useMarketStore = defineStore('market', () => {
           name: string
           version: string
           allowNetwork?: string[]
+          permissions?: string[]
           sha256?: string | null
         }
       }>(
@@ -288,6 +326,9 @@ export const useMarketStore = defineStore('market', () => {
         description: detail?.description || '',
         version: downloadRes.data.version,
         allowNetwork: downloadRes.data.allowNetwork || detail?.allowNetwork || [],
+        permissions: normalizePermissions(
+          downloadRes.data.permissions || detail?.permissions || [],
+        ),
         sha256: bundle.sha256,
         installedAt: Date.now(),
       },
@@ -405,6 +446,8 @@ export const useMarketStore = defineStore('market', () => {
     screenshots?: string[]
     /** 应用声明的联网域名白名单，经管理员审核后生效 */
     allowNetwork?: string[]
+    /** 应用声明的能力权限，经用户安装确认后生效 */
+    permissions?: SandboxPermission[]
   }) {
     const sha256 = await sha256Hex(await formData.file.arrayBuffer())
     const { data: upload } = await api.post<{
@@ -436,6 +479,7 @@ export const useMarketStore = defineStore('market', () => {
       releaseNotes: formData.releaseNotes,
       screenshots: formData.screenshots || [],
       allowNetwork: formData.allowNetwork || [],
+      permissions: normalizePermissions(formData.permissions),
       sha256,
       fileKey: upload.key,
       fileSize: formData.file.size,
@@ -536,6 +580,17 @@ export const useMarketStore = defineStore('market', () => {
     return addedNetworkPermissions(current?.allowNetwork, nextPermissions)
   }
 
+  /** 相对已安装版本，本次新增的能力权限（用于安装/更新前的授权确认弹窗）。 */
+  function capabilityPermissionExpansion(appId: number, next?: unknown): SandboxPermission[] {
+    const current = installedApps.value.find((item) => item.id === appId)
+    return addedPermissions(current?.permissions, next)
+  }
+
+  /** 新增能力权限的可读标签，供授权弹窗直接展示。 */
+  function capabilityPermissionLabels(appId: number, next?: unknown): string[] {
+    return permissionLabels(capabilityPermissionExpansion(appId, next))
+  }
+
   function hasRollback(appId: number) {
     return !!(
       getStorage<string>(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, '') &&
@@ -600,9 +655,14 @@ export const useMarketStore = defineStore('market', () => {
     const ownerToken = auth.token
     try {
       const download = await downloadAppVersion(appId, versionId)
-      const added = addedNetworkPermissions(oldEntry?.allowNetwork, download.entry.allowNetwork)
-      if (oldEntry && added.length && !options?.approvePermissions)
-        throw new Error(`新版本新增联网权限：${added.join('、')}`)
+      const addedNetwork = addedNetworkPermissions(oldEntry?.allowNetwork, download.entry.allowNetwork)
+      const addedCaps = addedPermissions(oldEntry?.permissions, download.entry.permissions)
+      if (oldEntry && !options?.approvePermissions) {
+        const parts: string[] = []
+        if (addedNetwork.length) parts.push(`联网域名：${addedNetwork.join('、')}`)
+        if (addedCaps.length) parts.push(`能力权限：${permissionLabels(addedCaps).join('、')}`)
+        if (parts.length) throw new Error(`新版本新增权限 —— ${parts.join('；')}`)
+      }
       if (!versionId && oldEntry && compareVersions(download.entry.version, oldEntry.version) <= 0)
         return oldEntry
       const entry = await commitDownload(download, oldEntry)
@@ -788,6 +848,7 @@ export const useMarketStore = defineStore('market', () => {
 
   return {
     availableApps,
+    ranking,
     isLoading,
     fetchError,
     installedApps,
@@ -795,6 +856,7 @@ export const useMarketStore = defineStore('market', () => {
     availableUpdates,
     initInstalledApps,
     fetchApps,
+    fetchRanking,
     fetchAppDetail,
     installApp,
     uninstallApp,
@@ -804,6 +866,8 @@ export const useMarketStore = defineStore('market', () => {
     hasUpdate,
     isUpdating,
     permissionExpansion,
+    capabilityPermissionExpansion,
+    capabilityPermissionLabels,
     hasRollback,
     rollbackApp,
     isCheckingUpdates,

@@ -8,6 +8,7 @@ import { formatFileSize } from '@/utils/common'
 import AppComments from '@/components/AppComments.vue'
 import { Modal } from '@/components'
 import type { MarketReportReason } from '@/stores/market'
+import { normalizePermissions, permissionDetails } from '@/lib/sandbox-permissions'
 
 const route = useRoute()
 const router = useRouter()
@@ -106,13 +107,22 @@ const hasUpdate = computed(() => (app.value ? market.hasUpdate(app.value.id) : f
 const installedVersion = computed(() =>
   app.value ? market.installedApps.find((item) => item.id === app.value?.id)?.version : undefined,
 )
-const requestedPermissions = computed(() =>
+const requestedNetwork = computed(() =>
   pendingAction.value === 'version'
     ? pendingVersion.value?.allowNetwork || []
     : app.value?.allowNetwork || [],
 )
+const requestedCapabilities = computed(() =>
+  pendingAction.value === 'version'
+    ? normalizePermissions(pendingVersion.value?.permissions)
+    : normalizePermissions(app.value?.permissions),
+)
+const requestedCapabilityDetails = computed(() => permissionDetails(requestedCapabilities.value))
 const addedPermissions = computed(() =>
-  app.value ? market.permissionExpansion(app.value.id, requestedPermissions.value) : [],
+  app.value ? market.permissionExpansion(app.value.id, requestedNetwork.value) : [],
+)
+const addedCapabilityLabels = computed(() =>
+  app.value ? market.capabilityPermissionLabels(app.value.id, requestedCapabilities.value) : [],
 )
 const returnContext = computed(() => {
   const source = route.query.from
@@ -375,14 +385,22 @@ async function handleVersionStatus(version: MarketAppVersion) {
           <ul>
             <li>在隔离的 iframe 沙箱内运行，不能注册宿主路由或读取宿主存储。</li>
             <li>本地数据只写入该应用自己的命名空间。</li>
-            <li v-if="requestedPermissions.length">
-              允许访问：{{ requestedPermissions.join('、') }}
+            <li v-if="requestedNetwork.length">
+              允许访问网络：{{ requestedNetwork.join('、') }}
             </li>
             <li v-else>不允许访问网络。</li>
             <li>下载完成后核对 SHA-256；不一致会立即终止安装。</li>
           </ul>
+          <ul v-if="requestedCapabilityDetails.length" class="permission-caps">
+            <li v-for="item in requestedCapabilityDetails" :key="item.key">
+              <strong>{{ item.label }}</strong>：{{ item.description }}
+            </li>
+          </ul>
           <p v-if="addedPermissions.length" class="permission-warning">
             本次新增联网权限：{{ addedPermissions.join('、') }}
+          </p>
+          <p v-if="addedCapabilityLabels.length" class="permission-warning">
+            本次新增能力权限：{{ addedCapabilityLabels.join('、') }}
           </p>
           <div class="dialog-actions">
             <button @click="permissionModalOpen = false">取消</button>
@@ -660,6 +678,17 @@ async function handleVersionStatus(version: MarketAppVersion) {
   color: var(--text-secondary);
   font-size: var(--font-size-body);
   line-height: 1.8;
+}
+
+.permission-caps {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-control);
+  line-height: 1.7;
 }
 
 .permission-warning {

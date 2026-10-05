@@ -246,6 +246,7 @@ async function handleSubmit() {
       releaseNotes: releaseNotes.value,
       screenshots,
       allowNetwork,
+      permissions: parsedMeta.value.permissions || [],
     })
     success.value = true
   } catch (e) {
