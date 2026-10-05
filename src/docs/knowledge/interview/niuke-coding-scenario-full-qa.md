@@ -1336,6 +1336,44 @@ function mergeIntervals(intervals) {
 
 ---
 
+### 二叉树的序列化与反序列化（LeetCode 297，前序/后序遍历 + 空指针标记，ACM 模式输入输出）如何实现？
+
+> “思路是前序遍历 + 空指针标记：把树写成一个扁平字符串，反序列化时按同样顺序递归还原。空指针必须显式标记（例如 `#`），否则只有值序列无法确定树形——这也是为什么不能靠「前序 + 中序」两趟还原（重复值场景不成立）。选前序的好处是根节点永远在最前，反序列化只需一个游标从左往右消费，不用额外定位根；后序也能做，序列化顺序是「左右根」，反序列化从右往左消费；中序不行，因为无法定位根。复杂度时间 O(n)、空间 O(n)。ACM 模式要自己处理 IO：读一行节点值（逗号分隔、含 null 标记），构造树，再按同样格式输出序列化结果。”
+
+```js
+// 前序序列化 + 反序列化
+function serialize(root) {
+  const parts = []
+  const walk = (node) => {
+    if (!node) {
+      parts.push('#')
+      return
+    }
+    parts.push(String(node.val))
+    walk(node.left)
+    walk(node.right)
+  }
+  walk(root)
+  return parts.join(',')
+}
+
+function deserialize(data) {
+  const parts = data.split(',')
+  let index = 0
+  const build = () => {
+    const value = parts[index++]
+    if (value === '#' || value === undefined) return null
+    const node = { val: Number(value), left: null, right: null }
+    node.left = build()
+    node.right = build()
+    return node
+  }
+  return build()
+}
+```
+
+---
+
 ## 场景 / 业务题
 
 ### 事件循环执行顺序输出（多道代码题）/ 给出代码判断 Promise / apply / bind 的输出
