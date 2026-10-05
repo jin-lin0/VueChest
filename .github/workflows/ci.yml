@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 校验（lint / 类型 / 文档 / 测试 / 构建）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # 版本取自 package.json 的 packageManager 字段，保证本地与 CI 一致
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: 类型检查
+        run: pnpm type-check
+
+      # 文档目录 / 结构 / 面试题库覆盖与代码块语法
+      - name: 文档与题库校验
+        run: pnpm docs:validate
+
+      - name: 单元测试
+        run: pnpm test
+
+      # build 内含 docs:catalog、首屏体积预算与路由体积预算
+      - name: 构建并校验体积预算
+        run: pnpm build
+
+      - name: 构建市场应用
+        run: pnpm build:market
