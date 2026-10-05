@@ -46,3 +46,5 @@ scripts/candidates/
 src/apps/stock/knowledge/data/
 # 知识库构建产物（聚合/生成的 atoms 等，不应入 git；上一条已整体忽略 data/，此处显式标注）
 src/apps/stock/knowledge/data/generated/
+
+.workbuddy-ai

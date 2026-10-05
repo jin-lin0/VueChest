@@ -36,12 +36,14 @@
 | 开发工具箱     | `/dev-toolbox`       | 42 个开发小工具，分 8 类（编码解码 / 时间日期 / 格式化转换 / 加密生成 / 文本处理 / 前端网络 / 图片媒体 / 单位换算）：TOML/INI/Query/FormData、HTTP 状态码/Curl/JSON Schema、Punycode/Hex/Gzip、图片→Base64/主色调/占位图、单位换算等；侧边栏支持搜索、分组折叠、最近使用、?tool= 深链，右键可「置顶」常用工具 |
 | 赛车游戏       | `/racing`            | 3D 赛车小游戏                                                                                                                                                                                                                                                                                                 |
 | 贪吃蛇         | `/snake`             | 本地双人 / 人机对战                                                                                                                                                                                                                                                                                           |
+| 音游实验室     | `/rhythm`            | 自动分析音乐节拍生成谱面的 4 键下落式音游                                                                                                                                                                                                                                                                     |
+| 星渊幸存者     | `/neon-survivor`     | 六分钟霓虹肉鸽射击：双摇杆战斗、随机强化与三阶段 Boss                                                                                                                                                                                                                                                         |
 | 游戏中心       | `/games`             | 汇总游戏入口、本机记录、每日挑战、赛车档案与成就                                                                                                                                                                                                                                                              |
 | 帮助文档       | `/docs`              | Markdown 文档中心（`src/docs/`）                                                                                                                                                                                                                                                                              |
 
-另含页面级模块：`/` 首页、`/market` 应用市场（可上传/安装 `market-apps/` 中的第三方应用）、`/login` `/register` 认证、`/admin` 后台管理（题库、分类、应用、用户）。
+另含页面级模块：`/` 首页、`/market` 应用市场（含按下载量与评分排序的「热门榜」，可上传/安装 `market-apps/` 中的第三方应用）、`/login` `/register` 认证、`/admin` 后台管理（题库、分类、应用、用户）。
 
-全局命令面板支持 `⌘/Ctrl + K` 唤起。系统 App 通过各自目录下的 `commands.ts` 暴露操作命令，命令面板只负责搜索、排序和执行；目前已接入音乐控制、流水线预设、股票研究与模拟持仓、面试随机练习，以及 API 请求和集合运行。
+全局命令面板支持 `⌘/Ctrl + K` 唤起，可搜索内置应用、已安装应用、市场应用、页面、App 快捷操作，以及**帮助文档**（文档注册表体积较大，仅在输入 2 个及以上字符时才懒加载）。系统 App 通过各自目录下的 `commands.ts` 暴露操作命令，命令面板只负责搜索、排序和执行；目前已接入音乐控制、流水线预设、股票研究与模拟持仓、面试随机练习，以及 API 请求和集合运行。
 
 登录后可在 `/settings/account` 选择性同步工作区布局、开发工具箱预设、面试进度、API 工作台、音乐设置或股票本地数据。未勾选的数据不会上传或下载；API 环境变量和股票持仓默认不勾选，并在界面中标记为可能含敏感数据。
 
@@ -50,7 +52,7 @@
 ```
 src/
 ├── apps/        内置应用（每个子目录一个 App.vue 入口）
-├── views/       页面级视图（首页 / 市场 / 后台 / 认证）
+├── views/       页面级视图（首页 / 市场 / 开发者中心 / 通知中心 / 后台 / 认证）
 ├── layouts/     布局（含 AdminLayout）
 ├── components/  common/ 通用组件 · business/ 业务组件
 ├── composables/ 组合式逻辑（含 useTheme、useChatStream 等）
@@ -89,7 +91,11 @@ pnpm dev
 pnpm build
 ```
 
-依次生成文档懒加载目录、执行 TypeScript 类型检查、Vite 构建、首屏预算和路由级预算检查。当前首屏预算限制入口 gzip ≤30KB、JavaScript 合计 ≤100KB；路由预算根据 Vite manifest 统计首次进入的静态依赖闭包，并显式纳入首帧必触发的动态组件，覆盖股票、API、面试、赛车和题目编辑器。产物输出到 `dist/`。
+依次生成文档懒加载目录、执行 TypeScript 类型检查、Vite 构建、首屏预算和路由级预算检查。当前首屏预算限制入口 gzip ≤31KB、JavaScript 合计 ≤100KB；路由预算根据 Vite manifest 统计首次进入的静态依赖闭包，并显式纳入首帧必触发的动态组件，覆盖股票、API、面试、赛车和题目编辑器。产物输出到 `dist/`。
+
+> **入口预算为何从 30KB 调到 31KB**：新增「通知中心」时入口已贴到 30663 / 30720，只剩 57 字节余量，
+> 而单是注册一条懒加载路由的固定开销就超过它（35 条路由记录都写在 `router/index.ts` 里，全算入口成本）。
+> 通知 store 已改为动态导入（见 `src/App.vue`）。**后续入口增长仍应优先靠「把非关键逻辑移出入口」解决。**
 
 ### 预览构建产物
 
@@ -113,14 +119,73 @@ pnpm check     # 完整质量检查：lint、测试、文档校验、主应用�
 | `.env.development` | `VITE_API_BASE_URL` | 开发后端地址（默认 `http://localhost:3000`）     |
 | `.env.production`  | `VITE_API_BASE_URL` | 生产后端地址（默认 `https://server.020201.xyz`） |
 
+## 通知中心
+
+- **入口**：首页顶栏铃铛（`components/business/NotificationCenter.vue`），未读角标同时写入 favicon 与
+  Badging API（`lib/app-badge.ts`）。完整列表在 `/notifications`（`views/Notifications.vue`）。
+- **状态**：`stores/notifications.ts`。登录后由 `App.vue` 调用 `bootstrapNotifications()`（拉一次未读数 +
+  每 60s 轮询，后台标签页自动跳过），退出登录清空角标。
+  注意 `App.vue` 里用的是**动态 `import()`** 而不是顶层 import：入口 gzip 预算贴着上限，
+  通知 store 连带展示层约 3.5KB，放进首屏关键路径会顶破预算；角标晚几百毫秒出现无感。
+- **乐观更新**：标记已读 / 删除都先改本地再发请求，失败则回滚到服务端状态并重新拉取，
+  不会出现「界面说已读、刷新又变未读」的错觉。
+- **纯函数拆分**：类型→图标映射、相对时间、站内跳转白名单（`lib/notification-format.ts`）
+  与 favicon 角标（`lib/app-badge.ts`）都是无副作用函数，可直接单测。
+
+> ⚠️ **本项目不使用 Service Worker。** `main.ts` 启动时会主动注销所有已注册的 Service Worker。
+> 因此没有浏览器系统级推送，通知只做站内投递。
+
+## 开发者数据看板
+
+`/developer`（`views/DeveloperCenter.vue`）顶部新增数据看板，数据来自后端 `GET /api/developer/analytics`：
+
+- 四块指标：应用数 / 上架数 / 待审版本 / 窗口内下载量
+- 下载趋势（面积图）与评论趋势（柱状图），共用 `components/common/TrendChart.vue`
+- 应用维度表格：窗口内下载、评论数、平均评分，以及 32px 迷你走势
+- 评分分布 1~5 星条形图、平均审核耗时
+
+`TrendChart` 是手写 SVG（`components/common/trend-chart.ts` 负责几何计算，纯函数），
+没有引入图表库：`viewBox` + `preserveAspectRatio="none"` 做自适应拉伸，
+`vector-effect="non-scaling-stroke"` 保证线宽不被拉伸变形。
+
 ## 市场应用构建 / 发布
 
 ```sh
-pnpm build:market     # 构建 market-apps/ 到产物目录
-pnpm publish:market   # 发布到后端 R2 存储
+pnpm build:market              # 构建 market-apps/ 下全部应用到产物目录
+pnpm publish:market            # 构建并发布**全部**应用（每个都会重新上传）
+pnpm publish:market ai-notes   # 只发布指定应用（改了哪个发哪个，推荐）
 ```
 
-市场发布会为应用包计算 SHA-256，并把校验值写入 R2 对象元数据和版本记录。浏览器安装时会重新计算校验值；不一致的包不会进入本地缓存。
+发布脚本会：登录后端 → 构建 → 计算应用包 SHA-256 → 直传 R2 → 创建/更新应用记录 → 自动过审。
+
+- **重复发布是更新而不是新建**：服务端按「同名 + 同作者」判定为同一应用，版本记录按
+  「appId + version」`findOrCreate`，所以重复执行不会产生重复应用或重复版本。
+- 凭据从 `.env` 读取：`MARKET_USER`（缺省 `admin`）与 `MARKET_PASS`；
+  发布目标取 `.env.production` 的 `VITE_API_BASE_URL`（缺省 `https://server.020201.xyz`）。
+- 浏览器安装时会重新计算 SHA-256 并与 R2 对象元数据比对，不一致的包不会进入本地缓存。
+- `meta.json` 的 `permissions` 会随包一起提交；**漏了它应用就一个能力都拿不到**（服务端会静默存成 `[]`）。
+
+`market-apps/` 目录：`ai-notes`（AI 速记，演示云端同步 + AI + 通知 + 剪贴板）、`bookmark`、`counter`、`expense`、`notes`、`pomodoro`、`special-days`、`todo`。
+
+## 市场应用能力与权限
+
+市场应用运行在 `public/sandbox.html` 的 iframe 沙箱（`sandbox="allow-scripts"`，**不开启** `allow-same-origin`）内，宿主通过 `src/lib/sandbox-bridge.ts` 按白名单代理其能力请求。
+
+| 能力       | 权限键 / 开关                     | 说明                                                     |
+| ---------- | --------------------------------- | -------------------------------------------------------- |
+| 本地存储   | 默认开放                          | 按 `appId` 命名空间隔离，读写自己的数据                  |
+| 主题       | 默认开放                          | 跟随站点深浅色                                           |
+| 网络请求   | `allowNetwork` 域名白名单         | 默认拒绝一切域名，按域名逐个放行（15s 超时）             |
+| 站内通知   | `notify`                          | 弹宿主 Toast                                             |
+| 剪贴板     | `clipboard`                       | 读写系统剪贴板                                           |
+| 账号信息   | `profile`                         | 只读用户名与头像（需登录）                               |
+| 云端存储   | `cloud`                           | 按「用户 + 应用」隔离的云端 KV（需登录）                 |
+| AI 生成    | `ai`                              | 受控调用站内 AI 中转（需登录）                           |
+| 文件上传   | `files`                           | 上传附件到 R2（需登录，单文件 ≤4MB）                     |
+
+应用在应用包 `meta.permissions` 里声明所需能力，上传时写入服务端并随版本审核；安装（或更新时新增权限）会弹出授权确认，未确认不写入本地。运行时 `window.__VueChest__.permissions` 返回本次实际授予的权限，应用可据此降级到本地存储。
+
+> 后端配套接口：`/api/app-data`（云端 KV，按 userId + appId 隔离）与 `/api/app-ai`（受控 AI 代理，要求应用已声明 `ai` 权限）。开发者文档见 `src/docs/help/market-capabilities.md`。
 
 ## 面试文档维护
 
