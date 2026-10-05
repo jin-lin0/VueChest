@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMarketStore } from '@/stores/market'
+import { PermissionCancelledError, useMarketStore } from '@/stores/market'
 import { Skeleton, EmptyState } from '@/components'
 import { formatFileSize } from '@/utils/common'
+import { useToast } from '@/composables/useToast'
 import { api } from '@/lib/request'
 
 const router = useRouter()
 const market = useMarketStore()
+const { addToast } = useToast()
 
 const DEFAULT_CATEGORIES = ['全部', '工具', '娱乐', '开发', '游戏', '生活', '教育']
 const categories = ref<string[]>(DEFAULT_CATEGORIES)
@@ -65,13 +67,19 @@ function goDetail(id: number) {
   router.push(`/market/${id}`)
 }
 
+// 安装 / 更新的权限确认由 market store 统一弹出（见 MarketPermissionDialog），
+// 这里只负责把失败结果**可见地**告诉用户：以前是 console.error，
+// 用户在卡片上点了「更新」发现毫无反应，完全不知道是被新增权限挡住了。
 async function handleInstall(appId: number) {
   if (installingId.value === appId || market.isInstalled(appId)) return
   installingId.value = appId
   try {
     await market.installApp(appId)
+    addToast('success', '应用安装完成')
   } catch (e) {
-    console.error('安装失败', e)
+    if (!(e instanceof PermissionCancelledError)) {
+      addToast('error', e instanceof Error ? e.message : '安装失败')
+    }
   } finally {
     installingId.value = null
   }
@@ -80,8 +88,11 @@ async function handleInstall(appId: number) {
 async function handleUpdate(appId: number) {
   try {
     await market.updateApp(appId)
+    addToast('success', '应用已更新到最新版')
   } catch (e) {
-    console.error('更新失败', e)
+    if (!(e instanceof PermissionCancelledError)) {
+      addToast('error', e instanceof Error ? e.message : '更新失败')
+    }
   }
 }
 

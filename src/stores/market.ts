@@ -7,7 +7,6 @@ import { addedNetworkPermissions, sha256Hex, verifyBundleIntegrity } from '@/lib
 import {
   addedPermissions,
   normalizePermissions,
-  permissionLabels,
   type SandboxPermission,
 } from '@/lib/sandbox-permissions'
 
@@ -161,6 +160,55 @@ function installedRoutePath(appId: number | string): string {
   return `/market-installed/${appId}`
 }
 
+/** 安装 / 更新所需的元数据（不含 bundle 本体）。 */
+interface InstallMeta {
+  fileUrl: string
+  version: string
+  sha256?: string | null
+  name: string
+  icon: string
+  description: string
+  /** 应用声明的联网域名白名单 */
+  network: string[]
+  /** 应用声明的能力权限 */
+  capabilities: SandboxPermission[]
+}
+
+/**
+ * 一次「需要用户确认」的权限请求。
+ *
+ * 安装时列出应用声明的全部权限；更新时只列出**相对已安装版本新增**的权限。
+ * 两者都为空时不会产生请求（见 buildPermissionConsent），因此声明 0 权限的
+ * 应用安装 / 更新都不会打扰用户。
+ */
+export interface MarketPermissionConsent {
+  appId: number
+  appName: string
+  icon: string
+  action: 'install' | 'update'
+  /** 目标版本号 */
+  version?: string
+  network: string[]
+  capabilities: SandboxPermission[]
+  /** 相对已安装版本新增的联网域名（仅更新时有值） */
+  addedNetwork: string[]
+  /** 相对已安装版本新增的能力权限（仅更新时有值） */
+  addedCapabilities: SandboxPermission[]
+}
+
+/**
+ * 用户在权限弹窗上点了「取消」。
+ *
+ * 与真正的失败区分开：取消是用户的主动选择，不该在页面上留下红色报错，
+ * 也不该在「应用更新」页记一条 updateError。调用方用 instanceof 判断即可。
+ */
+export class PermissionCancelledError extends Error {
+  constructor(action: 'install' | 'update') {
+    super(action === 'update' ? '已取消更新' : '已取消安装')
+    this.name = 'PermissionCancelledError'
+  }
+}
+
 export const useMarketStore = defineStore('market', () => {
   const availableApps = ref<MarketAppItem[]>([])
   const ranking = ref<MarketRankingItem[]>([])
@@ -177,6 +225,176 @@ export const useMarketStore = defineStore('market', () => {
   const lastUpdateCheckAt = ref(0)
   const autoUpdateEnabled = ref(getStorage<boolean>(AUTO_UPDATE_KEY, false) === true)
   let updateCheckPromise: Promise<AppUpdateInfo[]> | null = null
+
+  /**
+   * 待用户确认的权限请求。由 store 持有、由全局的 MarketPermissionDialog 渲染。
+   *
+   * 刻意放在 store 而不是各视图里：权限确认必须是「不确认就走不下去」的硬约束。
+   * 之前它只写在应用详情页，结果市场列表页和工作区模板都能绕过弹窗直接授权。
+   */
+  const pendingPermissionConsent = ref<MarketPermissionConsent | null>(null)
+  let consentResolver: ((approved: boolean) => void) | null = null
+  const consentQueue: { details: MarketPermissionConsent; resolve: (ok: boolean) => void }[] = []
+
+  /**
+   * 挂起当前操作等用户答复；resolvePermissionConsent 负责结算。
+   *
+   * 同一时刻只展示一个弹窗：批量恢复工作区模板、跨设备同步等场景会并发发起
+   * 多个安装，若后来的直接覆盖 resolver，先来的 Promise 就永远挂起；若直接
+   * 拒绝后来的，用户就只确认得上第一个。所以排队，逐个确认。
+   */
+  function requestPermissionConsent(details: MarketPermissionConsent): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      if (consentResolver) {
+        consentQueue.push({ details, resolve })
+        return
+      }
+      consentResolver = resolve
+      pendingPermissionConsent.value = details
+    })
+  }
+
+  /** 由弹窗组件调用：用户点了确认或取消。 */
+  function resolvePermissionConsent(approved: boolean) {
+    const resolve = consentResolver
+    // 没有在等答复的请求就什么都不做：否则会把队列里下一个请求提前弹出来，
+    // 而它的 Promise 仍然挂着 —— 变成永远等不到确认的安装。
+    if (!resolve) return
+    consentResolver = null
+    resolve(approved)
+    const next = consentQueue.shift()
+    if (next) {
+      consentResolver = next.resolve
+      pendingPermissionConsent.value = next.details
+    } else {
+      pendingPermissionConsent.value = null
+    }
+  }
+
+  /**
+   * 判断本次操作是否需要用户确认；返回 null 表示无需确认，可直接进行。
+   *
+   * - 安装：应用声明了任何权限（联网域名或能力权限）才确认。
+   *   声明 0 权限的应用不该让用户为一次多余的点击付出代价。
+   * - 更新：只在**新增**了权限时确认 —— 用户当初已经同意了旧版本的权限集。
+   */
+  function buildPermissionConsent(input: {
+    appId: number
+    meta: InstallMeta
+    action: 'install' | 'update'
+    previous: InstalledApp | null
+  }): MarketPermissionConsent | null {
+    const { previous } = input
+    const addedNetwork = previous
+      ? addedNetworkPermissions(previous.allowNetwork, input.meta.network)
+      : []
+    const addedCapabilities = previous
+      ? addedPermissions(previous.permissions, input.meta.capabilities)
+      : []
+    const needed = previous
+      ? addedNetwork.length > 0 || addedCapabilities.length > 0
+      : input.meta.network.length > 0 || input.meta.capabilities.length > 0
+    if (!needed) return null
+    return {
+      appId: input.appId,
+      appName: input.meta.name,
+      icon: input.meta.icon,
+      action: input.action,
+      version: input.meta.version,
+      network: input.meta.network,
+      capabilities: input.meta.capabilities,
+      addedNetwork,
+      addedCapabilities,
+    }
+  }
+
+  /**
+   * 安装 / 更新前的权限闸门。不通过就抛错，调用方拿不到 download 对象，
+   * 因此**任何入口都不可能绕过**这一步。
+   *
+   * consent 的两种模式：
+   * - 'ask'  弹窗问用户；拒绝则抛「已取消」。
+   * - 'skip' 不弹窗（后台自动更新等无人值守场景）；需要确认时直接抛错，
+   *          让调用方把「需手动确认」记录到 updateErrors，而不是静默授权。
+   */
+  async function ensureConsent(
+    appId: number,
+    meta: InstallMeta,
+    action: 'install' | 'update',
+    previous: InstalledApp | null,
+    consent: 'ask' | 'skip',
+  ): Promise<void> {
+    const request = buildPermissionConsent({ appId, meta, action, previous })
+    if (!request) return
+    if (consent === 'skip') {
+      throw new Error('新版本新增权限，需手动确认后再更新')
+    }
+    const approved = await requestPermissionConsent(request)
+    if (!approved) throw new PermissionCancelledError(action)
+  }
+
+  /**
+   * 取安装 / 更新所需的元数据，**不下载 bundle**。
+   *
+   * 权限确认必须发生在真正下载之前：用户点了取消就不该白下几百 KB
+   * （最大的内置应用包有 300KB+）。
+   */
+  async function fetchInstallMeta(appId: number, versionId?: number): Promise<InstallMeta> {
+    const [downloadRes, detail] = await Promise.all([
+      api.get<{
+        data: {
+          fileUrl: string
+          name: string
+          version: string
+          allowNetwork?: string[]
+          permissions?: string[]
+          sha256?: string | null
+        }
+      }>(
+        versionId
+          ? `/api/market/apps/${appId}/versions/${versionId}/download`
+          : `/api/market/apps/${appId}/download`,
+        { auth: false },
+      ),
+      fetchAppDetail(appId),
+    ])
+    if (!downloadRes.data.fileUrl) throw new Error('应用下载地址无效')
+    return {
+      fileUrl: downloadRes.data.fileUrl,
+      version: downloadRes.data.version,
+      sha256: downloadRes.data.sha256,
+      name: detail?.name || downloadRes.data.name,
+      icon: detail?.icon || '🧩',
+      description: detail?.description || '',
+      // 两份元数据都以服务端记录为准（上传 / 审核时声明），不信任 bundle 自声明
+      network: downloadRes.data.allowNetwork || detail?.allowNetwork || [],
+      capabilities: normalizePermissions(downloadRes.data.permissions || detail?.permissions || []),
+    }
+  }
+
+  /** 校验并下载 bundle，拼出待提交的安装记录。不涉及权限判断。 */
+  async function fetchBundleAndEntry(
+    appId: number,
+    meta: InstallMeta,
+  ): Promise<{ entry: InstalledApp; code: string }> {
+    const bundle = await fetchVerifiedBundle(meta.fileUrl, meta.sha256)
+    return {
+      code: bundle.code,
+      entry: {
+        id: appId,
+        name: meta.name,
+        icon: meta.icon,
+        // route 指向受控命名空间路径，供 Home 等导航使用（见 navigateToApp）
+        route: installedRoutePath(appId),
+        description: meta.description,
+        version: meta.version,
+        allowNetwork: meta.network,
+        permissions: meta.capabilities,
+        sha256: bundle.sha256,
+        installedAt: Date.now(),
+      },
+    }
+  }
 
   const availableUpdates = computed<AppUpdateInfo[]>(() =>
     installedApps.value
@@ -283,58 +501,6 @@ export const useMarketStore = defineStore('market', () => {
     }
   }
 
-  /**
-   * 从服务端下载并安装单个 App（核心安装逻辑）
-   * 供 installApp / syncFromServer 共用
-   */
-  async function downloadAppVersion(
-    appId: number,
-    versionId?: number,
-  ): Promise<{ entry: InstalledApp; code: string }> {
-    // 1. 下载 bundle + 详情（并发）
-    const [downloadRes, detail] = await Promise.all([
-      api.get<{
-        data: {
-          fileUrl: string
-          name: string
-          version: string
-          allowNetwork?: string[]
-          permissions?: string[]
-          sha256?: string | null
-        }
-      }>(
-        versionId
-          ? `/api/market/apps/${appId}/versions/${versionId}/download`
-          : `/api/market/apps/${appId}/download`,
-        { auth: false },
-      ),
-      fetchAppDetail(appId),
-    ])
-
-    if (!downloadRes.data.fileUrl) throw new Error('应用下载地址无效')
-    const bundle = await fetchVerifiedBundle(downloadRes.data.fileUrl, downloadRes.data.sha256)
-
-    // 2. 返回待提交的包和安装信息，校验或授权失败时不改变本机数据。
-    return {
-      code: bundle.code,
-      entry: {
-        id: appId,
-        name: detail?.name || downloadRes.data.name,
-        icon: detail?.icon || '🧩',
-        // route 指向受控命名空间路径，供 Home 等导航使用（见 navigateToApp）
-        route: installedRoutePath(appId),
-        description: detail?.description || '',
-        version: downloadRes.data.version,
-        allowNetwork: downloadRes.data.allowNetwork || detail?.allowNetwork || [],
-        permissions: normalizePermissions(
-          downloadRes.data.permissions || detail?.permissions || [],
-        ),
-        sha256: bundle.sha256,
-        installedAt: Date.now(),
-      },
-    }
-  }
-
   // 确保指定 app 的 bundle 已缓存到本地；没有则先从服务端下载并缓存。
   // 供 MarketAppSandbox 在本地无缓存时（如跨设备 / 清过 storage）按需拉取，
   // 使 /market-installed/:id 深度链接始终可用。
@@ -394,7 +560,11 @@ export const useMarketStore = defineStore('market', () => {
     const ownerToken = auth.token
     updatingIds.value = [...updatingIds.value, appId]
     try {
-      const download = await downloadAppVersion(appId)
+      // 先取元数据 → 权限闸门 → 才下载包。顺序不能颠倒：
+      // 用户点了「取消」就不该白下几百 KB 的 bundle。
+      const meta = await fetchInstallMeta(appId)
+      await ensureConsent(appId, meta, 'install', null, 'ask')
+      const download = await fetchBundleAndEntry(appId, meta)
       await commitDownload(download, null)
       if (auth.token === ownerToken) {
         syncAuthInstalled()
@@ -575,22 +745,6 @@ export const useMarketStore = defineStore('market', () => {
     return updatingIds.value.includes(appId)
   }
 
-  function permissionExpansion(appId: number, nextPermissions?: string[]) {
-    const current = installedApps.value.find((item) => item.id === appId)
-    return addedNetworkPermissions(current?.allowNetwork, nextPermissions)
-  }
-
-  /** 相对已安装版本，本次新增的能力权限（用于安装/更新前的授权确认弹窗）。 */
-  function capabilityPermissionExpansion(appId: number, next?: unknown): SandboxPermission[] {
-    const current = installedApps.value.find((item) => item.id === appId)
-    return addedPermissions(current?.permissions, next)
-  }
-
-  /** 新增能力权限的可读标签，供授权弹窗直接展示。 */
-  function capabilityPermissionLabels(appId: number, next?: unknown): string[] {
-    return permissionLabels(capabilityPermissionExpansion(appId, next))
-  }
-
   function hasRollback(appId: number) {
     return !!(
       getStorage<string>(`${ROLLBACK_BUNDLE_KEY_PREFIX}${appId}`, '') &&
@@ -640,10 +794,18 @@ export const useMarketStore = defineStore('market', () => {
     await api.put(`/api/market/apps/${appId}/versions/${versionId}/status`, { status })
   }
 
+  /**
+   * 安装指定版本 / 更新到最新版。
+   *
+   * options.consent:
+   * - 'ask'（默认）弹窗请求用户确认新增权限，拒绝则中止；
+   * - 'skip' 无人值守场景（后台自动更新）用，需要确认时直接失败并写入
+   *   updateErrors，绝不静默授权。
+   */
   async function replaceVersion(
     appId: number,
     versionId: number | undefined,
-    options?: { approvePermissions?: boolean },
+    options?: { consent?: 'ask' | 'skip' },
   ) {
     if (isUpdating(appId)) throw new Error('应用正在安装或更新')
     const previous = installedApps.value.find((item) => item.id === appId)
@@ -654,17 +816,17 @@ export const useMarketStore = defineStore('market', () => {
     const auth = useAuthStore()
     const ownerToken = auth.token
     try {
-      const download = await downloadAppVersion(appId, versionId)
-      const addedNetwork = addedNetworkPermissions(oldEntry?.allowNetwork, download.entry.allowNetwork)
-      const addedCaps = addedPermissions(oldEntry?.permissions, download.entry.permissions)
-      if (oldEntry && !options?.approvePermissions) {
-        const parts: string[] = []
-        if (addedNetwork.length) parts.push(`联网域名：${addedNetwork.join('、')}`)
-        if (addedCaps.length) parts.push(`能力权限：${permissionLabels(addedCaps).join('、')}`)
-        if (parts.length) throw new Error(`新版本新增权限 —— ${parts.join('；')}`)
-      }
-      if (!versionId && oldEntry && compareVersions(download.entry.version, oldEntry.version) <= 0)
+      const meta = await fetchInstallMeta(appId, versionId)
+      await ensureConsent(
+        appId,
+        meta,
+        oldEntry ? 'update' : 'install',
+        oldEntry,
+        options?.consent ?? 'ask',
+      )
+      if (!versionId && oldEntry && compareVersions(meta.version, oldEntry.version) <= 0)
         return oldEntry
+      const download = await fetchBundleAndEntry(appId, meta)
       const entry = await commitDownload(download, oldEntry)
       if (!oldEntry && auth.token === ownerToken) {
         syncAuthInstalled()
@@ -672,9 +834,15 @@ export const useMarketStore = defineStore('market', () => {
       }
       return entry
     } catch (error) {
+      // 用户主动取消不算失败：不留下错误条，否则「应用更新」页会红一片。
       updateErrors.value = {
         ...updateErrors.value,
-        [appId]: error instanceof Error ? error.message : '版本安装失败',
+        [appId]:
+          error instanceof PermissionCancelledError
+            ? ''
+            : error instanceof Error
+              ? error.message
+              : '版本安装失败',
       }
       throw error
     } finally {
@@ -685,17 +853,14 @@ export const useMarketStore = defineStore('market', () => {
   async function installVersion(
     appId: number,
     versionId: number,
-    options?: { approvePermissions?: boolean },
+    options?: { consent?: 'ask' | 'skip' },
   ): Promise<InstalledApp> {
     const entry = await replaceVersion(appId, versionId, options)
     await checkForUpdates({ force: true })
     return entry
   }
 
-  function updateApp(
-    appId: number,
-    options?: { approvePermissions?: boolean },
-  ): Promise<InstalledApp> {
+  function updateApp(appId: number, options?: { consent?: 'ask' | 'skip' }): Promise<InstalledApp> {
     return replaceVersion(appId, undefined, options)
   }
 
@@ -706,7 +871,9 @@ export const useMarketStore = defineStore('market', () => {
     try {
       for (const id of ids) {
         try {
-          await updateApp(id)
+          // 后台自动更新无人值守，不能弹窗；若新版本新增了权限就跳过该应用，
+          // 由 updateErrors 提示用户手动更新。
+          await updateApp(id, { consent: 'skip' })
         } catch {
           // 单个应用失败不阻塞其余更新，错误会记录到 updateErrors
         }
@@ -799,6 +966,10 @@ export const useMarketStore = defineStore('market', () => {
   /**
    * 跨设备同步：根据服务端的 App ID 列表，下载本地缺失的 App
    * 并发下载，比串行快很多
+   *
+   * 恢复安装同样要过权限闸门：服务端列表只能证明「这台设备上装过」，
+   * 不能证明当前这台设备确认过权限。声明了权限的应用会逐个弹窗，
+   * 由 consentQueue 保证同时只展示一个。
    */
   async function syncFromServer(serverAppIds: number[]) {
     const auth = useAuthStore()
@@ -810,7 +981,10 @@ export const useMarketStore = defineStore('market', () => {
       missing.map(async (id) => {
         updatingIds.value = [...updatingIds.value, id]
         try {
-          const download = await downloadAppVersion(id)
+          const meta = await fetchInstallMeta(id)
+          await ensureConsent(id, meta, 'install', null, 'ask')
+          if (auth.token !== ownerToken) return
+          const download = await fetchBundleAndEntry(id, meta)
           if (auth.token !== ownerToken) return
           await commitDownload(download, null)
         } finally {
@@ -865,9 +1039,6 @@ export const useMarketStore = defineStore('market', () => {
     isInstalled,
     hasUpdate,
     isUpdating,
-    permissionExpansion,
-    capabilityPermissionExpansion,
-    capabilityPermissionLabels,
     hasRollback,
     rollbackApp,
     isCheckingUpdates,
@@ -876,6 +1047,8 @@ export const useMarketStore = defineStore('market', () => {
     updateErrors,
     updateCheckError,
     lastUpdateCheckAt,
+    pendingPermissionConsent,
+    resolvePermissionConsent,
     checkForUpdates,
     updateApp,
     updateAll,

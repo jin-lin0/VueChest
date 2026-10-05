@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMarketStore } from '@/stores/market'
+import { PermissionCancelledError, useMarketStore } from '@/stores/market'
 import type { MarketAppItem, MarketAppVersion } from '@/stores/market'
 import { useAuthStore } from '@/stores/auth'
 import { formatFileSize } from '@/utils/common'
 import AppComments from '@/components/AppComments.vue'
 import { Modal } from '@/components'
 import type { MarketReportReason } from '@/stores/market'
-import { normalizePermissions, permissionDetails } from '@/lib/sandbox-permissions'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,9 +22,6 @@ const updating = ref(false)
 const error = ref('')
 const actionError = ref('')
 const versions = ref<MarketAppVersion[]>([])
-const permissionModalOpen = ref(false)
-const pendingAction = ref<'install' | 'update' | 'version' | null>(null)
-const pendingVersion = ref<MarketAppVersion | null>(null)
 const reportModalOpen = ref(false)
 const reportReason = ref<MarketReportReason>('privacy')
 const reportDetails = ref('')
@@ -63,6 +59,8 @@ onMounted(async () => {
   }
 })
 
+// 权限确认弹窗由 market store 统一弹出（MarketPermissionDialog 挂在 App.vue 上），
+// 详情页不再自带一套 —— 之前只有这个页面有弹窗，市场列表页和工作区模板都能绕过。
 async function handleInstall() {
   if (!app.value) return
   installing.value = true
@@ -70,7 +68,9 @@ async function handleInstall() {
   try {
     await market.installApp(app.value.id)
   } catch (e) {
-    actionError.value = e instanceof Error ? e.message : '安装失败'
+    if (!(e instanceof PermissionCancelledError)) {
+      actionError.value = e instanceof Error ? e.message : '安装失败'
+    }
   } finally {
     installing.value = false
   }
@@ -94,9 +94,11 @@ async function handleUpdate() {
   updating.value = true
   actionError.value = ''
   try {
-    await market.updateApp(app.value.id, { approvePermissions: true })
+    await market.updateApp(app.value.id)
   } catch (e) {
-    actionError.value = e instanceof Error ? e.message : '更新失败'
+    if (!(e instanceof PermissionCancelledError)) {
+      actionError.value = e instanceof Error ? e.message : '更新失败'
+    }
   } finally {
     updating.value = false
   }
@@ -106,23 +108,6 @@ const isInstalled = computed(() => (app.value ? market.isInstalled(app.value.id)
 const hasUpdate = computed(() => (app.value ? market.hasUpdate(app.value.id) : false))
 const installedVersion = computed(() =>
   app.value ? market.installedApps.find((item) => item.id === app.value?.id)?.version : undefined,
-)
-const requestedNetwork = computed(() =>
-  pendingAction.value === 'version'
-    ? pendingVersion.value?.allowNetwork || []
-    : app.value?.allowNetwork || [],
-)
-const requestedCapabilities = computed(() =>
-  pendingAction.value === 'version'
-    ? normalizePermissions(pendingVersion.value?.permissions)
-    : normalizePermissions(app.value?.permissions),
-)
-const requestedCapabilityDetails = computed(() => permissionDetails(requestedCapabilities.value))
-const addedPermissions = computed(() =>
-  app.value ? market.permissionExpansion(app.value.id, requestedNetwork.value) : [],
-)
-const addedCapabilityLabels = computed(() =>
-  app.value ? market.capabilityPermissionLabels(app.value.id, requestedCapabilities.value) : [],
 )
 const returnContext = computed(() => {
   const source = route.query.from
@@ -136,25 +121,12 @@ async function handleInstallVersion(version: MarketAppVersion) {
   if (!app.value) return
   actionError.value = ''
   try {
-    await market.installVersion(app.value.id, version.id, { approvePermissions: true })
+    await market.installVersion(app.value.id, version.id)
   } catch (e) {
-    actionError.value = e instanceof Error ? e.message : '版本安装失败'
+    if (!(e instanceof PermissionCancelledError)) {
+      actionError.value = e instanceof Error ? e.message : '版本安装失败'
+    }
   }
-}
-
-function requestAction(action: 'install' | 'update' | 'version', version?: MarketAppVersion) {
-  pendingAction.value = action
-  pendingVersion.value = version || null
-  permissionModalOpen.value = true
-}
-
-async function confirmPermissionAction() {
-  const action = pendingAction.value
-  const version = pendingVersion.value
-  permissionModalOpen.value = false
-  if (action === 'install') await handleInstall()
-  else if (action === 'update') await handleUpdate()
-  else if (action === 'version' && version) await handleInstallVersion(version)
 }
 
 function openReport() {
@@ -241,7 +213,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
               v-if="!isInstalled"
               class="install-btn"
               :disabled="installing"
-              @click="requestAction('install')"
+              @click="handleInstall"
             >
               {{ installing ? '安装中...' : '安装' }}
             </button>
@@ -249,7 +221,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
               v-if="isInstalled && hasUpdate"
               class="install-btn"
               :disabled="updating"
-              @click="requestAction('update')"
+              @click="handleUpdate"
             >
               {{ updating ? '更新中...' : '更新到最新版' }}
             </button>
@@ -325,7 +297,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
                   (isInstalled || version.version !== app.version)
                 "
                 :disabled="market.isUpdating(app.id)"
-                @click="requestAction('version', version)"
+                @click="handleInstallVersion(version)"
               >
                 {{ installedVersion ? '安装此版本' : '安装' }}
               </button>
@@ -369,45 +341,6 @@ async function handleVersionStatus(version: MarketAppVersion) {
       </div>
 
       <AppComments v-if="app" :app-id="app.id" />
-
-      <Modal
-        :open="permissionModalOpen"
-        title="确认安装权限"
-        width="min(520px, 94vw)"
-        @close="permissionModalOpen = false"
-      >
-        <div class="permission-dialog">
-          <p>
-            将{{ pendingAction === 'update' ? '更新' : '安装' }}
-            <strong>{{ app.name }}</strong>
-            <template v-if="pendingVersion"> v{{ pendingVersion.version }}</template>
-          </p>
-          <ul>
-            <li>在隔离的 iframe 沙箱内运行，不能注册宿主路由或读取宿主存储。</li>
-            <li>本地数据只写入该应用自己的命名空间。</li>
-            <li v-if="requestedNetwork.length">
-              允许访问网络：{{ requestedNetwork.join('、') }}
-            </li>
-            <li v-else>不允许访问网络。</li>
-            <li>下载完成后核对 SHA-256；不一致会立即终止安装。</li>
-          </ul>
-          <ul v-if="requestedCapabilityDetails.length" class="permission-caps">
-            <li v-for="item in requestedCapabilityDetails" :key="item.key">
-              <strong>{{ item.label }}</strong>：{{ item.description }}
-            </li>
-          </ul>
-          <p v-if="addedPermissions.length" class="permission-warning">
-            本次新增联网权限：{{ addedPermissions.join('、') }}
-          </p>
-          <p v-if="addedCapabilityLabels.length" class="permission-warning">
-            本次新增能力权限：{{ addedCapabilityLabels.join('、') }}
-          </p>
-          <div class="dialog-actions">
-            <button @click="permissionModalOpen = false">取消</button>
-            <button class="install-btn" @click="confirmPermissionAction">确认并继续</button>
-          </div>
-        </div>
-      </Modal>
 
       <Modal
         :open="reportModalOpen"
@@ -667,37 +600,6 @@ async function handleVersionStatus(version: MarketAppVersion) {
   font-size: var(--font-size-small);
   line-height: 1.45;
   text-overflow: ellipsis;
-}
-
-.permission-dialog > p:first-child {
-  color: var(--text-primary);
-}
-
-.permission-dialog ul {
-  padding-left: 1.2rem;
-  color: var(--text-secondary);
-  font-size: var(--font-size-body);
-  line-height: 1.8;
-}
-
-.permission-caps {
-  margin-top: 0.5rem;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  font-size: var(--font-size-control);
-  line-height: 1.7;
-}
-
-.permission-warning {
-  padding: 0.7rem 0.8rem;
-  border: 1px solid rgba(245, 158, 11, 0.28);
-  border-radius: 8px;
-  background: rgba(245, 158, 11, 0.08);
-  color: #b45309;
-  font-size: var(--font-size-control);
 }
 
 .dialog-actions {

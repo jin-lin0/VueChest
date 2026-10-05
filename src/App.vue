@@ -14,6 +14,17 @@ import { recordGameLaunchFromRoute } from '@/apps/game-center/profile'
 
 const router = useRouter()
 const MusicPlayer = defineAsyncComponent(() => import('@/components/business/MusicPlayer.vue'))
+/**
+ * 安装 / 更新权限确认弹窗。权限闸门在 market store 里，这里只是它的渲染出口，
+ * 因此必须挂在根组件上 —— 挂到某个页面就会漏掉别的入口（市场列表、工作区模板
+ * 恢复、跨设备同步都能触发安装）。
+ *
+ * 用 defineAsyncComponent 而不是同步 import：market store + 权限文案约几 KB，
+ * 而入口 gzip 预算贴着上限；弹窗只在真正安装时才会出现，晚加载几百毫秒无感。
+ */
+const MarketPermissionDialog = defineAsyncComponent(
+  () => import('@/components/business/MarketPermissionDialog.vue'),
+)
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 const cloudSyncStore = useCloudSyncStore()
@@ -119,6 +130,7 @@ router.afterEach((to) => {
     <MusicPlayer />
     <CommandPalette />
     <ConfirmDialog />
+    <MarketPermissionDialog />
   </div>
 </template>
 

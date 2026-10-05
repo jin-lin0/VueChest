@@ -185,6 +185,8 @@ pnpm publish:market ai-notes   # 只发布指定应用（改了哪个发哪个�
 
 应用在应用包 `meta.permissions` 里声明所需能力，上传时写入服务端并随版本审核；安装（或更新时新增权限）会弹出授权确认，未确认不写入本地。运行时 `window.__VueChest__.permissions` 返回本次实际授予的权限，应用可据此降级到本地存储。
 
+授权闸门放在 `src/stores/market.ts` 的 `ensureConsent` 里（**fail-closed**），弹窗是挂在 `App.vue` 上的全局组件 `MarketPermissionDialog`。这样从市场列表、应用详情、工作区模板恢复、跨设备同步等任何入口安装 / 更新都必然经过确认，新增入口也不会漏；声明 0 权限的应用不打扰用户，更新时只对**新增**的权限再次确认。后台自动更新无人值守，走 `consent: 'skip'`，遇到新增权限就跳过并记入 `updateErrors`，绝不静默授权。
+
 > 后端配套接口：`/api/app-data`（云端 KV，按 userId + appId 隔离）与 `/api/app-ai`（受控 AI 代理，要求应用已声明 `ai` 权限）。开发者文档见 `src/docs/help/market-capabilities.md`。
 
 ## 面试文档维护

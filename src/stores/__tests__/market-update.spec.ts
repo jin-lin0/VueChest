@@ -35,7 +35,7 @@ vi.mock('@/stores/auth', () => ({
 }))
 
 import type { MarketAppItem } from '../market'
-import { useMarketStore } from '../market'
+import { PermissionCancelledError, useMarketStore } from '../market'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -66,8 +66,10 @@ const latest: MarketAppItem = {
 
 function mockMarketApi() {
   mocks.apiGet.mockImplementation((path: string) => {
-    if (path === '/api/market/apps/1') return Promise.resolve({ data: latest })
-    if (path === '/api/market/apps/1/download') {
+    const detail = /^\/api\/market\/apps\/(\d+)$/.exec(path)
+    if (detail) return Promise.resolve({ data: { ...latest, id: Number(detail[1]) } })
+    const download = /^\/api\/market\/apps\/(\d+)\/download$/.exec(path)
+    if (download) {
       return Promise.resolve({
         data: {
           fileUrl: 'https://cdn.example.com/app.js',
@@ -78,6 +80,23 @@ function mockMarketApi() {
     }
     return Promise.reject(new Error(`unexpected path: ${path}`))
   })
+}
+
+/** 让下载接口声明额外权限，用于验证安装 / 更新前的授权闸门。 */
+function declarePermissions(payload: Record<string, unknown>) {
+  const original = mocks.apiGet.getMockImplementation()!
+  mocks.apiGet.mockImplementation((path: string) =>
+    path.endsWith('/download')
+      ? Promise.resolve({
+          data: {
+            fileUrl: 'https://cdn.example.com/app.js',
+            name: latest.name,
+            version: latest.version,
+            ...payload,
+          },
+        })
+      : original(path),
+  )
 }
 
 beforeEach(() => {
@@ -218,49 +237,135 @@ describe('market app updates', () => {
     expect(store.hasRollback(1)).toBe(false)
   })
 
-  it('does not expose the staged bundle when permissions need approval', async () => {
+  it('asks the user before an update that adds network access and stages nothing until approved', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('expanded bundle')))
-    const original = mocks.apiGet.getMockImplementation()!
-    mocks.apiGet.mockImplementation((path: string) =>
-      path.endsWith('/download')
-        ? Promise.resolve({
-            data: {
-              fileUrl: 'https://cdn.example.com/app.js',
-              version: '2.0.0',
-              name: '测试',
-              allowNetwork: ['new.example.com'],
-            },
-          })
-        : original(path),
-    )
+    declarePermissions({ allowNetwork: ['new.example.com'] })
     const store = useMarketStore()
     store.initInstalledApps()
-    await expect(store.updateApp(1)).rejects.toThrow('新版本新增权限 —— 联网域名：new.example.com')
+    const pending = store.updateApp(1)
+    await vi.waitFor(() => expect(store.pendingPermissionConsent).not.toBeNull())
+    expect(store.pendingPermissionConsent).toMatchObject({
+      appId: 1,
+      action: 'update',
+      addedNetwork: ['new.example.com'],
+      addedCapabilities: [],
+    })
+    // 弹窗还开着：包不该被下载，更不该落盘
+    expect(fetch).not.toHaveBeenCalled()
+    expect(mocks.applyPatch).not.toHaveBeenCalled()
+
+    store.resolvePermissionConsent(true)
+    await pending
+    expect(store.pendingPermissionConsent).toBeNull()
+    expect(store.installedApps[0].version).toBe('2.0.0')
+  })
+
+  it('keeps the old version and records no error when the user rejects the new permissions', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('expanded bundle')))
+    declarePermissions({ allowNetwork: ['new.example.com'] })
+    const store = useMarketStore()
+    store.initInstalledApps()
+    const pending = store.updateApp(1)
+    await vi.waitFor(() => expect(store.pendingPermissionConsent).not.toBeNull())
+    store.resolvePermissionConsent(false)
+
+    await expect(pending).rejects.toBeInstanceOf(PermissionCancelledError)
+    expect(store.installedApps[0].version).toBe('1.0.0')
+    expect(mocks.storage.get('market-bundle-1')).toBe('old bundle')
+    // 取消是用户的主动选择，不是失败：不该留下红色错误条
+    expect(store.updateErrors[1]).toBe('')
+  })
+
+  it('fails unattended updates that need new permissions instead of granting them silently', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('expanded bundle')))
+    declarePermissions({ allowNetwork: ['new.example.com'] })
+    const store = useMarketStore()
+    store.initInstalledApps()
+    await expect(store.updateApp(1, { consent: 'skip' })).rejects.toThrow('需手动确认')
+    expect(store.pendingPermissionConsent).toBeNull()
+    expect(store.updateErrors[1]).toContain('需手动确认')
     expect(mocks.applyPatch).not.toHaveBeenCalled()
     expect(mocks.storage.get('market-bundle-1')).toBe('old bundle')
   })
 
-  it('blocks the update when a new capability permission is requested', async () => {
+  it('asks the user before an update that adds a capability permission', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('expanded bundle')))
-    const original = mocks.apiGet.getMockImplementation()!
-    mocks.apiGet.mockImplementation((path: string) =>
-      path.endsWith('/download')
-        ? Promise.resolve({
-            data: {
-              fileUrl: 'https://cdn.example.com/app.js',
-              version: '2.0.0',
-              name: '测试',
-              allowNetwork: [],
-              permissions: ['cloud'],
-            },
-          })
-        : original(path),
-    )
+    declarePermissions({ allowNetwork: [], permissions: ['cloud'] })
     const store = useMarketStore()
     store.initInstalledApps()
-    await expect(store.updateApp(1)).rejects.toThrow('能力权限：云端存储')
+    const pending = store.updateApp(1)
+    await vi.waitFor(() => expect(store.pendingPermissionConsent).not.toBeNull())
+    expect(store.pendingPermissionConsent).toMatchObject({
+      action: 'update',
+      addedCapabilities: ['cloud'],
+    })
     expect(mocks.applyPatch).not.toHaveBeenCalled()
-    expect(mocks.storage.get('market-bundle-1')).toBe('old bundle')
+    store.resolvePermissionConsent(true)
+    await pending
+    expect(store.installedApps[0].permissions).toEqual(['cloud'])
+  })
+
+  it('asks for confirmation on install when the app declares permissions', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('bundle')))
+    declarePermissions({ allowNetwork: [], permissions: ['cloud', 'ai'] })
+    const store = useMarketStore()
+    const pending = store.installApp(1)
+    await vi.waitFor(() => expect(store.pendingPermissionConsent).not.toBeNull())
+    expect(store.pendingPermissionConsent).toMatchObject({
+      appId: 1,
+      action: 'install',
+      capabilities: ['cloud', 'ai'],
+    })
+    store.resolvePermissionConsent(true)
+    await pending
+    expect(store.installedApps).toHaveLength(1)
+    expect(store.installedApps[0].permissions).toEqual(['cloud', 'ai'])
+  })
+
+  it('installs without a dialog when the app declares no permissions', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('plain bundle')))
+    const store = useMarketStore()
+    await store.installApp(1)
+    expect(store.pendingPermissionConsent).toBeNull()
+    expect(store.installedApps).toHaveLength(1)
+    expect(store.installedApps[0].permissions).toEqual([])
+  })
+
+  it('serialises concurrent permission requests so none is dropped', async () => {
+    // 每次请求都要给一个全新的 Response —— 复用同一个实例会让 body 二次读取报错
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response('bundle'))),
+    )
+    declarePermissions({ permissions: ['cloud'] })
+    const store = useMarketStore()
+    const first = store.installApp(1)
+    const second = store.installApp(2)
+    const seen: number[] = []
+
+    await vi.waitFor(() => expect(store.pendingPermissionConsent).not.toBeNull())
+    seen.push(store.pendingPermissionConsent!.appId)
+    store.resolvePermissionConsent(true)
+
+    await vi.waitFor(() => expect(store.pendingPermissionConsent).not.toBeNull())
+    seen.push(store.pendingPermissionConsent!.appId)
+    store.resolvePermissionConsent(true)
+
+    await Promise.all([first, second])
+    expect(seen.sort()).toEqual([1, 2])
+    expect(store.pendingPermissionConsent).toBeNull()
+    expect(store.installedApps.map((item) => item.id).sort()).toEqual([1, 2])
+  })
+
+  it('does not ask again when an update adds no new permissions', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('new bundle')))
+    declarePermissions({ allowNetwork: [], permissions: ['cloud'] })
+    mocks.storage.set('market_installed_apps', [{ ...installed, permissions: ['cloud'] }])
+    const store = useMarketStore()
+    store.initInstalledApps()
+    await store.updateApp(1)
+    expect(store.pendingPermissionConsent).toBeNull()
+    expect(store.installedApps[0].version).toBe('2.0.0')
   })
 
   it('coalesces duplicate installs and keeps uninstall unchanged on storage failure', async () => {
