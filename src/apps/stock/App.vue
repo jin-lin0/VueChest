@@ -6,6 +6,7 @@ import { STOCK_COLORS } from './config'
 import { debounce } from '@/utils/common'
 import { formatLargeNumber } from './research'
 import { buildResearchDecision, extractNoticeSignals, type DecisionSummary } from './decision'
+import { QUICK_DISCOVER as DISCOVER_QUICK_ENTRIES } from './westock-discover'
 import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'StockResearchWorkspace' })
@@ -63,6 +64,9 @@ const researchDecision = computed<DecisionSummary>(() =>
 
 const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number }> = [
   { id: 'overview', label: '行情研判' },
+  // 选股发现排第 2：它不依赖已选中的股票，是「还没想好研究哪只」时最该先看到的能力，
+  // 原先排在第 8 位（末位）几乎等于藏起来。
+  { id: 'westockDiscover', label: '选股发现' },
   { id: 'portfolio', label: '模拟持仓', count: () => stock.positions.length },
   { id: 'compare', label: '股票对比' },
   { id: 'backtest', label: '策略回测' },
@@ -74,11 +78,26 @@ const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number
     count: () => stock.alerts.filter((item) => item.code === stock.stockCode).length,
   },
   { id: 'westockStock', label: '个股深度' },
-  { id: 'westockDiscover', label: '数据发现' },
 ]
 const panelNeedsStock = (panel: ResearchPanel) =>
   panel !== 'overview' && panel !== 'portfolio' && panel !== 'westockDiscover'
 const panelIds = new Set<ResearchPanel>(panelItems.map((item) => item.id))
+
+/**
+ * 空态里的快捷选股入口。用户第一次进来往往既没有自选也不知道选什么，
+ * 直接给几个含义直白的条件，比让他先开「选股发现」再翻下拉框少两层点击。
+ * preset 走 URL query 而不是内存状态：面板是异步组件，内存传值会丢；
+ * 而且这样刷新、分享链接都能复现同一个条件。
+ */
+const QUICK_DISCOVER = DISCOVER_QUICK_ENTRIES
+
+/** 跳到选股发现并预选一个条件（走 query，保证异步面板能收到）。 */
+function openDiscover(id: string) {
+  router.push({
+    path: '/stock',
+    query: { panel: 'westockDiscover', preset: id, command: String(Date.now()) },
+  })
+}
 
 const debouncedSearch = debounce(() => {
   if (stock.searchQuery.trim()) stock.searchStocks(stock.searchQuery)
@@ -110,6 +129,16 @@ async function openPositionResearch(code: string) {
   await openStock(code, false)
 }
 
+/**
+ * 从选股发现里点结果进来：先切到行情研判再加载。
+ * 不走 openStock 的默认分支是因为它默认会重置面板，而这里必须保证
+ * 「选股 → 看研判」是一步到位，中间不能停在选股面板上。
+ */
+async function openFromDiscover(code: string) {
+  activePanel.value = 'overview'
+  await openStock(code, true)
+}
+
 let routeCommandsReady = false
 let handledRouteCommand = ''
 async function applyRouteCommand() {
@@ -119,7 +148,9 @@ async function applyRouteCommand() {
     typeof route.query.panel === 'string' && panelIds.has(route.query.panel as ResearchPanel)
       ? (route.query.panel as ResearchPanel)
       : null
-  const commandKey = `${code}|${requestedPanel || ''}|${String(route.query.command || '')}`
+  // preset 参与去重键：同一条命令重复点（command 相同）不该重复处理，
+  // 但换个 preset 复用同一个 command 时间戳时必须能再次生效。
+  const commandKey = `${code}|${requestedPanel || ''}|${String(route.query.preset || '')}|${String(route.query.command || '')}`
   if ((!code && !requestedPanel) || commandKey === handledRouteCommand) return
   handledRouteCommand = commandKey
 
@@ -194,7 +225,7 @@ onUnmounted(() => {
 })
 
 watch(
-  () => [route.query.code, route.query.panel, route.query.command],
+  () => [route.query.code, route.query.panel, route.query.preset, route.query.command],
   () => void applyRouteCommand(),
 )
 </script>
@@ -369,12 +400,26 @@ watch(
 
         <WestockStockPanel v-else-if="activePanel === 'westockStock'" />
 
-        <WestockDiscoverPanel v-else-if="activePanel === 'westockDiscover'" />
+        <WestockDiscoverPanel v-else-if="activePanel === 'westockDiscover'" @open-stock="openFromDiscover" />
 
         <div v-else-if="!stock.result && !stock.isLoading" class="welcome-state compact-empty">
           <div class="empty-heading">
-            <h2>未选择股票</h2>
-            <p>从左侧搜索股票名称或代码。</p>
+            <h2>从选股开始，或搜索一只股票</h2>
+            <p>先用条件筛出候选池，再逐个进入研判；也可以直接搜名称或代码。</p>
+          </div>
+          <div class="quick-discover">
+            <strong>不知道从哪看起？试试这些</strong>
+            <div class="quick-discover-list">
+              <button
+                v-for="item in QUICK_DISCOVER"
+                :key="item.id"
+                type="button"
+                @click="openDiscover(item.id)"
+              >
+                {{ item.label }}
+                <small>{{ item.hint }}</small>
+              </button>
+            </div>
           </div>
           <div class="empty-feature-grid">
             <article><strong>价格趋势</strong><small>K 线、成交量与均线</small></article>
@@ -955,6 +1000,47 @@ watch(
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
+.quick-discover {
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, #0f766e 22%, var(--border-light));
+  border-radius: 16px;
+  background: color-mix(in srgb, #0f766e 5%, var(--bg-subtle));
+}
+.quick-discover > strong {
+  display: block;
+  margin-bottom: 11px;
+  color: #0f766e;
+  font-size: var(--font-size-small);
+}
+.quick-discover-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+.quick-discover-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  text-align: left;
+  font-weight: 800;
+  cursor: pointer;
+}
+.quick-discover-list button:hover {
+  border-color: #0f766e;
+  color: #0f766e;
+  transform: translateY(-1px);
+}
+.quick-discover-list small {
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: 400;
+}
 .research-map {
   position: relative;
   height: 360px;
@@ -1332,6 +1418,9 @@ watch(
 
 @media (max-width: 820px) {
   .empty-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .quick-discover-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .welcome-state.compact-empty {

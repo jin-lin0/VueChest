@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { WestockResult, WestockTableRow } from '@/stores/westock'
 import type { KlineData } from '@/stores/stock'
+import { hasMorePages, parseResultPage, pickRowCode, pickRowName } from '../westock-discover'
 
 const StockChart = defineAsyncComponent(() => import('./StockChart.vue'))
 
@@ -11,6 +12,19 @@ const props = defineProps<{
   loading?: boolean
   error?: string | null
   unauthorized?: boolean
+  /** 代码是否已在自选里，用于行内 ☆ 的状态。传入该函数才渲染自选按钮。 */
+  isFavorite?: (code: string) => boolean
+  /** 有下一页。父级显式传入时以其为准，否则回落到从 meta 推断。 */
+  canLoadMore?: boolean
+  loadingMore?: boolean
+}>()
+
+const emit = defineEmits<{
+  /** 点击行：进入该股票的研究视图。 */
+  pick: [code: string]
+  /** 点击行内 ☆：切换自选，附带从表格里取到的名称（取不到时为空串）。 */
+  toggleFavorite: [code: string, name: string]
+  loadMore: []
 }>()
 
 const isKline = computed(() => {
@@ -47,6 +61,18 @@ const rows = computed<WestockTableRow[]>(() => props.result?.rows ?? [])
 const meta = computed(() => props.result?.meta ?? '')
 const titleText = computed(() => props.result?.title ?? '')
 
+const page = computed(() => parseResultPage(meta.value, rows.value.length))
+// 父级显式传 canLoadMore 时以父级为准（它知道是否还有下一页），
+// 否则回落到从 meta 推断，兼容个股深度面板等未接分页的调用方。
+const showLoadMore = computed(() => props.canLoadMore ?? hasMorePages(page.value))
+
+/** 每行能否点开：认得出 6 位代码才行，认不出就保持纯文本。 */
+const rowCodes = computed<Array<string | null>>(() =>
+  rows.value.map((row) => pickRowCode(row as Record<string, string>)),
+)
+/** 表里存在可点行时才提示「点行进研究」，避免在无代码的表上给无效指引。 */
+const hasClickableRow = computed(() => rowCodes.value.some(Boolean))
+
 function cellNumeric(value: string): boolean {
   if (value == null) return false
   const s = String(value).replace(/[,%\s]/g, '')
@@ -69,6 +95,18 @@ function cellClass(col: string, value: string): string {
     else if (sign < 0) cls.push('down')
   }
   return cls.join(' ')
+}
+
+function selectRow(index: number) {
+  const code = rowCodes.value[index]
+  if (code) emit('pick', code)
+}
+
+function toggleStar(index: number) {
+  const code = rowCodes.value[index]
+  if (!code) return
+  const row = rows.value[index] as Record<string, string>
+  emit('toggleFavorite', code, pickRowName(row, code))
 }
 
 async function copyRaw() {
@@ -96,7 +134,7 @@ async function copyRaw() {
     </div>
 
     <div v-else-if="!result" class="ws-state">
-      <p>选择一个能力并运行，结果会显示在这里。</p>
+      <p>选一个条件，或直接点上面的常用策略，结果会显示在这里。</p>
     </div>
 
     <template v-else>
@@ -118,22 +156,55 @@ async function copyRaw() {
               <thead>
                 <tr>
                   <th v-for="col in columns" :key="col" :class="{ num: false }">{{ col }}</th>
+                  <th v-if="isFavorite" class="ws-star-col" aria-label="自选"></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, i) in rows" :key="i">
+                <tr
+                  v-for="(row, i) in rows"
+                  :key="i"
+                  :class="{ clickable: !!rowCodes[i] }"
+                  @click="selectRow(i)"
+                >
                   <td
                     v-for="col in columns"
                     :key="col"
                     :class="cellClass(col, row[col] ?? '')"
+                    :title="row[col] ?? ''"
                   >
                     {{ row[col] ?? '' }}
+                  </td>
+                  <td v-if="isFavorite" class="ws-star-col">
+                    <button
+                      v-if="rowCodes[i]"
+                      type="button"
+                      class="ws-row-star"
+                      :class="{ on: isFavorite(rowCodes[i]!) }"
+                      :aria-label="isFavorite(rowCodes[i]!) ? '移出自选' : '加入自选'"
+                      @click.stop="toggleStar(i)"
+                    >
+                      {{ isFavorite(rowCodes[i]!) ? '★' : '☆' }}
+                    </button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <small class="ws-count">共 {{ rows.length }} 条</small>
+          <div class="ws-table-foot">
+            <small class="ws-count">
+              已显示 {{ rows.length }} 条<template v-if="page.total"> / 共 {{ page.total }} 只</template>
+            </small>
+            <button
+              v-if="showLoadMore"
+              type="button"
+              class="ws-more"
+              :disabled="loadingMore"
+              @click="emit('loadMore')"
+            >
+              {{ loadingMore ? '加载中…' : '加载更多' }}
+            </button>
+          </div>
+          <p v-if="hasClickableRow" class="ws-hint">点击任意一行，直接进入该股票的行情、财务与公告研究。</p>
         </div>
       </template>
 
@@ -236,6 +307,9 @@ async function copyRaw() {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--font-size-meta);
+  /* 固定列宽：auto 布局下字重变化会重新计算列宽，鼠标划过时整行会左右抖动。
+     列宽在下面的 nth-child 规则里逐列给定。 */
+  table-layout: fixed;
 }
 .ws-table th,
 .ws-table td {
@@ -243,6 +317,18 @@ async function copyRaw() {
   border-bottom: 1px solid var(--border-light);
   text-align: left;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* table-layout:fixed 下必须给每列宽度，否则全挤在第一列。
+   首列（代码）给足，其余列均分剩余宽度。 */
+.ws-table th:nth-child(1),
+.ws-table td:nth-child(1) {
+  width: 108px;
+}
+.ws-table th:not(:first-child):not(.ws-star-col),
+.ws-table td:not(:first-child):not(.ws-star-col) {
+  width: 116px;
 }
 .ws-table thead th {
   position: sticky;
@@ -256,6 +342,20 @@ async function copyRaw() {
 .ws-table tbody tr:hover {
   background: var(--bg-hover);
 }
+/* 认得出代码的行才是可点的，用光标提示可交互 */
+.ws-table tbody tr.clickable {
+  cursor: pointer;
+}
+/* 加粗是常态而不是 hover 态：hover 时才加粗会撑宽单元格，把整行往右推，
+   鼠标移动时列就跟着抖。字重固定后，hover 只换颜色，不动布局。 */
+.ws-table tbody tr.clickable td:first-child {
+  color: #0f766e;
+  font-weight: 700;
+}
+.ws-table tbody tr.clickable:hover td:first-child {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .ws-table td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -268,11 +368,62 @@ async function copyRaw() {
   color: var(--stock-down);
   font-weight: 700;
 }
+.ws-star-col {
+  width: 34px;
+  padding-inline: 4px !important;
+  text-align: center !important;
+}
+.ws-row-star {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-size-body);
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ws-row-star:hover {
+  background: var(--bg-hover);
+  color: #e8a317;
+}
+.ws-row-star.on {
+  color: #e8a317;
+}
+.ws-table-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
 .ws-count {
-  display: block;
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
+}
+.ws-more {
+  padding: 6px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-size: var(--font-size-meta);
+  font-weight: 700;
+  cursor: pointer;
+}
+.ws-more:hover:not(:disabled) {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+.ws-more:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.ws-hint {
   margin-top: 8px;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
+  text-align: center;
 }
 .ws-pre-wrap,
 .ws-pre {

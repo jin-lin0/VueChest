@@ -261,10 +261,6 @@ watch(
       :error="error"
       :unauthorized="unauthorized"
     />
-
-    <p class="ws-foot">
-      数据来自腾讯 westock 网关，仅供研究学习，不构成投资建议。
-    </p>
   </section>
 </template>
 
@@ -376,10 +372,5 @@ watch(
   color: var(--text-primary);
   cursor: pointer;
   font-weight: 700;
-}
-.ws-foot {
-  color: var(--text-muted);
-  font-size: var(--font-size-caption);
-  text-align: center;
 }
 </style>

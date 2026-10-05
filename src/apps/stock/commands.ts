@@ -1,6 +1,7 @@
 import { STORAGE_KEYS } from '@/config'
 import { getStorage } from '@/lib/storage'
 import { defineAppCommandProvider, type AppCommandDefinition } from '@/lib/app-command'
+import { QUICK_DISCOVER } from './westock-discover'
 
 interface StockReference {
   code: string
@@ -30,6 +31,17 @@ export function useStockCommandProvider() {
     commands: () => {
       const commands: AppCommandDefinition[] = [
         {
+          id: 'stock-discover',
+          label: '选股发现',
+          description: '按策略、排行、条件、标签、事件筛选候选股票，无需先选定标的',
+          icon: '⌕',
+          keywords: ['选股', '发现', '策略', '筛选', '排行', '标签', '事件', 'discover'],
+          priority: 92,
+          execute: ({ router }) => {
+            router.push({ path: '/stock', query: { panel: 'westockDiscover' } })
+          },
+        },
+        {
           id: 'stock-open-portfolio',
           label: '查看模拟持仓',
           description: '直接打开仓位、市值与盈亏，不需要先查询股票',
@@ -41,6 +53,24 @@ export function useStockCommandProvider() {
           },
         },
       ]
+
+      // 高频选股条件直达：省掉「开面板 → 找分类 → 翻下拉框 → 选条件」四步。
+      for (const item of QUICK_DISCOVER) {
+        commands.push({
+          id: `stock-discover-${item.id}`,
+          label: `选股 · ${item.label}`,
+          description: item.hint,
+          icon: '⌕',
+          keywords: ['选股', '发现', '策略', '排行', item.label, item.id],
+          priority: 80,
+          execute: ({ router }) => {
+            router.push({
+              path: '/stock',
+              query: { panel: 'westockDiscover', preset: item.id, command: String(Date.now()) },
+            })
+          },
+        })
+      }
 
       commands.push(
         ...loadStockReferences().map(
