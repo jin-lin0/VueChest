@@ -107,6 +107,12 @@ const router = createRouter({
       meta: { title: '开发者中心', requiresAuth: true },
     },
     {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('../views/Notifications.vue'),
+      meta: { title: '通知中心', requiresAuth: true },
+    },
+    {
       path: '/market/:id(\\d+)',
       name: 'market-detail',
       component: () => import('../views/market/AppMarketDetail.vue'),

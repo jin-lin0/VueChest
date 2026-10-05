@@ -22,6 +22,27 @@ let syncUserRequest = 0
 
 workspaceStore.init()
 
+/**
+ * 通知角标与登录态绑定：登录后拉一次未读数并开始轮询，退出/切号立即清零，
+ * 避免上一个账号的未读数残留在 favicon 与铃铛上。
+ *
+ * 这里用**动态导入**而非顶层 import：通知 store 连带推送状态机与全部文案约 3.5KB gzip，
+ * 而入口 gzip 预算已经贴着上限。角标晚几百毫秒出现完全可接受，
+ * 没必要让它挡在首屏关键路径上（导入在 setup 阶段就发起，不会等到首次交互）。
+ *
+ * 具体动作收在 bootstrapNotifications 里：每多写一个 `import()` 就多一份预加载依赖清单，
+ * 入口只保留这一次。
+ */
+watch(
+  () => authStore.user?.id,
+  (userId) => {
+    void import('@/stores/notifications').then(({ bootstrapNotifications }) => {
+      bootstrapNotifications(userId)
+    })
+  },
+  { immediate: true },
+)
+
 watch(
   () => authStore.user?.id,
   async (userId) => {

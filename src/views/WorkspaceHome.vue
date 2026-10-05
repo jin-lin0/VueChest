@@ -10,6 +10,7 @@ import { useCloudSyncStore } from '@/stores/cloudSync'
 import { useMarketStore } from '@/stores/market'
 import { useWorkspaceStore } from '@/stores/workspace'
 import LoginDropdown from '@/components/business/LoginDropdown.vue'
+import NotificationCenter from '@/components/business/NotificationCenter.vue'
 import Modal from '@/components/common/Modal.vue'
 import { useTheme } from '@/composables/useTheme'
 import { useConfirm } from '@/composables/useConfirm'
@@ -421,6 +422,7 @@ onUnmounted(detachDocumentClickListener)
           <span class="market-label-short">市场</span>
         </button>
         <button class="text-action docs-action" @click="router.push('/docs')">文档</button>
+        <NotificationCenter />
         <LoginDropdown />
       </nav>
     </header>
