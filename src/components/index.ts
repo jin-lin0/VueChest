@@ -13,6 +13,7 @@ export { default as Drawer } from './common/Drawer.vue'
 export { default as Modal } from './common/Modal.vue'
 export { default as CopyButton } from './common/CopyButton.vue'
 export { default as EmptyState } from './common/EmptyState.vue'
+export { default as TrendChart } from './common/TrendChart.vue'
 export { default as DocNavTree, DOC_EXPANDED_KEY } from './DocNavTree.vue'
 
 // 平台业务组件
