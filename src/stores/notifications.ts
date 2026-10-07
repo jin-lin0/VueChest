@@ -139,7 +139,15 @@ export const useNotificationStore = defineStore('notifications', () => {
 
     try {
       await api.post('/api/notifications/read', { ids: list })
-      if (unreadOnly.value) items.value = items.value.filter((item) => !item.read)
+      // 「只看未读」下这几条会从当前视图消失，总数必须同步扣减，
+      // 否则页面标题仍写「N 条未读通知」而列表已经空了。
+      if (unreadOnly.value) {
+        items.value = items.value.filter((item) => !item.read)
+        pagination.value = {
+          ...pagination.value,
+          total: Math.max(0, pagination.value.total - targets.length),
+        }
+      }
     } catch {
       // 乐观更新失败就回到服务端的真实状态，而不是留一个假的「已读」
       applyUnread(previousUnread)
@@ -159,7 +167,12 @@ export const useNotificationStore = defineStore('notifications', () => {
 
     try {
       await api.post('/api/notifications/read-all')
-      if (unreadOnly.value) items.value = []
+      // 全部已读后「只看未读」视图必然为空，分页也要一并归零，
+      // 否则标题会继续显示「N 条未读」而列表已是空态。
+      if (unreadOnly.value) {
+        items.value = []
+        pagination.value = { ...pagination.value, total: 0, hasMore: false }
+      }
       return { ok: true, message: '已全部标记为已读' }
     } catch (error) {
       applyUnread(previousUnread)
@@ -221,6 +234,8 @@ export const useNotificationStore = defineStore('notifications', () => {
   /** 退出登录 / 切换账号时调用，确保角标不会残留上一个账号的未读数 */
   function reset() {
     stopPolling()
+    // 作废在途的列表请求：否则上一个账号的响应或报错会在状态清空之后又写回来
+    listGeneration++
     items.value = []
     pagination.value = { ...EMPTY_PAGINATION }
     loadError.value = null

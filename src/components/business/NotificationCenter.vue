@@ -36,6 +36,14 @@ const previewItems = computed(() => store.items.slice(0, PREVIEW_LIMIT))
 const hasMoreThanPreview = computed(() => store.pagination.total > previewItems.value.length)
 /** 首次打开还没拿到数据时才显示骨架，避免已有内容时闪一下 */
 const showSkeleton = computed(() => store.isLoading && !store.isInitialized)
+/**
+ * 只有「首屏拉取失败」才用错误态顶掉空态。
+ *
+ * 判据绑 `isInitialized` 而不是 `items.length`：`loadError` 挂在共享 store 上，
+ * 通知中心页的 loadMore 失败也会写它。若只看列表是否为空，一次陈旧错误就会把
+ * 这里本来正确的空态顶掉。真正「一条都没成功拿到过」时才该显示错误。
+ */
+const showError = computed(() => Boolean(store.loadError) && !store.isInitialized)
 
 function toggle() {
   isOpen.value = !isOpen.value
@@ -44,6 +52,11 @@ function toggle() {
 
 function close() {
   isOpen.value = false
+}
+
+/** 面板内联重试：load() 会先清掉 loadError 再重新拉第一页 */
+function retryLoad() {
+  void store.load()
 }
 
 async function handleMarkAllRead() {
@@ -100,10 +113,19 @@ onBeforeUnmount(() => {
 
 // 路由变化（含点击面板内的跳转）一律收起面板，避免跨页面残留浮层
 watch(() => route.fullPath, close)
+
+// 登出时根节点被 v-if 摘掉，但组件实例与 isOpen 都还在。不复位的话，
+// 同一实例在重新登录后会带着上次打开的面板直接出现。
+watch(
+  () => authStore.isAuthenticated,
+  (authenticated) => {
+    if (!authenticated) close()
+  },
+)
 </script>
 
 <template>
-  <div ref="rootRef" class="notification-center" @click.stop>
+  <div v-if="authStore.isAuthenticated" ref="rootRef" class="notification-center" @click.stop>
     <button
       class="bell-btn"
       :class="{ 'is-open': isOpen }"
@@ -140,6 +162,11 @@ watch(() => route.fullPath, close)
       <div class="panel-body">
         <div v-if="showSkeleton" class="panel-skeleton">
           <Skeleton v-for="index in 3" :key="index" height="46" radius="10" />
+        </div>
+
+        <div v-else-if="showError" class="panel-error">
+          <p class="panel-error-text">{{ store.loadError }}</p>
+          <button class="retry-btn" type="button" @click="retryLoad">重试</button>
         </div>
 
         <EmptyState
@@ -323,6 +350,40 @@ watch(() => route.fullPath, close)
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
+}
+
+.panel-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.panel-error-text {
+  margin: 0;
+  min-width: 0;
+  color: var(--danger);
+  font-size: var(--font-size-meta);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.retry-btn {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--accent);
+  font-size: var(--font-size-meta);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.retry-btn:hover {
+  border-color: var(--accent-light);
+  background: var(--accent-bg);
 }
 
 .notice-list {

@@ -110,7 +110,13 @@ describe('list loading', () => {
   })
 
   it('appends the next page and de-duplicates overlapping ids', async () => {
-    mockApi({ pages: { 1: [makeNotification(1), makeNotification(2)], 2: [makeNotification(2), makeNotification(3)] }, total: 45 })
+    mockApi({
+      pages: {
+        1: [makeNotification(1), makeNotification(2)],
+        2: [makeNotification(2), makeNotification(3)],
+      },
+      total: 45,
+    })
     const store = useNotificationStore()
     await store.load()
 
@@ -203,6 +209,8 @@ describe('marking read', () => {
     await store.markRead([1])
 
     expect(store.items).toHaveLength(0)
+    // 页面标题读的是 pagination.total，必须一起归零，否则会出现「空列表 + 1 条未读」的矛盾
+    expect(store.pagination.total).toBe(0)
   })
 
   it('rolls back to the server state when the request fails', async () => {
@@ -229,6 +237,19 @@ describe('marking read', () => {
     expect(mocks.apiPost).not.toHaveBeenCalled()
     expect(store.unreadCount).toBe(1)
   })
+
+  it('keeps the full total when marking read outside the unread-only filter', async () => {
+    // 「全部通知」视图里的 total 是全部条数，标已读只影响未读数，不该动它。
+    mockApi({ items: [makeNotification(1), makeNotification(2)], unread: 2 })
+    mocks.apiPost.mockResolvedValue({ success: true })
+    const store = useNotificationStore()
+    await store.load()
+
+    await store.markRead([1])
+
+    expect(store.items[0].read).toBe(true)
+    expect(store.pagination.total).toBe(2)
+  })
 })
 
 describe('markAllRead', () => {
@@ -244,6 +265,7 @@ describe('markAllRead', () => {
     expect(result.ok).toBe(true)
     expect(store.unreadCount).toBe(0)
     expect(store.items).toHaveLength(0)
+    expect(store.pagination.total).toBe(0)
     expect(mocks.apiPost).toHaveBeenCalledWith('/api/notifications/read-all')
   })
 
