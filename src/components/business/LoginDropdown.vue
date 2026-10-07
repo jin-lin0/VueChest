@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/lib/request'
 import Toast from '@/components/common/Toast.vue'
+import Popover from '@/components/common/Popover.vue'
 import { roleText } from '@/utils/common'
 
 const router = useRouter()
@@ -17,21 +18,27 @@ function showToast(type: 'success' | 'error' | 'warning' | 'info', message: stri
 
 const showDropdown = ref(false)
 
-function toggleDropdown() {
-  showDropdown.value = !showDropdown.value
-}
-
 function closeDropdown() {
   showDropdown.value = false
 }
 
+/**
+ * 跳转前先收起面板。
+ * 原来菜单容器上挂了 `@click` 兜底关闭，现在何时收起由 Popover 统一负责，
+ * 内容区里的跳转需要自己显式关闭。
+ */
+function goTo(path: string) {
+  closeDropdown()
+  void router.push(path)
+}
+
 function goToLogin() {
-  showDropdown.value = false
+  closeDropdown()
   router.push({ path: '/login', query: { redirect: route.fullPath } })
 }
 
 function goToUpload() {
-  showDropdown.value = false
+  closeDropdown()
   router.push({ path: '/market/upload', query: { returnTo: route.fullPath } })
 }
 
@@ -107,91 +114,94 @@ async function saveName() {
 
 <template>
   <div class="login-dropdown" @click.stop>
-    <button class="user-btn" @click="toggleDropdown">
-      <span class="user-icon">
-        <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="用户头像" />
-        <span v-else>👤</span>
-      </span>
-      <span v-if="authStore.isAuthenticated" class="user-name">{{ authStore.user?.username }}</span>
-    </button>
+    <Popover :open="showDropdown" align="end" @update:open="showDropdown = $event">
+      <template #trigger="{ toggle }">
+        <button class="user-btn" @click="toggle">
+          <span class="user-icon">
+            <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="用户头像" />
+            <span v-else>👤</span>
+          </span>
+          <span v-if="authStore.isAuthenticated" class="user-name">
+            {{ authStore.user?.username }}
+          </span>
+        </button>
+      </template>
 
-    <div v-if="showDropdown" class="dropdown-menu" @click="closeDropdown">
-      <template v-if="authStore.isAuthenticated">
-        <div class="dropdown-info">
-          <div class="profile-row" @click.stop>
-            <label class="profile-avatar" title="点击更换头像">
-              <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="用户头像" />
-              <span v-else>{{ authStore.user?.username?.charAt(0).toUpperCase() }}</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                hidden
-                @change="uploadAvatar"
-              />
-            </label>
+      <div class="dropdown-menu">
+        <template v-if="authStore.isAuthenticated">
+          <div class="dropdown-info">
+            <div class="profile-row">
+              <label class="profile-avatar" title="点击更换头像">
+                <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="用户头像" />
+                <span v-else>{{ authStore.user?.username?.charAt(0).toUpperCase() }}</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  hidden
+                  @change="uploadAvatar"
+                />
+              </label>
 
-            <template v-if="!editingName">
-              <div class="profile-meta">
-                <span class="profile-name-line">
-                  <strong>{{ authStore.user?.username }}</strong>
-                  <button class="name-edit-icon" title="修改昵称" @click.stop="startEditName">
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="13"
-                      height="13"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z" />
-                    </svg>
+              <template v-if="!editingName">
+                <div class="profile-meta">
+                  <span class="profile-name-line">
+                    <strong>{{ authStore.user?.username }}</strong>
+                    <button class="name-edit-icon" title="修改昵称" @click="startEditName">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="13"
+                        height="13"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z" />
+                      </svg>
+                    </button>
+                  </span>
+                  <span class="dropdown-role">{{ getRoleLabel(authStore.user?.role) }}</span>
+                </div>
+              </template>
+
+              <div v-else class="name-edit">
+                <input
+                  ref="nameInput"
+                  v-model="nameDraft"
+                  class="name-input"
+                  type="text"
+                  maxlength="20"
+                  placeholder="请输入新昵称"
+                  @keyup.enter="saveName"
+                  @keydown.esc.stop
+                  @keyup.esc="cancelEditName"
+                />
+                <div class="name-edit-actions">
+                  <button class="name-save" :disabled="savingName" @click="saveName">
+                    {{ savingName ? '保存中…' : '保存' }}
                   </button>
-                </span>
-                <span class="dropdown-role">{{ getRoleLabel(authStore.user?.role) }}</span>
-              </div>
-            </template>
-
-            <div v-else class="name-edit">
-              <input
-                ref="nameInput"
-                v-model="nameDraft"
-                class="name-input"
-                type="text"
-                maxlength="20"
-                placeholder="请输入新昵称"
-                @keyup.enter="saveName"
-                @keyup.esc="cancelEditName"
-              />
-              <div class="name-edit-actions">
-                <button class="name-save" :disabled="savingName" @click.stop="saveName">
-                  {{ savingName ? '保存中…' : '保存' }}
-                </button>
-                <button class="name-cancel" @click.stop="cancelEditName">取消</button>
+                  <button class="name-cancel" @click="cancelEditName">取消</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="dropdown-divider"></div>
-        <button class="dropdown-item upload-link" @click.stop="goToUpload">📤 上传应用</button>
-        <button class="dropdown-item" @click.stop="$router.push('/developer')">
-          🧑‍💻 开发者中心
-        </button>
-        <button class="dropdown-item" @click.stop="$router.push('/settings/account')">
-          🔐 设备与云端
-        </button>
-        <button v-if="authStore.isAdmin" class="dropdown-item" @click.stop="$router.push('/admin')">
-          ⚙️ 管理后台
-        </button>
-        <div class="dropdown-divider"></div>
-        <button class="dropdown-item logout" @click.stop="handleLogout">退出登录</button>
-      </template>
-      <template v-else>
-        <button class="dropdown-item" @click.stop="goToLogin">登录</button>
-      </template>
-    </div>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item upload-link" @click="goToUpload">📤 上传应用</button>
+          <button class="dropdown-item" @click="goTo('/developer')">🧑‍💻 开发者中心</button>
+          <button class="dropdown-item" @click="goTo('/settings/account')">🔐 设备与云端</button>
+          <button v-if="authStore.isAdmin" class="dropdown-item" @click="goTo('/admin')">
+            ⚙️ 管理后台
+          </button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item logout" @click="handleLogout">退出登录</button>
+        </template>
+        <template v-else>
+          <button class="dropdown-item" @click="goToLogin">登录</button>
+        </template>
+      </div>
+    </Popover>
 
     <Toast ref="toastRef" />
   </div>
@@ -326,30 +336,15 @@ async function saveName() {
   white-space: nowrap;
 }
 
+/* 定位、层级与入场动画由 Popover 提供，这里只管外观 */
 .dropdown-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
   min-width: 200px;
   max-width: 260px;
   background: var(--bg-glass);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  z-index: 1000;
-  animation: dropIn 0.15s ease;
   overflow: hidden;
-}
-
-@keyframes dropIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .dropdown-info {

@@ -27,9 +27,37 @@ let root: HTMLElement
 let router: Router
 let pinia: Pinia
 let auth: ReturnType<typeof useAuthStore>
+let media: ReturnType<typeof installMatchMedia>
+
+type MediaListener = (event: MediaQueryListEvent) => void
 
 async function flush() {
   for (let i = 0; i < 4; i++) await nextTick()
+}
+
+/**
+ * matchMedia 替身。容器按视口二选一（宽屏下拉浮层 / 窄屏贴底抽屉），
+ * 所以测试既要能设定当前断点，也要能模拟运行中跨过断点。
+ */
+function installMatchMedia(initial: boolean) {
+  const listeners = new Set<MediaListener>()
+  const state = { matches: initial }
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    media: query,
+    get matches() {
+      return state.matches
+    },
+    addEventListener: (_type: string, listener: MediaListener) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: MediaListener) => listeners.delete(listener),
+  }))
+  return {
+    async cross(next: boolean) {
+      state.matches = next
+      listeners.forEach((listener) => listener({ matches: next } as MediaQueryListEvent))
+      await flush()
+    },
+    listenerCount: () => listeners.size,
+  }
 }
 
 function makeNotification(id: number): AppNotification {
@@ -80,6 +108,8 @@ async function openPanel() {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  // 默认宽屏（下拉浮层分支），既有用例都基于这个形态
+  media = installMatchMedia(false)
   pinia = createPinia()
   setActivePinia(pinia)
   // 用真实 auth store 驱动登录态：isAuthenticated 是 computed，
@@ -99,6 +129,12 @@ beforeEach(() => {
 afterEach(() => {
   app?.unmount()
   root?.remove()
+  // Drawer 是 Teleport 到 body 的。上一条用例若在 <Transition> 离场途中被卸载，
+  // 残留节点会污染下一条用例的全局查询（querySelector 只看 document），这里兜底清掉。
+  document.querySelectorAll('.vc-drawer-overlay, .vc-drawer').forEach((node) => node.remove())
+  // 抽屉打开时会锁页面滚动（useOverlay），卸载后仍兜底复位
+  document.body.style.overflow = ''
+  vi.unstubAllGlobals()
 })
 
 describe('NotificationCenter visibility', () => {
@@ -124,6 +160,23 @@ describe('NotificationCenter visibility', () => {
     await mount()
 
     expect(document.querySelector('.bell-btn')).not.toBeNull()
+  })
+
+  /**
+   * 上面那条游客用例的 `not.toHaveBeenCalled()` 在组件根本不渲染时恒真，
+   * 拦不住「监听被删掉」这类回归——这条才是它的对偶。
+   */
+  it('refreshes the unread badge when the tab becomes visible again', async () => {
+    mockApi(() => Promise.resolve(page([])), 3)
+
+    await mount()
+    mocks.apiGet.mockClear()
+
+    document.dispatchEvent(new Event('visibilitychange'))
+    await flush()
+
+    expect(mocks.apiGet).toHaveBeenCalledTimes(1)
+    expect(mocks.apiGet.mock.calls[0][0]).toContain('unread-count')
   })
 })
 
@@ -192,6 +245,82 @@ describe('NotificationCenter list states', () => {
   })
 })
 
+describe('NotificationCenter dismissal', () => {
+  it('keeps the panel open when pressing inside it', async () => {
+    mockApi(() => Promise.resolve(page([])))
+
+    await mount()
+    await openPanel()
+    const head = document.querySelector('.panel-head')
+    expect(head).not.toBeNull()
+
+    head!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await flush()
+
+    expect(document.querySelector('.panel')).not.toBeNull()
+  })
+
+  it('closes the panel when pressing outside of it', async () => {
+    mockApi(() => Promise.resolve(page([])))
+
+    await mount()
+    await openPanel()
+
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await flush()
+
+    expect(document.querySelector('.panel')).toBeNull()
+  })
+})
+
+describe('NotificationCenter 窄屏容器', () => {
+  it('窄屏渲染为贴底抽屉，而不是下拉浮层', async () => {
+    media = installMatchMedia(true)
+    mockApi(() => Promise.resolve(page([])))
+
+    await mount()
+    await openPanel()
+
+    expect(document.querySelector('.vc-drawer.bottom')).not.toBeNull()
+    expect(document.querySelector('.vc-popover__panel')).toBeNull()
+    // 钉住 kebab 形式 aria-label 的传递：单测里用 camelCase 传参并不能证明生产代码
+    // 那句 `aria-label="通知中心"` 生效，一旦 prop 解析出问题会静默退化成默认文案
+    expect(document.querySelector('.vc-drawer.bottom')?.getAttribute('aria-label')).toBe('通知中心')
+  })
+
+  it('点抽屉遮罩收起（遮罩改由 Drawer 提供，组件内不再有 .panel-backdrop）', async () => {
+    media = installMatchMedia(true)
+    mockApi(() => Promise.resolve(page([])))
+
+    await mount()
+    await openPanel()
+    expect(document.querySelector('.vc-drawer')).not.toBeNull()
+
+    document
+      .querySelector('.vc-drawer-overlay')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    // <Transition> 要等 rAF / transitionend 才真正摘掉节点。固定等待在冷启动
+    // （首次 transform 未缓存）时会不够，导致偶发失败，这里改为轮询。
+    await vi.waitFor(() => {
+      expect(document.querySelector('.vc-drawer')).toBeNull()
+    })
+  })
+
+  it('运行中跨过断点时容器随之切换，且开关状态延续', async () => {
+    mockApi(() => Promise.resolve(page([])))
+
+    await mount()
+    await openPanel()
+    expect(document.querySelector('.vc-popover__panel')).not.toBeNull()
+
+    await media.cross(true)
+
+    expect(document.querySelector('.vc-drawer.bottom')).not.toBeNull()
+    expect(document.querySelector('.vc-popover__panel')).toBeNull()
+  })
+})
+
 describe('NotificationCenter session switching', () => {
   it('closes the panel on logout so it does not reappear after the next login', async () => {
     mockApi(() => Promise.resolve(page([])))
@@ -201,8 +330,9 @@ describe('NotificationCenter session switching', () => {
     expect(document.querySelector('.panel')).not.toBeNull()
 
     auth.token = null
-    await flush()
-    expect(document.querySelector('.panel')).toBeNull()
+    await vi.waitFor(() => {
+      expect(document.querySelector('.panel')).toBeNull()
+    })
 
     auth.token = 'test-token'
     await flush()
