@@ -2,24 +2,20 @@ import { STORAGE_KEYS } from '@/config'
 import { getStorage } from '@/lib/storage'
 import { defineAppCommandProvider, type AppCommandDefinition } from '@/lib/app-command'
 import { QUICK_DISCOVER } from './westock-discover'
+import { instrumentKey, isStockReference, type FavoriteStock } from './model'
 
-interface StockReference {
-  code: string
-  name: string
-}
-
-function loadStockReferences(): StockReference[] {
+function loadStockReferences(): FavoriteStock[] {
   const sources = [
-    getStorage<StockReference[]>(STORAGE_KEYS.STOCK_RECENT, []) || [],
-    getStorage<StockReference[]>(STORAGE_KEYS.STOCK_FAVORITES, []) || [],
-    getStorage<StockReference[]>(STORAGE_KEYS.STOCK_POSITIONS, []) || [],
+    getStorage<FavoriteStock[]>(STORAGE_KEYS.STOCK_RECENT, []) || [],
+    getStorage<FavoriteStock[]>(STORAGE_KEYS.STOCK_FAVORITES, []) || [],
+    getStorage<FavoriteStock[]>(STORAGE_KEYS.STOCK_POSITIONS, []) || [],
   ]
   return [
     ...new Map(
       sources
         .flat()
-        .filter((item) => /^\d{6}$/.test(String(item?.code || '')))
-        .map((item) => [item.code, { code: item.code, name: item.name || item.code }]),
+        .filter(isStockReference)
+        .map((item) => [instrumentKey(item), { ...item, name: item.name || item.code }]),
     ).values(),
   ].slice(0, 12)
 }
@@ -75,7 +71,7 @@ export function useStockCommandProvider() {
       commands.push(
         ...loadStockReferences().map(
           (stock): AppCommandDefinition => ({
-            id: `stock-open-${stock.code}`,
+            id: `stock-open-${instrumentKey(stock)}`,
             label: `研究 ${stock.name}`,
             description: `${stock.code} · 打开行情、K线、财务与公告`,
             icon: 'R',
@@ -84,7 +80,11 @@ export function useStockCommandProvider() {
             execute: ({ router }) => {
               router.push({
                 path: '/stock',
-                query: { code: stock.code, panel: 'overview', command: String(Date.now()) },
+                query: {
+                  code: instrumentKey(stock),
+                  panel: 'overview',
+                  command: String(Date.now()),
+                },
               })
             },
           }),

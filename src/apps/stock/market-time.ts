@@ -1,4 +1,4 @@
-import type { KlineData } from '@/stores/stock'
+import type { KlineData } from './model'
 
 export function marketClock(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -21,4 +21,12 @@ export function marketClock(now = new Date()) {
 export function completedDailyBars(data: KlineData[], now = new Date()): KlineData[] {
   const clock = marketClock(now)
   return data.filter((row) => row.date < clock.date || (row.date === clock.date && clock.closed))
+}
+
+export function completedThrough(now = new Date()) {
+  const clock = marketClock(now)
+  if (clock.closed) return clock.date
+  const previous = new Date(`${clock.date}T00:00:00Z`)
+  previous.setUTCDate(previous.getUTCDate() - 1)
+  return previous.toISOString().slice(0, 10)
 }

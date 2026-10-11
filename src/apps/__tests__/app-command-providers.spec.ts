@@ -10,6 +10,7 @@ vi.mock('@/lib/storage', () => ({
 
 import { STORAGE_KEYS } from '@/config'
 import { useStockCommandProvider } from '../stock/commands'
+import { resolveInstrument } from '../stock/model'
 import { useInterviewCommandProvider } from '../interview/commands'
 import { useApiManagerCommandProvider } from '../api-manager/commands'
 
@@ -22,10 +23,10 @@ beforeEach(() => storage.clear())
 
 describe('app command providers', () => {
   it('exposes portfolio and dynamic stock research commands', async () => {
-    storage.set(STORAGE_KEYS.STOCK_RECENT, [{ code: '600519', name: '贵州茅台' }])
+    storage.set(STORAGE_KEYS.STOCK_RECENT, [{ ...resolveInstrument('sh600519'), name: '贵州茅台' }])
     const commands = useStockCommandProvider().commands()
     expect(commands.map((command) => command.label)).toContain('查看模拟持仓')
-    const research = commands.find((command) => command.id === 'stock-open-600519')!
+    const research = commands.find((command) => command.id === 'stock-open-sh600519')!
     const { push, context } = createContext()
 
     await research.execute(context)
@@ -33,7 +34,7 @@ describe('app command providers', () => {
     expect(push).toHaveBeenCalledWith(
       expect.objectContaining({
         path: '/stock',
-        query: expect.objectContaining({ code: '600519' }),
+        query: expect.objectContaining({ code: 'sh600519' }),
       }),
     )
   })
@@ -52,6 +53,14 @@ describe('app command providers', () => {
     expect(commands.map((command) => command.id)).toEqual(
       expect.arrayContaining(['interview-random', 'interview-unpracticed', 'interview-review']),
     )
+  })
+  it('does not create research commands from incomplete stock identities', () => {
+    storage.set(STORAGE_KEYS.STOCK_RECENT, [{ code: '600519', name: 'Old record' }])
+    expect(
+      useStockCommandProvider()
+        .commands()
+        .some((item) => item.id === 'stock-open-sh600519'),
+    ).toBe(false)
   })
 
   it('exposes saved API requests and runnable collections', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { finiteOrNull, formatPrice, summaryTimestamp } from '../data-quality'
 import { completedDailyBars, marketClock } from '../market-time'
-import type { KlineData } from '@/stores/stock'
+import type { KlineData } from '../model'
 
 describe('stock missing fields and exchange clock', () => {
   it('distinguishes missing values from true zeros', () => {

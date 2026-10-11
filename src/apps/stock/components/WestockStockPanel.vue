@@ -221,7 +221,7 @@ watch(
 )
 
 watch(
-  () => stock.stockCode,
+  () => stock.formattedCode,
   () => {
     if (activeCmd.value.needsCode) void run()
   },
@@ -270,6 +270,7 @@ watch(
 
     <WestockResult
       :result="result"
+      :can-load-more="false"
       :loading="loading"
       :error="error"
       :unauthorized="unauthorized"

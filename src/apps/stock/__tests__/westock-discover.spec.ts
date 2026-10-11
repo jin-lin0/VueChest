@@ -9,7 +9,7 @@ import {
   isRangeValid,
   parseCatalog,
   parseResultPage,
-  pickRowCode,
+  pickRowSymbol,
   pickRowName,
   SECTION_DATE_CAPABILITY,
   sectionSupportsDate,
@@ -42,9 +42,19 @@ const RANKING_TEXT = [
   '    TecScore                 技术评分',
 ].join('\n')
 
-const LABEL_TEXT = ['', '# 股东属性', '  shareholder_central_state  央企公司', '  shareholder_private  民企公司'].join('\n')
+const LABEL_TEXT = [
+  '',
+  '# 股东属性',
+  '  shareholder_central_state  央企公司',
+  '  shareholder_private  民企公司',
+].join('\n')
 
-const FILTER_TEXT = ['可用的预设选股函数:', '  LowPE', '  HighDividend', '  SomethingNewFromUpstream'].join('\n')
+const FILTER_TEXT = [
+  '可用的预设选股函数:',
+  '  LowPE',
+  '  HighDividend',
+  '  SomethingNewFromUpstream',
+].join('\n')
 
 describe('parseCatalog', () => {
   it('按 # 分组解析 strategy，两空格缩进为条目', () => {
@@ -113,7 +123,13 @@ describe('groupCatalog / flattenOptions / findItemName', () => {
 
 describe('CATALOG_SPECS', () => {
   it('五个目录都与 CLI 白名单一致，且不包含 search（搜索无需目录）', () => {
-    expect(CATALOG_SPECS.map((s) => s.key)).toEqual(['strategy', 'ranking', 'label', 'event', 'filter'])
+    expect(CATALOG_SPECS.map((s) => s.key)).toEqual([
+      'strategy',
+      'ranking',
+      'label',
+      'event',
+      'filter',
+    ])
     for (const spec of CATALOG_SPECS) {
       expect(spec.args[0]).toBe(spec.mode)
       // 这些 flag 必须都在 client.js 的 KNOWN_FLAGS 内，否则请求会被 400 拒掉
@@ -123,35 +139,33 @@ describe('CATALOG_SPECS', () => {
   })
 })
 
-describe('pickRowCode', () => {
-  // 各命令表头不统一（code / 代码），只能靠值形态识别，不能写死列名
+describe('pickRowSymbol', () => {
   it('识别带交易所前缀的代码（strategy/label 的 code 列）', () => {
-    expect(pickRowCode({ code: 'sh600178', name: '东安动力' })).toBe('600178')
-    expect(pickRowCode({ code: 'sz300024', name: '机器人' })).toBe('300024')
+    expect(pickRowSymbol({ code: 'sh600178', name: '东安动力' })).toBe('sh600178')
+    expect(pickRowSymbol({ code: 'sz300024', name: '机器人' })).toBe('sz300024')
   })
 
   it('识别中文「代码」列（ranking 表头）', () => {
-    expect(pickRowCode({ '#': '1', 代码: 'sh688578', 名称: '艾力斯' })).toBe('688578')
+    expect(pickRowSymbol({ '#': '1', 代码: 'sh688578', 名称: '艾力斯' })).toBe('sh688578')
   })
 
   it('识别裸 6 位数字', () => {
-    expect(pickRowCode({ code: '600519' })).toBe('600519')
+    expect(pickRowSymbol({ code: '600519' })).toBe('sh600519')
   })
 
   it('认不出代码时返回 null（该行不可点，而不是跳到错误的股票）', () => {
-    expect(pickRowCode({ name: '某某股', PE_TTM: '12.3' })).toBeNull()
-    expect(pickRowCode({ code: 'sh6001781' })).toBeNull()
-    expect(pickRowCode({})).toBeNull()
+    expect(pickRowSymbol({ name: '某某股', PE_TTM: '12.3' })).toBeNull()
+    expect(pickRowSymbol({ code: 'sh6001781' })).toBeNull()
+    expect(pickRowSymbol({})).toBeNull()
   })
 
   it('不会把数值列误认成代码', () => {
-    // 6 位纯数字确实会被认走，这是形态识别的固有代价；
-    // 但排名列通常是 1~5000，不会命中 6 位，所以实际风险很低。
-    expect(pickRowCode({ '#': '12', 代码: 'sh600066', 名称: '宇通客车' })).toBe('600066')
+    expect(pickRowSymbol({ '#': '12', 代码: 'sh600066', 名称: '宇通客车' })).toBe('sh600066')
   })
 })
 
-describe('parseResultPage / hasMorePages', () => {  it('解析 strategy 的 meta（实测格式）', () => {
+describe('parseResultPage / hasMorePages', () => {
+  it('解析 strategy 的 meta（实测格式）', () => {
     const page = parseResultPage('MACD金叉 (2026-10-02) - 共 187 只 | 显示 1-20/187', 20)
     expect(page).toEqual({ total: 187, from: 1, to: 20 })
     expect(hasMorePages(page)).toBe(true)
@@ -185,7 +199,9 @@ describe('pickRowName', () => {
   })
 
   it('跳过代码列与纯数字列，不把它们当名字', () => {
-    expect(pickRowName({ code: 'sh600066', PE_TTM: '12.34', 名称: '宇通客车' }, '600066')).toBe('宇通客车')
+    expect(pickRowName({ code: 'sh600066', PE_TTM: '12.34', 名称: '宇通客车' }, '600066')).toBe(
+      '宇通客车',
+    )
   })
 
   it('没有可识别名称时返回空串，由调用方用代码兜底', () => {
@@ -196,11 +212,11 @@ describe('pickRowName', () => {
   // 提取逻辑不能因为多出来的日期列而认错代码/名称（也不能依赖列的先后顺序）。
   it('含 signalDate 的多日行仍能正确提取，且与列顺序无关', () => {
     const row = { code: 'sh600178', name: '东安动力', signalDate: '2026-09-24' }
-    expect(pickRowCode(row)).toBe('600178')
+    expect(pickRowSymbol(row)).toBe('sh600178')
     expect(pickRowName(row, '600178')).toBe('东安动力')
     // signalDate 排在最前时结果不变
     const reordered = { signalDate: '2026-09-24', code: 'sh600178', name: '东安动力' }
-    expect(pickRowCode(reordered)).toBe('600178')
+    expect(pickRowSymbol(reordered)).toBe('sh600178')
     expect(pickRowName(reordered, '600178')).toBe('东安动力')
   })
 
@@ -244,5 +260,18 @@ describe('日期能力与区间校验', () => {
     expect(isRangeValid('', '')).toBe(false)
     // 结束早于开始
     expect(isRangeValid('2026-10-01', '2026-09-20')).toBe(false)
+  })
+})
+
+describe('discovery instrument identity', () => {
+  it('preserves prefixes and only adapts a code column', () => {
+    expect(pickRowSymbol({ code: 'sh000001', name: '指数' })).toBe('sh000001')
+    expect(pickRowSymbol({ 代码: '510300', 名称: 'ETF' })).toBe('sh510300')
+    expect(pickRowSymbol({ code: '000001', market: 'sh' })).toBe('sh000001')
+    expect(pickRowSymbol({ code: '000001' })).toBeNull()
+    expect(pickRowSymbol({ 成交量: '600000', 名称: '无代码' })).toBeNull()
+    expect(pickRowSymbol({ code: 'bj430047', 名称: '北交所' })).toBeNull()
+    expect(pickRowSymbol({ code: '000001', market: 'hk' })).toBeNull()
+    expect(pickRowSymbol({ code: '113000' })).toBeNull()
   })
 })

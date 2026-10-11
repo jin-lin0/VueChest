@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { buildTechnicalSnapshot, formatLargeNumber, macd, rsi, sma } from '../research'
-import type { KlineData } from '@/stores/stock'
+import type { KlineData } from '../model'
 
 function series(values: number[]): KlineData[] {
   return values.map((value, index) => ({
     date: `2026-01-${String(index + 1).padStart(2, '0')}`,
-    open: String(value - 1),
-    close: String(value),
-    high: String(value + 1),
-    low: String(value - 2),
-    volume: String(1000 + index),
+    open: value - 1,
+    close: value,
+    high: value + 1,
+    low: value - 2,
+    volume: 1000 + index,
   }))
 }
 
@@ -44,5 +44,13 @@ describe('stock research indicators', () => {
     expect(buildTechnicalSnapshot(flat).trend).toBe('neutral')
     expect(buildTechnicalSnapshot(flat).volatility20).toBe(0)
     expect(buildTechnicalSnapshot(flat.slice(0, 20)).volatility20).toBeNull()
+  })
+})
+
+describe('fund price precision', () => {
+  it('retains thousandths in support and resistance levels', () => {
+    const data = series(Array.from({ length: 80 }, () => 4.385))
+    expect(buildTechnicalSnapshot(data, 3).support).toBe(4.385)
+    expect(buildTechnicalSnapshot(data, 3).resistance).toBe(4.385)
   })
 })

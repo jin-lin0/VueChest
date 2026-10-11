@@ -9,7 +9,7 @@ import {
   createSeriesMarkers,
 } from 'lightweight-charts'
 import type { IChartApi, ISeriesApi, ISeriesMarkersPluginApi, Time } from 'lightweight-charts'
-import type { KlineData } from '@/stores/stock'
+import type { KlineData } from '../model'
 import { STOCK_COLORS } from '../config'
 import { sma } from '../research'
 import { minimumBarSpacing, recentLogicalRange } from '../chart-range'
@@ -41,6 +41,7 @@ const applyChartTheme = (dark: boolean) => {
 
 const props = defineProps<{
   data: KlineData[]
+  pricePrecision?: number
   selectedDate: string
 }>()
 
@@ -161,22 +162,26 @@ const updateChart = () => {
     const [year, month, day] = item.date.split('-')
     return {
       time: `${year}-${month}-${day}`,
-      open: parseFloat(item.open),
-      high: parseFloat(item.high),
-      low: parseFloat(item.low),
-      close: parseFloat(item.close),
+      open: item.open,
+      high: item.high,
+      low: item.low,
+      close: item.close,
     }
   })
 
+  candlestickSeries.applyOptions({
+    priceFormat: {
+      type: 'price',
+      precision: props.pricePrecision ?? 2,
+      minMove: 10 ** -(props.pricePrecision ?? 2),
+    },
+  })
   candlestickSeries.setData(chartData)
   volumeSeries?.setData(
     props.data.map((item) => ({
       time: item.date as Time,
-      value: Number(item.volume),
-      color:
-        Number(item.close) >= Number(item.open)
-          ? 'rgba(220, 38, 38, 0.32)'
-          : 'rgba(5, 150, 105, 0.32)',
+      value: item.volume,
+      color: item.close >= item.open ? 'rgba(220, 38, 38, 0.32)' : 'rgba(5, 150, 105, 0.32)',
     })),
   )
   const toLine = (period: number) =>

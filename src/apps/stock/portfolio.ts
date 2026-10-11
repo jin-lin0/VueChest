@@ -1,9 +1,7 @@
-import type { KlineData } from '@/stores/stock'
+import type { KlineData, FavoriteStock } from './model'
 
-export interface StockPosition {
+export interface StockPosition extends FavoriteStock {
   id: string
-  code: string
-  name: string
   shares: number
   costPrice: number
   createdAt: number
@@ -85,19 +83,17 @@ export function portfolioTotals(positions: PositionMetrics[]) {
 }
 
 export function normalizePerformance(code: string, name: string, data: KlineData[]): CompareSeries {
-  const rows = data.filter((item) => Number.isFinite(Number(item.close)))
-  const first = Number(rows[0]?.close || 0)
+  const rows = data.filter((item) => Number.isFinite(item.close))
+  const first = rows[0]?.close || 0
   const points = first
     ? rows.map((item) => ({
         date: item.date,
-        value: round((Number(item.close) / first) * 100, 3),
+        value: round((item.close / first) * 100, 3),
       }))
     : []
   const returns = rows
     .slice(1)
-    .map(
-      (item, index) => (Number(item.close) - Number(rows[index].close)) / Number(rows[index].close),
-    )
+    .map((item, index) => (item.close - rows[index].close) / rows[index].close)
   const mean = returns.length ? returns.reduce((sum, value) => sum + value, 0) / returns.length : 0
   const variance = returns.length
     ? returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / returns.length
@@ -112,9 +108,9 @@ export function normalizePerformance(code: string, name: string, data: KlineData
 }
 
 export function correlation(left: KlineData[], right: KlineData[]): number | null {
-  const rightByDate = new Map(right.map((item) => [item.date, Number(item.close)]))
+  const rightByDate = new Map(right.map((item) => [item.date, item.close]))
   const pairs = left
-    .map((item) => [Number(item.close), rightByDate.get(item.date)] as const)
+    .map((item) => [item.close, rightByDate.get(item.date)] as const)
     .filter(
       (pair): pair is readonly [number, number] =>
         pair[1] !== undefined && Number.isFinite(pair[0]) && Number.isFinite(pair[1]),
@@ -173,8 +169,8 @@ export function runMaBacktest(
   ) {
     throw new Error('资金、费用或模型交易单位无效')
   }
-  const closes = data.map((item) => Number(item.close))
-  const opens = data.map((item) => Number(item.open))
+  const closes = data.map((item) => item.close)
+  const opens = data.map((item) => item.open)
   if (
     [...closes, ...opens].some((value) => !Number.isFinite(value) || value <= 0) ||
     data.some((row, index) => index > 0 && row.date <= data[index - 1].date)
@@ -191,7 +187,7 @@ export function runMaBacktest(
   for (let index = longPeriod; index < data.length; index += 1) {
     const openingPrice = opens[index]
     // A close-based signal can execute no earlier than the next tradable bar's open.
-    const tradable = Number(data[index].volume) > 0
+    const tradable = data[index].volume > 0
     if (pending === 'buy' && !shares && tradable) {
       const units = Math.floor(cash / (openingPrice * (1 + feeRate)) / lotSize) * lotSize
       if (units > 0) {

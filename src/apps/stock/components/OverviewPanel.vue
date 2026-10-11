@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import { useStockStore, type KlineData, type KlinePeriod } from '@/stores/stock'
+import { useStockStore } from '@/stores/stock'
+import type { KlineData, KlinePeriod } from '../model'
 import { formatLargeNumber } from '../research'
 import type { DecisionSummary } from '../decision'
 import { useToast } from '@/composables/useToast'
-import { formatPrice } from '../data-quality'
+import { formatPrice as formatPriceValue } from '../data-quality'
 
 defineOptions({ name: 'StockOverviewPanel' })
 
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 const StockChart = defineAsyncComponent(() => import('./StockChart.vue'))
 const TradeDatePicker = defineAsyncComponent(() => import('./TradeDatePicker.vue'))
 const stock = useStockStore()
+const formatPrice = (value: unknown) => formatPriceValue(value, stock.pricePrecision)
 const { addToast } = useToast()
 const activeKline = ref<KlineData | null>(null)
 const datePickerOpen = ref(false)
@@ -30,7 +32,9 @@ const displayKline = computed(() => activeKline.value ?? stock.klineResult)
 const coverage = computed(() => {
   const first = stock.klineChartData[0]?.date
   const last = stock.klineChartData.at(-1)?.date
-  return first && last ? `${first} 至 ${last} · ${stock.klineChartData.length} 根 · 前复权` : ''
+  return first && last
+    ? `${first} 至 ${last} · ${stock.klineChartData.length} 根 · ${stock.selectedInstrument?.type === 'index' ? '指数日线' : '前复权'}`
+    : ''
 })
 
 function formatPercent(value: number | null | undefined) {
@@ -42,7 +46,7 @@ async function changePeriod(period: KlinePeriod) {
   activeKline.value = null
   if (!stock.stockCode) return
   try {
-    if (await stock.loadKline(stock.stockCode, period)) emit('update:period', period)
+    if (await stock.loadKline(stock.formattedCode, period)) emit('update:period', period)
   } catch (error) {
     addToast('error', error instanceof Error ? error.message : 'K 线数据加载失败')
   }
@@ -58,7 +62,7 @@ async function queryByDate(date: Date | null) {
 }
 
 watch(
-  () => stock.stockCode,
+  () => stock.formattedCode,
   () => {
     activeKline.value = null
   },
@@ -92,6 +96,7 @@ watch(
       </header>
       <StockChart
         :data="stock.klineChartData"
+        :price-precision="stock.pricePrecision"
         :selected-date="activeKline?.date || ''"
         @candle-click="activeKline = $event"
       />
@@ -113,8 +118,8 @@ watch(
           ></span
         >
         <span
-          ><small>成交量</small
-          ><strong>{{ formatLargeNumber(Number(displayKline.volume)) }}</strong></span
+          ><small>成交量（手）</small
+          ><strong>{{ formatLargeNumber(displayKline.volume) }}</strong></span
         >
       </div>
     </article>
@@ -126,7 +131,8 @@ watch(
             <h2>研判结论</h2>
             <p>基于已收盘日线技术指标与腾讯估值；数据充分程度不代表预测胜率</p>
             <p v-if="stock.completedResearchData.length">
-              日线截至 {{ stock.completedResearchData.at(-1)?.date }} · 前复权
+              日线截至 {{ stock.completedResearchData.at(-1)?.date }} ·
+              {{ stock.selectedInstrument?.type === 'index' ? '指数日线' : '前复权' }}
             </p>
           </div>
           <span class="decision-badge" :class="decision.tone">{{ decision.label }}</span>

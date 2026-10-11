@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { KlineData } from '@/stores/stock'
+import { resolveInstrument, type KlineData } from '../model'
 import {
   correlation,
   normalizePerformance,
@@ -11,17 +11,24 @@ import {
 const series = (values: number[]): KlineData[] =>
   values.map((value, index) => ({
     date: `2026-01-${String(index + 1).padStart(2, '0')}`,
-    open: String(value),
-    close: String(value),
-    high: String(value + 1),
-    low: String(value - 1),
-    volume: '1000',
+    open: value,
+    close: value,
+    high: value + 1,
+    low: value - 1,
+    volume: 1000,
   }))
 
 describe('stock portfolio research', () => {
   it('calculates position and portfolio profit', () => {
     const position = positionMetrics(
-      { id: 'p', code: '600519', name: '贵州茅台', shares: 100, costPrice: 1000, createdAt: 1 },
+      {
+        id: 'p',
+        ...resolveInstrument('sh600519'),
+        name: '贵州茅台',
+        shares: 100,
+        costPrice: 1000,
+        createdAt: 1,
+      },
       1200,
     )
     expect(position.profit).toBe(20_000)
@@ -48,11 +55,25 @@ describe('stock portfolio research', () => {
 
   it('keeps incomplete portfolio totals unknown instead of diluting returns', () => {
     const first = positionMetrics(
-      { id: 'a', code: '600000', name: 'A', shares: 100, costPrice: 10, createdAt: 1 },
+      {
+        id: 'a',
+        ...resolveInstrument('sh600000'),
+        name: 'A',
+        shares: 100,
+        costPrice: 10,
+        createdAt: 1,
+      },
       12,
     )
     const missing = positionMetrics(
-      { id: 'b', code: '000001', name: 'B', shares: 100, costPrice: 100, createdAt: 1 },
+      {
+        id: 'b',
+        ...resolveInstrument('sz000001'),
+        name: 'B',
+        shares: 100,
+        costPrice: 100,
+        createdAt: 1,
+      },
       null,
     )
     expect(portfolioTotals([first, missing])).toMatchObject({
@@ -71,8 +92,8 @@ describe('stock portfolio research', () => {
 
   it('executes yesterday’s close signal at today’s open and reconciles fees', () => {
     const data = series([10, 10, 10, 11, 12, 9, 8])
-    data[4].open = '15'
-    data[6].open = '7'
+    data[4].open = 15
+    data[6].open = 7
     const result = runMaBacktest(data, 2, 3, 10000, 0.01)
     expect(result.trades).toHaveLength(1)
     const trade = result.trades[0]
@@ -114,7 +135,7 @@ describe('stock portfolio research', () => {
 
   it('waits through zero-volume bars and uses the next available open', () => {
     const data = series([10, 10, 10, 11, 12, 13])
-    data[4].volume = '0'
+    data[4].volume = 0
     const result = runMaBacktest(data, 2, 3, 10000, 0)
     expect(result.openPosition?.buyDate).toBe(data[5].date)
     expect(result.openPosition?.buyPrice).toBe(13)

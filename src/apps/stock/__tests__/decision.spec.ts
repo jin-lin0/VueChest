@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { buildResearchDecision, type DecisionContext } from '../decision'
 import { buildTechnicalSnapshot } from '../research'
-import type { KlineData, StockResearchSummary } from '@/stores/stock'
+import type { KlineData, StockResearchSummary } from '../model'
 
 const data: KlineData[] = Array.from({ length: 130 }, (_, index) => ({
   date: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
-  open: String(10 + index),
-  close: String(10 + index),
-  high: String(11 + index),
-  low: String(9 + index),
-  volume: '1000',
+  open: 10 + index,
+  close: 10 + index,
+  high: 11 + index,
+  low: 9 + index,
+  volume: 1000,
 }))
 const context = (): DecisionContext => ({
   technical: buildTechnicalSnapshot(data),

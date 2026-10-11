@@ -17,11 +17,11 @@ const result = ref<(BacktestResult & { code: string; name: string; bars: number 
 const sourceRange = computed(() => {
   const data = stock.completedResearchData
   return data.length
-    ? `${data[0].date} 至 ${data.at(-1)!.date} · ${data.length} 根已收盘日线 · 前复权`
+    ? `${data[0].date} 至 ${data.at(-1)!.date} · ${data.length} 根已收盘日线 · ${stock.selectedInstrument?.type === 'index' ? '指数' : '前复权'}`
     : '暂无已收盘日线'
 })
 watch(
-  () => stock.stockCode,
+  () => stock.formattedCode,
   () => {
     result.value = null
   },
@@ -38,7 +38,12 @@ function formatPercent(value: number | null | undefined) {
 
 function run() {
   result.value = null
-  if (stock.isLoading || stock.result?.code !== stock.stockCode) return
+  if (
+    stock.isLoading ||
+    stock.result?.symbol !== stock.formattedCode ||
+    stock.selectedInstrument?.type === 'index'
+  )
+    return
   try {
     const data = stock.completedResearchData
     const backtest = runMaBacktest(
@@ -49,7 +54,7 @@ function run() {
     )
     result.value = {
       ...backtest,
-      code: stock.stockCode,
+      code: stock.formattedCode,
       name: stock.result.name,
       bars: data.length,
     }
@@ -68,6 +73,9 @@ function run() {
         <p>{{ sourceRange }}</p>
       </div>
     </header>
+    <p v-if="stock.selectedInstrument?.type === 'index'" role="status">
+      指数不可直接交易，请选择股票或基金进行成交回测。
+    </p>
     <div class="backtest-form">
       <label
         ><span>短均线</span><input v-model.number="shortPeriod" type="number" min="2" max="60"
@@ -78,7 +86,14 @@ function run() {
       <label
         ><span>初始资金</span><input v-model.number="capital" type="number" min="1000" step="1000"
       /></label>
-      <button :disabled="stock.isLoading || !stock.completedResearchData.length" @click="run">
+      <button
+        :disabled="
+          stock.isLoading ||
+          stock.selectedInstrument?.type === 'index' ||
+          !stock.completedResearchData.length
+        "
+        @click="run"
+      >
         运行回测
       </button>
     </div>
@@ -115,9 +130,7 @@ function run() {
       <ResearchLineChart :series="chartSeries" :height="300" />
       <p v-if="result.openPosition" class="backtest-note">
         期末仍持有
-        {{
-          result.openPosition.units
-        }}
+        {{ result.openPosition.units }}
         个模型单位，按最后收盘价计入权益；没有虚构期末卖出，也不计入已完成交易胜率。
       </p>
       <div class="trade-list">

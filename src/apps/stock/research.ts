@@ -1,4 +1,4 @@
-import type { KlineData } from '@/stores/stock'
+import type { KlineData } from './model'
 
 export interface IndicatorPoint {
   date: string
@@ -31,13 +31,16 @@ export interface TechnicalSnapshot {
 
 const round = (value: number, digits = 2) => Number(value.toFixed(digits))
 
-export function numericSeries(data: KlineData[], key: keyof KlineData = 'close'): number[] {
-  return data.map((item) => Number(item[key])).filter(Number.isFinite)
+export function numericSeries(
+  data: KlineData[],
+  key: 'open' | 'close' | 'high' | 'low' | 'volume' = 'close',
+): number[] {
+  return data.map((item) => item[key]).filter(Number.isFinite)
 }
 
 export function sma(data: KlineData[], period: number): IndicatorPoint[] {
   if (period <= 0) return []
-  const values = data.map((item) => Number(item.close))
+  const values = data.map((item) => item.close)
   const result: IndicatorPoint[] = []
   let sum = 0
   for (let index = 0; index < values.length; index += 1) {
@@ -91,7 +94,7 @@ export function rsi(data: KlineData[], period = 14): number | null {
   return round(100 - 100 / (1 + rs))
 }
 
-export function buildTechnicalSnapshot(data: KlineData[]): TechnicalSnapshot {
+export function buildTechnicalSnapshot(data: KlineData[], pricePrecision = 2): TechnicalSnapshot {
   const empty: TechnicalSnapshot = {
     score: 50,
     trend: 'neutral',
@@ -145,7 +148,7 @@ export function buildTechnicalSnapshot(data: KlineData[]): TechnicalSnapshot {
     signals.push({
       tone: equal ? 'neutral' : above ? 'positive' : 'negative',
       label: equal ? '贴近 MA20' : above ? '位于 MA20 上方' : '位于 MA20 下方',
-      detail: `现价 ${last.toFixed(2)}，MA20 ${ma20.toFixed(2)}`,
+      detail: `现价 ${last.toFixed(pricePrecision)}，MA20 ${ma20.toFixed(pricePrecision)}`,
     })
   }
   if (ma5 !== null && ma10 !== null) {
@@ -196,8 +199,8 @@ export function buildTechnicalSnapshot(data: KlineData[]): TechnicalSnapshot {
     macd: macdValue,
     momentum20,
     volatility20,
-    support: support === null ? null : round(support),
-    resistance: resistance === null ? null : round(resistance),
+    support: support === null ? null : round(support, pricePrecision),
+    resistance: resistance === null ? null : round(resistance, pricePrecision),
     ma5,
     ma10,
     ma20,

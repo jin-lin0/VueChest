@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { useStockStore } from '@/stores/stock'
+import { resolveInstrument } from '../model'
 import { westockCommand, type WestockResult } from '@/stores/westock'
 import WestockStockPanel from '../components/WestockStockPanel.vue'
 
@@ -40,7 +41,9 @@ async function mount(initial: 'quote' | 'finance' | 'notice') {
   selected.value = initial
   const pinia = createPinia()
   setActivePinia(pinia)
-  useStockStore().stockCode = '600000'
+  const stock = useStockStore()
+  stock.stockCode = '600000'
+  stock.selectedInstrument = resolveInstrument('sh600000')
   root = document.createElement('div')
   document.body.append(root)
   app = createApp({ setup: () => () => h(WestockStockPanel, { initialCommand: selected.value }) })
@@ -98,5 +101,17 @@ describe('financial and notice entries reuse authenticated westock commands', ()
     await mount('finance')
     expect(root.querySelector('a[href="/login"]')).not.toBeNull()
     expect(root.textContent).toContain('Please log in')
+  })
+  it('does not infer a load-more action for a panel without pagination', async () => {
+    command.mockResolvedValue({
+      ...result(''),
+      kind: 'table',
+      columns: ['code', 'name'],
+      rows: [{ code: 'sh600000', name: 'Sample' }],
+      meta: '共 40 条 | 显示 1-20/40',
+    })
+    await mount('finance')
+    expect(root.textContent).toContain('Sample')
+    expect(root.textContent).not.toContain('加载更多')
   })
 })

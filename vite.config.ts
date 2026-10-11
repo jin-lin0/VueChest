@@ -8,23 +8,6 @@ export default defineConfig({
   plugins: [vue(), vueDevTools({ launchEditor: 'code' })],
   server: {
     proxy: {
-      '/api/stock-search': {
-        target: 'https://smartbox.gtimg.cn',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api\/stock-search/, '/s3/'),
-      },
-      '/api/stock-kline': {
-        target: 'https://web.ifzq.gtimg.cn',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api\/stock-kline/, ''),
-      },
-      '/api/stock': {
-        target: 'http://qt.gtimg.cn',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/stock/, ''),
-      },
       '/meting-api': {
         target: 'https://meting.mikus.ink',
         changeOrigin: true,

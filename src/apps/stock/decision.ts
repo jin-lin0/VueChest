@@ -1,4 +1,4 @@
-import type { StockResearchSummary } from '@/stores/stock'
+import type { StockResearchSummary } from './model'
 import type { TechnicalSnapshot } from './research'
 import { finiteOrNull as toNumber, formatPrice, summaryTimestamp } from './data-quality'
 import { marketClock } from './market-time'

@@ -12,8 +12,10 @@ import {
   HOT_ITEMS,
   flattenOptions,
   groupCatalog,
+  hasMorePages,
   isRangeValid,
   parseCatalog,
+  parseResultPage,
   sectionSupportsDate,
   sectionSupportsRange,
   type CatalogGroup,
@@ -76,6 +78,9 @@ const sel = reactive<Record<string, string>>({
 // 翻页：CLI 用 --offset，配合 limit 递增
 const PAGE_SIZE = 20
 const offset = ref(0)
+const canLoadMore = computed(() =>
+  hasMorePages(parseResultPage(result.value?.meta ?? '', result.value?.rows?.length ?? 0)),
+)
 
 const sectionMeta = computed(() => DISCOVER_SECTIONS.find((s) => s.id === activeSection.value)!)
 
@@ -574,6 +579,8 @@ watch(preset, () => {
 
       <WestockResult
         :result="result"
+        :can-load-more="canLoadMore"
+        :allow-stock-navigation="!(activeSection === 'filter' && market !== 'hs')"
         :loading="loading"
         :loading-more="loadingMore"
         :error="error"

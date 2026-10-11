@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useStockStore, type PriceAlert } from '@/stores/stock'
+import { useStockStore } from '@/stores/stock'
 import { useToast } from '@/composables/useToast'
 import { formatPrice } from '../data-quality'
+import { instrumentKey, resolveInstrument, type PriceAlert } from '../model'
 
 defineOptions({ name: 'StockJournalPanel' })
 
@@ -11,10 +12,12 @@ const { addToast } = useToast()
 const noteDraft = ref('')
 const direction = ref<PriceAlert['direction']>('above')
 const target = ref<number | null>(null)
-const alerts = computed(() => stock.alerts.filter((item) => item.code === stock.stockCode))
+const alerts = computed(() =>
+  stock.alerts.filter((item) => instrumentKey(item) === stock.formattedCode),
+)
 
 watch(
-  () => stock.stockCode,
+  () => stock.formattedCode,
   (code) => {
     noteDraft.value = code ? stock.getResearchNote(code) : ''
     target.value = Number(stock.result?.close || 0) || null
@@ -24,20 +27,19 @@ watch(
 
 function saveNote() {
   if (!stock.stockCode) return
-  stock.setResearchNote(stock.stockCode, noteDraft.value)
+  stock.setResearchNote(stock.formattedCode, noteDraft.value)
   addToast('success', '研究笔记已保存')
 }
 
 function createAlert() {
   if (!stock.result || !target.value || target.value <= 0) return
   stock.addAlert({
-    code: stock.stockCode,
-    name: stock.result.name,
+    ...resolveInstrument(stock.result),
     direction: direction.value,
     target: target.value,
   })
   addToast('success', '价格提醒已创建，页面可见时每分钟检查')
-  void stock.fetchAlertData()
+  void stock.refreshQuotes()
 }
 </script>
 

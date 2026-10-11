@@ -1,3 +1,4 @@
+import { resolveInstrument } from './model'
 // 「选股发现」目录解析：把 westock CLI 的 --list 文本转成分组结构。
 //
 // 为什么要独立成模块：这份输出格式是 CLI 的隐式契约（没有 schema、没有 --json），
@@ -28,7 +29,11 @@ export const DISCOVER_SECTIONS: Array<{ id: DiscoverSection; label: string; hint
 ]
 
 /** 每个 section 对应哪个 CLI 子命令，以及 --list 的调用方式。 */
-export const CATALOG_SPECS: Array<{ key: string; mode: 'strategy' | 'ranking' | 'label' | 'event' | 'filter'; args: string[] }> = [
+export const CATALOG_SPECS: Array<{
+  key: string
+  mode: 'strategy' | 'ranking' | 'label' | 'event' | 'filter'
+  args: string[]
+}> = [
   { key: 'strategy', mode: 'strategy', args: ['strategy', '--list'] },
   { key: 'ranking', mode: 'ranking', args: ['ranking', '--list'] },
   { key: 'label', mode: 'label', args: ['label', '--list'] },
@@ -112,7 +117,10 @@ export const HOT_ITEMS: Record<Exclude<DiscoverSection, 'search'>, CatalogItem[]
  *   ranking              —— 「  【分组名】」（两空格缩进）+ 四空格缩进条目
  *   filter               —— 纯两空格缩进条目，无分组
  */
-export function parseCatalog(text: string, mode: 'strategy' | 'label' | 'event' | 'ranking' | 'filter'): CatalogItem[] {
+export function parseCatalog(
+  text: string,
+  mode: 'strategy' | 'label' | 'event' | 'ranking' | 'filter',
+): CatalogItem[] {
   const items: CatalogItem[] = []
   let group = ''
   for (const raw of text.split('\n')) {
@@ -201,10 +209,7 @@ export const QUICK_DISCOVER: Array<{ id: string; label: string; hint: string }> 
  * - filter / ranking：只接受单日 --date。
  * - event：**完全不接受日期**（连 --date 都会报不支持，只吃 --limit/--offset）。
  */
-export const SECTION_DATE_CAPABILITY: Record<
-  DiscoverSection,
-  'range' | 'single' | 'none'
-> = {
+export const SECTION_DATE_CAPABILITY: Record<DiscoverSection, 'range' | 'single' | 'none'> = {
   strategy: 'range',
   label: 'range',
   filter: 'single',
@@ -244,26 +249,6 @@ export function findItemName(groups: CatalogGroup[], id: string): string {
 const PREFIXED_CODE = /^(sh|sz|bj)\d{6}$/i
 /** 裸 6 位数字，部分命令的 code 列不带前缀。 */
 const BARE_CODE = /^\d{6}$/
-
-/**
- * 从一条选股结果里提取股票代码，用于「点结果直接进研究页」。
- *
- * 各命令的表头并不统一，实测：
- *   strategy/label → `| code | name |`，值形如 `sh600178`
- *   ranking       → `| # | 代码 | 名称 | ... |`，值形如 `sh688578`
- *   filter        → `| code | name | PE_TTM | ... |`
- * 所以只能靠「值像不像代码」来认列，不依赖列名。
- *
- * @returns 归一化后的 6 位代码；认不出来时返回 null（该行就不可点）
- */
-export function pickRowCode(row: Record<string, string>): string | null {
-  for (const value of Object.values(row)) {
-    const text = String(value ?? '').trim()
-    if (PREFIXED_CODE.test(text)) return text.slice(2)
-    if (BARE_CODE.test(text)) return text
-  }
-  return null
-}
 
 export interface ResultPageInfo {
   /** 命中总数，CLI 未给出时为 null。 */
@@ -315,3 +300,46 @@ export function pickRowName(row: Record<string, string>, code: string): string {
   return ''
 }
 
+/** Adapt current CLI code columns to domain symbols; ambiguous codes need an exchange. */
+export function pickRowSymbol(row: Record<string, string>): string | null {
+  const marketEntry = Object.entries(row)
+    .find(([key]) => /^(market|市场|交易所)$/i.test(key))?.[1]
+    ?.toLowerCase()
+  if (marketEntry && !['sh', 'sz', 'hs', '沪', '深', '上海', '深圳'].includes(marketEntry))
+    return null
+  const entries = Object.entries(row)
+  const codeEntries = entries.filter(([key]) => /^(code|symbol|股票代码|证券代码|代码)$/i.test(key))
+  const candidates = codeEntries.length
+    ? codeEntries
+    : entries.filter(([, value]) => /^(sh|sz|bj|hk|us)/i.test(String(value)))
+  for (const [, value] of candidates) {
+    const text = String(value ?? '')
+      .trim()
+      .toLowerCase()
+    if (/^(sh|sz)\d{6}$/.test(text)) {
+      try {
+        return resolveInstrument(text).symbol
+      } catch {
+        return null
+      }
+    }
+    if (BARE_CODE.test(text)) {
+      const prefix = ['sh', '沪', '上海'].includes(marketEntry || '')
+        ? 'sh'
+        : ['sz', '深', '深圳'].includes(marketEntry || '')
+          ? 'sz'
+          : /^[56]/.test(text)
+            ? 'sh'
+            : /^[13]/.test(text)
+              ? 'sz'
+              : ''
+      if (!prefix) return null
+      try {
+        return resolveInstrument(`${prefix}${text}`).symbol
+      } catch {
+        return null
+      }
+    }
+  }
+  return null
+}

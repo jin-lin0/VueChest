@@ -5,6 +5,7 @@ import { formatLargeNumber } from '../research'
 import { portfolioTotals } from '../portfolio'
 import { useToast } from '@/composables/useToast'
 import { formatPrice } from '../data-quality'
+import { instrumentKey, resolveInstrument } from '../model'
 
 defineOptions({ name: 'StockPortfolioPanel' })
 
@@ -29,10 +30,21 @@ function formatPercent(value: number | null | undefined) {
 
 function savePosition() {
   if (!stock.result || !positionShares.value || !positionCost.value) return
-  if (positionShares.value <= 0 || positionCost.value <= 0) return
+  if (
+    !Number.isInteger(positionShares.value) ||
+    positionShares.value <= 0 ||
+    !Number.isFinite(positionCost.value) ||
+    positionCost.value <= 0
+  ) {
+    addToast('warning', '股数须为正整数，成本须为有效正数')
+    return
+  }
+  if (stock.selectedInstrument?.type === 'index') {
+    addToast('warning', '指数不可直接买卖，请选择股票或基金')
+    return
+  }
   stock.upsertPosition({
-    code: stock.stockCode,
-    name: stock.result.name,
+    ...resolveInstrument(stock.result),
     shares: positionShares.value,
     costPrice: positionCost.value,
   })
@@ -50,7 +62,7 @@ function savePosition() {
         <h1>模拟持仓</h1>
         <p>独立查看仓位与盈亏；选择股票后可在左侧补充新持仓。</p>
       </div>
-      <button type="button" :disabled="stock.isPortfolioLoading" @click="stock.fetchPortfolioData">
+      <button type="button" :disabled="stock.isPortfolioLoading" @click="stock.refreshQuotes">
         {{ stock.isPortfolioLoading ? '刷新中…' : '刷新行情' }}
       </button>
     </div>
@@ -143,7 +155,7 @@ function savePosition() {
                     type="button"
                     class="position-stock"
                     title="打开股票研究"
-                    @click="emit('openStock', item.code)"
+                    @click="emit('openStock', instrumentKey(item))"
                   >
                     <strong>{{ item.name }}</strong
                     ><small>{{ item.code }}</small>

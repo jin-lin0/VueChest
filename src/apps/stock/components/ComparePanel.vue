@@ -4,7 +4,7 @@ import { useStockStore } from '@/stores/stock'
 import { correlation, normalizePerformance, type CompareSeries } from '../portfolio'
 import ResearchLineChart, { type ResearchSeries } from './ResearchLineChart.vue'
 import { useToast } from '@/composables/useToast'
-import { completedDailyBars } from '../market-time'
+import { instrumentKey } from '../model'
 
 defineOptions({ name: 'StockComparePanel' })
 
@@ -18,7 +18,9 @@ const loading = ref(false)
 const candidates = computed(() => {
   const items = [...stock.favorites, ...stock.recentStocks, ...stock.positions]
   return [
-    ...new Map(items.map((item) => [item.code, { code: item.code, name: item.name }])).values(),
+    ...new Map(
+      items.map((item) => [instrumentKey(item), { code: instrumentKey(item), name: item.name }]),
+    ).values(),
   ]
 })
 
@@ -59,7 +61,7 @@ async function run() {
     const rows = await Promise.all(
       codes.map(async (code) => ({
         code,
-        data: completedDailyBars(await stock.fetchKlineData(code, 'day', 250)),
+        data: await stock.fetchCompletedDailyData(code, 250),
       })),
     )
     const commonDates = rows.reduce(

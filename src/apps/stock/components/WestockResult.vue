@@ -2,20 +2,21 @@
 import { computed, defineAsyncComponent } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { WestockResult, WestockTableRow } from '@/stores/westock'
-import type { KlineData } from '@/stores/stock'
-import { hasMorePages, parseResultPage, pickRowCode, pickRowName } from '../westock-discover'
+import { normalizeKlineRows, type KlineData } from '../model'
+import { parseResultPage, pickRowSymbol, pickRowName } from '../westock-discover'
 
 const StockChart = defineAsyncComponent(() => import('./StockChart.vue'))
 
 const props = defineProps<{
   result: WestockResult | null
+  allowStockNavigation?: boolean
   loading?: boolean
   error?: string | null
   unauthorized?: boolean
   /** 代码是否已在自选里，用于行内 ☆ 的状态。传入该函数才渲染自选按钮。 */
   isFavorite?: (code: string) => boolean
-  /** 有下一页。父级显式传入时以其为准，否则回落到从 meta 推断。 */
-  canLoadMore?: boolean
+  /** 是否有下一页，由负责分页请求的调用方明确提供。 */
+  canLoadMore: boolean
   loadingMore?: boolean
 }>()
 
@@ -44,16 +45,9 @@ const isKline = computed(() => {
 const klineData = computed<KlineData[]>(() => {
   if (!isKline.value) return []
   const arr = props.result!.data as Array<Record<string, unknown>>
-  return arr
-    .map((b) => ({
-      date: String(b.date),
-      open: String(b.open),
-      close: String(b.last ?? b.close),
-      high: String(b.high),
-      low: String(b.low),
-      volume: String(b.volume ?? ''),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+  return normalizeKlineRows(
+    arr.map((b) => [b.date, b.open, b.last ?? b.close, b.high, b.low, b.volume ?? 0]),
+  )
 })
 
 const columns = computed<string[]>(() => props.result?.columns ?? [])
@@ -62,13 +56,12 @@ const meta = computed(() => props.result?.meta ?? '')
 const titleText = computed(() => props.result?.title ?? '')
 
 const page = computed(() => parseResultPage(meta.value, rows.value.length))
-// 父级显式传 canLoadMore 时以父级为准（它知道是否还有下一页），
-// 否则回落到从 meta 推断，兼容个股深度面板等未接分页的调用方。
-const showLoadMore = computed(() => props.canLoadMore ?? hasMorePages(page.value))
 
-/** 每行能否点开：认得出 6 位代码才行，认不出就保持纯文本。 */
+/** 每行只有能确定完整标的身份时才允许进入研究。 */
 const rowCodes = computed<Array<string | null>>(() =>
-  rows.value.map((row) => pickRowCode(row as Record<string, string>)),
+  rows.value.map((row) =>
+    props.allowStockNavigation === false ? null : pickRowSymbol(row as Record<string, string>),
+  ),
 )
 /** 表里存在可点行时才提示「点行进研究」，避免在无代码的表上给无效指引。 */
 const hasClickableRow = computed(() => rowCodes.value.some(Boolean))
@@ -115,7 +108,11 @@ async function copyRaw() {
     props.result.kind === 'json'
       ? JSON.stringify(props.result.data, null, 2)
       : props.result.text ||
-        [titleText.value, meta.value, ...rows.value.map((r) => columns.value.map((c) => r[c]).join('\t'))].join('\n')
+        [
+          titleText.value,
+          meta.value,
+          ...rows.value.map((r) => columns.value.map((c) => r[c]).join('\t')),
+        ].join('\n')
   await navigator.clipboard.writeText(text)
 }
 </script>
@@ -192,10 +189,12 @@ async function copyRaw() {
           </div>
           <div class="ws-table-foot">
             <small class="ws-count">
-              已显示 {{ rows.length }} 条<template v-if="page.total"> / 共 {{ page.total }} 只</template>
+              已显示 {{ rows.length }} 条<template v-if="page.total">
+                / 共 {{ page.total }} 只</template
+              >
             </small>
             <button
-              v-if="showLoadMore"
+              v-if="canLoadMore"
               type="button"
               class="ws-more"
               :disabled="loadingMore"
@@ -204,7 +203,9 @@ async function copyRaw() {
               {{ loadingMore ? '加载中…' : '加载更多' }}
             </button>
           </div>
-          <p v-if="hasClickableRow" class="ws-hint">点击任意一行，直接进入该股票的行情、财务与公告研究。</p>
+          <p v-if="hasClickableRow" class="ws-hint">
+            点击任意一行，直接进入该股票的行情、财务与公告研究。
+          </p>
         </div>
       </template>
 

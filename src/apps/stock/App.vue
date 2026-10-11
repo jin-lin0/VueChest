@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useStockStore, type KlinePeriod } from '@/stores/stock'
+import { useStockStore } from '@/stores/stock'
 import { STOCK_COLORS } from './config'
 import { debounce } from '@/utils/common'
 import { formatLargeNumber } from './research'
@@ -9,6 +9,8 @@ import { buildResearchDecision, type DecisionSummary } from './decision'
 import { QUICK_DISCOVER as DISCOVER_QUICK_ENTRIES } from './westock-discover'
 import { useToast } from '@/composables/useToast'
 import { finiteOrNull, formatPrice, summaryTimestamp } from './data-quality'
+import { instrumentKey, type InstrumentInput, type SearchResult, type KlinePeriod } from './model'
+import { marketClock } from './market-time'
 
 defineOptions({ name: 'StockResearchWorkspace' })
 
@@ -57,6 +59,7 @@ const researchDecision = computed<DecisionSummary>(() =>
     support: stock.technicalSnapshot?.support ?? null,
     resistance: stock.technicalSnapshot?.resistance ?? null,
     klineLength: stock.completedResearchData.length,
+    asOfDate: marketClock(new Date(stock.marketNow)).date,
   }),
 )
 
@@ -73,7 +76,7 @@ const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number
   {
     id: 'journal',
     label: '研究笔记',
-    count: () => stock.alerts.filter((item) => item.code === stock.stockCode).length,
+    count: () => stock.alerts.filter((item) => instrumentKey(item) === stock.formattedCode).length,
   },
   { id: 'westockStock', label: '个股深度' },
 ]
@@ -114,7 +117,7 @@ function hideSearchResults(event: FocusEvent) {
   }, 160)
 }
 
-async function openStock(code: string, preservePanel = activePanel.value === 'portfolio') {
+async function openStock(code: InstrumentInput, preservePanel = activePanel.value === 'portfolio') {
   if (!preservePanel) activePanel.value = 'overview'
   await stock.loadStock(code, activePeriod.value)
 }
@@ -148,7 +151,7 @@ async function applyRouteCommand() {
   if ((!code && !requestedPanel) || commandKey === handledRouteCommand) return
   handledRouteCommand = commandKey
 
-  if (/^\d{6}$/.test(code)) {
+  if (/^(sh|sz)\d{6}$/i.test(code)) {
     await openStock(code, requestedPanel === 'portfolio')
   }
   if (commandKey !== handledRouteCommand) return
@@ -157,40 +160,44 @@ async function applyRouteCommand() {
   }
 }
 
-async function chooseSearchResult(item: { code: string; name: string; market: string }) {
+async function chooseSearchResult(item: SearchResult) {
   stock.clearSearch()
-  await openStock(item.code)
+  await openStock(item)
 }
 
 async function runSearch() {
   const raw = stock.searchQuery.trim()
-  if (/^\d{6}$/.test(raw)) {
+  if (/^(sh|sz)\d{6}$/i.test(raw)) {
     await openStock(raw)
     stock.searchQuery = ''
     return
   }
+  await stock.searchStocks(raw)
+  if (stock.searchQuery.trim() !== raw) return
   if (stock.searchResults[0]) await chooseSearchResult(stock.searchResults[0])
 }
 
 function dropWatchlist(targetCode: string) {
   const items = [...stock.favorites]
-  const source = items.findIndex((item) => item.code === draggedStockCode.value)
-  const target = items.findIndex((item) => item.code === targetCode)
+  const source = items.findIndex((item) => instrumentKey(item) === draggedStockCode.value)
+  const target = items.findIndex((item) => instrumentKey(item) === targetCode)
   if (source < 0 || target < 0 || source === target) return
   const [item] = items.splice(source, 1)
   items.splice(target, 0, item)
   stock.reorderFavorites(items)
-  const order = new Map(items.map((item, index) => [item.code, index]))
-  stock.favoritesData.sort((a, b) => (order.get(a.code) ?? 0) - (order.get(b.code) ?? 0))
+  const order = new Map(items.map((item, index) => [instrumentKey(item), index]))
+  stock.favoritesData.sort(
+    (a, b) => (order.get(instrumentKey(a)) ?? 0) - (order.get(instrumentKey(b)) ?? 0),
+  )
   draggedStockCode.value = ''
 }
 
 function moveFavorite(code: string, delta: number) {
-  const index = stock.favorites.findIndex((item) => item.code === code)
+  const index = stock.favorites.findIndex((item) => instrumentKey(item) === code)
   const target = stock.favorites[index + delta]
   if (!target) return
   draggedStockCode.value = code
-  dropWatchlist(target.code)
+  dropWatchlist(instrumentKey(target))
 }
 
 async function copyResearchCard() {
@@ -199,7 +206,7 @@ async function copyResearchCard() {
   const decision = researchDecision.value
   const summary = [
     `${stock.result.name}（${stock.formattedCode}）`,
-    `现价：${formatPrice(currentPrice.value)}，涨跌：${formatPercent(changePercent.value)}`,
+    `现价：${formatPrice(currentPrice.value, stock.pricePrecision)}，涨跌：${formatPercent(changePercent.value)}`,
     tech ? `技术状态：${tech.trendLabel}（${tech.score}/100）` : '',
     tech?.support ? `20日支撑/压力：${tech.support} / ${tech.resistance}` : '',
     `行情研判：${decision.label}（${decision.score}/100，基于日线技术与腾讯估值）`,
@@ -220,23 +227,13 @@ async function copyResearchCard() {
 
 function refreshVisibleData() {
   if (document.hidden) return
-  void Promise.allSettled([
-    stock.fetchPortfolioData(),
-    stock.fetchFavoritesData(),
-    stock.fetchAlertData(),
-    stock.fetchMarketOverview(),
-  ])
+  void stock.refreshData()
 }
 
 onMounted(() => {
   routeCommandsReady = true
   void applyRouteCommand()
-  void Promise.allSettled([
-    stock.fetchMarketOverview(),
-    stock.fetchFavoritesData(),
-    stock.fetchPortfolioData(),
-    stock.fetchAlertData(),
-  ])
+  void stock.refreshData()
   portfolioRefreshTimer = setInterval(refreshVisibleData, 60_000)
   document.addEventListener('visibilitychange', refreshVisibleData)
 })
@@ -296,7 +293,7 @@ watch(
         <strong>大盘行情</strong>
       </div>
       <div v-if="stock.marketOverview.length" class="index-list">
-        <article v-for="item in stock.marketOverview" :key="item.code">
+        <article v-for="item in stock.marketOverview" :key="instrumentKey(item)">
           <span>{{ item.name }}</span>
           <strong>{{ formatPrice(item.price) }}</strong>
           <b :class="Number(item.changePercent) >= 0 ? 'up' : 'down'">
@@ -311,6 +308,8 @@ watch(
       </div>
       <small>数据有延迟，仅供研究</small>
     </section>
+
+    <p v-if="stock.quoteError" class="status-banner" role="status">{{ stock.quoteError }}</p>
 
     <main class="research-shell">
       <aside class="research-sidebar">
@@ -343,7 +342,10 @@ watch(
                 ><strong>{{ item.name }}</strong
                 ><small>{{ item.code }}</small></span
               >
-              <b>{{ item.market === 'sh' ? '沪' : '深' }}</b>
+              <b
+                >{{ item.market === 'sh' ? '沪' : '深' }} ·
+                {{ item.type === 'index' ? '指数' : item.type === 'fund' ? '基金' : '股票' }}</b
+              >
             </button>
           </div>
         </section>
@@ -355,10 +357,10 @@ watch(
           <div class="recent-list">
             <button
               v-for="item in stock.recentStocks"
-              :key="item.code"
+              :key="instrumentKey(item)"
               type="button"
-              :class="{ active: stock.stockCode === item.code }"
-              @click="openStock(item.code)"
+              :class="{ active: stock.formattedCode === instrumentKey(item) }"
+              @click="openStock(instrumentKey(item))"
             >
               <span>{{ item.name }}</span
               ><small>{{ item.code }}</small>
@@ -369,28 +371,26 @@ watch(
         <section class="sidebar-card watchlist-card">
           <div class="sidebar-heading">
             <strong>自选观察</strong>
-            <button type="button" title="刷新自选行情" @click="stock.fetchFavoritesData()">
-              ↻
-            </button>
+            <button type="button" title="刷新自选行情" @click="stock.refreshQuotes()">↻</button>
           </div>
           <div v-if="stock.isFavoritesLoading" class="watch-loading">正在刷新行情…</div>
           <div v-else-if="stock.favoritesData.length" class="watch-list">
             <article
               v-for="item in stock.favoritesData"
-              :key="item.code"
-              :class="{ active: stock.stockCode === item.code }"
+              :key="instrumentKey(item)"
+              :class="{ active: stock.formattedCode === instrumentKey(item) }"
               draggable="true"
               tabindex="0"
               role="button"
               :aria-label="`研究${item.name}；Alt加上下方向键调整自选顺序`"
-              @dragstart="draggedStockCode = item.code"
+              @dragstart="draggedStockCode = instrumentKey(item)"
               @dragover.prevent
-              @drop.prevent="dropWatchlist(item.code)"
+              @drop.prevent="dropWatchlist(instrumentKey(item))"
               @dragend="draggedStockCode = ''"
-              @keydown.enter.self.prevent="openStock(item.code)"
-              @keydown.alt.up.prevent="moveFavorite(item.code, -1)"
-              @keydown.alt.down.prevent="moveFavorite(item.code, 1)"
-              @click="openStock(item.code)"
+              @keydown.enter.self.prevent="openStock(instrumentKey(item))"
+              @keydown.alt.up.prevent="moveFavorite(instrumentKey(item), -1)"
+              @keydown.alt.down.prevent="moveFavorite(instrumentKey(item), 1)"
+              @click="openStock(instrumentKey(item))"
             >
               <span class="drag-handle" title="拖动排序">⠿</span>
               <span class="watch-name"
@@ -398,15 +398,15 @@ watch(
                 ><small>{{ item.code }}</small></span
               >
               <span class="watch-price">
-                <strong>{{ formatPrice(item.price) }}</strong>
+                <strong>{{ formatPrice(item.price, item.type === 'fund' ? 3 : 2) }}</strong>
                 <small :class="Number(item.changePercent) >= 0 ? 'up' : 'down'">
-                  {{ formatPercent(Number(item.changePercent)) }}
+                  {{ formatPercent(item.changePercent) }}
                 </small>
               </span>
               <button
                 type="button"
                 aria-label="移出自选"
-                @click.stop="stock.removeFavorite(item.code)"
+                @click.stop="stock.removeFavorite(instrumentKey(item))"
               >
                 ×
               </button>
@@ -487,8 +487,8 @@ watch(
             <strong>最近研究</strong>
             <button
               v-for="item in stock.recentStocks.slice(0, 4)"
-              :key="item.code"
-              @click="openStock(item.code)"
+              :key="instrumentKey(item)"
+              @click="openStock(instrumentKey(item))"
             >
               {{ item.name }} <small>{{ item.code }}</small>
             </button>
@@ -496,8 +496,8 @@ watch(
         </div>
 
         <div v-else-if="stock.isLoading && !stock.result" class="research-loading">
-          <span></span><strong>正在加载研究数据</strong>
-          <p>腾讯行情、前复权 K 线与估值摘要</p>
+          <span></span><strong>正在加载行情</strong>
+          <p>腾讯行情；历史数据会随后显示</p>
         </div>
 
         <template v-else-if="stock.result">
@@ -514,21 +514,29 @@ watch(
               </div>
             </div>
             <div class="quote-price" :class="isUp ? 'up' : 'down'">
-              <span>¥</span><strong>{{ formatPrice(currentPrice) }}</strong>
+              <span v-if="stock.selectedInstrument?.type !== 'index'">¥</span
+              ><strong>{{ formatPrice(currentPrice, stock.pricePrecision) }}</strong
+              ><span v-if="stock.selectedInstrument?.type === 'index'">点</span>
               <b>{{ formatPercent(changePercent) }}</b>
             </div>
             <div class="quote-range">
               <span
                 ><small>今开</small
-                ><strong>{{ formatPrice(quote?.open ?? stock.result.open) }}</strong></span
+                ><strong>{{
+                  formatPrice(quote?.open ?? stock.result.open, stock.pricePrecision)
+                }}</strong></span
               >
               <span
                 ><small>最高</small
-                ><strong>{{ formatPrice(quote?.high ?? stock.result.high) }}</strong></span
+                ><strong>{{
+                  formatPrice(quote?.high ?? stock.result.high, stock.pricePrecision)
+                }}</strong></span
               >
               <span
                 ><small>最低</small
-                ><strong>{{ formatPrice(quote?.low ?? stock.result.low) }}</strong></span
+                ><strong>{{
+                  formatPrice(quote?.low ?? stock.result.low, stock.pricePrecision)
+                }}</strong></span
               >
               <span
                 ><small>成交额</small><strong>{{ formatLargeNumber(quote?.amount) }}</strong></span
@@ -537,10 +545,10 @@ watch(
             <div class="quote-actions">
               <button
                 type="button"
-                :class="{ active: stock.isFavorite(stock.stockCode) }"
+                :class="{ active: stock.isFavorite(stock.formattedCode) }"
                 @click="stock.toggleFavorite()"
               >
-                {{ stock.isFavorite(stock.stockCode) ? '★ 已自选' : '☆ 加入自选' }}
+                {{ stock.isFavorite(stock.formattedCode) ? '★ 已自选' : '☆ 加入自选' }}
               </button>
               <button type="button" @click="copyResearchCard">复制研究卡片</button>
             </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KLINE_HISTORY_COUNTS, normalizeKlineRows } from '@/stores/stock'
+import { KLINE_HISTORY_COUNTS, normalizeKlineRows } from '../model'
 
 describe('stock kline history', () => {
   it('loads materially longer history for each period', () => {
@@ -18,19 +18,19 @@ describe('stock kline history', () => {
     ).toEqual([
       {
         date: '2026-01-02',
-        open: '1.1',
-        close: '2.1',
-        high: '3.1',
-        low: '0.1',
-        volume: '110',
+        open: 1.1,
+        close: 2.1,
+        high: 3.1,
+        low: 0.1,
+        volume: 110,
       },
       {
         date: '2026-01-03',
-        open: '3',
-        close: '4',
-        high: '5',
-        low: '2',
-        volume: '120',
+        open: 3,
+        close: 4,
+        high: 5,
+        low: 2,
+        volume: 120,
       },
     ])
   })
