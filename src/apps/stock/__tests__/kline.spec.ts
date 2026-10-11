@@ -34,4 +34,20 @@ describe('stock kline history', () => {
       },
     ])
   })
+
+  it('rejects missing values, impossible dates and inconsistent OHLC', () => {
+    expect(
+      normalizeKlineRows([
+        ['2026-13-01', '10', '11', '12', '9', '1000'],
+        ['2026-02-30', '10', '11', '12', '9', '1000'],
+        ['2026-01-01', null, '11', '12', '9', '1000'],
+        ['2026-01-02', '', '11', '12', '9', '1000'],
+        ['2026-01-03', '10', '11', '9', '8', '1000'],
+      ]),
+    ).toEqual([])
+  })
+
+  it('preserves non-positive historical adjusted prices for charting', () => {
+    expect(normalizeKlineRows([['2020-01-01', '-10', '-9', '-8', '-11', '1000']])).toHaveLength(1)
+  })
 })

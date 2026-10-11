@@ -19,11 +19,7 @@ import {
   type CatalogGroup,
   type DiscoverSection,
 } from '../westock-discover'
-import {
-  clearCatalogCache,
-  readCatalogCache,
-  writeCatalogCache,
-} from '../westock-catalog-cache'
+import { clearCatalogCache, readCatalogCache, writeCatalogCache } from '../westock-catalog-cache'
 import WestockResult from './WestockResult.vue'
 
 defineOptions({ name: 'WestockDiscoverPanel' })
@@ -57,6 +53,7 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const error = ref<string | null>(null)
 const unauthorized = ref(false)
+let requestId = 0
 
 // 通用筛选项
 const commonDate = ref('')
@@ -190,19 +187,24 @@ watch(
 )
 
 async function run(cmd: DiscoverSection | 'advanced', extra: Record<string, string> = {}) {
+  const currentRequest = ++requestId
   loading.value = true
+  loadingMore.value = false
+  result.value = null
   error.value = null
   unauthorized.value = false
   offset.value = 0
   try {
     const res = await westockCommand(cmd, extra)
+    if (currentRequest !== requestId) return
     result.value = res
     if (!res.success) error.value = res.error || '请求未成功'
   } catch (e) {
+    if (currentRequest !== requestId) return
     unauthorized.value = isWestockAuthError(e)
     error.value = e instanceof Error ? e.message : '请求失败'
   } finally {
-    loading.value = false
+    if (currentRequest === requestId) loading.value = false
   }
 }
 
@@ -282,6 +284,9 @@ const activeValue = computed<string | number>({
 function switchSection(id: DiscoverSection) {
   if (activeSection.value === id) return
   activeSection.value = id
+  ++requestId
+  loading.value = false
+  loadingMore.value = false
   result.value = null
   error.value = null
   unauthorized.value = false
@@ -329,10 +334,13 @@ async function loadMore() {
   if (loadingMore.value) return
   const p = buildParams()
   if (!p) return
+  const currentRequest = requestId
+  const section = activeSection.value
   loadingMore.value = true
   try {
     const next = offset.value + PAGE_SIZE
-    const res = await westockCommand(activeSection.value, { ...p, offset: String(next) })
+    const res = await westockCommand(section, { ...p, offset: String(next) })
+    if (currentRequest !== requestId || section !== activeSection.value) return
     if (!res.success) {
       addToast('error', res.error || '加载更多失败')
       return
@@ -343,9 +351,10 @@ async function loadMore() {
     result.value = { ...res, rows: merged }
     offset.value = next
   } catch (e) {
+    if (currentRequest !== requestId) return
     addToast('error', e instanceof Error ? e.message : '加载更多失败')
   } finally {
-    loadingMore.value = false
+    if (currentRequest === requestId) loadingMore.value = false
   }
 }
 
@@ -359,18 +368,23 @@ async function runAdvanced() {
     addToast('error', '请输入命令参数')
     return
   }
+  const currentRequest = ++requestId
   loading.value = true
+  loadingMore.value = false
+  result.value = null
   error.value = null
   unauthorized.value = false
   try {
     const res = await westockExec(advEngine.value, args)
+    if (currentRequest !== requestId) return
     result.value = res
     if (!res.success) error.value = res.error || '请求未成功'
   } catch (e) {
+    if (currentRequest !== requestId) return
     unauthorized.value = isWestockAuthError(e)
     error.value = e instanceof Error ? e.message : '请求失败'
   } finally {
-    loading.value = false
+    if (currentRequest === requestId) loading.value = false
   }
 }
 

@@ -4,6 +4,7 @@ import { useStockStore } from '@/stores/stock'
 import { correlation, normalizePerformance, type CompareSeries } from '../portfolio'
 import ResearchLineChart, { type ResearchSeries } from './ResearchLineChart.vue'
 import { useToast } from '@/composables/useToast'
+import { completedDailyBars } from '../market-time'
 
 defineOptions({ name: 'StockComparePanel' })
 
@@ -53,13 +54,25 @@ async function run() {
     return
   }
   loading.value = true
+  const codes = [...selection.value]
   try {
     const rows = await Promise.all(
-      selection.value.map(async (code) => ({
+      codes.map(async (code) => ({
         code,
-        data: await stock.fetchKlineData(code, 'day', 250),
+        data: completedDailyBars(await stock.fetchKlineData(code, 'day', 250)),
       })),
     )
+    const commonDates = rows.reduce(
+      (dates, row) => {
+        const next = new Set(row.data.map((item) => item.date))
+        return new Set([...dates].filter((date) => next.has(date)))
+      },
+      new Set(rows[0].data.map((item) => item.date)),
+    )
+    if (commonDates.size < 4) throw new Error('共同交易日不足，无法对比')
+    rows.forEach((row) => {
+      row.data = row.data.filter((item) => commonDates.has(item.date))
+    })
     series.value = rows.map((row) => {
       const item = candidates.value.find((candidate) => candidate.code === row.code)
       return normalizePerformance(row.code, item?.name || row.code, row.data)
@@ -81,7 +94,10 @@ async function run() {
     <header class="panel-heading">
       <div>
         <h2>多股票对比</h2>
-        <p>将最近250个交易日归一化为100，比较收益、波动与相关性。</p>
+        <p>对齐最多250根已收盘前复权日线，从共同起点归一化为100；相关性按同区间收益率计算。</p>
+        <p v-if="series.length">
+          {{ series[0].points[0]?.date }} 至 {{ series[0].points.at(-1)?.date }}
+        </p>
       </div>
       <button :disabled="loading || selection.length < 2" @click="run">
         {{ loading ? '加载中…' : '开始对比' }}
@@ -91,6 +107,7 @@ async function run() {
       <button
         v-for="item in candidates"
         :key="item.code"
+        :disabled="loading"
         :class="{ active: selection.includes(item.code) }"
         @click="toggle(item.code)"
       >

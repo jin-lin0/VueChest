@@ -5,6 +5,14 @@ import { gzipSync } from 'node:zlib'
 const ROOT = resolve(import.meta.dirname, '..')
 const DIST = resolve(ROOT, 'dist')
 const manifest = JSON.parse(readFileSync(resolve(DIST, '.vite/manifest.json'), 'utf8'))
+const stockEntry = () =>
+  Object.keys(manifest).find((key) =>
+    manifest[key].dynamicImports?.includes('src/apps/stock/components/PortfolioPanel.vue'),
+  )
+const stockResearchEntries = [
+  { source: 'src/apps/stock/components/OverviewPanel.vue' },
+  { source: 'src/apps/stock/components/StockChart.vue' },
+]
 
 const routeBudgets = [
   {
@@ -13,12 +21,22 @@ const routeBudgets = [
     resolveKey: () => 'src/views/WorkspaceHome.vue',
   },
   {
-    name: '股票研究工作台',
+    name: '股票研究工作台（空入口）',
     budget: 30 * 1024,
-    resolveKey: () =>
-      Object.keys(manifest).find((key) =>
-        manifest[key].dynamicImports?.includes('src/apps/stock/components/PortfolioPanel.vue'),
-      ),
+    resolveKey: stockEntry,
+  },
+  {
+    name: '股票研究工作台（打开个股）',
+    budget: 100 * 1024,
+    resolveKey: stockEntry,
+    eagerDynamic: stockResearchEntries,
+  },
+  {
+    name: '股票研究工作台（个股与自选）',
+    budget: 100 * 1024,
+    resolveKey: stockEntry,
+    // 自选使用原生拖拽，不再加载独立拖拽库。
+    eagerDynamic: stockResearchEntries,
   },
   {
     name: 'API 工作台',
@@ -89,9 +107,20 @@ function collectStaticGraph(entryKey, additionalEntries = []) {
 const initialGraph = collectStaticGraph('index.html')
 
 function resolveEagerDynamicEntries(entryKey, selectors = []) {
-  const dynamicKeys = manifest[entryKey]?.dynamicImports || []
+  const dynamicKeys = new Set()
+  const visited = new Set()
+  const visit = (key) => {
+    if (!manifest[key] || visited.has(key)) return
+    visited.add(key)
+    for (const child of manifest[key].dynamicImports || []) {
+      dynamicKeys.add(child)
+      visit(child)
+    }
+    for (const child of manifest[key].imports || []) visit(child)
+  }
+  visit(entryKey)
   return selectors.map((selector) => {
-    const key = dynamicKeys.find((candidate) => {
+    const key = [...dynamicKeys].find((candidate) => {
       const chunk = manifest[candidate]
       if (!chunk) return false
       if (selector.source && (candidate === selector.source || chunk.src === selector.source))

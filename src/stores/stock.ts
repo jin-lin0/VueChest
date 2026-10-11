@@ -2,10 +2,11 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { getStorage, setStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config'
-import { formatDate } from '@/utils/common'
 import { api } from '@/lib/request'
 import { buildTechnicalSnapshot, type TechnicalSnapshot } from '@/apps/stock/research'
 import { positionMetrics, type StockPosition, type PositionMetrics } from '@/apps/stock/portfolio'
+import { finiteOrNull, quoteTimestamp } from '@/apps/stock/data-quality'
+import { completedDailyBars } from '@/apps/stock/market-time'
 
 export interface FavoriteStock {
   code: string
@@ -30,6 +31,8 @@ export interface StockResult {
   code: string
   name: string
   date: string
+  asOf?: string
+  changePercent?: number | null
   open: string
   close: string
   high: string
@@ -61,7 +64,18 @@ export function normalizeKlineRows(value: unknown): KlineData[] {
     if (!Array.isArray(item) || item.length < 6) continue
     const [date, open, close, high, low, volume] = item.map(String)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
-    if (![open, close, high, low, volume].every((entry) => Number.isFinite(Number(entry)))) continue
+    const parsedDate = new Date(`${date}T00:00:00Z`)
+    if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date)
+      continue
+    if (item.slice(1, 6).some((entry) => finiteOrNull(entry) === null)) continue
+    // Long-history forward adjustment can yield non-positive synthetic prices.
+    // Preserve them for charts; the return-based backtest rejects such intervals.
+    if (Number(volume) < 0) continue
+    if (
+      Number(high) < Math.max(Number(open), Number(close)) ||
+      Number(low) > Math.min(Number(open), Number(close))
+    )
+      continue
     rows.set(date, { date, open, close, high, low, volume })
   }
   return [...rows.values()].sort((a, b) => a.date.localeCompare(b.date))
@@ -100,30 +114,9 @@ export interface StockResearchSummary {
   turnover: number | null
   changePercent: number | null
   amplitude: number | null
-}
-
-export interface FinancialReport {
-  reportDate: string
-  reportName: string
-  revenue: number | null
-  revenueGrowth: number | null
-  netProfit: number | null
-  netProfitGrowth: number | null
-  eps: number | null
-  roe: number | null
-  grossMargin: number | null
-  netMargin: number | null
-  debtRatio: number | null
-  currentRatio: number | null
-  cashflowPerShare: number | null
-}
-
-export interface StockNotice {
-  id: string
-  title: string
-  date: string
-  category: string
-  url: string
+  source?: 'tencent'
+  asOf?: string | null
+  fetchedAt?: number
 }
 
 export interface PriceAlert {
@@ -168,6 +161,9 @@ export const useStockStore = defineStore('stock', () => {
   const result = ref<StockResult | null>(null)
   const klineResult = ref<KlineData | null>(null)
   const klineChartData = ref<KlineData[]>([])
+  const dailyKlineData = ref<KlineData[]>([])
+  const klinePeriod = ref<KlinePeriod>('day')
+  const completedResearchData = computed(() => completedDailyBars(dailyKlineData.value))
   const isKlineLoading = ref(false)
   const favorites = ref<FavoriteStock[]>(
     getStorage<FavoriteStock[]>(STORAGE_KEYS.STOCK_FAVORITES, []) || [],
@@ -179,12 +175,18 @@ export const useStockStore = defineStore('stock', () => {
   const isSearching = ref(false)
   const showSearchResults = ref(false)
   const marketOverview = ref<MarketIndex[]>([])
+  const marketError = ref('')
+  const isMarketLoading = ref(false)
   const researchSummary = ref<StockResearchSummary | null>(null)
-  const financials = ref<FinancialReport[]>([])
-  const notices = ref<StockNotice[]>([])
   const technicalSnapshot = ref<TechnicalSnapshot | null>(null)
   const isResearchLoading = ref(false)
   const researchError = ref('')
+  let stockRequestId = 0
+  let researchRequestId = 0
+  let klineRequestId = 0
+  let searchRequestId = 0
+  let stockController: AbortController | null = null
+  let klineController: AbortController | null = null
   const alerts = ref<PriceAlert[]>(getStorage<PriceAlert[]>(STORAGE_KEYS.STOCK_ALERTS, []) || [])
   const notes = ref<Record<string, string>>(
     getStorage<Record<string, string>>(STORAGE_KEYS.STOCK_NOTES, {}) || {},
@@ -210,11 +212,11 @@ export const useStockStore = defineStore('stock', () => {
     return `${prefix}${stockCode.value}`
   })
 
-  const fetchStockQuote = async (code: string): Promise<StockResult> => {
+  const fetchStockQuote = async (code: string, signal?: AbortSignal): Promise<StockResult> => {
     const symbol = toSymbol(code)
     const url = `/api/stock/q=${symbol}`
 
-    const response = await fetch(url)
+    const response = await fetch(url, { signal: signal ?? AbortSignal.timeout(20_000) })
     if (!response.ok) {
       throw new Error(`请求失败: ${response.status}`)
     }
@@ -234,12 +236,15 @@ export const useStockStore = defineStore('stock', () => {
     const low = fields[34]
     const volume = fields[36]
 
-    const dateStr = formatDate(new Date(), 'YYYY-MM-DD')
+    const asOf = quoteTimestamp(fields[30] || '')
+    if ((finiteOrNull(currentPrice) ?? 0) <= 0) throw new Error('当前股票没有有效报价')
 
     return {
       code,
       name,
-      date: dateStr,
+      date: asOf.slice(0, 10),
+      asOf,
+      changePercent: finiteOrNull(fields[32]),
       open,
       close: currentPrice,
       high,
@@ -257,50 +262,59 @@ export const useStockStore = defineStore('stock', () => {
   }
 
   const fetchMarketOverview = async () => {
+    if (isMarketLoading.value) return
+    isMarketLoading.value = true
+    marketError.value = ''
     try {
       const { data } = await api.get<{ data: MarketIndex[] }>(
         '/api/research-stocks/market-overview',
-        { auth: false },
+        { auth: false, timeoutMs: 20_000 },
       )
       marketOverview.value = data || []
     } catch {
-      marketOverview.value = []
+      marketError.value = '大盘行情加载失败，请重试'
+    } finally {
+      isMarketLoading.value = false
     }
   }
 
-  const fetchResearchData = async (code: string) => {
-    isResearchLoading.value = true
-    researchError.value = ''
+  const readResearchData = async (code: string, signal?: AbortSignal) => {
     try {
-      const [summaryResult, financialResult, noticeResult] = await Promise.allSettled([
-        api.get<{ data: StockResearchSummary }>(`/api/research-stocks/${code}/summary`, {
-          auth: false,
-        }),
-        api.get<{ data: FinancialReport[] }>(`/api/research-stocks/${code}/financials`, {
-          auth: false,
-        }),
-        api.get<{ data: StockNotice[] }>(`/api/research-stocks/${code}/notices?limit=10`, {
-          auth: false,
-        }),
-      ])
-      researchSummary.value =
-        summaryResult.status === 'fulfilled' ? summaryResult.value.data || null : null
-      financials.value =
-        financialResult.status === 'fulfilled' ? financialResult.value.data || [] : []
-      notices.value = noticeResult.status === 'fulfilled' ? noticeResult.value.data || [] : []
-      if (!researchSummary.value && !financials.value.length && !notices.value.length) {
-        researchError.value = '研究数据暂时不可用，行情与技术指标仍可正常使用'
-      }
+      const { data } = await api.get<{ data: StockResearchSummary }>(
+        `/api/research-stocks/${code}/summary`,
+        { auth: false, signal, timeoutMs: 12_000 },
+      )
+      return data?.code === code && data.source === 'tencent' ? data : null
+    } catch {
+      return null
+    }
+  }
+
+  const commitResearchData = (data: StockResearchSummary | null) => {
+    researchSummary.value = data
+    researchError.value = data ? '' : '腾讯估值摘要暂不可用，行情与日线技术指标仍可使用'
+  }
+
+  const fetchResearchData = async (code: string) => {
+    const requestId = ++researchRequestId
+    const stockId = stockRequestId
+    isResearchLoading.value = true
+    try {
+      const data = await readResearchData(code)
+      if (requestId === researchRequestId && stockId === stockRequestId && code === stockCode.value)
+        commitResearchData(data)
     } finally {
-      isResearchLoading.value = false
+      if (requestId === researchRequestId && stockId === stockRequestId)
+        isResearchLoading.value = false
     }
   }
 
   const refreshTechnicalSnapshot = () => {
-    technicalSnapshot.value = buildTechnicalSnapshot(klineChartData.value)
+    technicalSnapshot.value = buildTechnicalSnapshot(completedResearchData.value)
   }
 
   const checkAlerts = (code: string, price: number) => {
+    if (!Number.isFinite(price) || price <= 0) return
     let changed = false
     alerts.value = alerts.value.map((alert) => {
       if (!alert.enabled || alert.code !== code) return alert
@@ -317,43 +331,88 @@ export const useStockStore = defineStore('stock', () => {
     type: KlinePeriod = 'day',
     count = KLINE_HISTORY_COUNTS[type],
   ) => {
+    const requestId = ++stockRequestId
+    ++researchRequestId
+    ++klineRequestId
+    stockController?.abort()
+    klineController?.abort()
+    const controller = new AbortController()
+    stockController = controller
+    const timeout = setTimeout(() => controller.abort(), 20_000)
     stockCode.value = code
+    klinePeriod.value = type
+    result.value = null
+    researchSummary.value = null
+    dailyKlineData.value = []
+    klineChartData.value = []
+    klineResult.value = null
+    technicalSnapshot.value = null
+    selectedDate.value = ''
+    researchError.value = ''
+    isKlineLoading.value = false
+    isResearchLoading.value = true
     isLoading.value = true
     error.value = ''
     try {
-      const [stockData, klineData] = await Promise.all([
-        fetchStockQuote(code),
-        fetchKlineData(code, type, count),
+      const dailyRequest = fetchKlineData(
+        code,
+        'day',
+        type === 'day' ? count : KLINE_HISTORY_COUNTS.day,
+        controller.signal,
+      )
+      const [stockData, klineData, dailyData, researchData] = await Promise.all([
+        fetchStockQuote(code, controller.signal),
+        type === 'day' ? dailyRequest : fetchKlineData(code, type, count, controller.signal),
+        dailyRequest,
+        readResearchData(code, controller.signal),
       ])
+      if (requestId !== stockRequestId || stockCode.value !== code) return false
+      if (controller.signal.aborted) throw new Error('行情加载超时，请重试')
       result.value = stockData
       klineChartData.value = klineData
+      dailyKlineData.value = dailyData
       klineResult.value = klineData.at(-1) || null
       refreshTechnicalSnapshot()
+      commitResearchData(researchData)
       recordRecent(code, stockData.name)
       checkAlerts(code, Number(stockData.close))
-      await fetchResearchData(code)
+      return true
     } catch (reason) {
+      if (requestId !== stockRequestId) return false
+      controller.abort()
       error.value = reason instanceof Error ? reason.message : '查询失败，请稍后重试'
+      return false
     } finally {
-      isLoading.value = false
+      clearTimeout(timeout)
+      if (requestId === stockRequestId) {
+        isLoading.value = false
+        isResearchLoading.value = false
+      }
     }
   }
 
-  let klineRequestId = 0
   const loadKline = async (
     code: string,
     type: KlinePeriod = 'day',
     count = KLINE_HISTORY_COUNTS[type],
   ) => {
     const requestId = ++klineRequestId
+    const stockId = stockRequestId
+    klineController?.abort()
+    const controller = new AbortController()
+    klineController = controller
     isKlineLoading.value = true
     try {
-      const data = await fetchKlineData(code, type, count)
-      if (requestId !== klineRequestId || stockCode.value !== code) return false
+      const data = await fetchKlineData(code, type, count, controller.signal)
+      if (requestId !== klineRequestId || stockId !== stockRequestId || stockCode.value !== code)
+        return false
       klineChartData.value = data
+      klinePeriod.value = type
       klineResult.value = data.at(-1) || null
-      refreshTechnicalSnapshot()
       return true
+    } catch (reason) {
+      if (requestId !== klineRequestId || stockId !== stockRequestId) return false
+      throw reason
     } finally {
       if (requestId === klineRequestId) isKlineLoading.value = false
     }
@@ -375,7 +434,9 @@ export const useStockStore = defineStore('stock', () => {
   }
 
   const searchStocks = async (query: string) => {
+    const requestId = ++searchRequestId
     if (!query.trim()) {
+      isSearching.value = false
       searchResults.value = []
       showSearchResults.value = false
       return
@@ -386,14 +447,15 @@ export const useStockStore = defineStore('stock', () => {
 
     try {
       // 使用腾讯股票smartbox接口进行模糊搜索（通过代理）
-      const url = `/api/stock-search?v=2&q=${query}&t=all&c=1`
-      const response = await fetch(url)
+      const url = `/api/stock-search?v=2&q=${encodeURIComponent(query)}&t=all&c=1`
+      const response = await fetch(url, { signal: AbortSignal.timeout(20_000) })
 
       if (!response.ok) {
         throw new Error(`搜索请求失败: ${response.status}`)
       }
 
       const text = await response.text()
+      if (requestId !== searchRequestId || query.trim() !== searchQuery.value.trim()) return
       // 解析返回的数据格式：v_hint="市场~代码~名称~拼音缩写~类型"
       const match = text.match(/v_hint="([^"]+)"/)
       if (!match) {
@@ -424,22 +486,23 @@ export const useStockStore = defineStore('stock', () => {
 
       searchResults.value = results.slice(0, 10) // 限制最多显示10个结果
     } catch (e) {
+      if (requestId !== searchRequestId) return
       console.error('搜索股票失败:', e)
       searchResults.value = []
     } finally {
-      isSearching.value = false
+      if (requestId === searchRequestId) isSearching.value = false
     }
   }
 
   const selectSearchResult = async (item: SearchResult) => {
     stockCode.value = item.code
-    searchQuery.value = ''
-    searchResults.value = []
-    showSearchResults.value = false
+    clearSearch()
     await loadStock(item.code)
   }
 
   const clearSearch = () => {
+    ++searchRequestId
+    isSearching.value = false
     searchQuery.value = ''
     searchResults.value = []
     showSearchResults.value = false
@@ -470,7 +533,7 @@ export const useStockStore = defineStore('stock', () => {
 
   const toggleFavorite = () => {
     const code = stockCode.value.trim()
-    if (!code || !result.value) return
+    if (!code || result.value?.code !== code) return
     if (isFavorite(code)) {
       removeFavorite(code)
     } else {
@@ -484,13 +547,13 @@ export const useStockStore = defineStore('stock', () => {
 
     const name = fields[1] || `股票${code}`
     const price = fields[3]
+    if ((finiteOrNull(price) ?? 0) <= 0) return null
     const yesterdayClose = fields[4]
     const open = fields[5]
     const high = fields[33]
     const low = fields[34]
     const volume = fields[36]
-    const turnover = Number(fields[38])
-    const pe = Number(fields[39])
+    const pe = finiteOrNull(fields[39])
 
     const change = (Number(price) - Number(yesterdayClose)).toFixed(2)
     const changePercent =
@@ -508,8 +571,8 @@ export const useStockStore = defineStore('stock', () => {
       high,
       low,
       volume: Number(volume).toLocaleString(),
-      turnover: Number.isFinite(turnover) ? turnover : null,
-      pe: Number.isFinite(pe) ? pe : null,
+      turnover: finiteOrNull(fields[38]),
+      pe,
     }
   }
 
@@ -517,7 +580,7 @@ export const useStockStore = defineStore('stock', () => {
     const unique = [...new Set(codes.filter((code) => /^\d{6}$/.test(code)))]
     if (!unique.length) return []
     const symbols = unique.map((code) => toSymbol(code)).join(',')
-    const response = await fetch(`/api/stock/q=${symbols}`)
+    const response = await fetch(`/api/stock/q=${symbols}`, { signal: AbortSignal.timeout(20_000) })
     if (!response.ok) throw new Error(`请求失败: ${response.status}`)
     const text = new TextDecoder('gbk').decode(await response.arrayBuffer())
     return unique
@@ -525,20 +588,26 @@ export const useStockStore = defineStore('stock', () => {
       .filter((item): item is FavoriteStockData => Boolean(item))
   }
 
+  let portfolioRequestId = 0
   const fetchPortfolioData = async () => {
+    const requestId = ++portfolioRequestId
     if (!positions.value.length) {
       portfolioQuotes.value = {}
+      isPortfolioLoading.value = false
       return
     }
     isPortfolioLoading.value = true
     try {
       const quotes = await fetchQuoteBatch(positions.value.map((item) => item.code))
+      if (requestId !== portfolioRequestId) return
       portfolioQuotes.value = Object.fromEntries(
         quotes.map((quote) => [quote.code, Number(quote.price)]),
       )
       quotes.forEach((quote) => checkAlerts(quote.code, Number(quote.price)))
+    } catch {
+      if (requestId === portfolioRequestId) portfolioQuotes.value = {}
     } finally {
-      isPortfolioLoading.value = false
+      if (requestId === portfolioRequestId) isPortfolioLoading.value = false
     }
   }
 
@@ -558,9 +627,12 @@ export const useStockStore = defineStore('stock', () => {
     void fetchPortfolioData()
   }
 
+  let favoritesRequestId = 0
   const fetchFavoritesData = async () => {
+    const requestId = ++favoritesRequestId
     if (favorites.value.length === 0) {
       favoritesData.value = []
+      isFavoritesLoading.value = false
       return
     }
 
@@ -579,6 +651,7 @@ export const useStockStore = defineStore('stock', () => {
       const buffer = await response.arrayBuffer()
       const decoder = new TextDecoder('gbk')
       const text = decoder.decode(buffer)
+      if (requestId !== favoritesRequestId) return
 
       const results: FavoriteStockData[] = []
       for (const fav of favorites.value) {
@@ -589,10 +662,33 @@ export const useStockStore = defineStore('stock', () => {
       }
 
       favoritesData.value = results
+      results.forEach((quote) => checkAlerts(quote.code, Number(quote.price)))
     } catch {
-      favoritesData.value = []
+      if (requestId === favoritesRequestId) favoritesData.value = []
     } finally {
-      isFavoritesLoading.value = false
+      if (requestId === favoritesRequestId) isFavoritesLoading.value = false
+    }
+  }
+
+  const monitoringError = ref('')
+  let monitoring = false
+  const fetchAlertData = async () => {
+    if (monitoring) return
+    const codes = alerts.value
+      .filter((alert) => alert.enabled && !alert.triggeredAt)
+      .map((alert) => alert.code)
+    monitoringError.value = ''
+    if (!codes.length) return
+    monitoring = true
+    try {
+      const quotes = await fetchQuoteBatch(codes)
+      quotes.forEach((quote) => checkAlerts(quote.code, Number(quote.price)))
+      if (new Set(quotes.map((quote) => quote.code)).size < new Set(codes).size)
+        monitoringError.value = '部分提醒标的没有有效报价，将在下次刷新重试'
+    } catch {
+      monitoringError.value = '提醒行情加载失败，将在下次刷新重试'
+    } finally {
+      monitoring = false
     }
   }
 
@@ -600,12 +696,22 @@ export const useStockStore = defineStore('stock', () => {
     code: string,
     type: KlinePeriod = 'day',
     count: number = KLINE_HISTORY_COUNTS[type],
+    signal?: AbortSignal,
   ): Promise<KlineData[]> => {
-    const { data } = await api.get<{ data: unknown }>(
-      `/api/research-stocks/${code}/kline?period=${type}&count=${count}`,
-      { auth: false },
-    )
-    return normalizeKlineRows(data)
+    const { data, period, adjustment } = await api.get<{
+      data: unknown
+      period: KlinePeriod
+      adjustment: string
+    }>(`/api/research-stocks/${code}/kline?period=${type}&count=${count}`, {
+      auth: false,
+      signal,
+      timeoutMs: 20_000,
+    })
+    if (period !== type || adjustment !== 'qfq')
+      throw new Error('K 线周期或复权模式不匹配，请更新行情服务')
+    const rows = normalizeKlineRows(data)
+    if (!rows.length) throw new Error('没有有效的 K 线数据')
+    return rows
   }
 
   const queryStockByDate = async () => {
@@ -625,27 +731,20 @@ export const useStockStore = defineStore('stock', () => {
       return
     }
 
-    isLoading.value = true
     error.value = ''
-    klineResult.value = null
-    klineChartData.value = []
-
-    try {
-      const klineData = await fetchKlineData(code, 'day', KLINE_HISTORY_COUNTS.day)
-      const foundIndex = klineData.findIndex((item) => item.date === selectedDate.value)
-
-      if (foundIndex !== -1) {
-        klineResult.value = klineData[foundIndex]
-        klineChartData.value = klineData
-        refreshTechnicalSnapshot()
-      } else {
-        error.value = '未找到该日期的交易数据，可能为非交易日'
-      }
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : '查询失败，请稍后重试'
-    } finally {
-      isLoading.value = false
+    const selected = selectedDate.value
+    const found = dailyKlineData.value.find((item) => item.date === selected)
+    if (!found) {
+      error.value = '未找到该日期的交易数据，可能为非交易日或超出已加载区间'
+      return false
     }
+    ++klineRequestId
+    klineController?.abort()
+    isKlineLoading.value = false
+    klinePeriod.value = 'day'
+    klineResult.value = found
+    klineChartData.value = dailyKlineData.value
+    return true
   }
 
   const addAlert = (payload: Omit<PriceAlert, 'id' | 'enabled'>) => {
@@ -682,6 +781,9 @@ export const useStockStore = defineStore('stock', () => {
     result,
     klineResult,
     klineChartData,
+    dailyKlineData,
+    completedResearchData,
+    klinePeriod,
     isKlineLoading,
     favorites,
     favoritesData,
@@ -691,9 +793,9 @@ export const useStockStore = defineStore('stock', () => {
     isSearching,
     showSearchResults,
     marketOverview,
+    marketError,
+    isMarketLoading,
     researchSummary,
-    financials,
-    notices,
     technicalSnapshot,
     isResearchLoading,
     researchError,
@@ -719,6 +821,8 @@ export const useStockStore = defineStore('stock', () => {
     fetchKlineData,
     fetchQuoteBatch,
     fetchPortfolioData,
+    fetchAlertData,
+    monitoringError,
     fetchMarketOverview,
     fetchResearchData,
     loadStock,

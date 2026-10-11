@@ -6,6 +6,7 @@ import type { WestockResult as WestockResultData } from '@/stores/westock'
 import WestockResult from './WestockResult.vue'
 
 defineOptions({ name: 'WestockStockPanel' })
+const props = defineProps<{ initialCommand?: 'quote' | 'finance' | 'notice' }>()
 
 const stock = useStockStore()
 
@@ -123,12 +124,13 @@ const STOCK_CMDS: StockCmd[] = [
   { id: 'disclosure', label: '披露日历', needsCode: true },
 ]
 
-const activeTab = ref(STOCK_CMDS[0].id)
+const activeTab = ref<string>(props.initialCommand ?? 'quote')
 const selState = reactive<Record<string, string>>({})
 const result = ref<WestockResultData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const unauthorized = ref(false)
+let requestId = 0
 
 const code = computed(() => stock.formattedCode)
 const activeCmd = computed(() => STOCK_CMDS.find((c) => c.id === activeTab.value)!)
@@ -177,24 +179,31 @@ function buildParams(cmd: StockCmd): Record<string, string> {
 }
 
 async function run() {
+  const currentRequest = ++requestId
   const cmd = activeCmd.value
+  const params = buildParams(cmd)
+  const targetCode = code.value
   if (cmd.needsCode && !code.value) {
+    loading.value = false
     error.value = null
     result.value = null
     return
   }
   loading.value = true
+  result.value = null
   error.value = null
   unauthorized.value = false
   try {
-    const res = await westockCommand(cmd.id, buildParams(cmd))
+    const res = await westockCommand(cmd.id, params)
+    if (currentRequest !== requestId || (cmd.needsCode && code.value !== targetCode)) return
     result.value = res
     if (!res.success) error.value = res.error || '请求未成功'
   } catch (e) {
+    if (currentRequest !== requestId) return
     unauthorized.value = isWestockAuthError(e)
     error.value = e instanceof Error ? e.message : '请求失败'
   } finally {
-    loading.value = false
+    if (currentRequest === requestId) loading.value = false
   }
 }
 
@@ -204,8 +213,12 @@ function selectTab(id: string) {
   void run()
 }
 
-resetSelectors(STOCK_CMDS[0])
+resetSelectors(activeCmd.value)
 void run()
+watch(
+  () => props.initialCommand,
+  (command) => selectTab(command ?? 'quote'),
+)
 
 watch(
   () => stock.stockCode,

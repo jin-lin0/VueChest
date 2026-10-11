@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useStockStore, type PriceAlert } from '@/stores/stock'
 import { useToast } from '@/composables/useToast'
+import { formatPrice } from '../data-quality'
 
 defineOptions({ name: 'StockJournalPanel' })
 
@@ -21,11 +22,6 @@ watch(
   { immediate: true },
 )
 
-function formatPrice(value: number | string | null | undefined, digits = 2) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed.toFixed(digits) : '--'
-}
-
 function saveNote() {
   if (!stock.stockCode) return
   stock.setResearchNote(stock.stockCode, noteDraft.value)
@@ -40,7 +36,8 @@ function createAlert() {
     direction: direction.value,
     target: target.value,
   })
-  addToast('success', '价格提醒已创建，将在刷新行情时检查')
+  addToast('success', '价格提醒已创建，页面可见时每分钟检查')
+  void stock.fetchAlertData()
 }
 </script>
 
@@ -70,6 +67,8 @@ function createAlert() {
         <input v-model.number="target" type="number" min="0.01" step="0.01" />
         <button @click="createAlert">创建提醒</button>
       </div>
+      <p>股票页面打开且可见时每分钟检查；关闭页面后停止。触发后站内提示一次。</p>
+      <p v-if="stock.monitoringError" role="status">{{ stock.monitoringError }}</p>
       <div v-if="alerts.length" class="alert-list">
         <div
           v-for="alert in alerts"
@@ -87,7 +86,7 @@ function createAlert() {
               alert.triggeredAt
                 ? `已于 ${new Date(alert.triggeredAt).toLocaleString()} 触发`
                 : alert.enabled
-                  ? '等待刷新行情时检查'
+                  ? '页面可见时每分钟检查'
                   : '已暂停'
             }}</small>
           </span>

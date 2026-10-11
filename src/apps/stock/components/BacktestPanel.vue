@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useStockStore } from '@/stores/stock'
 import { runMaBacktest, type BacktestResult } from '../portfolio'
 import ResearchLineChart, { type ResearchSeries } from './ResearchLineChart.vue'
 import { useToast } from '@/composables/useToast'
+import { formatPrice } from '../data-quality'
 
 defineOptions({ name: 'StockBacktestPanel' })
 
@@ -12,16 +13,23 @@ const { addToast } = useToast()
 const shortPeriod = ref(5)
 const longPeriod = ref(20)
 const capital = ref(100_000)
-const result = ref<BacktestResult | null>(null)
+const result = ref<(BacktestResult & { code: string; name: string; bars: number }) | null>(null)
+const sourceRange = computed(() => {
+  const data = stock.completedResearchData
+  return data.length
+    ? `${data[0].date} 至 ${data.at(-1)!.date} · ${data.length} 根已收盘日线 · 前复权`
+    : '暂无已收盘日线'
+})
+watch(
+  () => stock.stockCode,
+  () => {
+    result.value = null
+  },
+)
 
 const chartSeries = computed<ResearchSeries[]>(() =>
   result.value ? [{ name: '策略权益', color: '#0f766e', points: result.value.equity }] : [],
 )
-
-function formatPrice(value: number | string | null | undefined, digits = 2) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed.toFixed(digits) : '--'
-}
 
 function formatPercent(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return '--'
@@ -29,13 +37,22 @@ function formatPercent(value: number | null | undefined) {
 }
 
 function run() {
+  result.value = null
+  if (stock.isLoading || stock.result?.code !== stock.stockCode) return
   try {
-    result.value = runMaBacktest(
-      stock.klineChartData,
+    const data = stock.completedResearchData
+    const backtest = runMaBacktest(
+      data,
       Number(shortPeriod.value),
       Number(longPeriod.value),
       Number(capital.value),
     )
+    result.value = {
+      ...backtest,
+      code: stock.stockCode,
+      name: stock.result.name,
+      bars: data.length,
+    }
   } catch (error) {
     addToast('error', error instanceof Error ? error.message : '回测失败')
   }
@@ -47,7 +64,8 @@ function run() {
     <header class="panel-heading">
       <div>
         <h2>均线策略回测</h2>
-        <p>短均线上穿长均线买入、下穿卖出，含双边0.03%费用。</p>
+        <p>收盘确认均线交叉，下一交易日开盘模拟成交；每边费用假设0.03%。</p>
+        <p>{{ sourceRange }}</p>
       </div>
     </header>
     <div class="backtest-form">
@@ -60,9 +78,16 @@ function run() {
       <label
         ><span>初始资金</span><input v-model.number="capital" type="number" min="1000" step="1000"
       /></label>
-      <button @click="run">运行回测</button>
+      <button :disabled="stock.isLoading || !stock.completedResearchData.length" @click="run">
+        运行回测
+      </button>
     </div>
     <template v-if="result">
+      <p class="backtest-note">
+        本次结果：{{ result.name }}（{{ result.code }}）· 日线 / 前复权 · {{ result.startDate }} 至
+        {{ result.endDate }} · MA{{ result.shortPeriod }} / MA{{ result.longPeriod }} · 初始资金
+        {{ formatPrice(result.initialCapital) }}
+      </p>
       <div class="backtest-metrics">
         <article>
           <small>策略收益</small
@@ -71,7 +96,7 @@ function run() {
           }}</strong>
         </article>
         <article>
-          <small>同期持有</small
+          <small>同期价格涨幅</small
           ><strong :class="result.benchmarkReturn >= 0 ? 'up' : 'down'">{{
             formatPercent(result.benchmarkReturn)
           }}</strong>
@@ -88,6 +113,13 @@ function run() {
         </article>
       </div>
       <ResearchLineChart :series="chartSeries" :height="300" />
+      <p v-if="result.openPosition" class="backtest-note">
+        期末仍持有
+        {{
+          result.openPosition.units
+        }}
+        个模型单位，按最后收盘价计入权益；没有虚构期末卖出，也不计入已完成交易胜率。
+      </p>
       <div class="trade-list">
         <div
           v-for="trade in result.trades.slice().reverse().slice(0, 12)"
@@ -107,9 +139,9 @@ function run() {
         </div>
       </div>
     </template>
-    <div v-else class="panel-empty">使用当前股票已加载的 K 线进行回测</div>
+    <div v-else class="panel-empty">使用独立的已收盘日线进行回测，切换图表周期不会改变回测输入</div>
     <p class="backtest-note">
-      回测仅验证历史规则表现，不代表未来收益；未计入滑点、涨跌停和无法成交等现实约束。
+      前复权价格下的教学模拟，每次按100个模型单位的整数倍成交；模型单位不等于真实可交易股数。未模拟现金分红、板块申报规则、滑点和涨跌停的成交约束，不代表真实账户或未来收益。
     </p>
   </section>
 </template>

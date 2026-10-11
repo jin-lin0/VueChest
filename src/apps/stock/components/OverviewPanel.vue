@@ -4,6 +4,7 @@ import { useStockStore, type KlineData, type KlinePeriod } from '@/stores/stock'
 import { formatLargeNumber } from '../research'
 import type { DecisionSummary } from '../decision'
 import { useToast } from '@/composables/useToast'
+import { formatPrice } from '../data-quality'
 
 defineOptions({ name: 'StockOverviewPanel' })
 
@@ -22,20 +23,15 @@ const TradeDatePicker = defineAsyncComponent(() => import('./TradeDatePicker.vue
 const stock = useStockStore()
 const { addToast } = useToast()
 const activeKline = ref<KlineData | null>(null)
+const datePickerOpen = ref(false)
 
 const quote = computed(() => stock.researchSummary)
-const latestFinancial = computed(() => stock.financials[0] ?? null)
 const displayKline = computed(() => activeKline.value ?? stock.klineResult)
 const coverage = computed(() => {
   const first = stock.klineChartData[0]?.date
   const last = stock.klineChartData.at(-1)?.date
-  return first && last ? `${first} 至 ${last} · ${stock.klineChartData.length} 根` : ''
+  return first && last ? `${first} 至 ${last} · ${stock.klineChartData.length} 根 · 前复权` : ''
 })
-
-function formatPrice(value: number | string | null | undefined, digits = 2) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed.toFixed(digits) : '--'
-}
 
 function formatPercent(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return '--'
@@ -43,11 +39,10 @@ function formatPercent(value: number | null | undefined) {
 }
 
 async function changePeriod(period: KlinePeriod) {
-  emit('update:period', period)
   activeKline.value = null
   if (!stock.stockCode) return
   try {
-    await stock.loadKline(stock.stockCode, period)
+    if (await stock.loadKline(stock.stockCode, period)) emit('update:period', period)
   } catch (error) {
     addToast('error', error instanceof Error ? error.message : 'K 线数据加载失败')
   }
@@ -56,8 +51,10 @@ async function changePeriod(period: KlinePeriod) {
 async function queryByDate(date: Date | null) {
   if (!date || !stock.stockCode) return
   stock.selectedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-  await stock.queryStockByDate()
-  activeKline.value = stock.klineResult
+  if (await stock.queryStockByDate()) {
+    emit('update:period', 'day')
+    activeKline.value = stock.klineResult
+  }
 }
 
 watch(
@@ -89,7 +86,8 @@ watch(
               {{ item === 'day' ? '日线' : item === 'week' ? '周线' : '月线' }}
             </button>
           </div>
-          <TradeDatePicker @select="queryByDate" />
+          <TradeDatePicker v-if="datePickerOpen" @select="queryByDate" />
+          <button v-else type="button" @click="datePickerOpen = true">定位交易日</button>
         </div>
       </header>
       <StockChart
@@ -126,16 +124,19 @@ watch(
         <header class="card-header">
           <div>
             <h2>研判结论</h2>
-            <p>基于技术、估值、财务与公告信号的执行化输出</p>
+            <p>基于已收盘日线技术指标与腾讯估值；数据充分程度不代表预测胜率</p>
+            <p v-if="stock.completedResearchData.length">
+              日线截至 {{ stock.completedResearchData.at(-1)?.date }} · 前复权
+            </p>
           </div>
           <span class="decision-badge" :class="decision.tone">{{ decision.label }}</span>
         </header>
         <div class="decision-score">
           <strong>{{ decision.score }}</strong
-          ><span>/100</span><small>置信度 {{ decision.confidence }}</small>
+          ><span>/100</span><small>数据 {{ decision.dataAdequacy }}</small>
         </div>
         <div class="decision-metrics">
-          <span>数据覆盖率：{{ decision.dataCoverage }}%</span>
+          <span>技术与估值覆盖率：{{ decision.dataCoverage }}%</span>
           <span v-if="decision.missingData.length"
             >缺失项：{{ decision.missingData.join(' · ') }}</span
           >
@@ -242,63 +243,40 @@ watch(
         </div>
       </article>
 
-      <article v-if="latestFinancial" class="workspace-card finance-preview">
+      <article class="workspace-card deep-research-card">
         <header class="card-header">
-          <div><h2>财务质量</h2></div>
-          <button @click="emit('openPanel', 'financials')">查看全部 →</button>
+          <div><h2>财务与公告查询</h2></div>
         </header>
-        <div class="report-title">
-          <strong>{{ latestFinancial.reportName }}</strong
-          ><small>{{ latestFinancial.reportDate }}</small>
+        <p>通过 westock 查询财务数据与公司公告，需要登录。行情研判仅统计技术指标与腾讯估值字段。</p>
+        <div class="deep-research-actions">
+          <button type="button" @click="emit('openPanel', 'financials')">查看财务数据</button>
+          <button type="button" @click="emit('openPanel', 'notices')">查看公司公告</button>
         </div>
-        <div class="quality-grid">
-          <span
-            ><small>营业收入</small><strong>{{ formatLargeNumber(latestFinancial.revenue) }}</strong
-            ><b :class="Number(latestFinancial.revenueGrowth) >= 0 ? 'up' : 'down'">{{
-              formatPercent(latestFinancial.revenueGrowth)
-            }}</b></span
-          >
-          <span
-            ><small>归母净利润</small
-            ><strong>{{ formatLargeNumber(latestFinancial.netProfit) }}</strong
-            ><b :class="Number(latestFinancial.netProfitGrowth) >= 0 ? 'up' : 'down'">{{
-              formatPercent(latestFinancial.netProfitGrowth)
-            }}</b></span
-          >
-          <span
-            ><small>ROE</small><strong>{{ formatPercent(latestFinancial.roe) }}</strong></span
-          >
-          <span
-            ><small>毛利率</small
-            ><strong>{{ formatPercent(latestFinancial.grossMargin) }}</strong></span
-          >
-        </div>
-      </article>
-
-      <article class="workspace-card notice-preview">
-        <header class="card-header">
-          <div><h2>最新公告</h2></div>
-          <button @click="emit('openPanel', 'notices')">查看全部 →</button>
-        </header>
-        <a
-          v-for="notice in stock.notices.slice(0, 4)"
-          :key="notice.id"
-          :href="notice.url"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <span
-            ><b>{{ notice.category }}</b
-            ><strong>{{ notice.title }}</strong></span
-          ><small>{{ notice.date }} ↗</small>
-        </a>
-        <p v-if="!stock.notices.length" class="card-empty">暂无公告数据</p>
       </article>
     </div>
   </section>
 </template>
 
 <style scoped>
+.deep-research-card p {
+  margin-top: 12px;
+  color: var(--text-secondary);
+}
+.deep-research-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.deep-research-actions button {
+  padding: 8px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 9px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
 .panel-stack {
   display: grid;
   gap: 14px;
@@ -389,8 +367,7 @@ watch(
   padding-left: 10px;
 }
 .candle-inspector small,
-.metric-grid small,
-.quality-grid small {
+.metric-grid small {
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
@@ -488,8 +465,7 @@ watch(
   gap: 8px;
   margin-top: 17px;
 }
-.metric-grid span,
-.quality-grid span {
+.metric-grid span {
   display: flex;
   flex-direction: column;
   border-radius: 12px;
@@ -521,26 +497,6 @@ watch(
 }
 .support-bar strong {
   font-size: var(--font-size-control);
-}
-.report-title {
-  display: flex;
-  justify-content: space-between;
-  margin: 16px 0 9px;
-}
-.report-title small {
-  color: var(--text-muted);
-}
-.quality-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.quality-grid strong {
-  margin: 4px 0;
-  font-size: var(--font-size-body);
-}
-.quality-grid b {
-  font-size: var(--font-size-caption);
 }
 .decision-badge {
   display: inline-flex;
@@ -627,46 +583,6 @@ watch(
   font-size: var(--font-size-meta);
   line-height: 1.65;
 }
-.notice-preview a {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid var(--border-light);
-  padding: 11px 4px;
-  color: var(--text-primary);
-  text-decoration: none;
-}
-.notice-preview a span {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-.notice-preview a b {
-  flex: none;
-  border-radius: 6px;
-  padding: 3px 6px;
-  background: var(--accent-bg);
-  color: var(--accent);
-  font-size: var(--font-size-caption);
-}
-.notice-preview a strong {
-  overflow: hidden;
-  font-size: var(--font-size-meta);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.notice-preview a small {
-  flex: none;
-  color: var(--text-muted);
-  font-size: var(--font-size-caption);
-}
-.card-empty {
-  padding: 24px;
-  color: var(--text-muted);
-  text-align: center;
-}
 .up,
 .bullish {
   color: var(--stock-up) !important;
@@ -683,8 +599,7 @@ watch(
     grid-template-columns: 1fr;
   }
   .candle-inspector,
-  .metric-grid,
-  .quality-grid {
+  .metric-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }

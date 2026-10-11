@@ -4,6 +4,7 @@ import { useStockStore } from '@/stores/stock'
 import { formatLargeNumber } from '../research'
 import { portfolioTotals } from '../portfolio'
 import { useToast } from '@/composables/useToast'
+import { formatPrice } from '../data-quality'
 
 defineOptions({ name: 'StockPortfolioPanel' })
 
@@ -20,11 +21,6 @@ const currentPrice = computed(() =>
   Number(stock.researchSummary?.price ?? stock.result?.close ?? 0),
 )
 const summary = computed(() => portfolioTotals(stock.portfolioPositionMetrics))
-
-function formatPrice(value: number | string | null | undefined, digits = 2) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed.toFixed(digits) : '--'
-}
 
 function formatPercent(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return '--'
@@ -66,7 +62,7 @@ function savePosition() {
       <article>
         <small>当前市值</small><strong>{{ formatLargeNumber(summary.marketValue) }}</strong>
       </article>
-      <article :class="summary.profit >= 0 ? 'up' : 'down'">
+      <article :class="summary.profit == null ? '' : summary.profit >= 0 ? 'up' : 'down'">
         <small>浮动盈亏</small><strong>{{ formatLargeNumber(summary.profit) }}</strong
         ><b>{{ formatPercent(summary.profitPercent) }}</b>
       </article>
@@ -74,6 +70,9 @@ function savePosition() {
         <small>已获取行情</small><strong>{{ summary.priced }}/{{ stock.positions.length }}</strong>
       </article>
     </div>
+    <p v-if="summary.priced < stock.positions.length">
+      部分仓位缺少报价，组合市值和收益暂时显示为未知。
+    </p>
 
     <div class="portfolio-layout">
       <article class="workspace-card position-form-card">

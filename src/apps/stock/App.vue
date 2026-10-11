@@ -5,9 +5,10 @@ import { useStockStore, type KlinePeriod } from '@/stores/stock'
 import { STOCK_COLORS } from './config'
 import { debounce } from '@/utils/common'
 import { formatLargeNumber } from './research'
-import { buildResearchDecision, extractNoticeSignals, type DecisionSummary } from './decision'
+import { buildResearchDecision, type DecisionSummary } from './decision'
 import { QUICK_DISCOVER as DISCOVER_QUICK_ENTRIES } from './westock-discover'
 import { useToast } from '@/composables/useToast'
+import { finiteOrNull, formatPrice, summaryTimestamp } from './data-quality'
 
 defineOptions({ name: 'StockResearchWorkspace' })
 
@@ -25,40 +26,37 @@ const router = useRouter()
 const route = useRoute()
 const stock = useStockStore()
 const { addToast } = useToast()
-const Draggable = defineAsyncComponent(() => import('vuedraggable'))
 const OverviewPanel = defineAsyncComponent(() => import('./components/OverviewPanel.vue'))
 const PortfolioPanel = defineAsyncComponent(() => import('./components/PortfolioPanel.vue'))
 const ComparePanel = defineAsyncComponent(() => import('./components/ComparePanel.vue'))
 const BacktestPanel = defineAsyncComponent(() => import('./components/BacktestPanel.vue'))
-const FinancialsPanel = defineAsyncComponent(() => import('./components/FinancialsPanel.vue'))
-const NoticesPanel = defineAsyncComponent(() => import('./components/NoticesPanel.vue'))
 const JournalPanel = defineAsyncComponent(() => import('./components/JournalPanel.vue'))
 const WestockStockPanel = defineAsyncComponent(() => import('./components/WestockStockPanel.vue'))
-const WestockDiscoverPanel = defineAsyncComponent(() => import('./components/WestockDiscoverPanel.vue'))
+const WestockDiscoverPanel = defineAsyncComponent(
+  () => import('./components/WestockDiscoverPanel.vue'),
+)
 
 const activePanel = ref<ResearchPanel>('overview')
 const activePeriod = ref<KlinePeriod>('day')
+const draggedStockCode = ref('')
 let portfolioRefreshTimer: ReturnType<typeof setInterval> | null = null
 
 const quote = computed(() => stock.researchSummary)
-const currentPrice = computed(() => quote.value?.price ?? Number(stock.result?.close || 0))
-const changePercent = computed(() => quote.value?.changePercent ?? 0)
-const isUp = computed(() => changePercent.value >= 0)
-const latestFinancial = computed(() => stock.financials[0] ?? null)
-const latestNoticeSignals = computed(() => extractNoticeSignals(stock.notices))
+const currentPrice = computed(() => finiteOrNull(stock.result?.close) ?? quote.value?.price ?? null)
+const changePercent = computed(
+  () => stock.result?.changePercent ?? quote.value?.changePercent ?? null,
+)
+const isUp = computed(() => (changePercent.value ?? 0) >= 0)
 
 const researchDecision = computed<DecisionSummary>(() =>
   buildResearchDecision({
     technical: stock.technicalSnapshot,
     valuation: quote.value,
-    financial: latestFinancial.value,
-    technicalPrice: currentPrice.value,
+    technicalPrice: finiteOrNull(stock.completedResearchData.at(-1)?.close),
     technicalVolatility: stock.technicalSnapshot?.volatility20 ?? null,
     support: stock.technicalSnapshot?.support ?? null,
     resistance: stock.technicalSnapshot?.resistance ?? null,
-    notices: latestNoticeSignals.value,
-    klineLength: stock.klineChartData.length,
-    financialCount: stock.financials.length,
+    klineLength: stock.completedResearchData.length,
   }),
 )
 
@@ -70,8 +68,8 @@ const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number
   { id: 'portfolio', label: '模拟持仓', count: () => stock.positions.length },
   { id: 'compare', label: '股票对比' },
   { id: 'backtest', label: '策略回测' },
-  { id: 'financials', label: '财务质量', count: () => stock.financials.length },
-  { id: 'notices', label: '公司公告', count: () => stock.notices.length },
+  { id: 'financials', label: '财务数据' },
+  { id: 'notices', label: '公司公告' },
   {
     id: 'journal',
     label: '研究笔记',
@@ -104,17 +102,13 @@ const debouncedSearch = debounce(() => {
   else stock.clearSearch()
 }, 260)
 
-function formatPrice(value: number | string | null | undefined, digits = 2) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed.toFixed(digits) : '--'
-}
-
 function formatPercent(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return '--'
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
-function hideSearchResults() {
+function hideSearchResults(event: FocusEvent) {
+  if (event.relatedTarget instanceof Element && event.relatedTarget.closest('.search-card')) return
   window.setTimeout(() => {
     stock.showSearchResults = false
   }, 160)
@@ -157,15 +151,14 @@ async function applyRouteCommand() {
   if (/^\d{6}$/.test(code)) {
     await openStock(code, requestedPanel === 'portfolio')
   }
+  if (commandKey !== handledRouteCommand) return
   if (requestedPanel && (!panelNeedsStock(requestedPanel) || stock.result)) {
     activePanel.value = requestedPanel
   }
 }
 
 async function chooseSearchResult(item: { code: string; name: string; market: string }) {
-  stock.searchQuery = ''
-  stock.searchResults = []
-  stock.showSearchResults = false
+  stock.clearSearch()
   await openStock(item.code)
 }
 
@@ -179,8 +172,25 @@ async function runSearch() {
   if (stock.searchResults[0]) await chooseSearchResult(stock.searchResults[0])
 }
 
-function onWatchlistDrag() {
-  stock.reorderFavorites(stock.favoritesData.map((item) => ({ code: item.code, name: item.name })))
+function dropWatchlist(targetCode: string) {
+  const items = [...stock.favorites]
+  const source = items.findIndex((item) => item.code === draggedStockCode.value)
+  const target = items.findIndex((item) => item.code === targetCode)
+  if (source < 0 || target < 0 || source === target) return
+  const [item] = items.splice(source, 1)
+  items.splice(target, 0, item)
+  stock.reorderFavorites(items)
+  const order = new Map(items.map((item, index) => [item.code, index]))
+  stock.favoritesData.sort((a, b) => (order.get(a.code) ?? 0) - (order.get(b.code) ?? 0))
+  draggedStockCode.value = ''
+}
+
+function moveFavorite(code: string, delta: number) {
+  const index = stock.favorites.findIndex((item) => item.code === code)
+  const target = stock.favorites[index + delta]
+  if (!target) return
+  draggedStockCode.value = code
+  dropWatchlist(target.code)
 }
 
 async function copyResearchCard() {
@@ -192,12 +202,10 @@ async function copyResearchCard() {
     `现价：${formatPrice(currentPrice.value)}，涨跌：${formatPercent(changePercent.value)}`,
     tech ? `技术状态：${tech.trendLabel}（${tech.score}/100）` : '',
     tech?.support ? `20日支撑/压力：${tech.support} / ${tech.resistance}` : '',
-    latestFinancial.value
-      ? `最新财报：营收同比 ${formatPercent(latestFinancial.value.revenueGrowth)}，ROE ${formatPercent(latestFinancial.value.roe)}`
-      : '',
-    `综合研判：${decision.label}（${decision.score}/100）`,
-    `置信度：${decision.confidence}`,
-    `数据覆盖率：${decision.dataCoverage}%`,
+    `行情研判：${decision.label}（${decision.score}/100，基于日线技术与腾讯估值）`,
+    `数据充分程度：${decision.dataAdequacy}（不代表预测胜率）`,
+    `行情时间：${stock.result.asOf || '未知'}；技术日线截至 ${stock.completedResearchData.at(-1)?.date || '未知'}`,
+    `技术与估值数据覆盖率：${decision.dataCoverage}%`,
     decision.missingData.length ? `缺失项：${decision.missingData.join('；')}` : '',
     decision.highlights.length ? `利好要点：${decision.highlights.join('；')}` : '',
     decision.watchItems.length ? `关键触发：${decision.watchItems.join('；')}` : '',
@@ -210,19 +218,48 @@ async function copyResearchCard() {
   addToast('success', '研究卡片已复制')
 }
 
-onMounted(async () => {
-  await Promise.all([
+function refreshVisibleData() {
+  if (document.hidden) return
+  void Promise.allSettled([
+    stock.fetchPortfolioData(),
+    stock.fetchFavoritesData(),
+    stock.fetchAlertData(),
+    stock.fetchMarketOverview(),
+  ])
+}
+
+onMounted(() => {
+  routeCommandsReady = true
+  void applyRouteCommand()
+  void Promise.allSettled([
     stock.fetchMarketOverview(),
     stock.fetchFavoritesData(),
     stock.fetchPortfolioData(),
+    stock.fetchAlertData(),
   ])
-  routeCommandsReady = true
-  await applyRouteCommand()
-  portfolioRefreshTimer = setInterval(() => void stock.fetchPortfolioData(), 60_000)
+  portfolioRefreshTimer = setInterval(refreshVisibleData, 60_000)
+  document.addEventListener('visibilitychange', refreshVisibleData)
 })
 onUnmounted(() => {
   if (portfolioRefreshTimer) clearInterval(portfolioRefreshTimer)
+  document.removeEventListener('visibilitychange', refreshVisibleData)
 })
+
+watch(
+  () => stock.alerts.map((alert) => (alert.triggeredAt ? alert.id : '')).filter(Boolean),
+  (ids, previous) => {
+    const old = new Set(previous)
+    for (const id of ids) {
+      if (old.has(id)) continue
+      const alert = stock.alerts.find((item) => item.id === id)
+      if (alert)
+        addToast(
+          'info',
+          `价格提醒：${alert.name} ${alert.direction === 'above' ? '达到' : '低于'} ¥${formatPrice(alert.target)}`,
+        )
+    }
+  },
+)
 
 watch(
   () => [route.query.code, route.query.panel, route.query.preset, route.query.command],
@@ -249,14 +286,14 @@ watch(
         </span>
       </div>
       <div class="header-actions">
-        <span class="source-state"><i></i> 腾讯行情 · 东方财富研究数据</span>
+        <span class="source-state"><i></i> 腾讯行情 · westock 深度数据</span>
         <button type="button" @click="router.push('/stock/knowledge')">知识中心</button>
       </div>
     </header>
 
     <section class="market-pulse" aria-label="大盘概览">
       <div class="pulse-label">
-        <strong>今日大盘</strong>
+        <strong>大盘行情</strong>
       </div>
       <div v-if="stock.marketOverview.length" class="index-list">
         <article v-for="item in stock.marketOverview" :key="item.code">
@@ -267,13 +304,17 @@ watch(
           </b>
         </article>
       </div>
-      <div v-else class="index-skeleton"><i></i><i></i><i></i></div>
+      <div v-else-if="stock.isMarketLoading" class="index-skeleton"><i></i><i></i><i></i></div>
+      <div v-else role="status">
+        {{ stock.marketError || '暂无大盘行情' }}
+        <button type="button" @click="stock.fetchMarketOverview()">重试</button>
+      </div>
       <small>数据有延迟，仅供研究</small>
     </section>
 
     <main class="research-shell">
       <aside class="research-sidebar">
-        <section class="search-card">
+        <section class="search-card" @focusout="hideSearchResults">
           <h2>股票查询</h2>
           <p>输入名称或 6 位代码</p>
           <div class="stock-search">
@@ -285,10 +326,9 @@ watch(
               aria-label="搜索股票"
               @input="debouncedSearch"
               @focus="stock.showSearchResults = true"
-              @blur="hideSearchResults"
               @keydown.enter.prevent="runSearch"
             />
-            <button type="button" :disabled="stock.isSearching" @mousedown.prevent="runSearch">
+            <button type="button" :disabled="stock.isSearching" @click="runSearch">
               {{ stock.isSearching ? '···' : '查询' }}
             </button>
           </div>
@@ -297,7 +337,7 @@ watch(
               v-for="item in stock.searchResults"
               :key="`${item.market}-${item.code}`"
               type="button"
-              @mousedown.prevent="chooseSearchResult(item)"
+              @click="chooseSearchResult(item)"
             >
               <span
                 ><strong>{{ item.name }}</strong
@@ -334,40 +374,44 @@ watch(
             </button>
           </div>
           <div v-if="stock.isFavoritesLoading" class="watch-loading">正在刷新行情…</div>
-          <Draggable
-            v-else-if="stock.favoritesData.length"
-            v-model="stock.favoritesData"
-            item-key="code"
-            class="watch-list"
-            ghost-class="watch-ghost"
-            @end="onWatchlistDrag"
-          >
-            <template #item="{ element: item }">
-              <article
-                :class="{ active: stock.stockCode === item.code }"
-                @click="openStock(item.code)"
+          <div v-else-if="stock.favoritesData.length" class="watch-list">
+            <article
+              v-for="item in stock.favoritesData"
+              :key="item.code"
+              :class="{ active: stock.stockCode === item.code }"
+              draggable="true"
+              tabindex="0"
+              role="button"
+              :aria-label="`研究${item.name}；Alt加上下方向键调整自选顺序`"
+              @dragstart="draggedStockCode = item.code"
+              @dragover.prevent
+              @drop.prevent="dropWatchlist(item.code)"
+              @dragend="draggedStockCode = ''"
+              @keydown.enter.self.prevent="openStock(item.code)"
+              @keydown.alt.up.prevent="moveFavorite(item.code, -1)"
+              @keydown.alt.down.prevent="moveFavorite(item.code, 1)"
+              @click="openStock(item.code)"
+            >
+              <span class="drag-handle" title="拖动排序">⠿</span>
+              <span class="watch-name"
+                ><strong>{{ item.name }}</strong
+                ><small>{{ item.code }}</small></span
               >
-                <span class="drag-handle" title="拖动排序">⠿</span>
-                <span class="watch-name"
-                  ><strong>{{ item.name }}</strong
-                  ><small>{{ item.code }}</small></span
-                >
-                <span class="watch-price">
-                  <strong>{{ formatPrice(item.price) }}</strong>
-                  <small :class="Number(item.changePercent) >= 0 ? 'up' : 'down'">
-                    {{ formatPercent(Number(item.changePercent)) }}
-                  </small>
-                </span>
-                <button
-                  type="button"
-                  aria-label="移出自选"
-                  @click.stop="stock.removeFavorite(item.code)"
-                >
-                  ×
-                </button>
-              </article>
-            </template>
-          </Draggable>
+              <span class="watch-price">
+                <strong>{{ formatPrice(item.price) }}</strong>
+                <small :class="Number(item.changePercent) >= 0 ? 'up' : 'down'">
+                  {{ formatPercent(Number(item.changePercent)) }}
+                </small>
+              </span>
+              <button
+                type="button"
+                aria-label="移出自选"
+                @click.stop="stock.removeFavorite(item.code)"
+              >
+                ×
+              </button>
+            </article>
+          </div>
           <div v-else class="watch-empty">
             <span>☆</span>
             <p>研究股票后加入自选，持续观察变化。</p>
@@ -398,9 +442,21 @@ watch(
 
         <PortfolioPanel v-if="activePanel === 'portfolio'" @open-stock="openPositionResearch" />
 
-        <WestockStockPanel v-else-if="activePanel === 'westockStock'" />
+        <WestockStockPanel
+          v-else-if="['westockStock', 'financials', 'notices'].includes(activePanel)"
+          :initial-command="
+            activePanel === 'financials'
+              ? 'finance'
+              : activePanel === 'notices'
+                ? 'notice'
+                : 'quote'
+          "
+        />
 
-        <WestockDiscoverPanel v-else-if="activePanel === 'westockDiscover'" @open-stock="openFromDiscover" />
+        <WestockDiscoverPanel
+          v-else-if="activePanel === 'westockDiscover'"
+          @open-stock="openFromDiscover"
+        />
 
         <div v-else-if="!stock.result && !stock.isLoading" class="welcome-state compact-empty">
           <div class="empty-heading">
@@ -441,7 +497,7 @@ watch(
 
         <div v-else-if="stock.isLoading && !stock.result" class="research-loading">
           <span></span><strong>正在加载研究数据</strong>
-          <p>行情、K 线、财务和公告</p>
+          <p>腾讯行情、前复权 K 线与估值摘要</p>
         </div>
 
         <template v-else-if="stock.result">
@@ -451,7 +507,10 @@ watch(
               <div>
                 <span class="quote-code">{{ stock.formattedCode.toUpperCase() }}</span>
                 <h1>{{ stock.result.name }}</h1>
-                <small>{{ stock.result.date }} · 最近更新</small>
+                <small>{{ stock.result.asOf || '行情时间未知' }} · 腾讯行情</small>
+                <small v-if="quote?.source"
+                  >研究摘要：腾讯 · {{ summaryTimestamp(quote.asOf) || '时间未知' }}</small
+                >
               </div>
             </div>
             <div class="quote-price" :class="isUp ? 'up' : 'down'">
@@ -497,10 +556,6 @@ watch(
           <ComparePanel v-else-if="activePanel === 'compare'" />
 
           <BacktestPanel v-else-if="activePanel === 'backtest'" />
-
-          <FinancialsPanel v-else-if="activePanel === 'financials'" />
-
-          <NoticesPanel v-else-if="activePanel === 'notices'" />
 
           <JournalPanel v-else />
 
@@ -1148,6 +1203,7 @@ watch(
 }
 .quote-identity {
   gap: 13px;
+  min-width: 0;
 }
 .ticker-badge {
   display: grid;
@@ -1171,6 +1227,9 @@ watch(
   font-size: var(--font-size-4xl);
 }
 .quote-identity small {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
   color: var(--text-muted);
   font-size: var(--font-size-caption);
 }
@@ -1217,6 +1276,7 @@ watch(
   flex-wrap: wrap;
 }
 .quote-actions button {
+  white-space: nowrap;
   padding: 8px 10px;
   border: 1px solid var(--border-light);
   border-radius: 9px;
@@ -1300,20 +1360,21 @@ watch(
   }
 }
 
-@media (max-width: 1180px) {
-  .research-shell {
-    grid-template-columns: 250px minmax(0, 1fr);
-  }
+@media (max-width: 1480px) {
   .quote-hero {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
   .quote-range {
     grid-column: 1/-1;
   }
   .quote-actions {
-    position: absolute;
-    right: 24px;
-    top: 24px;
+    position: static;
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 1180px) {
+  .research-shell {
+    grid-template-columns: 250px minmax(0, 1fr);
   }
   .welcome-state {
     grid-template-columns: 1fr;

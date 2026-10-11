@@ -26,6 +26,13 @@ export interface CompareSeries {
 }
 
 export interface BacktestResult {
+  startDate: string
+  endDate: string
+  initialCapital: number
+  feeRate: number
+  lotSize: number
+  shortPeriod: number
+  longPeriod: number
   totalReturn: number
   benchmarkReturn: number
   maxDrawdown: number
@@ -36,8 +43,10 @@ export interface BacktestResult {
     sellDate: string
     sellPrice: number
     returnPercent: number
+    units: number
   }>
   equity: Array<{ date: string; value: number }>
+  openPosition: { buyDate: string; buyPrice: number; units: number; marketValue: number } | null
 }
 
 const round = (value: number, digits = 2) => Number(value.toFixed(digits))
@@ -65,20 +74,17 @@ export function portfolioTotals(positions: PositionMetrics[]) {
   const priced = positions.filter((item) => item.marketValue !== null)
   const marketValue = priced.reduce((sum, item) => sum + (item.marketValue || 0), 0)
   const profit = marketValue - priced.reduce((sum, item) => sum + item.costValue, 0)
+  const complete = priced.length === positions.length
   return {
     cost: round(cost),
-    marketValue: round(marketValue),
-    profit: round(profit),
-    profitPercent: cost > 0 ? round((profit / cost) * 100) : 0,
+    marketValue: complete ? round(marketValue) : null,
+    profit: complete ? round(profit) : null,
+    profitPercent: complete ? (cost > 0 ? round((profit / cost) * 100) : 0) : null,
     priced: priced.length,
   }
 }
 
-export function normalizePerformance(
-  code: string,
-  name: string,
-  data: KlineData[],
-): CompareSeries {
+export function normalizePerformance(code: string, name: string, data: KlineData[]): CompareSeries {
   const rows = data.filter((item) => Number.isFinite(Number(item.close)))
   const first = Number(rows[0]?.close || 0)
   const points = first
@@ -89,7 +95,9 @@ export function normalizePerformance(
     : []
   const returns = rows
     .slice(1)
-    .map((item, index) => (Number(item.close) - Number(rows[index].close)) / Number(rows[index].close))
+    .map(
+      (item, index) => (Number(item.close) - Number(rows[index].close)) / Number(rows[index].close),
+    )
   const mean = returns.length ? returns.reduce((sum, value) => sum + value, 0) / returns.length : 0
   const variance = returns.length
     ? returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / returns.length
@@ -107,12 +115,14 @@ export function correlation(left: KlineData[], right: KlineData[]): number | nul
   const rightByDate = new Map(right.map((item) => [item.date, Number(item.close)]))
   const pairs = left
     .map((item) => [Number(item.close), rightByDate.get(item.date)] as const)
-    .filter((pair): pair is readonly [number, number] =>
-      pair[1] !== undefined && Number.isFinite(pair[0]) && Number.isFinite(pair[1]),
+    .filter(
+      (pair): pair is readonly [number, number] =>
+        pair[1] !== undefined && Number.isFinite(pair[0]) && Number.isFinite(pair[1]),
     )
-  if (pairs.length < 3) return null
-  const xs = pairs.map((pair) => pair[0])
-  const ys = pairs.map((pair) => pair[1])
+  if (pairs.length < 4 || pairs.some(([x, y]) => x <= 0 || y <= 0)) return null
+  // Compare returns over identical intervals, including gaps in either instrument.
+  const xs = pairs.slice(1).map((pair, index) => pair[0] / pairs[index][0] - 1)
+  const ys = pairs.slice(1).map((pair, index) => pair[1] / pairs[index][1] - 1)
   const xMean = xs.reduce((sum, value) => sum + value, 0) / xs.length
   const yMean = ys.reduce((sum, value) => sum + value, 0) / ys.length
   let numerator = 0
@@ -141,59 +151,81 @@ export function runMaBacktest(
   longPeriod = 20,
   initialCapital = 100_000,
   feeRate = 0.0003,
+  lotSize = 100,
 ): BacktestResult {
-  if (shortPeriod <= 0 || longPeriod <= shortPeriod || data.length <= longPeriod) {
+  if (
+    !Number.isInteger(shortPeriod) ||
+    !Number.isInteger(longPeriod) ||
+    shortPeriod <= 0 ||
+    longPeriod <= shortPeriod ||
+    data.length <= longPeriod + 1
+  ) {
     throw new Error('回测参数或历史数据不足')
   }
+  if (
+    !Number.isFinite(initialCapital) ||
+    initialCapital <= 0 ||
+    !Number.isFinite(feeRate) ||
+    feeRate < 0 ||
+    feeRate >= 1 ||
+    !Number.isInteger(lotSize) ||
+    lotSize <= 0
+  ) {
+    throw new Error('资金、费用或模型交易单位无效')
+  }
   const closes = data.map((item) => Number(item.close))
-  if (closes.some((value) => !Number.isFinite(value) || value <= 0)) {
+  const opens = data.map((item) => Number(item.open))
+  if (
+    [...closes, ...opens].some((value) => !Number.isFinite(value) || value <= 0) ||
+    data.some((row, index) => index > 0 && row.date <= data[index - 1].date)
+  ) {
     throw new Error('K 线包含无效价格')
   }
   let cash = initialCapital
   let shares = 0
-  let buy: { date: string; price: number } | null = null
+  let buy: { date: string; price: number; cost: number } | null = null
+  let pending: 'buy' | 'sell' | null = null
   const trades: BacktestResult['trades'] = []
   const equity: BacktestResult['equity'] = []
 
   for (let index = longPeriod; index < data.length; index += 1) {
+    const openingPrice = opens[index]
+    // A close-based signal can execute no earlier than the next tradable bar's open.
+    const tradable = Number(data[index].volume) > 0
+    if (pending === 'buy' && !shares && tradable) {
+      const units = Math.floor(cash / (openingPrice * (1 + feeRate)) / lotSize) * lotSize
+      if (units > 0) {
+        const cost = units * openingPrice * (1 + feeRate)
+        cash -= cost
+        shares = units
+        buy = { date: data[index].date, price: openingPrice, cost }
+      }
+      pending = null
+    } else if (pending === 'sell' && shares && buy && tradable) {
+      const proceeds = shares * openingPrice * (1 - feeRate)
+      cash += proceeds
+      trades.push({
+        buyDate: buy.date,
+        buyPrice: buy.price,
+        sellDate: data[index].date,
+        sellPrice: openingPrice,
+        units: shares,
+        returnPercent: round(((proceeds - buy.cost) / buy.cost) * 100),
+      })
+      shares = 0
+      buy = null
+      pending = null
+    }
+    equity.push({ date: data[index].date, value: round(cash + shares * closes[index]) })
     const short = movingAverage(closes, index, shortPeriod)!
     const long = movingAverage(closes, index, longPeriod)!
     const prevShort = movingAverage(closes, index - 1, shortPeriod)!
     const prevLong = movingAverage(closes, index - 1, longPeriod)!
-    const price = closes[index]
     if (!shares && prevShort <= prevLong && short > long) {
-      shares = (cash * (1 - feeRate)) / price
-      cash = 0
-      buy = { date: data[index].date, price }
+      pending = 'buy'
     } else if (shares && prevShort >= prevLong && short < long) {
-      cash = shares * price * (1 - feeRate)
-      if (buy) {
-        trades.push({
-          buyDate: buy.date,
-          buyPrice: buy.price,
-          sellDate: data[index].date,
-          sellPrice: price,
-          returnPercent: round(((price * (1 - feeRate * 2) - buy.price) / buy.price) * 100),
-        })
-      }
-      shares = 0
-      buy = null
+      pending = 'sell'
     }
-    equity.push({ date: data[index].date, value: round(cash + shares * price) })
-  }
-  if (shares) {
-    const price = closes.at(-1)!
-    cash = shares * price * (1 - feeRate)
-    if (buy) {
-      trades.push({
-        buyDate: buy.date,
-        buyPrice: buy.price,
-        sellDate: data.at(-1)!.date,
-        sellPrice: price,
-        returnPercent: round(((price * (1 - feeRate * 2) - buy.price) / buy.price) * 100),
-      })
-    }
-    equity[equity.length - 1].value = round(cash)
   }
   let peak = initialCapital
   let maxDrawdown = 0
@@ -203,11 +235,26 @@ export function runMaBacktest(
   }
   const wins = trades.filter((trade) => trade.returnPercent > 0).length
   return {
-    totalReturn: round(((cash - initialCapital) / initialCapital) * 100),
+    startDate: data[longPeriod].date,
+    endDate: data.at(-1)!.date,
+    initialCapital,
+    feeRate,
+    lotSize,
+    shortPeriod,
+    longPeriod,
+    totalReturn: round(((equity.at(-1)!.value - initialCapital) / initialCapital) * 100),
     benchmarkReturn: round(((closes.at(-1)! - closes[longPeriod]) / closes[longPeriod]) * 100),
     maxDrawdown: round(maxDrawdown),
     winRate: trades.length ? round((wins / trades.length) * 100) : 0,
     trades,
     equity,
+    openPosition: buy
+      ? {
+          buyDate: buy.date,
+          buyPrice: buy.price,
+          units: shares,
+          marketValue: round(shares * closes.at(-1)!),
+        }
+      : null,
   }
 }

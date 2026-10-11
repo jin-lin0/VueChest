@@ -85,6 +85,7 @@ export function rsi(data: KlineData[], period = 14): number | null {
     if (change >= 0) gains += change
     else losses -= change
   }
+  if (losses === 0 && gains === 0) return 50
   if (losses === 0) return 100
   const rs = gains / losses
   return round(100 - 100 / (1 + rs))
@@ -124,30 +125,36 @@ export function buildTechnicalSnapshot(data: KlineData[]): TechnicalSnapshot {
   const resistance = twenty.length ? Math.max(...twenty) : null
   const momentumBase = closes.at(-21)
   const momentum20 = momentumBase ? round(((last - momentumBase) / momentumBase) * 100) : null
-  const returns = twenty.slice(1).map((value, index) => (value - twenty[index]) / twenty[index])
+  const volatilityWindow = closes.slice(-21)
+  const returns = volatilityWindow
+    .slice(1)
+    .map((value, index) => (value - volatilityWindow[index]) / volatilityWindow[index])
   const mean = returns.length ? returns.reduce((sum, value) => sum + value, 0) / returns.length : 0
   const variance = returns.length
     ? returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / returns.length
     : 0
-  const volatility20 = round(Math.sqrt(variance) * Math.sqrt(252) * 100)
+  const volatility20 =
+    returns.length === 20 ? round(Math.sqrt(variance) * Math.sqrt(252) * 100) : null
 
   let score = 50
   const signals: TechnicalSnapshot['signals'] = []
   if (ma20 !== null) {
-    const above = last >= ma20
-    score += above ? 12 : -12
+    const above = last > ma20
+    const equal = last === ma20
+    score += equal ? 0 : above ? 12 : -12
     signals.push({
-      tone: above ? 'positive' : 'negative',
-      label: above ? '站上 MA20' : '跌破 MA20',
+      tone: equal ? 'neutral' : above ? 'positive' : 'negative',
+      label: equal ? '贴近 MA20' : above ? '位于 MA20 上方' : '位于 MA20 下方',
       detail: `现价 ${last.toFixed(2)}，MA20 ${ma20.toFixed(2)}`,
     })
   }
   if (ma5 !== null && ma10 !== null) {
-    const golden = ma5 >= ma10
-    score += golden ? 8 : -8
+    const golden = ma5 > ma10
+    const equal = ma5 === ma10
+    score += equal ? 0 : golden ? 8 : -8
     signals.push({
-      tone: golden ? 'positive' : 'negative',
-      label: golden ? '短均线多头' : '短均线承压',
+      tone: equal ? 'neutral' : golden ? 'positive' : 'negative',
+      label: equal ? '短均线重合' : golden ? '短均线多头' : '短均线承压',
       detail: `MA5 ${ma5.toFixed(2)} / MA10 ${ma10.toFixed(2)}`,
     })
   }
@@ -159,19 +166,19 @@ export function buildTechnicalSnapshot(data: KlineData[]): TechnicalSnapshot {
       score += 4
       signals.push({ tone: 'neutral', label: 'RSI 超卖区', detail: `RSI14 ${rsiValue}` })
     } else {
-      score += rsiValue >= 50 ? 4 : -4
+      score += rsiValue === 50 ? 0 : rsiValue > 50 ? 4 : -4
       signals.push({
-        tone: rsiValue >= 50 ? 'positive' : 'negative',
-        label: rsiValue >= 50 ? '动能偏强' : '动能偏弱',
+        tone: rsiValue === 50 ? 'neutral' : rsiValue > 50 ? 'positive' : 'negative',
+        label: rsiValue === 50 ? 'RSI 中性' : rsiValue > 50 ? '动能偏强' : '动能偏弱',
         detail: `RSI14 ${rsiValue}`,
       })
     }
   }
   if (macdValue !== null) {
-    score += macdValue >= 0 ? 8 : -8
+    score += macdValue === 0 ? 0 : macdValue > 0 ? 8 : -8
     signals.push({
-      tone: macdValue >= 0 ? 'positive' : 'negative',
-      label: macdValue >= 0 ? 'MACD 红柱' : 'MACD 绿柱',
+      tone: macdValue === 0 ? 'neutral' : macdValue > 0 ? 'positive' : 'negative',
+      label: macdValue === 0 ? 'MACD 零轴附近' : macdValue > 0 ? 'MACD 红柱' : 'MACD 绿柱',
       detail: `柱值 ${macdValue.toFixed(3)}`,
     })
   }

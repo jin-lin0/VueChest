@@ -37,4 +37,12 @@ describe('stock research indicators', () => {
     expect(formatLargeNumber(1591141364200)).toBe('1.59 万亿')
     expect(formatLargeNumber(null)).toBe('--')
   })
+
+  it('keeps flat prices neutral and requires twenty returns for volatility', () => {
+    const flat = series(Array(80).fill(100))
+    expect(rsi(flat)).toBe(50)
+    expect(buildTechnicalSnapshot(flat).trend).toBe('neutral')
+    expect(buildTechnicalSnapshot(flat).volatility20).toBe(0)
+    expect(buildTechnicalSnapshot(flat.slice(0, 20)).volatility20).toBeNull()
+  })
 })
