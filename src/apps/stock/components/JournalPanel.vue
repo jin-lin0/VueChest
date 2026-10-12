@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { CustomSelect, type SelectOption } from '@/components'
 import { useStockStore } from '@/stores/stock'
 import { useToast } from '@/composables/useToast'
 import { formatPrice } from '../data-quality'
@@ -11,6 +12,10 @@ const stock = useStockStore()
 const { addToast } = useToast()
 const noteDraft = ref('')
 const direction = ref<PriceAlert['direction']>('above')
+const directionOptions: SelectOption[] = [
+  { value: 'above', label: '价格高于' },
+  { value: 'below', label: '价格低于' },
+]
 const target = ref<number | null>(null)
 const alerts = computed(() =>
   stock.alerts.filter((item) => instrumentKey(item) === stock.formattedCode),
@@ -29,6 +34,10 @@ function saveNote() {
   if (!stock.stockCode) return
   stock.setResearchNote(stock.formattedCode, noteDraft.value)
   addToast('success', '研究笔记已保存')
+}
+
+function changeDirection(value: string | number) {
+  if (value === 'above' || value === 'below') direction.value = value
 }
 
 function createAlert() {
@@ -62,11 +71,14 @@ function createAlert() {
         <div><h2>价格提醒</h2></div>
       </header>
       <div class="alert-form">
-        <select v-model="direction">
-          <option value="above">价格高于</option>
-          <option value="below">价格低于</option>
-        </select>
-        <input v-model.number="target" type="number" min="0.01" step="0.01" />
+        <CustomSelect
+          :model-value="direction"
+          :options="directionOptions"
+          aria-label="提醒条件"
+          block
+          @change="changeDirection"
+        />
+        <input v-model.number="target" aria-label="提醒价格" type="number" min="0.01" step="0.01" />
         <button @click="createAlert">创建提醒</button>
       </div>
       <p>股票页面打开且可见时每分钟检查；关闭页面后停止。触发后站内提示一次。</p>
@@ -153,12 +165,13 @@ function createAlert() {
 }
 .alert-form {
   display: grid;
-  grid-template-columns: 110px 1fr auto;
+  grid-template-columns: 142px minmax(0, 1fr) auto;
+  align-items: center;
   gap: 7px;
   margin-top: 18px;
 }
-.alert-form select,
 .alert-form input {
+  height: 42px;
   min-width: 0;
   border: 1px solid var(--border-light);
   border-radius: 9px;
@@ -167,6 +180,8 @@ function createAlert() {
   color: var(--text-primary);
 }
 .alert-form > button {
+  min-height: 42px;
+  padding-inline: 12px;
   border: 0;
   border-radius: 9px;
   background: #0f766e;

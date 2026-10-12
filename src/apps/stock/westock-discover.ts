@@ -76,6 +76,7 @@ export const FILTER_PRESET_LABELS: Record<string, string> = {
  */
 export const HOT_ITEMS: Record<Exclude<DiscoverSection, 'search'>, CatalogItem[]> = {
   strategy: [
+    { group: '热门策略', id: 'morning_star', name: '早晨之星' },
     { group: '热门策略', id: 'macd_golden', name: 'MACD 金叉' },
     { group: '热门策略', id: 'over_drop_rebound', name: '超跌反弹' },
     { group: '热门策略', id: 'ma_long', name: '均线多头发散' },
