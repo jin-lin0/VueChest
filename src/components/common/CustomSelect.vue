@@ -11,6 +11,7 @@
       class="select-trigger"
       :class="{ active: isOpen }"
       role="combobox"
+      :aria-label="ariaLabel"
       :tabindex="disabled ? -1 : 0"
       aria-haspopup="listbox"
       :aria-expanded="isOpen"
@@ -124,6 +125,7 @@ const model = defineModel<string | number | null>({ default: null })
 const props = withDefaults(
   defineProps<{
     options: SelectOption[]
+    ariaLabel?: string
     placeholder?: string
     disabled?: boolean
     searchable?: boolean

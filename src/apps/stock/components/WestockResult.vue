@@ -222,6 +222,7 @@ async function copyRaw() {
 
 <style scoped>
 .ws-result {
+  min-width: 0;
   position: relative;
   min-height: 120px;
 }

@@ -78,7 +78,7 @@ const panelItems: Array<{ id: ResearchPanel; label: string; count?: () => number
     label: '研究笔记',
     count: () => stock.alerts.filter((item) => instrumentKey(item) === stock.formattedCode).length,
   },
-  { id: 'westockStock', label: '个股深度' },
+  { id: 'westockStock', label: '深度研究' },
 ]
 const panelNeedsStock = (panel: ResearchPanel) =>
   panel !== 'overview' && panel !== 'portfolio' && panel !== 'westockDiscover'
@@ -444,12 +444,12 @@ watch(
 
         <WestockStockPanel
           v-else-if="['westockStock', 'financials', 'notices'].includes(activePanel)"
-          :initial-command="
+          :mode="
             activePanel === 'financials'
               ? 'finance'
               : activePanel === 'notices'
                 ? 'notice'
-                : 'quote'
+                : 'research'
           "
         />
 

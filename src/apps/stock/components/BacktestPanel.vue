@@ -13,6 +13,7 @@ const { addToast } = useToast()
 const shortPeriod = ref(5)
 const longPeriod = ref(20)
 const capital = ref(100_000)
+const allowCloseSell = ref(false)
 const result = ref<(BacktestResult & { code: string; name: string; bars: number }) | null>(null)
 const sourceRange = computed(() => {
   const data = stock.completedResearchData
@@ -26,6 +27,9 @@ watch(
     result.value = null
   },
 )
+watch([shortPeriod, longPeriod, capital, allowCloseSell], () => {
+  result.value = null
+})
 
 const chartSeries = computed<ResearchSeries[]>(() =>
   result.value ? [{ name: '策略权益', color: '#0f766e', points: result.value.equity }] : [],
@@ -46,12 +50,12 @@ function run() {
     return
   try {
     const data = stock.completedResearchData
-    const backtest = runMaBacktest(
-      data,
-      Number(shortPeriod.value),
-      Number(longPeriod.value),
-      Number(capital.value),
-    )
+    const backtest = runMaBacktest(data, {
+      shortPeriod: shortPeriod.value,
+      longPeriod: longPeriod.value,
+      initialCapital: capital.value,
+      allowCloseSell: allowCloseSell.value,
+    })
     result.value = {
       ...backtest,
       code: stock.formattedCode,
@@ -69,7 +73,14 @@ function run() {
     <header class="panel-heading">
       <div>
         <h2>均线策略回测</h2>
-        <p>收盘确认均线交叉，下一交易日开盘模拟成交；每边费用假设0.03%。</p>
+        <p>买入信号在下一可交易日开盘执行；每边费用假设0.03%。</p>
+        <p>
+          {{
+            allowCloseSell
+              ? '卖出采用尾盘近似：用当日最终日线信号和收盘价模拟，未验证真实尾盘成交。'
+              : '卖出信号在下一可交易日开盘执行。'
+          }}
+        </p>
         <p>{{ sourceRange }}</p>
       </div>
     </header>
@@ -96,12 +107,21 @@ function run() {
       >
         运行回测
       </button>
+      <label class="backtest-option">
+        <input v-model="allowCloseSell" type="checkbox" />
+        <span>允许尾盘卖出（按当日收盘价近似）</span>
+      </label>
     </div>
+    <p class="backtest-note">
+      本模型对股票和基金统一采用
+      T+1：当日买入的仓位不能当日卖出。尾盘卖出受此限制或遇到无成交量时，顺延至后续可交易日开盘。
+    </p>
     <template v-if="result">
       <p class="backtest-note">
         本次结果：{{ result.name }}（{{ result.code }}）· 日线 / 前复权 · {{ result.startDate }} 至
         {{ result.endDate }} · MA{{ result.shortPeriod }} / MA{{ result.longPeriod }} · 初始资金
         {{ formatPrice(result.initialCapital) }}
+        · 卖出模式：{{ result.allowCloseSell ? '尾盘收盘价近似' : '下一可交易日开盘' }} · T+1
       </p>
       <div class="backtest-metrics">
         <article>
@@ -212,6 +232,18 @@ function run() {
   color: #fff;
   cursor: pointer;
   font-weight: 800;
+}
+.backtest-form .backtest-option {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  cursor: pointer;
+}
+.backtest-form .backtest-option input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  accent-color: #0f766e;
 }
 .backtest-metrics {
   display: grid;

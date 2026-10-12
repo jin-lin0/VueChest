@@ -23,6 +23,15 @@ export interface CompareSeries {
   volatility: number
 }
 
+export interface BacktestOptions {
+  shortPeriod?: number
+  longPeriod?: number
+  initialCapital?: number
+  feeRate?: number
+  lotSize?: number
+  allowCloseSell?: boolean
+}
+
 export interface BacktestResult {
   startDate: string
   endDate: string
@@ -31,6 +40,7 @@ export interface BacktestResult {
   lotSize: number
   shortPeriod: number
   longPeriod: number
+  allowCloseSell: boolean
   totalReturn: number
   benchmarkReturn: number
   maxDrawdown: number
@@ -141,14 +151,15 @@ function movingAverage(values: number[], end: number, period: number) {
   return window.reduce((sum, value) => sum + value, 0) / period
 }
 
-export function runMaBacktest(
-  data: KlineData[],
-  shortPeriod = 5,
-  longPeriod = 20,
-  initialCapital = 100_000,
-  feeRate = 0.0003,
-  lotSize = 100,
-): BacktestResult {
+export function runMaBacktest(data: KlineData[], options: BacktestOptions = {}): BacktestResult {
+  const {
+    shortPeriod = 5,
+    longPeriod = 20,
+    initialCapital = 100_000,
+    feeRate = 0.0003,
+    lotSize = 100,
+    allowCloseSell = false,
+  } = options
   if (
     !Number.isInteger(shortPeriod) ||
     !Number.isInteger(longPeriod) ||
@@ -169,6 +180,7 @@ export function runMaBacktest(
   ) {
     throw new Error('资金、费用或模型交易单位无效')
   }
+  if (typeof allowCloseSell !== 'boolean') throw new Error('尾盘卖出配置无效')
   const closes = data.map((item) => item.close)
   const opens = data.map((item) => item.open)
   if (
@@ -184,9 +196,29 @@ export function runMaBacktest(
   const trades: BacktestResult['trades'] = []
   const equity: BacktestResult['equity'] = []
 
+  function sellAt(price: number, date: string) {
+    // Both execution modes enforce T+1: today's purchase cannot be sold today.
+    if (!buy || !shares || date <= buy.date) return false
+    const proceeds = shares * price * (1 - feeRate)
+    cash += proceeds
+    trades.push({
+      buyDate: buy.date,
+      buyPrice: buy.price,
+      sellDate: date,
+      sellPrice: price,
+      units: shares,
+      returnPercent: round(((proceeds - buy.cost) / buy.cost) * 100),
+    })
+    shares = 0
+    buy = null
+    pending = null
+    return true
+  }
+
   for (let index = longPeriod; index < data.length; index += 1) {
+    const date = data[index].date
     const openingPrice = opens[index]
-    // A close-based signal can execute no earlier than the next tradable bar's open.
+    // Confirmed buy signals and deferred sales execute at the next tradable open.
     const tradable = data[index].volume > 0
     if (pending === 'buy' && !shares && tradable) {
       const units = Math.floor(cash / (openingPrice * (1 + feeRate)) / lotSize) * lotSize
@@ -194,25 +226,12 @@ export function runMaBacktest(
         const cost = units * openingPrice * (1 + feeRate)
         cash -= cost
         shares = units
-        buy = { date: data[index].date, price: openingPrice, cost }
+        buy = { date, price: openingPrice, cost }
       }
       pending = null
     } else if (pending === 'sell' && shares && buy && tradable) {
-      const proceeds = shares * openingPrice * (1 - feeRate)
-      cash += proceeds
-      trades.push({
-        buyDate: buy.date,
-        buyPrice: buy.price,
-        sellDate: data[index].date,
-        sellPrice: openingPrice,
-        units: shares,
-        returnPercent: round(((proceeds - buy.cost) / buy.cost) * 100),
-      })
-      shares = 0
-      buy = null
-      pending = null
+      sellAt(openingPrice, date)
     }
-    equity.push({ date: data[index].date, value: round(cash + shares * closes[index]) })
     const short = movingAverage(closes, index, shortPeriod)!
     const long = movingAverage(closes, index, longPeriod)!
     const prevShort = movingAverage(closes, index - 1, shortPeriod)!
@@ -220,8 +239,10 @@ export function runMaBacktest(
     if (!shares && prevShort <= prevLong && short > long) {
       pending = 'buy'
     } else if (shares && prevShort >= prevLong && short < long) {
-      pending = 'sell'
+      // Opt-in approximation: use the final daily signal and close as a late-day sale.
+      if (!allowCloseSell || !tradable || !sellAt(closes[index], date)) pending = 'sell'
     }
+    equity.push({ date, value: round(cash + shares * closes[index]) })
   }
   let peak = initialCapital
   let maxDrawdown = 0
@@ -238,6 +259,7 @@ export function runMaBacktest(
     lotSize,
     shortPeriod,
     longPeriod,
+    allowCloseSell,
     totalReturn: round(((equity.at(-1)!.value - initialCapital) / initialCapital) * 100),
     benchmarkReturn: round(((closes.at(-1)! - closes[longPeriod]) / closes[longPeriod]) * 100),
     maxDrawdown: round(maxDrawdown),
