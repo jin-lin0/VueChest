@@ -33,6 +33,8 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
   const list = useListStore<HistoryRecord>({ storageKey: HISTORY_KEY, defaultValue: [] })
   const history = list.items
   let timer: ReturnType<typeof setInterval> | null = null
+  // 本阶段结束的墙钟时刻（毫秒）。计时一律以它为准，见下方 tick() 的注释。
+  let deadline: number | null = null
 
   const LABELS: Record<SessionType, string> = { work: '专注', break: '短休息', longBreak: '长休息' }
   const SOUND_OPTIONS: { key: SoundType; label: string }[] = [
@@ -71,11 +73,48 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     timeLeft.value = durations.value[sessionType.value]
   }
 
-  const cleanup = () => {
-    if (timer) {
+  // ---- 计时 ----
+  // 一律以 deadline（墙钟时刻）结算剩余时间，而不是「每收到一次 tick 就减 1 秒」。
+  // 后台标签页里定时器会被浏览器节流：Chrome 88+ 在页面隐藏超过 5 分钟、链式回调计数
+  // 达到 5 次、且页面静音 30 秒后，改为**每分钟只检查一次定时器**
+  // （https://developer.chrome.com/blog/timer-throttling-in-chrome-88）。
+  // 若按 tick 计数，25 分钟的专注在后台会走成约 25 小时 —— 而「开着计时切去干别的」
+  // 恰恰是番茄钟最常见的用法。
+  const stopTimer = () => {
+    if (timer !== null) {
       clearInterval(timer)
       timer = null
     }
+    deadline = null
+    detachVisibilitySync()
+  }
+
+  // 页面重新可见时立刻结算一次：节流下最后一次回调可能已经是 1 分钟前的事，
+  // 只等下一次唤醒会让用户看到一个明显过时的倒计时。
+  const onVisibilityChange = () => tick()
+  const attachVisibilitySync = () => {
+    if (typeof document === 'undefined') return
+    document.addEventListener('visibilitychange', onVisibilityChange)
+  }
+  const detachVisibilitySync = () => {
+    if (typeof document === 'undefined') return
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+  }
+
+  const tick = () => {
+    if (deadline === null) return
+    const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+    if (remaining <= 0) {
+      timeLeft.value = 0
+      completeSession()
+      return
+    }
+    timeLeft.value = remaining
+  }
+
+  const cleanup = () => {
+    isRunning.value = false
+    stopTimer()
   }
 
   const timeDisplay = computed(() => {
@@ -93,17 +132,17 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
   const startTimer = () => {
     if (isRunning.value) return
     isRunning.value = true
-    timer = setInterval(() => {
-      if (timeLeft.value > 0) timeLeft.value--
-      else completeSession()
-    }, 1000)
+    deadline = Date.now() + timeLeft.value * 1000
+    attachVisibilitySync()
+    timer = setInterval(tick, 1000)
   }
   const pauseTimer = () => {
     isRunning.value = false
-    if (timer) {
-      clearInterval(timer)
-      timer = null
+    // 先按墙钟结算再拆掉 deadline，否则「暂停」会把节流期间欠下的时间丢掉。
+    if (deadline !== null) {
+      timeLeft.value = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
     }
+    stopTimer()
   }
   const resetTimer = () => {
     pauseTimer()

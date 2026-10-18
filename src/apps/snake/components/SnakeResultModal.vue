@@ -24,7 +24,10 @@ watch(
   () => props.visible,
   (val) => {
     if (val) {
-      // 弹窗出现时，返回大厅按钮锁定 3 秒防误触
+      // 弹窗出现时，返回大厅按钮锁定 3 秒防误触。
+      // 这里**故意**按回调次数计（而不是按截止时刻算墙钟）：标签页被隐藏时定时器会被
+      // 浏览器节流，锁定就跟着延长 —— 防误触要的正是「人不在就别让人误触」。
+      // 需要按墙钟结算的倒计时参见 src/composables/useCountdown.ts。
       backCooldown.value = 3
       cooldownTimer = setInterval(() => {
         backCooldown.value--
