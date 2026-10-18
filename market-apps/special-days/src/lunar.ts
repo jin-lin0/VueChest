@@ -1,77 +1,13 @@
-import { Solar, Lunar } from 'lunar-javascript'
-
-interface LunarDate {
-  year: number
-  month: number
-  day: number
-}
-
-export function solarToLunar(y: number, m: number, d: number): LunarDate {
-  const solar = Solar.fromYmd(y, m, d)
-  const lunar = solar.getLunar()
-  // lunar-javascript 用负数月份表示闰月，规整为正数月，避免下游取月名越界。
-  return { year: lunar.getYear(), month: Math.abs(lunar.getMonth()), day: lunar.getDay() }
-}
-
-export function lunarToSolar(y: number, m: number, d: number): LunarDate {
-  const lunar = Lunar.fromYmd(y, m, d)
-  const solar = lunar.getSolar()
-  return { year: solar.getYear(), month: solar.getMonth(), day: solar.getDay() }
-}
-
-export function getLunarMonthName(month: number, leap = false): string {
-  const names = [
-    '',
-    '正月',
-    '二月',
-    '三月',
-    '四月',
-    '五月',
-    '六月',
-    '七月',
-    '八月',
-    '九月',
-    '十月',
-    '冬月',
-    '腊月',
-  ]
-  const name = names[month] || `${month}月`
-  return leap ? `闰${name}` : name
-}
-
-export function getLunarDayName(day: number): string {
-  const names = [
-    '',
-    '初一',
-    '初二',
-    '初三',
-    '初四',
-    '初五',
-    '初六',
-    '初七',
-    '初八',
-    '初九',
-    '初十',
-    '十一',
-    '十二',
-    '十三',
-    '十四',
-    '十五',
-    '十六',
-    '十七',
-    '十八',
-    '十九',
-    '二十',
-    '廿一',
-    '廿二',
-    '廿三',
-    '廿四',
-    '廿五',
-    '廿六',
-    '廿七',
-    '廿八',
-    '廿九',
-    '三十',
-  ]
-  return names[day] || `${day}日`
-}
+/**
+ * 农历换算 —— 直接复用 `market-apps/shared/lunar.ts`。
+ *
+ * 这里以前是 `lunar-javascript` 的一层薄包装，而 `lunar-javascript` 是 435KB 的
+ * 单文件 UMD（无 `module`/`exports`/`sideEffects`），Rollup 摇不了树：
+ * 本应用只用到 4 个换算函数，却把整库（八字、运势、星宿、数九、节气、节日……）
+ * 打进了产物，323KB raw / 105.7KB gzip——而 special-days 是默认安装的应用之一。
+ *
+ * 换算逻辑现在在 shared 里，是零依赖的紧凑年表，并由
+ * `scripts/check-lunar-table.mjs` 对 1900-2100 逐日与权威库差分校验。
+ * 本文件保留为转发层，与其它市场应用（`expense`/`bookmark` 的 `src/utils.ts`）写法一致。
+ */
+export * from '../../shared/lunar'

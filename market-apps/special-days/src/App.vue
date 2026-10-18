@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
-import { useSpecialDaysStore } from './store'
+import { computed, onMounted, ref, watch } from 'vue'
+import {
+  buildDayOptions,
+  getMaxLunarDay,
+  getMaxSolarDay,
+  resolveAnchor,
+  useSpecialDaysStore,
+} from './store'
 import { solarToLunar, lunarToSolar, getLunarMonthName, getLunarDayName } from './lunar'
 import type { SpecialDay } from './store'
 
@@ -12,68 +18,81 @@ onMounted(() => {
   specialDaysStore.init()
 })
 
+/** 保存失败的原因，直接显示在弹窗里（原先失败是静默的：什么都没发生） */
+const formError = ref('')
+watch(
+  () => specialDaysStore.showForm,
+  () => {
+    formError.value = ''
+  },
+)
+
+// 「只此一次」时年份是确定的，日期选项按那一年的真实天数给；「每年重复」时不知道是哪一年，
+// 只能给最大范围（农历 30 日、阳历 2 月 29 日），否则闰年那一次就选不到了。
+const formYear = computed(() =>
+  specialDaysStore.form.repeatType === 'once' ? specialDaysStore.form.solarYear : null,
+)
+
 const solarDayOptions = computed(() => {
-  const max = specialDaysStore.getMaxSolarDay(specialDaysStore.form.solarMonth)
-  return Array.from({ length: max }, (_, i) => i + 1)
+  const form = specialDaysStore.form
+  return buildDayOptions(getMaxSolarDay(form.solarMonth, formYear.value), form.solarDay)
 })
 
 const lunarDayOptions = computed(() => {
-  const max = specialDaysStore.getMaxLunarDay()
-  return Array.from({ length: max }, (_, i) => i + 1)
+  const form = specialDaysStore.form
+  return buildDayOptions(getMaxLunarDay(form.lunarMonth, formYear.value), form.lunarDay)
 })
 
+/**
+ * 用户改了年份/月份之后，把已经超出范围的天数收回来。
+ *
+ * 只在真实的 select 变更里做，刻意不用 watch：`openEditForm` 会整份替换表单，
+ * watch 会跟着触发，把用户存过的「七月三十」悄悄改成「廿九」再存回去。
+ */
+const onDateScopeChange = () => {
+  const form = specialDaysStore.form
+  const maxSolar = getMaxSolarDay(form.solarMonth, formYear.value)
+  if (form.solarDay > maxSolar) form.solarDay = maxSolar
+  const maxLunar = getMaxLunarDay(form.lunarMonth, formYear.value)
+  if (form.lunarDay > maxLunar) form.lunarDay = maxLunar
+}
+
 const saveDay = () => {
-  if (!specialDaysStore.form.name.trim()) return
+  const form = specialDaysStore.form
+  if (!form.name.trim()) return
 
-  const solarYear =
-    specialDaysStore.form.repeatType === 'once'
-      ? specialDaysStore.form.solarYear || new Date().getFullYear()
-      : null
+  let anchor
+  try {
+    anchor = resolveAnchor(form)
+  } catch (error) {
+    // 原先这里没有 try/catch：换算抛出的 RangeError 会被事件处理器吞掉，
+    // 弹窗不关、没有提示、列表里也没有新记录，用户只能以为按钮坏了。
+    formError.value = error instanceof Error ? error.message : '日期不合法，无法保存'
+    return
+  }
 
-  let year = solarYear
-  let solarMonth = specialDaysStore.form.solarMonth
-  let solarDay = specialDaysStore.form.solarDay
-  if (specialDaysStore.form.calendarType === 'lunar') {
-    const targetYear = year || new Date().getFullYear()
-    const solar = lunarToSolar(
-      targetYear,
-      specialDaysStore.form.lunarMonth,
-      specialDaysStore.form.lunarDay,
-    )
-    year = solar.year
-    solarMonth = solar.month
-    solarDay = solar.day
+  const payload = {
+    name: form.name,
+    repeatType: form.repeatType,
+    calendarType: form.calendarType,
+    solarYear: anchor.year,
+    solarMonth: anchor.solarMonth,
+    solarDay: anchor.solarDay,
+    lunarMonth: form.lunarMonth,
+    lunarDay: form.lunarDay,
+    emoji: form.emoji,
   }
 
   if (specialDaysStore.editingId !== null) {
     const index = specialDaysStore.specialDays.findIndex((d) => d.id === specialDaysStore.editingId)
     if (index !== -1) {
       const old = specialDaysStore.specialDays[index]
-      specialDaysStore.specialDays.splice(index, 1, {
-        ...old,
-        name: specialDaysStore.form.name,
-        repeatType: specialDaysStore.form.repeatType,
-        calendarType: specialDaysStore.form.calendarType,
-        solarYear: year,
-        solarMonth,
-        solarDay,
-        lunarMonth: specialDaysStore.form.lunarMonth,
-        lunarDay: specialDaysStore.form.lunarDay,
-        emoji: specialDaysStore.form.emoji,
-      })
+      specialDaysStore.specialDays.splice(index, 1, { ...old, ...payload })
     }
   } else {
     specialDaysStore.specialDays.push({
       id: Date.now(),
-      name: specialDaysStore.form.name,
-      repeatType: specialDaysStore.form.repeatType,
-      calendarType: specialDaysStore.form.calendarType,
-      solarYear: year,
-      solarMonth,
-      solarDay,
-      lunarMonth: specialDaysStore.form.lunarMonth,
-      lunarDay: specialDaysStore.form.lunarDay,
-      emoji: specialDaysStore.form.emoji,
+      ...payload,
       createdAt: new Date().toISOString(),
     })
   }
@@ -156,16 +175,8 @@ const sortedDays = computed(() => {
   return [...specialDaysStore.specialDays].sort((a, b) => getDaysUntil(a) - getDaysUntil(b))
 })
 
-watch(
-  () => specialDaysStore.form.solarMonth,
-  (newMonth) => {
-    const maxDay = specialDaysStore.getMaxSolarDay(newMonth)
-    if (specialDaysStore.form.solarDay > maxDay) {
-      specialDaysStore.form.solarDay = maxDay
-    }
-  },
-)
-
+// 原来这里有一个只盯 `form.solarMonth` 的 watch 做天数钳制。现在钳制逻辑在
+// `onDateScopeChange` 里、由 select 的 change 事件驱动，且同时覆盖年份与农历月份。
 const goBack = () => {
   history.back()
 }
@@ -304,6 +315,7 @@ const goBack = () => {
             <select
               v-model.number="specialDaysStore.form.solarYear"
               class="date-select year-select"
+              @change="onDateScopeChange"
             >
               <option :value="null" disabled>请选择年份</option>
               <option v-for="y in specialDaysStore.yearOptions" :key="y" :value="y">
@@ -315,7 +327,11 @@ const goBack = () => {
           <div v-if="specialDaysStore.form.calendarType === 'solar'" class="form-group">
             <label>阳历日期</label>
             <div class="date-picker">
-              <select v-model.number="specialDaysStore.form.solarMonth" class="date-select">
+              <select
+                v-model.number="specialDaysStore.form.solarMonth"
+                class="date-select"
+                @change="onDateScopeChange"
+              >
                 <option v-for="m in specialDaysStore.solarMonthOptions" :key="m" :value="m">
                   {{ m }}月
                 </option>
@@ -329,25 +345,13 @@ const goBack = () => {
           <div v-else class="form-group">
             <label>农历日期</label>
             <div class="date-picker">
-              <select v-model.number="specialDaysStore.form.lunarMonth" class="date-select">
+              <select
+                v-model.number="specialDaysStore.form.lunarMonth"
+                class="date-select"
+                @change="onDateScopeChange"
+              >
                 <option v-for="m in specialDaysStore.lunarMonthOptions" :key="m" :value="m">
-                  {{
-                    [
-                      '',
-                      '正月',
-                      '二月',
-                      '三月',
-                      '四月',
-                      '五月',
-                      '六月',
-                      '七月',
-                      '八月',
-                      '九月',
-                      '十月',
-                      '冬月',
-                      '腊月',
-                    ][m]
-                  }}
+                  {{ getLunarMonthName(m) }}
                 </option>
               </select>
               <select v-model.number="specialDaysStore.form.lunarDay" class="date-select">
@@ -356,6 +360,8 @@ const goBack = () => {
             </div>
           </div>
         </div>
+
+        <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
 
         <div class="modal-footer">
           <button class="cancel-btn" @click="specialDaysStore.closeForm">取消</button>
@@ -797,6 +803,18 @@ const goBack = () => {
   width: 100%;
 }
 
+/* 保存失败的说明。以前失败是完全静默的，用户只会觉得按钮没反应。 */
+.form-error {
+  margin: 0 1.5rem 0.6rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -971,5 +989,4 @@ const goBack = () => {
     padding: 0.8rem 1rem;
   }
 }
-
 </style>

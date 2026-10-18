@@ -47,3 +47,6 @@ jobs:
 
       - name: 构建市场应用
         run: pnpm build:market
+
+      - name: 校验农历年表与市场应用体积
+        run: pnpm check:lunar

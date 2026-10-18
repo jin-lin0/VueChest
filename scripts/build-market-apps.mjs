@@ -1,5 +1,5 @@
 import { execSync } from 'child_process'
-import { readdirSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { readdirSync, existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -64,7 +64,11 @@ for (const app of apps) {
       }
       const dest = join(outputDir, `${app.name}-${file}`)
       writeFileSync(dest, code, 'utf-8')
-      console.log(`  → ${dest} (${code.length} bytes${cssContent ? '，含内联 CSS' : ''})`)
+      // 尺寸直接取自落盘文件，而不是 code.length：后者是 UTF-16 码元数，而产物里满是
+      // 中文标签与 emoji，一个码元在 UTF-8 下要占 3~4 字节。按 code.length 报会把 CJK 密集的
+      // App 少报 1%~6%（ai-notes 就少报了 6.5%），让「产物到底多大」这个判断失去意义。
+      const bytes = statSync(dest).size
+      console.log(`  → ${dest} (${bytes} bytes${cssContent ? '，含内联 CSS' : ''})`)
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
