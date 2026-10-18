@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onActivated,
+  onDeactivated,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import draggable from 'vuedraggable'
 import { APP_MODULES } from '@/config'
 import type { AppModule } from '@/config'
 import type { WorkspaceItem } from '@/stores/workspace'
@@ -12,11 +20,13 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import LoginDropdown from '@/components/business/LoginDropdown.vue'
 import NotificationCenter from '@/components/business/NotificationCenter.vue'
 import Modal from '@/components/common/Modal.vue'
+import draggable from 'vuedraggable'
 import { useTheme } from '@/composables/useTheme'
 import { useConfirm } from '@/composables/useConfirm'
 import { openCommandPalette } from '@/lib/command-palette'
 import { resolveCloudSyncStatus } from '@/lib/cloud-sync-status'
-import { exportAllData, importAllData } from '@/lib/storage'
+import { moveWithin } from '@/lib/reorder'
+import { useDataManager } from '@/composables/useDataManager'
 
 defineOptions({ name: 'WorkspaceHomeView' })
 
@@ -52,6 +62,20 @@ const workspaceStore = useWorkspaceStore()
 const { isDark, toggleTheme } = useTheme()
 const { confirm } = useConfirm()
 
+// 数据管理的导出/导入/重置逻辑与状态都在 useDataManager 里（可直接单测那三条整表覆盖路径）
+const {
+  showDataManager,
+  importText,
+  importStatus,
+  importOk,
+  busy: dataBusy,
+  openDataManager,
+  handleExport,
+  handleImport,
+  handleFileImport,
+  handleReset,
+} = useDataManager({ confirm })
+
 workspaceStore.init()
 
 const query = ref('')
@@ -62,9 +86,6 @@ const showWorkspaceEditor = ref(false)
 const workspaceEditorMode = ref<'create' | 'edit'>('create')
 const workspaceName = ref('')
 const workspaceIcon = ref('◫')
-const showDataManager = ref(false)
-const importText = ref('')
-const importStatus = ref('')
 const contextMenu = ref<ContextMenuState>({ visible: false, x: 0, y: 0, appKey: '' })
 const workspaceContextMenu = ref<WorkspaceContextMenuState>({
   visible: false,
@@ -147,6 +168,25 @@ const launchApp = (app: LaunchableApp) => {
 const reorderItems = (items: DisplayItem[]) => {
   if (normalizedQuery.value) return
   workspaceStore.setActiveItems(items.map((item) => ({ appKey: item.appKey })))
+}
+
+/**
+ * 键盘调整应用顺序（Alt+↑/↓）。
+ *
+ * 拖拽是唯一的排序入口对键盘用户不可用——而 `.drag-handle` 本身是个可聚焦按钮，
+ * 只响应拖拽、按下去什么都不发生，属于「可聚焦但无动作」的可访问性缺陷
+ * （WCAG 2.2 也要求在拖拽排序之外提供非拖拽替代操作，见 src/docs/knowledge/frontend/accessibility.md）。
+ * 这里复用拖拽走的同一条更新路径 reorderItems，保证两种入口的结果完全一致。
+ */
+const moveCardByKeyboard = (event: KeyboardEvent, appKey: string, delta: number) => {
+  const index = displayItems.value.findIndex((item) => item.appKey === appKey)
+  const next = moveWithin(displayItems.value, index, delta)
+  if (!next) return
+
+  const handle = event.currentTarget as HTMLElement
+  reorderItems(next)
+  // 元素本身没被重建（key 未变），但 DOM 移动会丢失焦点，补回来才能连续按键。
+  void nextTick(() => handle.focus())
 }
 
 const openContextMenu = (event: MouseEvent, appKey: string) => {
@@ -274,62 +314,8 @@ const handleLogoClick = () => {
   while (logoClickTimes.length && now - logoClickTimes[0] > 3000) logoClickTimes.shift()
   if (logoClickTimes.length >= 7) {
     logoClickTimes.length = 0
-    importStatus.value = ''
-    showDataManager.value = true
+    openDataManager()
   }
-}
-
-const handleExport = async () => {
-  const data = await exportAllData()
-  const url = URL.createObjectURL(
-    new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
-  )
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `vuechest-backup-${new Date().toISOString().slice(0, 10)}.json`
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
-
-const handleImport = async () => {
-  try {
-    const data = JSON.parse(importText.value)
-    if (
-      !data ||
-      typeof data !== 'object' ||
-      Array.isArray(data) ||
-      Object.keys(data).length === 0
-    ) {
-      importStatus.value = '请选择有效且非空的 VueChest 备份文件'
-      return
-    }
-    await importAllData(data)
-    importStatus.value = '导入成功，即将刷新页面'
-    setTimeout(() => window.location.reload(), 700)
-  } catch {
-    importStatus.value = 'JSON 解析失败，请检查文件内容'
-  }
-}
-
-const handleFileImport = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    importText.value = String(reader.result || '')
-    void handleImport()
-  }
-  reader.readAsText(file)
-  input.value = ''
-}
-
-const handleReset = async () => {
-  const ok = await confirm('确定要重置应用吗？这将清空所有本地数据，且不可恢复。')
-  if (!ok) return
-  await importAllData({})
-  importStatus.value = '已重置，即将刷新页面'
-  setTimeout(() => window.location.reload(), 700)
 }
 
 let documentClickListenerActive = false
@@ -493,7 +479,14 @@ onUnmounted(detachDocumentClickListener)
             >
               <div class="card-topline">
                 <div class="card-controls">
-                  <button class="drag-handle" title="拖动排序" aria-label="拖动排序" @click.stop>
+                  <button
+                    class="drag-handle"
+                    title="拖动排序，或用 Alt+↑/↓ 移动"
+                    :aria-label="`调整「${element.app.name}」的位置：拖动，或按 Alt 加上下方向键`"
+                    @click.stop
+                    @keydown.alt.up.prevent="moveCardByKeyboard($event, element.appKey, -1)"
+                    @keydown.alt.down.prevent="moveCardByKeyboard($event, element.appKey, 1)"
+                  >
                     ⠿
                   </button>
                   <button
@@ -781,18 +774,11 @@ onUnmounted(detachDocumentClickListener)
         ></textarea>
         <button
           class="backdoor-btn import-btn"
-          :disabled="!importText.trim()"
+          :disabled="dataBusy || !importText.trim()"
           @click="handleImport"
         >
           导入数据
         </button>
-        <p
-          v-if="importStatus"
-          class="backdoor-status"
-          :class="{ success: importStatus.includes('成功') || importStatus.includes('重置') }"
-        >
-          {{ importStatus }}
-        </p>
       </div>
 
       <div class="backdoor-divider"></div>
@@ -800,8 +786,16 @@ onUnmounted(detachDocumentClickListener)
       <div class="backdoor-section">
         <h4>重置应用</h4>
         <p class="backdoor-desc">清空所有本地数据（应用配置、缓存等），此操作不可恢复</p>
-        <button class="backdoor-btn reset-btn" @click="handleReset">重置应用</button>
+        <button class="backdoor-btn reset-btn" :disabled="dataBusy" @click="handleReset">
+          重置应用
+        </button>
       </div>
+
+      <!-- 导入与重置共用一条状态行：原先它挂在「导入数据」区块里，重置失败的信息
+           会显示在导入标题下面，读起来以为是在说导入。 -->
+      <p v-if="importStatus" class="backdoor-status" :class="{ success: importOk }" role="status">
+        {{ importStatus }}
+      </p>
     </Modal>
   </div>
 </template>

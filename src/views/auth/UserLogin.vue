@@ -49,7 +49,7 @@
         </div>
         <div class="login-footer">
           <router-link to="/forgot-password" class="link">忘记密码？</router-link>
-          <span class="sep">·</span>
+          <span class="sep" aria-hidden="true">·</span>
           <router-link to="/" class="link">返回首页</router-link>
         </div>
       </div>
