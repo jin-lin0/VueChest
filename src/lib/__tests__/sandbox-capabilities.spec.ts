@@ -126,3 +126,57 @@ describe('sandbox capability permissions', () => {
     expect(mocks.apiPut).not.toHaveBeenCalled()
   })
 })
+
+describe('sandbox fetch proxy', () => {
+  /** 直接拿到回包，避免依赖轮询。 */
+  function callFetch(
+    msg: Record<string, unknown>,
+    caps: SandboxCapabilities,
+  ): Promise<{ error?: string; status?: number }> {
+    return new Promise((resolve) => {
+      void handleSandboxMessage(msg, 42, caps, (response) =>
+        resolve(response as { error?: string; status?: number }),
+      )
+    })
+  }
+
+  it('网络失败时不留悬挂的超时定时器', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => {
+          throw new Error('boom')
+        }),
+      )
+      const res = await callFetch(
+        { kind: 'fetch', id: 'f1', url: 'https://api.example.com/q' },
+        { allowNetwork: ['api.example.com'] },
+      )
+      expect(res.error).toContain('boom')
+      expect(vi.getTimerCount(), '失败路径必须清掉 15s 超时定时器').toBe(0)
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('网络成功时也不留悬挂的超时定时器', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response('ok', { status: 200 })),
+      )
+      const res = await callFetch(
+        { kind: 'fetch', id: 'f2', url: 'https://api.example.com/q' },
+        { allowNetwork: ['api.example.com'] },
+      )
+      expect(res.status).toBe(200)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
+  })
+})

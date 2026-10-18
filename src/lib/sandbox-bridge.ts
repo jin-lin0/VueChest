@@ -2,6 +2,7 @@ import { setStorage, removeStorage, removeStorageAsync } from '@/lib/storage'
 import { dbGetAll } from '@/lib/db'
 import { api } from '@/lib/request'
 import { useToast, type ToastType } from '@/composables/useToast'
+import { errorMessage } from '@/lib/error-message'
 import { useAuthStore } from '@/stores/auth'
 import { normalizePermissions, type SandboxPermission } from '@/lib/sandbox-permissions'
 
@@ -36,18 +37,16 @@ interface SandboxMessage {
   options?: RequestInit
 }
 
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
-}
-
 /** 单次网络请求的超时（毫秒），防止沙箱应用挂起父页面请求。 */
 const NETWORK_TIMEOUT = 15000
 /** AI 生成可能较慢，单独给更长的超时。 */
 const AI_TIMEOUT = 90000
 /** 沙箱应用单次可上传的文件大小上限。 */
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024
-/** 云存储单个 value 的序列化长度上限（字符）。 */
+/** 云存储接口的单条 JSON 字符数上限；本地仍遵循浏览器存储配额。 */
 const MAX_CLOUD_VALUE_CHARS = 200_000
+/** 存储 key 的长度上限（字符）。与后端 `app_data.dataKey` 的 STRING(120) 同宽。 */
+const MAX_KEY_CHARS = 120
 
 /** 某应用在宿主存储中的命名空间前缀键。 */
 function sandboxStorageKey(appId: string | number, key: string): string {
@@ -83,7 +82,9 @@ function hostAllowed(host: string, whitelist: string[]): boolean {
 }
 
 /** 收集某应用命名空间内的存储快照，供沙箱引导时一次性注入（读操作在沙箱内同步）。 */
-export async function collectSandboxStorage(appId: string | number): Promise<Record<string, unknown>> {
+export async function collectSandboxStorage(
+  appId: string | number,
+): Promise<Record<string, unknown>> {
   const prefix = `sandbox:${appId}:`
   const all = await dbGetAll()
   const snapshot: Record<string, unknown> = {}
@@ -103,9 +104,7 @@ export interface SandboxStorageInfo {
   data: Record<string, unknown>
 }
 
-export async function inspectSandboxStorage(
-  appId: string | number,
-): Promise<SandboxStorageInfo> {
+export async function inspectSandboxStorage(appId: string | number): Promise<SandboxStorageInfo> {
   const data = await collectSandboxStorage(appId)
   // 共享宿主键不属于单个应用，管理页不展示也不删除。
   HOST_SHARED_KEYS.forEach((key) => delete data[key])
@@ -164,9 +163,22 @@ async function readClipboard(): Promise<string> {
 /** 云存储 key 归一化：去空、限长，防止越权拼路径。 */
 function normalizeCloudKey(raw: unknown): string {
   const key = String(raw ?? '').trim()
-  if (!key) throw new Error('云存储 key 不能为空')
-  if (key.length > 120) throw new Error('云存储 key 过长（上限 120 字符）')
+  if (!key) throw new Error(`云存储 key 不能为空`)
+  if (key.length > MAX_KEY_CHARS) throw new Error(`云存储 key 过长（上限 ${MAX_KEY_CHARS} 字符）`)
   return key
+}
+
+function assertCloudValueBounded(value: unknown): void {
+  let serialized: string | undefined
+  try {
+    serialized = JSON.stringify(value ?? null)
+  } catch {
+    throw new Error(`云存储数据无法序列化`)
+  }
+  const size = serialized === undefined ? 0 : serialized.length
+  if (size > MAX_CLOUD_VALUE_CHARS) {
+    throw new Error(`云存储单条数据过大（上限 ${MAX_CLOUD_VALUE_CHARS} 字符）`)
+  }
 }
 
 const TOAST_LEVELS = new Set<ToastType>(['success', 'error', 'warning', 'info'])
@@ -230,7 +242,9 @@ async function dispatchCapability(
     }
     case 'notify': {
       const payload = (args[0] || {}) as { title?: unknown; body?: unknown; level?: unknown }
-      const text = String(payload.body ?? payload.title ?? '').trim().slice(0, 200)
+      const text = String(payload.body ?? payload.title ?? '')
+        .trim()
+        .slice(0, 200)
       if (!text) throw new Error('通知内容不能为空')
       const level = TOAST_LEVELS.has(payload.level as ToastType)
         ? (payload.level as ToastType)
@@ -265,10 +279,7 @@ async function dispatchCapability(
     }
     case 'cloud.set': {
       const key = normalizeCloudKey(args[0])
-      const serialized = JSON.stringify(args[1] ?? null)
-      if (serialized.length > MAX_CLOUD_VALUE_CHARS) {
-        throw new Error(`云存储单条数据过大（上限 ${MAX_CLOUD_VALUE_CHARS} 字符）`)
-      }
+      assertCloudValueBounded(args[1])
       await api.put(`/api/app-data/${appId}/${encodeURIComponent(key)}`, { value: args[1] ?? null })
       ok(true)
       return
@@ -294,7 +305,8 @@ async function dispatchCapability(
         .map((item) => {
           const row = (item || {}) as { role?: unknown; content?: unknown }
           return {
-            role: row.role === 'assistant' ? 'assistant' : row.role === 'system' ? 'system' : 'user',
+            role:
+              row.role === 'assistant' ? 'assistant' : row.role === 'system' ? 'system' : 'user',
             content: String(row.content ?? '').slice(0, 8000),
           }
         })
@@ -377,8 +389,14 @@ async function handleSandboxFetch(
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), NETWORK_TIMEOUT)
-    const res = await fetch(url, { ...options, signal: controller.signal })
-    clearTimeout(timer)
+    let res: Response
+    try {
+      res = await fetch(url, { ...options, signal: controller.signal })
+    } finally {
+      // 成功和失败都必须清：原先把 clearTimeout 放在 await 之后，
+      // fetch 一抛错（白名单域名挂了、被 abort）定时器就留到 15s 后才触发。
+      clearTimeout(timer)
+    }
 
     const body = await res.arrayBuffer()
     const headers: Record<string, string> = {}

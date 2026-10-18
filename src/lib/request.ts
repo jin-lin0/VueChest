@@ -86,6 +86,12 @@ async function request<T = unknown>(path: string, config: RequestConfig = {}): P
       throw new ApiError('服务器响应格式错误', 'PARSE_ERROR', res.status)
     }
 
+    // 兜底：JSON 合法但不是对象（如 `null` / 数字）时，下面读 success 会抛 TypeError，
+    // 那会被当成网络故障，报出与事实不符的提示。
+    if (json === null || typeof json !== 'object') {
+      throw new ApiError('服务器响应格式错误', 'PARSE_ERROR', res.status)
+    }
+
     // 同时检查 HTTP 状态码和业务 success 字段，避免后端错误响应（无 success 字段）被当成成功
     if (!res.ok || json.success === false) {
       throw new ApiError(
@@ -98,6 +104,12 @@ async function request<T = unknown>(path: string, config: RequestConfig = {}): P
     return json as T
   } catch (error) {
     if (timedOut) throw new ApiError('请求超时，请稍后重试', 'TIMEOUT', 408)
+    // fetch 只在网络层没连上时才 reject（断网、DNS 失败、后端没启动、被 CORS 拦下）。
+    // 此时浏览器给的是英文 TypeError('Failed to fetch')，Safari 甚至是 'Load failed'，
+    // 而调用方普遍是 `showToast('error', e.message)` —— 直接冒泡就是把一句英文丢给用户。
+    if (error instanceof TypeError) {
+      throw new ApiError('网络连接失败，请检查网络或确认服务已启动', 'NETWORK_ERROR', 0)
+    }
     throw error
   } finally {
     if (timeoutId !== undefined) clearTimeout(timeoutId)

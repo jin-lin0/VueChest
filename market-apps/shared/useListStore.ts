@@ -1,5 +1,5 @@
 import { ref, watch, type Ref } from 'vue'
-import { getStorage, setStorage, debounce } from './bridge'
+import { getStorage, setStorage } from './bridge'
 
 export interface UseListStoreOptions<T> {
   /** 持久化到桥接 storage 的键名 */
@@ -8,8 +8,6 @@ export interface UseListStoreOptions<T> {
   initial?: () => T[]
   /** 无存储数据时的静态默认值；缺省为 [] */
   defaultValue?: T[]
-  /** 防抖时长（毫秒），默认 500 */
-  debounceMs?: number
   /** 生成 id 的函数，仅当添加的对象未携带 id 时调用；默认 crypto.randomUUID() */
   idGen?: () => string | number
   /** 校验函数：返回 false 时不会写入该条目 */
@@ -26,22 +24,26 @@ export interface UseListStoreReturn<T extends { id: string | number }> {
 }
 
 /**
- * 通用「列表 + 增删改 + 防抖持久化」composable。
- * 各 market-app 通过它复用同构的 store 逻辑，自身只保留领域校验/表单状态等差异部分。
+ * 共享列表持久化。Vue watcher 在本轮微任务内合并改动并投递写入。
+ * 不用延时防抖：宿主移除 iframe 时，其计时器可能来不及执行，导致刚保存的修改丢失。
  */
 export function useListStore<T extends { id: string | number }>(
   options: UseListStoreOptions<T>,
 ): UseListStoreReturn<T> {
-  const { storageKey, initial, defaultValue, debounceMs = 500, idGen, validate } = options
+  const { storageKey, initial, defaultValue, idGen, validate } = options
 
   const fallback = defaultValue ?? initial?.() ?? []
-  const items = ref<T[]>(getStorage<T[]>(storageKey, fallback) ?? fallback)
+  // ref<T[]>() 会把元素类型深度解包成 UnwrapRefSimple<T>，于是 push(T) 与
+  // filter 赋值回 T[] 都对不上（TS2345 / TS2322）。这里的 T 都是普通数据结构
+  // （Note / SpecialDay / HistoryRecord…），解包前后同型，显式标回 Ref<T[]> 即可；
+  // 不能用 shallowRef —— update() 是原地替换数组元素，只有深度响应式才会触发持久化 watch。
+  const items = ref<T[]>(getStorage<T[]>(storageKey, fallback) ?? fallback) as unknown as Ref<T[]>
 
   const save = () => {
     setStorage(storageKey, items.value)
   }
-  const debouncedSave = debounce(save, debounceMs)
-  watch(items, debouncedSave, { deep: true })
+
+  watch(items, save, { deep: true })
 
   const add = (item: T): T => {
     const finalItem: T =

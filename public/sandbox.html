@@ -212,7 +212,7 @@
         app.mount('#app');
       }
 
-      // ---- 消息入口：接收宿主的 bootstrap / theme / capability-response ----
+      // ---- 消息入口：接收宿主的 bootstrap / theme / error / capability-response ----
       window.addEventListener('message', function (ev) {
         var msg = ev.data;
         if (!msg || typeof msg !== 'object' || !msg.kind) return;
@@ -238,6 +238,12 @@
             themeSubscribers.forEach(function (cb) {
               try { cb(isDark); } catch (e) { /* ignore */ }
             });
+            break;
+          case 'error':
+            // 宿主启动失败（找不到应用包、读存储快照异常等）时会发这条。
+            // 少了这个分支就等于把它丢掉：沙箱仍停在「等待 bootstrap」，
+            // 用户看到的是一个永远空白、也没有任何解释的 iframe。
+            fail(msg.message || '应用无法加载');
             break;
           case 'capability-response': {
             var p = pending[msg.id];

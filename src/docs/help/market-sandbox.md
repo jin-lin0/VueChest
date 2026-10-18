@@ -39,6 +39,7 @@
         │←─────────────── post ready ─────────────────│
  2. 读取 bundle 代码 + 收集命名空间存储快照            │
         │─────── post bootstrap {bundle, storage} ───→│ 注入 bundle → 挂载组件
+        │       任一步骤失败则 post error ────────────→│ 渲染 #sandbox-error
         │                                              │
  3. 应用调用 storage.set / fetch 等                    │
         │←──── post capability / fetch（带 id）────────│
@@ -59,6 +60,7 @@
 | `theme`               | `{ isDark }`，主题切换时推送                                  |
 | `capability-response` | `{ id, value \| error }`，能力请求的响应                       |
 | `fetch-response`      | `{ id, status, statusText, headers, body(number[]) }`         |
+| `error`               | `{ message }`，宿主启动失败（取不到应用包 / 读存储快照异常）    |
 
 **沙箱 → 父**
 
@@ -72,7 +74,7 @@
 
 宿主侧 `src/lib/sandbox-bridge.ts` 是唯一的能力出口，所有能力都经过校验：
 
-- **存储**：父侧把应用数据写入 `sandbox:{appId}:{key}` 命名空间，应用之间互不可见；返回给应用的是去掉前缀的干净 key。
+- **存储**：父侧把应用数据写入 `sandbox:{appId}:{key}` 命名空间，应用之间互不可见；返回给应用的是去掉前缀的干净 key。本地容量受浏览器存储配额限制，实际写入失败时宿主会提示用户。
 - **网络**：`handleSandboxFetch` 先校验 URL，仅当 `host` 命中 `allowNetwork` 白名单（支持 `*.example.com`）才放行，否则拒绝；单次请求有 15s 超时，防止挂起。
 - **未授权能力**：一律返回 `未授权的能力: xxx` 错误。
 
