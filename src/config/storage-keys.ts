@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   MUSIC_VOLUME: 'music-volume',
   MUSIC_SEARCH_HISTORY: 'music-search-history',
   MUSIC_FAVORITES: 'music-favorites',
+  MUSIC_FAVORITES_PENDING_PREFIX: 'music-favorites-pending',
   MUSIC_PLAY_HISTORY: 'music-play-history',
   MUSIC_QUEUE: 'music-queue',
   MUSIC_PLAY_MODE: 'music-play-mode',

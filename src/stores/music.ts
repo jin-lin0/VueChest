@@ -1,10 +1,12 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { getStorage, setStorage } from '@/lib/storage'
+import { applyStoragePatch, getStorage, setStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config'
 import { api } from '@/lib/request'
 import { musicApi } from '@/lib/musicApi'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { createLatestOnly } from '@/utils/common'
 import {
   formatMusicDuration as formatDuration,
   parseLyrics,
@@ -37,7 +39,14 @@ export type {
   SuggestItem,
 } from './music-types'
 
+// 首次登录迁移本地收藏时的分批大小：服务端 routes/musicFavorites.js 的
+// MAX_BATCH_SONGS 是 200，这里留出余量取 100（与 stock/gateway.ts 的报价分批同量级）。
+const MIGRATE_BATCH_SIZE = 100
+
 export const useMusicStore = defineStore('music', () => {
+  const { addToast } = useToast()
+  const auth = useAuthStore()
+
   const searchQuery = ref('')
   const searchResults = ref<Song[]>([])
   const isSearching = ref(false)
@@ -113,15 +122,76 @@ export const useMusicStore = defineStore('music', () => {
   watch(playMode, (value) => setStorage(STORAGE_KEYS.MUSIC_PLAY_MODE, value))
 
   // ===== 收藏（我的喜欢 + 用户分组）=====
-  // 未登录时 favorites 仅来自本地；登录后由服务端分组水合
-  const localFavorites = ref<Song[]>(getStorage<Song[]>(STORAGE_KEYS.MUSIC_FAVORITES, []) || [])
-  // “我的喜欢”镜像：未登录=本地数组，登录后=默认分组歌曲
+  // 游客收藏与各账号待同步收藏分别持久化，断网时也不能丢失归属。
+  function localFavoritesKey(): string | null {
+    if (!auth.isAuthenticated) return STORAGE_KEYS.MUSIC_FAVORITES
+    return auth.user?.id == null
+      ? null
+      : `${STORAGE_KEYS.MUSIC_FAVORITES_PENDING_PREFIX}:${auth.user.id}`
+  }
+  const readFavorites = (key: string | null) => (key ? (getStorage<Song[]>(key, []) ?? []) : [])
+  const localFavorites = ref<Song[]>(readFavorites(localFavoritesKey()))
   const favorites = ref<Song[]>(localFavorites.value)
+
+  // 认领游客数据和本地写入串行执行，避免切换账号时重复认领或清掉新收藏。
+  let favoriteStorageTask = Promise.resolve()
+  function writeFavoriteStorage(write: () => Promise<void>): Promise<void> {
+    const task = favoriteStorageTask.then(write)
+    favoriteStorageTask = task.catch(() => {})
+    return task
+  }
+
+  function claimGuestFavorites(key: string, isCurrent: () => boolean): Promise<void> {
+    return writeFavoriteStorage(async () => {
+      if (!isCurrent()) return
+      const guest = readFavorites(STORAGE_KEYS.MUSIC_FAVORITES)
+      if (guest.length) {
+        const owned = readFavorites(key)
+        const ids = new Set(owned.map((song) => song.id))
+        await applyStoragePatch({
+          [key]: [...owned, ...guest.filter((song) => !ids.has(song.id))],
+          [STORAGE_KEYS.MUSIC_FAVORITES]: [],
+        })
+      }
+      localFavorites.value = readFavorites(localFavoritesKey())
+      if (!groupsLoaded.value) favorites.value = localFavorites.value
+    })
+  }
 
   // 登录后的收藏分组（含默认组“我的喜欢”与用户自建组）
   const favoriteGroups = ref<FavoriteGroup[]>([])
   const groupsLoaded = ref(false)
   const isSyncingFavorites = ref(false)
+  let favoritesEpoch = 0
+  let favoritesLoad: Promise<boolean> | null = null
+  const pendingFavoriteChanges = new Set<string>()
+
+  // 收藏属于账号。切换或退出后立即清空账号镜像，迟到的请求也必须失效。
+  watch(
+    [() => auth.token, () => auth.user?.id, () => auth.isAuthenticated],
+    () => {
+      favoritesEpoch += 1
+      favoritesLoad = null
+      pendingFavoriteChanges.clear()
+      groupsLoaded.value = false
+      isSyncingFavorites.value = false
+      favoriteGroups.value = []
+      localFavorites.value = readFavorites(localFavoritesKey())
+      favorites.value = localFavorites.value
+    },
+    { flush: 'sync' },
+  )
+
+  function favoriteSession() {
+    const epoch = favoritesEpoch
+    const token = auth.token
+    const userId = auth.user?.id
+    return () =>
+      auth.isAuthenticated &&
+      favoritesEpoch === epoch &&
+      auth.token === token &&
+      auth.user?.id === userId
+  }
 
   const currentSong = computed(() => {
     if (currentIndex.value >= 0 && currentIndex.value < playlist.value.length) {
@@ -172,28 +242,51 @@ export const useMusicStore = defineStore('music', () => {
     saveSearchHistory()
   }
 
+  // ===== 过期响应守卫 =====
+  // 下面这些加载函数的形状都是「await 拿数据 → 写进同一个 ref」，而先发的请求不保证先返回。
+  // 没有守卫时，后到的旧响应会盖掉新结果（或把新结果清空、把 loading 提前熄掉），
+  // 界面就会出现自相矛盾的状态：结果标题写着新关键词、内容却是旧的；标签高亮在「摇滚」、
+  // 列表是「华语」的；头部写着歌手 B、作品是歌手 A 的。
+  // 每个「用户在短时间内可能重复触发、且结果写同一个 ref」的路径各持一张票。
+  const beginSearch = createLatestOnly()
+  const beginSuggest = createLatestOnly()
+  const beginPlaylistTracks = createLatestOnly()
+  const beginCatPlaylists = createLatestOnly()
+  const beginArtistList = createLatestOnly()
+  const beginArtist = createLatestOnly()
+  const beginAlbum = createLatestOnly()
+  const beginSimiSongs = createLatestOnly()
+
   const searchSongs = async (keyword: string) => {
     const q = keyword.trim()
     if (!q) return
+    const isCurrent = beginSearch()
     isSearching.value = true
     searchQuery.value = q
     addSearchHistory(q)
     try {
       const result = (await musicApi.search(q)) as Record<string, unknown>
+      if (!isCurrent()) return
       const songs =
         ((result.result as Record<string, unknown>)?.songs as Record<string, unknown>[]) || []
       searchResults.value = songs.map(parseNeteaseSong)
     } catch (e) {
       console.error('Search failed:', e)
+      // 过期请求的失败与当前结果无关，不能把已经拿到的新结果清空
+      if (!isCurrent()) return
       searchResults.value = []
     } finally {
-      isSearching.value = false
+      // 过期请求结束时还有更新的请求在飞，转圈要继续
+      if (isCurrent()) isSearching.value = false
     }
   }
 
   const loadPlaylistTracks = async (playlistId: string, server = 'netease') => {
+    // 这里换的是**整个播放队列**，过期响应盖上来等于队列变成了用户没点的那个歌单
+    const isCurrent = beginPlaylistTracks()
     try {
       const data = await musicApi.playlistTracks(server, playlistId)
+      if (!isCurrent()) return
       const newPlaylist = (data || []).map(parseMetingSong)
       const playingSongId = activeSong.value?.id
       playlist.value = newPlaylist
@@ -310,78 +403,156 @@ export const useMusicStore = defineStore('music', () => {
   const getDefaultGroup = (): FavoriteGroup | null =>
     favoriteGroups.value.find((g) => g.isDefault) || null
 
-  // 登录态：把本地收藏一次性迁移进账号默认组，随后清空本地
-  const migrateLocalFavorites = async (defaultGroupId: number) => {
-    if (localFavorites.value.length === 0) return
-    const def = getDefaultGroup()
-    if (!def) return
-    const existing = new Set(def.songs.map((s) => s.id))
-    for (const song of localFavorites.value) {
-      if (existing.has(song.id)) continue
+  // 登录态：把本地收藏一次性迁移进账号默认组，随后清掉**确实已进账号**的那部分
+  // 每批最多 100 首；仅清理服务端最终列表确认收到的歌曲。
+  // 剩余记录留在发起迁移的账号名下，其他账号不能接手重试。
+  const migrateLocalFavorites = async (
+    groups: FavoriteGroup[],
+    storageKey: string,
+    isCurrent: () => boolean,
+  ): Promise<{ groups: FavoriteGroup[]; remaining: number } | null> => {
+    const persisted = [...readFavorites(storageKey)]
+    const def = groups.find((group) => group.isDefault)
+    if (!def || persisted.length === 0) return { groups, remaining: persisted.length }
+
+    const idsIn = (items: FavoriteGroup[]) =>
+      new Set((items.find((group) => group.isDefault)?.songs ?? []).map((song) => song.id))
+    const onboard = idsIn(groups)
+    const pending = persisted.filter((song) => !onboard.has(song.id))
+
+    for (let offset = 0; offset < pending.length; offset += MIGRATE_BATCH_SIZE) {
+      // 每一批发送前都核对账号，不能在旧请求返回后借新账号的 token 继续迁移。
+      if (!isCurrent()) return null
       try {
-        await api.post(`/api/music-favorites/groups/${defaultGroupId}/songs`, { song })
+        await api.post(`/api/music-favorites/groups/${def.id}/songs/batch`, {
+          songs: pending.slice(offset, offset + MIGRATE_BATCH_SIZE),
+        })
       } catch {
-        /* 忽略单项失败 */
+        // 是否清理本地副本由最终服务端列表决定。
       }
     }
-    try {
-      const { data } = await api.get<{ data: FavoriteGroup[] }>('/api/music-favorites/groups')
-      favoriteGroups.value = data
-      favorites.value = getDefaultGroup()?.songs ?? []
-    } catch {}
-    localFavorites.value = []
-    setStorage(STORAGE_KEYS.MUSIC_FAVORITES, [])
+
+    if (!isCurrent()) return null
+    if (pending.length) {
+      try {
+        const { data } = await api.get<{ data: FavoriteGroup[] }>('/api/music-favorites/groups')
+        if (!isCurrent()) return null
+        if (!data.some((group) => group.isDefault))
+          return { groups, remaining: readFavorites(storageKey).length }
+        groups = data
+      } catch {
+        return { groups, remaining: readFavorites(storageKey).length }
+      }
+    }
+
+    const server = idsIn(groups)
+    const migrated = new Set(persisted.filter((song) => server.has(song.id)).map((song) => song.id))
+    await writeFavoriteStorage(async () => {
+      if (!isCurrent()) return
+      const leftover = readFavorites(storageKey).filter((song) => !migrated.has(song.id))
+      await applyStoragePatch({ [storageKey]: leftover })
+      if (isCurrent()) localFavorites.value = leftover
+    })
+    return { groups, remaining: readFavorites(storageKey).length }
   }
 
-  // 登录后从服务端拉取全部收藏分组并水合；首次登录自动合并本地收藏
-  const loadFavoriteGroups = async () => {
-    const authStore = useAuthStore()
-    if (!authStore.isAuthenticated) return
+  // 同一会话的并发调用共用完成结果；账号变化后可立即开始新一轮加载。
+  const loadFavoriteGroups = (): Promise<boolean> => {
+    const storageKey = localFavoritesKey()
+    if (!auth.isAuthenticated || !storageKey) return Promise.resolve(false)
+    if (favoritesLoad) return favoritesLoad
+    const isCurrent = favoriteSession()
     isSyncingFavorites.value = true
-    try {
-      const { data } = await api.get<{ data: FavoriteGroup[] }>('/api/music-favorites/groups')
-      favoriteGroups.value = data
-      const def = getDefaultGroup()
-      if (def) {
-        favorites.value = def.songs
-        await migrateLocalFavorites(def.id)
+    const task = (async () => {
+      try {
+        await claimGuestFavorites(storageKey, isCurrent)
+        if (!isCurrent()) return false
+        const { data } = await api.get<{ data: FavoriteGroup[] }>('/api/music-favorites/groups')
+        if (!isCurrent()) return false
+        if (!data.some((group) => group.isDefault)) throw new Error('收藏数据缺少默认分组')
+        const result = await migrateLocalFavorites(data, storageKey, isCurrent)
+        if (!result || !isCurrent()) return false
+        favoriteGroups.value = result.groups
+        favorites.value = getDefaultGroup()?.songs ?? []
+        groupsLoaded.value = true
+        if (result.remaining > 0) {
+          addToast(
+            'warning',
+            `有 ${result.remaining} 首收藏未能同步到账号，已保留在本地，下次加载此账号收藏时会自动重试`,
+          )
+        }
+        return true
+      } catch (error) {
+        if (isCurrent()) console.error('加载音乐收藏分组失败:', error)
+        return false
+      } finally {
+        if (isCurrent()) {
+          isSyncingFavorites.value = false
+          favoritesLoad = null
+        }
       }
-    } catch (e) {
-      console.error('加载音乐收藏分组失败:', e)
-    } finally {
-      groupsLoaded.value = true
-      isSyncingFavorites.value = false
-    }
+    })()
+    favoritesLoad = task
+    return task
+  }
+
+  // 打开收藏页时调用：上次没加载成功就重试，已成功则什么都不做。
+  // 逻辑放这里而不是模板里，一是模板保持哑的，二是「重试 / 不重试」这个判断能被单测覆盖。
+  const ensureFavoriteGroupsLoaded = async (): Promise<boolean> => {
+    if (groupsLoaded.value) return true
+    return loadFavoriteGroups()
   }
 
   // 点击爱心：切换“我的喜欢”成员（登录→服务端，未登录→本地）
   const toggleFavoriteSong = async (song: Song) => {
-    const authStore = useAuthStore()
-    if (authStore.isAuthenticated && groupsLoaded.value) {
-      const def = getDefaultGroup()
-      if (!def) return
-      const inLikes = favorites.value.some((s) => s.id === song.id)
-      try {
-        if (inLikes) {
-          await api.delete(`/api/music-favorites/groups/${def.id}/songs/${song.id}`)
-          def.songs = def.songs.filter((s) => s.id !== song.id)
-        } else {
+    const epoch = favoritesEpoch
+    const storageKey = localFavoritesKey()
+    const key = `${epoch}:${song.id}`
+    if (pendingFavoriteChanges.has(key)) return
+    pendingFavoriteChanges.add(key)
+    const desired = !favorites.value.some((item) => item.id === song.id)
+    const isCurrent = auth.isAuthenticated
+      ? favoriteSession()
+      : () => favoritesEpoch === epoch && !auth.isAuthenticated
+
+    try {
+      // 加载/迁移完成后落实本次点击的意图，不能先改本地，再被云端旧快照覆盖。
+      if (favoritesLoad) await favoritesLoad
+      if (!isCurrent()) return
+      if (auth.isAuthenticated && groupsLoaded.value) {
+        const def = getDefaultGroup()
+        if (!def || def.songs.some((item) => item.id === song.id) === desired) return
+        if (desired) {
           await api.post(`/api/music-favorites/groups/${def.id}/songs`, { song })
-          def.songs = [...def.songs, song]
+        } else {
+          await api.delete(
+            `/api/music-favorites/groups/${def.id}/songs/${encodeURIComponent(song.id)}`,
+          )
         }
+        if (!isCurrent()) return
+        const others = def.songs.filter((item) => item.id !== song.id)
+        def.songs = desired ? [...others, song] : others
         favorites.value = [...def.songs]
-      } catch (e) {
-        console.error('同步“我的喜欢”失败:', e)
-      }
-    } else {
-      const idx = favorites.value.findIndex((s) => s.id === song.id)
-      if (idx >= 0) {
-        favorites.value.splice(idx, 1)
       } else {
-        favorites.value.push(song)
+        if (!storageKey) throw new Error('账号信息尚未加载')
+        await writeFavoriteStorage(async () => {
+          if (!isCurrent()) return
+          const others = readFavorites(storageKey).filter((item) => item.id !== song.id)
+          const items = desired ? [...others, song] : others
+          await applyStoragePatch({ [storageKey]: items })
+          if (isCurrent()) {
+            localFavorites.value = items
+            favorites.value = items
+          }
+        })
       }
-      localFavorites.value = favorites.value
-      setStorage(STORAGE_KEYS.MUSIC_FAVORITES, favorites.value)
+    } catch (error) {
+      if (isCurrent()) {
+        console.error('同步“我的喜欢”失败:', error)
+        addToast('error', '收藏未能保存，请稍后重试')
+      }
+    } finally {
+      pendingFavoriteChanges.delete(key)
     }
   }
 
@@ -393,10 +564,12 @@ export const useMusicStore = defineStore('music', () => {
   const createFavoriteGroup = async (name: string): Promise<FavoriteGroup | null> => {
     const authStore = useAuthStore()
     if (!authStore.isAuthenticated) return null
+    const isCurrent = favoriteSession()
     try {
       const { data } = await api.post<{ data: FavoriteGroup }>('/api/music-favorites/groups', {
         name,
       })
+      if (!isCurrent()) return null
       favoriteGroups.value = [...favoriteGroups.value, data]
       return data
     } catch (e) {
@@ -409,8 +582,10 @@ export const useMusicStore = defineStore('music', () => {
   const deleteFavoriteGroup = async (groupId: number) => {
     const authStore = useAuthStore()
     if (!authStore.isAuthenticated) return
+    const isCurrent = favoriteSession()
     try {
       await api.delete(`/api/music-favorites/groups/${groupId}`)
+      if (!isCurrent()) return
       favoriteGroups.value = favoriteGroups.value.filter((g) => g.id !== groupId)
     } catch (e) {
       console.error('删除收藏分组失败:', e)
@@ -423,9 +598,11 @@ export const useMusicStore = defineStore('music', () => {
     if (!authStore.isAuthenticated) return
     const g = favoriteGroups.value.find((x) => x.id === groupId)
     if (!g || g.songs.some((s) => s.id === song.id)) return
+    const isCurrent = favoriteSession()
     try {
       await api.post(`/api/music-favorites/groups/${groupId}/songs`, { song })
-      g.songs = [...g.songs, song]
+      if (!isCurrent()) return
+      if (!g.songs.some((item) => item.id === song.id)) g.songs = [...g.songs, song]
       if (g.isDefault) favorites.value = [...g.songs]
     } catch (e) {
       console.error('加入分组失败:', e)
@@ -438,8 +615,10 @@ export const useMusicStore = defineStore('music', () => {
     if (!authStore.isAuthenticated) return
     const g = favoriteGroups.value.find((x) => x.id === groupId)
     if (!g) return
+    const isCurrent = favoriteSession()
     try {
       await api.delete(`/api/music-favorites/groups/${groupId}/songs/${songId}`)
+      if (!isCurrent()) return
       g.songs = g.songs.filter((s) => s.id !== songId)
       if (g.isDefault) favorites.value = [...g.songs]
     } catch (e) {
@@ -573,17 +752,21 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   const fetchCatPlaylists = async (cat: string) => {
+    // activeCat 同步落地（标签立刻高亮），列表异步到达——过期响应会让两者对不上
+    const isCurrent = beginCatPlaylists()
     activeCat.value = cat
     isLoadingCat.value = true
     try {
       const data = await musicApi.topPlaylist(cat)
+      if (!isCurrent()) return
       const playlists = (data.playlists as Record<string, unknown>[]) || []
       catPlaylists.value = playlists.map(parsePlaylist)
     } catch (e) {
       console.error('Fetch category playlists failed:', e)
+      if (!isCurrent()) return
       catPlaylists.value = []
     } finally {
-      isLoadingCat.value = false
+      if (isCurrent()) isLoadingCat.value = false
     }
   }
 
@@ -594,8 +777,10 @@ export const useMusicStore = defineStore('music', () => {
       clearSuggestions()
       return
     }
+    const isCurrent = beginSuggest()
     try {
       const data = await musicApi.searchSuggest(q)
+      if (!isCurrent()) return
       const result = (data.result as Record<string, unknown>) || {}
       const songs = ((result.songs as Record<string, unknown>[]) || []).map((s) => ({
         id: String(s.id),
@@ -618,11 +803,13 @@ export const useMusicStore = defineStore('music', () => {
       searchSuggestions.value = { songs, artists, albums }
     } catch (e) {
       console.error('Fetch suggest failed:', e)
+      if (!isCurrent()) return
       clearSuggestions()
     }
   }
 
   const clearSuggestions = () => {
+    beginSuggest()
     searchSuggestions.value = { songs: [], artists: [], albums: [] }
   }
 
@@ -645,6 +832,7 @@ export const useMusicStore = defineStore('music', () => {
   // ===== 歌手 / 专辑详情 =====
   const openArtist = async (artistId: string) => {
     if (!artistId) return
+    const isCurrent = beginArtist()
     detailView.value = 'artist'
     isLoadingArtist.value = true
     currentArtist.value = null
@@ -655,6 +843,7 @@ export const useMusicStore = defineStore('music', () => {
         musicApi.artist(artistId),
         musicApi.artistAlbum(artistId, 30).catch(() => null),
       ])
+      if (!isCurrent()) return
       const a = (detail.artist as Record<string, unknown>) || {}
       currentArtist.value = {
         id: String(a.id ?? artistId),
@@ -672,25 +861,27 @@ export const useMusicStore = defineStore('music', () => {
     } catch (e) {
       console.error('Open artist failed:', e)
     } finally {
-      isLoadingArtist.value = false
+      if (isCurrent()) isLoadingArtist.value = false
     }
   }
 
   const openAlbum = async (albumId: string) => {
     if (!albumId) return
+    const isCurrent = beginAlbum()
     detailView.value = 'album'
     isLoadingAlbum.value = true
     currentAlbum.value = null
     albumSongs.value = []
     try {
       const data = await musicApi.album(albumId)
+      if (!isCurrent()) return
       const al = (data.album as Record<string, unknown>) || {}
       currentAlbum.value = parseAlbum(al)
       albumSongs.value = ((data.songs as Record<string, unknown>[]) || []).map(parseNeteaseSong)
     } catch (e) {
       console.error('Open album failed:', e)
     } finally {
-      isLoadingAlbum.value = false
+      if (isCurrent()) isLoadingAlbum.value = false
     }
   }
 
@@ -700,17 +891,20 @@ export const useMusicStore = defineStore('music', () => {
 
   // 分类歌手（默认华语，切换分类时调用，刷新列表）
   const fetchArtistList = async (area: number, limit = 30) => {
+    const isCurrent = beginArtistList()
     isLoadingArtists.value = true
     activeArtistArea.value = area
     try {
       const data = (await musicApi.artistList(area, limit)) as Record<string, unknown>
+      if (!isCurrent()) return
       const list = (data.artists as Record<string, unknown>[]) || []
       topArtists.value = list.map(parseArtist)
     } catch (e) {
       console.error('Fetch artist list failed:', e)
+      if (!isCurrent()) return
       topArtists.value = []
     } finally {
-      isLoadingArtists.value = false
+      if (isCurrent()) isLoadingArtists.value = false
     }
   }
 
@@ -739,19 +933,23 @@ export const useMusicStore = defineStore('music', () => {
 
   // ===== 相似推荐 =====
   const fetchSimiSongs = async (songId: string) => {
+    const isCurrent = beginSimiSongs()
     if (!songId) {
       simiSongs.value = []
+      isLoadingSimi.value = false
       return
     }
     isLoadingSimi.value = true
     try {
       const data = await musicApi.simiSong(songId, 20)
+      if (!isCurrent()) return
       simiSongs.value = ((data.songs as Record<string, unknown>[]) || []).map(parseNeteaseSong)
     } catch (e) {
       console.error('Fetch similar songs failed:', e)
+      if (!isCurrent()) return
       simiSongs.value = []
     } finally {
-      isLoadingSimi.value = false
+      if (isCurrent()) isLoadingSimi.value = false
     }
   }
 
@@ -837,6 +1035,7 @@ export const useMusicStore = defineStore('music', () => {
     isFavoriteSong,
     toggleFavoriteSong,
     loadFavoriteGroups,
+    ensureFavoriteGroupsLoaded,
     createFavoriteGroup,
     deleteFavoriteGroup,
     addToGroup,

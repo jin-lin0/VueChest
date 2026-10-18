@@ -36,14 +36,19 @@ const currentGroup = computed<FavoriteGroup | null>(() => {
   return list.find((g) => g.id === activeGroupId.value) || list[0] || null
 })
 
+// 点开收藏页时，若上次没拉到服务端分组就再试一次。
+// loadFavoriteGroups 失败时 groupsLoaded 保持 false，这里就成了用户最自然的重试入口
+// （否则请求失败一次后，只能刷新整页才能看到账号里的收藏）。
+const openFavoritesTab = async () => {
+  activeTab.value = 'favorites'
+  if (auth.isAuthenticated) await music.ensureFavoriteGroupsLoaded()
+}
+
 // 登录态变化时重新水合收藏分组
-watch(
-  () => auth.isAuthenticated,
-  async (val) => {
-    activeGroupId.value = null
-    if (val) await music.loadFavoriteGroups()
-  },
-)
+watch([() => auth.token, () => auth.user?.id], async () => {
+  activeGroupId.value = null
+  if (auth.isAuthenticated) await music.loadFavoriteGroups()
+})
 
 onMounted(async () => {
   if (auth.isAuthenticated) await music.loadFavoriteGroups()
@@ -75,7 +80,7 @@ onMounted(async () => {
           <button :class="{ active: activeTab === 'search' }" @click="activeTab = 'search'">
             搜索
           </button>
-          <button :class="{ active: activeTab === 'favorites' }" @click="activeTab = 'favorites'">
+          <button :class="{ active: activeTab === 'favorites' }" @click="openFavoritesTab()">
             我的收藏
           </button>
           <button :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">

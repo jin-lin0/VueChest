@@ -38,25 +38,59 @@ export const MUSIC_ENDPOINTS = {
 }
 
 // ===== 缓存 =====
-const CACHE_TTL = 5 * 60 * 1000
-const cache: Record<string, { data: unknown; expire: number }> = {}
+export const CACHE_TTL = 5 * 60 * 1000
 
-function readCache<T>(key: string): T | null {
-  const entry = cache[key]
-  if (entry && Date.now() < entry.expire) return entry.data as T
-  delete cache[key]
-  return null
+/**
+ * 条目上限。key 里带**用户输入**（`search:${keyword}`、`suggest:${keyword}`）和各类
+ * 歌曲/歌手/专辑 id，长会话里只增不减，而每条还压着完整的响应体（搜索结果可达几十 KB）。
+ * 不设上限就是一个稳定泄漏；300 条足够覆盖「来回切页」的热点。
+ */
+export const MAX_CACHE_ENTRIES = 300
+
+// 用 Map 而不是普通对象：既保插入顺序（据此淘汰最久未用），也不受原型键（'constructor' 等）干扰。
+const cache = new Map<string, { data: unknown; expire: number }>()
+
+/**
+ * 命中判定只看「有没有这条、过没过期」，**不能看 data 的真假**。
+ * 空歌词是上游的正常返回——实测 https://meting.mikus.ink/api?...&type=lrc&id=abc
+ * 回的是 HTTP 200 + 0 字节；用真假判命中会让这类结果每次都被重拉（缓存写了却永远读不出来）。
+ */
+function readCache<T>(key: string): { hit: boolean; data?: T } {
+  const entry = cache.get(key)
+  if (!entry) return { hit: false }
+  if (Date.now() >= entry.expire) {
+    cache.delete(key)
+    return { hit: false }
+  }
+  // 命中即移到末尾：淘汰顺序按「最久未用」而不是「最早写入」
+  cache.delete(key)
+  cache.set(key, entry)
+  return { hit: true, data: entry.data as T }
 }
 
 function writeCache(key: string, data: unknown) {
-  cache[key] = { data, expire: Date.now() + CACHE_TTL }
+  cache.delete(key)
+  cache.set(key, { data, expire: Date.now() + CACHE_TTL })
+  if (cache.size <= MAX_CACHE_ENTRIES) return
+
+  // 超限：先批量丢掉已过期的（LRU 顺序下它们必然排在最前面，这里只是把逐条淘汰合成一次），
+  // 再从最久未用的开始淘汰到上限。
+  const now = Date.now()
+  for (const [k, entry] of cache) {
+    if (now >= entry.expire) cache.delete(k)
+  }
+  while (cache.size > MAX_CACHE_ENTRIES) {
+    const oldest = cache.keys().next()
+    if (oldest.done) break
+    cache.delete(oldest.value)
+  }
 }
 
 // ===== 请求层（第三方结构：无 success 校验，只校验 HTTP 状态）=====
 async function requestJson<T>(path: string, base: string, cacheKey?: string): Promise<T> {
   if (cacheKey) {
-    const hit = readCache<T>(cacheKey)
-    if (hit) return hit
+    const cached = readCache<T>(cacheKey)
+    if (cached.hit) return cached.data as T
   }
   const res = await fetch(base + path)
   if (!res.ok) throw new Error(`Music API error: ${res.status}`)
@@ -67,8 +101,8 @@ async function requestJson<T>(path: string, base: string, cacheKey?: string): Pr
 
 async function requestText(path: string, base: string, cacheKey?: string): Promise<string> {
   if (cacheKey) {
-    const hit = readCache<string>(cacheKey)
-    if (hit) return hit
+    const cached = readCache<string>(cacheKey)
+    if (cached.hit) return cached.data as string
   }
   const res = await fetch(base + path)
   if (!res.ok) throw new Error(`Music API error: ${res.status}`)
