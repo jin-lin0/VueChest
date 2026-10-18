@@ -43,12 +43,7 @@ const lunarDayOptions = computed(() => {
   return buildDayOptions(getMaxLunarDay(form.lunarMonth, formYear.value), form.lunarDay)
 })
 
-/**
- * 用户改了年份/月份之后，把已经超出范围的天数收回来。
- *
- * 只在真实的 select 变更里做，刻意不用 watch：`openEditForm` 会整份替换表单，
- * watch 会跟着触发，把用户存过的「七月三十」悄悄改成「廿九」再存回去。
- */
+/** 仅在用户修改年月时收回越界日数；打开旧记录时保留原值，交由保存校验提示。 */
 const onDateScopeChange = () => {
   const form = specialDaysStore.form
   const maxSolar = getMaxSolarDay(form.solarMonth, formYear.value)
@@ -175,8 +170,6 @@ const sortedDays = computed(() => {
   return [...specialDaysStore.specialDays].sort((a, b) => getDaysUntil(a) - getDaysUntil(b))
 })
 
-// 原来这里有一个只盯 `form.solarMonth` 的 watch 做天数钳制。现在钳制逻辑在
-// `onDateScopeChange` 里、由 select 的 change 事件驱动，且同时覆盖年份与农历月份。
 const goBack = () => {
   history.back()
 }
@@ -803,7 +796,6 @@ const goBack = () => {
   width: 100%;
 }
 
-/* 保存失败的说明。以前失败是完全静默的，用户只会觉得按钮没反应。 */
 .form-error {
   margin: 0 1.5rem 0.6rem;
   padding: 0.55rem 0.8rem;

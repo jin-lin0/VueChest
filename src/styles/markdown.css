@@ -1,10 +1,4 @@
-/* ============================================================
-   VueChest — 全站统一 Markdown 渲染样式
-   由 <MarkdownView> / 任意 .markdown-body 容器使用。
-   代码块语法高亮配色由 highlight.js github-dark 主题提供
-   （在 @/lib/markdown 中以 import 引入，作用于 .hljs）。
-   非代码元素尽量引用 design token，保证浅色/深色主题一致。
-   ============================================================ */
+/* Markdown 通用样式；正文随主题变量变化，代码块使用 github-dark 高亮。 */
 
 .markdown-body {
   white-space: normal;
@@ -73,9 +67,7 @@
   color: #e11d48;
 }
 
-/* 代码块：固定深底（github-dark 高亮配色为浅色字，必须配深底才可读）
-   背景取 highlight.js github-dark 主题同款 #0d1117，使浅色高亮字清晰可见。
-   代码块不跟随浅/深主题切换，与 GitHub 等文档站一致。 */
+/* github-dark 高亮文字为浅色，代码块固定使用深色背景。 */
 .markdown-body pre {
   background: #0d1117;
   border: 1px solid #30363d;

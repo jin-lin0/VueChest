@@ -73,13 +73,7 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     timeLeft.value = durations.value[sessionType.value]
   }
 
-  // ---- 计时 ----
-  // 一律以 deadline（墙钟时刻）结算剩余时间，而不是「每收到一次 tick 就减 1 秒」。
-  // 后台标签页里定时器会被浏览器节流：Chrome 88+ 在页面隐藏超过 5 分钟、链式回调计数
-  // 达到 5 次、且页面静音 30 秒后，改为**每分钟只检查一次定时器**
-  // （https://developer.chrome.com/blog/timer-throttling-in-chrome-88）。
-  // 若按 tick 计数，25 分钟的专注在后台会走成约 25 小时 —— 而「开着计时切去干别的」
-  // 恰恰是番茄钟最常见的用法。
+  // 按截止时刻结算剩余时间，避免后台定时器节流导致计时变慢。
   const stopTimer = () => {
     if (timer !== null) {
       clearInterval(timer)

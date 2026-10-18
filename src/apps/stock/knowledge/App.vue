@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-// 知识详情要点了列表项才出现，首帧用不上 markdown 渲染栈（47.7 KB gzip）
+
 import MarkdownView from '@/components/common/MarkdownViewLazy'
 import Skeleton from '@/components/common/Skeleton.vue'
 import type { KnowledgeAtom, IndexData, GraphNode, GraphEdge, KnowledgeBundle } from './types'

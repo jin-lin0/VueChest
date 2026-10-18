@@ -570,7 +570,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { SelectOption } from '@/components/common/CustomSelect.vue'
 import CustomSelect from '@/components/common/CustomSelect.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-// 参考答案只在点「查看参考答案」之后才出现，首帧用不上 markdown 渲染栈（47.7 KB gzip）
+
 import MarkdownView from '@/components/common/MarkdownViewLazy'
 import Skeleton from '@/components/common/Skeleton.vue'
 import { useToast } from '@/composables/useToast'

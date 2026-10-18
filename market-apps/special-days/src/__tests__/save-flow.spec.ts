@@ -5,30 +5,13 @@ import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import App from '../App.vue'
 import { useSpecialDaysStore } from '../store'
 
-/**
- * 保存流程的端到端验证（真实挂载组件、真实 DOM 事件）。
- *
- * 回归的那个缺陷是**用户点保存什么都不发生**：`saveDay()` 里 `lunarToSolar` 抛出的
- * RangeError 没有 try/catch，被事件处理器吞掉 —— 弹窗不关、没有提示、列表里也没有新记录。
- * 所以这里断言的是「点了保存之后到底发生了什么」，而不是某个内部函数返回了什么。
- *
- * 本仓没有 `@vue/test-utils`，宿主侧的挂载用例一律用 `createApp().mount()`（见
- * `src/views/market/__tests__/app-market-search.spec.ts`），这里沿用同一套。
- */
 
 let app: VueApp | null = null
 let root: HTMLDivElement | null = null
 let store: ReturnType<typeof useSpecialDaysStore>
 let pinia: Pinia
 
-/**
- * 走真实的沙箱桥接口径（`window.__VueChest__.storage`），而不是 happy-dom 的 localStorage。
- *
- * 这里必须逐用例重置：文件内多个用例共用同一份 window，而 store 初始化会从桥接读
- * 上一轮的快照。之前没有重置也照样绿，是因为旧的 500ms 防抖让写入**根本没发生**
- * （定时器在用例结束时仍未触发）—— 那几个断言其实是靠「写入丢失」才成立的。
- * 改成即时落桥后，隔离必须显式做，否则上一个用例存的日子会出现在下一个用例里。
- */
+/** 每个用例重置沙箱存储桥，避免持久化数据污染下一用例。 */
 const writes: Array<{ key: string; value: unknown }> = []
 
 function installFakeBridge() {

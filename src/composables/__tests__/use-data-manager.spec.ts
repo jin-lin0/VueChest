@@ -4,17 +4,6 @@ import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDataManager } from '../useDataManager'
 
-/**
- * 数据管理的三条路径（导出 / 导入 / 重置）都会**整表覆盖**本地数据，
- * 原先它们只活在 WorkspaceHome.vue 内部，要验证得先挂载 2600 行的首页。
- *
- * 这些用例锁的是用户实际会看到的差别：
- *   - 解析失败与写库失败必须给不同的说法（原来写库失败也说「JSON 解析失败」，
- *     用户会去反复检查一个本来完全正确的备份文件）；
- *   - 重置失败必须说话（原来没有 try/catch：状态行不动、页面不刷新，拒绝只进控制台）；
- *   - 「成功」的绿色样式必须来自显式状态，不能靠 `importStatus.includes('重置')` 猜 ——
- *     否则「重置失败」会被判成成功。
- */
 
 const mocks = vi.hoisted(() => ({
   exportAllData: vi.fn(),

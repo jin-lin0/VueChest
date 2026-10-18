@@ -59,8 +59,7 @@ onMounted(async () => {
   }
 })
 
-// 权限确认弹窗由 market store 统一弹出（MarketPermissionDialog 挂在 App.vue 上），
-// 详情页不再自带一套 —— 之前只有这个页面有弹窗，市场列表页和工作区模板都能绕过。
+// 权限确认由 store 统一处理。
 async function handleInstall() {
   if (!app.value) return
   installing.value = true

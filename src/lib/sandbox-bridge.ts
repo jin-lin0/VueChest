@@ -7,18 +7,9 @@ import { useAuthStore } from '@/stores/auth'
 import { normalizePermissions, type SandboxPermission } from '@/lib/sandbox-permissions'
 
 /**
- * 市场应用沙箱的宿主侧能力桥。
- *
- * 沙箱应用运行在 iframe（sandbox="allow-scripts"）内的 opaque origin 中，
- * 无法直接访问宿主的 IndexedDB / 主题 / 网络。本模块负责把沙箱通过
- * postMessage 发来的受限能力请求，翻译成宿主侧带有白名单 / 命名空间约束的调用。
- *
- * 原则：
- *  - 存储按 appId 命名空间隔离，杜绝应用之间互相读写数据。
- *  - 网络默认拒绝，仅当应用声明了 allowNetwork 白名单域名时才放行。
- *  - 除基础存储外，其余能力（通知 / 剪贴板 / 账号 / 云存储 / AI / 文件）都要求
- *    应用在 meta.permissions 里声明、且用户安装时已授权，否则直接拒绝。
- *  - 所有回包都带原请求 id，沙箱据此完成 Promise 结算。
+ * 沙箱宿主能力桥：通过 postMessage 提供存储、网络及扩展能力。
+ * 存储按 appId 隔离；网络默认拒绝，扩展能力需安装时授权。
+ * 响应保留请求 id，供沙箱结算对应 Promise。
  */
 
 export interface SandboxCapabilities {
@@ -53,11 +44,7 @@ function sandboxStorageKey(appId: string | number, key: string): string {
   return `sandbox:${appId}:${key}`
 }
 
-/**
- * 宿主共享存储键白名单。
- * 这些键在沙箱写入时不做 appId 命名空间隔离，直接以裸 key 落库，
- * 以便宿主（如首页）能跨应用读取。目前仅 special-days 的 special_days 需要此能力。
- */
+/** 允许沙箱与宿主共享的键，不添加 appId 前缀。 */
 export const HOST_SHARED_KEYS = ['special_days']
 
 /** 每个能力对应的权限键；不在此表中的（storage.*）为基础能力，始终放行。 */

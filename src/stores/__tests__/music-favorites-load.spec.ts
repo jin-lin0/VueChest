@@ -4,20 +4,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import { STORAGE_KEYS } from '@/config'
 import type { FavoriteGroup, Song } from '../music-types'
 
-/**
- * `loadFavoriteGroups` 的成功/失败语义。
- *
- * 这里钉住的是一条**用户可见**的后果链：
- *
- *   `groupsLoaded` 在 `finally` 里无条件置真（历史实现）
- *     → 请求失败时也变成「已加载，且一个分组都没有」
- *     → `App.vue` 的 `displayGroups` 于是返回空数组（走服务端分支），收藏页一片空白，
- *       本地那份明明还在 `favorites` 里却不展示
- *     → `toggleFavoriteSong` 也走进服务端分支，在 `if (!def) return` 处把点击无声丢掉，
- *       连本地都不写 —— 用户的收藏和点击一起「看起来消失了」
- *
- * 所以断言分两层：状态（`groupsLoaded` 保持 false）+ 行为（点击仍被保留、UI 有兜底数据）。
- */
 const mocks = vi.hoisted(() => ({
   storage: new Map<string, unknown>(),
   apiGet: vi.fn(),

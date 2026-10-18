@@ -192,11 +192,7 @@ async function removeGroup(groupId: number, e: Event) {
 .fm-check {
   width: 16px;
   text-align: center;
-  /* 「已在此分组」的 ✓。弹出层的底是 --bg-elevated，在音乐岛（.music-page 同时带
-     vc-dark）里解析为 #1e293b 深底，所以要走岛自己的品牌文字档：填充档
-     --accent(#667eea) 压在 #1e293b 上只有 4.00:1，而 --accent-text 是本岛的
-     #ada6fe，6.55:1。这里**不能**改成 --accent-text 的浅色档 #4d61cb（2.71:1），
-     本组件挂在暗色岛上，不是浅色面。 */
+  /* 弹层位于音乐应用的暗色作用域，使用其品牌文字色。 */
   color: var(--accent-text);
   font-weight: 700;
 }

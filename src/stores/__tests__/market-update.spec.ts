@@ -141,14 +141,6 @@ describe('market app updates', () => {
     expect(store.updateCheckError).toBe('')
   })
 
-  /**
-   * N+1 门禁。
-   *
-   * 首页每次挂载都会 `refreshInstalledMeta()`，它 `force: true` 绕过 30 分钟间隔，
-   * 所以这条路径每回到首页都跑一遍。改动前是「每个已装应用一个 GET /api/market/apps/:id」，
-   * 装 8 个应用就是 8 个 HTTP + 8 条 SQL（实测 ~262ms，连接池上限 5 只能分批排队），
-   * 而一次批量查询 ~67ms。这里把「只发一次批量请求」钉住。
-   */
   it('刷新多个已装应用时只发一次批量请求，而不是每个应用一次', async () => {
     mocks.storage.set('market_installed_apps', [
       { ...installed, id: 1 },

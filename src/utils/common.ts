@@ -10,23 +10,8 @@ export const debounce = <T extends (...args: unknown[]) => unknown>(
 }
 
 /**
- * 「只认最后一次」竞态守卫：同一类请求只允许**最后发起的那次**写入结果。
- *
- * 用法——发起前领票，落地前验票：
- *
- *   const beginSearch = createLatestOnly()
- *   const isCurrent = beginSearch()
- *   const data = await fetchSomething()
- *   if (!isCurrent()) return   // 已有更新的请求，本次结果作废
- *   results.value = data
- *
- * 为什么必须有它：先发的请求不保证先返回。若结果 ref 是共享的，后到的旧响应会盖掉新结果；
- * 更隐蔽的是旧请求走 catch 时会把新结果清空、走 finally 时会把还在加载的 loading 提前熄掉。
- * 所以成功、失败、收尾三条路径都要验票，而不是只守成功那条。
- *
- * 与 composables/useLatestRequest 的分工：那个依赖 onScopeDispose + AbortSignal，
- * 面向组件作用域、会真的取消请求；这里不取消（音乐数据层 lib/musicApi.ts 的请求不收 signal），
- * 只做「本次结果是否已过期」的判定，因此能在 store 这种没有可销毁作用域的地方用。
+ * 每次调用 begin 获取 isCurrent；仅最新调用可更新结果、错误和 loading。
+ * 只判断响应是否过期，不取消网络请求。
  */
 export const createLatestOnly = (): (() => () => boolean) => {
   let latest = 0

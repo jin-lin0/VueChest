@@ -1,9 +1,4 @@
-// 音乐数据层统一出口：路由配置化 + 单一请求层。
-//
-// 说明：netease 后端（/api/netease/*）与 meting 代理（/meting-api）返回的
-// 都是第三方原始结构，不带项目约定的 { success, data } 字段，也不能统一 res.json()
-// （meting 歌词是纯文本）。因此这里用**独立**的请求层，不依赖 lib/request 的 api 封装，
-// 只做 ok 校验 + 缓存 + 错误标准化。收藏分组等自有后端接口仍走 api 封装。
+// 音乐上游返回原始 JSON 或歌词文本，使用独立请求层；自有收藏接口仍使用 api。
 
 import { API_BASE } from '@/lib/request'
 
@@ -40,21 +35,13 @@ export const MUSIC_ENDPOINTS = {
 // ===== 缓存 =====
 export const CACHE_TTL = 5 * 60 * 1000
 
-/**
- * 条目上限。key 里带**用户输入**（`search:${keyword}`、`suggest:${keyword}`）和各类
- * 歌曲/歌手/专辑 id，长会话里只增不减，而每条还压着完整的响应体（搜索结果可达几十 KB）。
- * 不设上限就是一个稳定泄漏；300 条足够覆盖「来回切页」的热点。
- */
+/** 限制包含用户输入的缓存键数量，避免长会话内存持续增长。 */
 export const MAX_CACHE_ENTRIES = 300
 
 // 用 Map 而不是普通对象：既保插入顺序（据此淘汰最久未用），也不受原型键（'constructor' 等）干扰。
 const cache = new Map<string, { data: unknown; expire: number }>()
 
-/**
- * 命中判定只看「有没有这条、过没过期」，**不能看 data 的真假**。
- * 空歌词是上游的正常返回——实测 https://meting.mikus.ink/api?...&type=lrc&id=abc
- * 回的是 HTTP 200 + 0 字节；用真假判命中会让这类结果每次都被重拉（缓存写了却永远读不出来）。
- */
+/** 空歌词也是有效缓存值，命中判定不能依赖 data 的真假。 */
 function readCache<T>(key: string): { hit: boolean; data?: T } {
   const entry = cache.get(key)
   if (!entry) return { hit: false }

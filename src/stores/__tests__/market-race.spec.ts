@@ -2,19 +2,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
-/**
- * 应用市场 store 的**过期响应**竞态。
- *
- * `fetchApps` 的形状是「await 拿数据 → 写进共享 ref」，而先发的请求不保证先返回。
- * 应用市场的搜索框是**边打字边发请求**（`@input` 直接触发），所以乱序返回是常态：
- * 敲「周」再敲「林」，若「周」的响应后到，列表就会变回周杰伦的结果，
- * 而输入框和角标写的是林俊杰 —— 界面自相矛盾。
- * 更隐蔽的两条：旧请求走 catch 会把新结果**清空**并写上一个已经过期的错误，
- * 走 finally 会把仍在进行中的 loading **提前熄掉**（骨架屏消失、列表闪成空）。
- *
- * 这里用手动决定 resolve 顺序的 promise 把「乱序返回」造出来，
- * 断言**只有最后发起的那次请求**能写结果、能写错误、能收尾。
- */
 const mocks = vi.hoisted(() => ({
   storage: new Map<string, unknown>(),
   apiGet: vi.fn(),

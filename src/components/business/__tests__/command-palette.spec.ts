@@ -4,16 +4,7 @@ import { createApp, nextTick, type App } from 'vue'
 import { createPinia, type Pinia } from 'pinia'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
-/**
- * 命令面板在入口 chunk 里被拆成了两层：
- *   - CommandPalette.vue（热键壳，留在入口）：常驻监听 Cmd/Ctrl+K 与 openCommandPalette() 事件；
- *   - CommandPalettePanel.vue（面板，独立 chunk）：命令目录、键盘导航、结果渲染。
- *
- * 这组用例锁住拆分后必须成立的行为契约 —— 尤其是「面板 chunk 还没到达时，热键不能失灵」，
- * 这正是「直接用 defineAsyncComponent 包整个面板」会踩的坑。
- *
- * store 全部替换成最小桩：这里要验的是两层的协作与时序，不是 store 行为。
- */
+/** 面板加载期间也必须接收并保留热键和事件触发的打开状态。 */
 const mocks = vi.hoisted(() => ({
   fetchApps: vi.fn(),
   installState: {

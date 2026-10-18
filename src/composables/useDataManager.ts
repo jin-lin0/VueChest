@@ -9,13 +9,7 @@ interface DataManagerOptions {
   reload?: () => void
 }
 
-/**
- * 「数据管理」弹窗的全部逻辑：导出 / 导入 / 重置。
- *
- * 抽出来的理由不是复用（只有 WorkspaceHome 一个消费者），而是**可测**：
- * 这三条路径都会整表覆盖本地数据，却只在 Component 内部、需要挂载 2600 行的
- * WorkspaceHome 才能碰到。放在这里可以用注入的 `confirm` / `reload` 直接跑分支。
- */
+/** 管理本地数据导出、导入和重置，集中处理写入状态与失败反馈。 */
 export function useDataManager({
   confirm,
   reload = () => window.location.reload(),
@@ -55,9 +49,7 @@ export function useDataManager({
   async function handleImport() {
     if (busy.value) return
 
-    // 解析和写入分开报错。原先两件事在同一个 try 里，写库失败（配额打满、浏览器拒绝
-    // 持久化）也会显示「JSON 解析失败，请检查文件内容」—— 用户会去反复检查一个
-    // 本来完全正确的备份文件，而真正的问题在别处。
+    // 解析与持久化失败分别提示。
     let parsed: unknown
     try {
       parsed = JSON.parse(importText.value)

@@ -56,11 +56,7 @@ const makeSong = (id: string): Song => ({
   server: 'netease',
 })
 
-/**
- * 假服务端的**唯一状态源**：GET 读它、POST 改它。
- * 不能把调用方传进来的数组直接当状态——那样 POST 改的是另一个变量，
- * GET 会一直返回最初那份，于是「本地清空」永远看起来是对的（正是这个缺陷能长期存在的原因）。
- */
+/** GET 和 POST 共用一份服务端状态，验证迁移后的真实结果。 */
 let serverGroups: FavoriteGroup[] = []
 
 const defaultGroup = (): FavoriteGroup | null =>
@@ -68,10 +64,7 @@ const defaultGroup = (): FavoriteGroup | null =>
 
 const serverSongIds = () => (defaultGroup()?.songs ?? []).map((song) => song.id)
 
-/**
- * 批量加歌：模拟服务端按 songId 去重后追加，返回真实的 requested/added/skipped。
- * 这样「服务端到底收到了什么」完全由本函数决定，而不是由测试自己假设。
- */
+/** 模拟服务端去重写入并返回实际计数。 */
 async function applyBatch(url: string, body: unknown) {
   if (!String(url).includes('/songs/batch')) {
     throw new Error(`未预期的 POST ${url}`)
@@ -328,8 +321,7 @@ describe('迁移后的本地副本只清「确实已进账号」的部分', () =
   })
 
   it('乐观地把本地清空会丢数据——这条用例就是那个缺陷的回归', async () => {
-    // 与「全部批次都失败」同构，但断言的是**行为本身**：
-    // 只要服务端没收到，本地就必须还在。历史实现的 catch + 无条件清空会让本用例变红。
+    // 服务端未确认收到的收藏必须保留本地副本。
     seed([], [makeSong('l1')])
     mocks.apiPost.mockImplementation(async () => {
       throw new Error('网络错误')

@@ -1,17 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * `openDB()` 失败后不能把那个被拒绝的 promise 留在缓存里。
- *
- * 旧写法是 `initPromise = openDB(...).then(...)`，一次**瞬时**失败（另一个标签页正在升级
- * 数据库、打开时配额检查没过、用户刚允许站点存储）之后，`initPromise` 会一直是一个已拒绝的
- * promise：此后每次读写都直接复用它、每次都失败，而且永远不会重试 ——
- * 一次瞬时故障被放大成「整个会话都不落盘」，只有刷新页面才有救。
- *
- * 这里用真实的 fake-indexeddb，只在 `openDB` 外面套一层「第一次必失败」的代理，
- * 其余行为（含 idb 自己打开数据库的过程）全部走真实实现。
- */
+/** 仅代理首次 openDB 失败，其余数据库操作使用 idb 和 fake-indexeddb。 */
 
 const state = { attempts: 0, failFirst: true }
 

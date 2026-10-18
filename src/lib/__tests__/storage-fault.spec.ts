@@ -1,15 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * 宿主侧的落盘失败必须看得见。
- *
- * 这些 catch 原先只写 `console.error`：界面照常，用户以为存住了，刷新之后新数据没了。
- * 两类要盯的行为：
- *   1. 首次失败**必须**弹一次（这才是修复本身）；
- *   2. 同一指纹只弹一次 —— `setStorage()` 是「每次改动都写一遍」的调用方式，
- *      配额打满后不去重就是满屏红条；`initStorage()` 失败更会让后面每一次写入
- *      都变成同一根因的重复症状，所以那种情况下按 key 逐个弹是错的。
- */
 
 const mocks = vi.hoisted(() => ({
   db: {

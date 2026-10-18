@@ -50,30 +50,12 @@ function loadApps() {
   })
 }
 
-/**
- * 搜索框走防抖。
- *
- * `@input` 是**每敲一个字符**触发一次，不防抖就会「敲一个字符发一次请求」：
- * 敲「周杰伦」就是 3 个 HTTP + 3 条 SQL，白烧流量和数据库。
- *
- * 与 `onSearch`（立即路径）的分工：类目切换、清空搜索、重新加载都是**离散动作**，
- * 点一下就该立刻出结果，不该再等 300ms。同 `interview` / `stock` 两处的写法。
- */
+/** 输入搜索防抖；类目切换、清空和重试立即加载。 */
 const debouncedSearch = debounce(() => {
   void loadApps()
 }, 300)
 
-/**
- * 防抖窗口内的等待标记。
- *
- * 原本每个字符都立刻发请求，`market.isLoading` 会同步变真，界面显示骨架屏。
- * 加了防抖后，那 300ms 里没有任何请求在飞、`isLoading` 仍是假，而 `filteredApps`
- * 会拿**刚敲进去的完整关键字**去过滤**上一轮的结果** —— 几乎必然过滤成空，
- * 于是「暂无应用」会闪一下。用这个标记把防抖窗口也算作等待态，回到「搜索时显示骨架」。
- *
- * 请求一旦发出就交还给 `market.isLoading`：`fetchApps` 在第一个 await 之前就置位，
- * `loadApps` 又是同步调用它，因此两者之间没有会被渲染出来的空隙。
- */
+/** 防抖期间显示等待态，避免用新关键词过滤旧结果时闪现空态。 */
 const searchPending = ref(false)
 
 function onSearchInput() {
@@ -103,9 +85,7 @@ function goDetail(id: number) {
   router.push(`/market/${id}`)
 }
 
-// 安装 / 更新的权限确认由 market store 统一弹出（见 MarketPermissionDialog），
-// 这里只负责把失败结果**可见地**告诉用户：以前是 console.error，
-// 用户在卡片上点了「更新」发现毫无反应，完全不知道是被新增权限挡住了。
+// 权限确认由 store 处理，视图负责展示安装或更新失败。
 async function handleInstall(appId: number) {
   if (installingId.value === appId || market.isInstalled(appId)) return
   installingId.value = appId

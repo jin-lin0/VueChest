@@ -1,18 +1,5 @@
 // @vitest-environment happy-dom
-/**
- * 应用市场搜索框的**请求次数**与**等待态**。
- *
- * 输入框是 `@input` 触发的，也就是每敲一个字符都要走一次。之前这个处理函数直接
- * 调 `loadApps()`，于是敲「周杰伦」会打出 3 个 HTTP + 3 条 SQL；更要命的是这 3 个
- * 请求的返回顺序不保证，旧响应后到时列表会和输入框自相矛盾（store 侧已用
- * `createLatestOnly` 兜住，测试见 stores/__tests__/market-race.spec.ts）。
- *
- * 这里钉住三件事：
- * 1. 连续敲字**不立刻**发请求（防抖生效），窗口过后只发**一次**，且用最后的关键字；
- * 2. 防抖窗口内界面必须仍在**等待态**，不能因为本地 `filteredApps` 用新关键字
- *    过滤旧结果而闪一下「暂无应用」；
- * 3. 类目切换、清空搜索这类离散动作仍然**立即**发请求，不能被防抖拖慢。
- */
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, nextTick, type App } from 'vue'
 
@@ -51,9 +38,7 @@ vi.mock('@/stores/market', async () => {
     isLoading: ref(false),
     fetchError: ref(''),
   }
-  // 必须用 reactive 包一层：pinia 的 store 会把内部 ref 解包成普通值，
-  // 模板里读到的 `market.isLoading` 是布尔；若这里返回裸对象，
-  // 它会是恒真的 Ref，骨架屏就再也去不掉了（夹具失真会直接骗过测试）。
+  // 用 reactive 模拟 Pinia 对 ref 的解包，保证模板读取到布尔状态。
   const state = reactive({
     ...mocks.store,
     availableUpdates: computed(() => []),

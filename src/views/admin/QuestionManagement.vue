@@ -296,10 +296,7 @@ async function batchDelete() {
   if (!ok) return
   const requested = selectedIds.value.length
   try {
-    // 一次请求删完。原来这里是 `Promise.all(ids.map((id) => api.delete(...)))`：
-    // 除了 N 个 HTTP + N 条 SQL，只要有一个 reject 就整体提示「批量删除失败」，
-    // 可前面已经删掉的那些是真删了 —— 管理员看到「失败」去重试，列表又少几行。
-    // 现在由服务端返回真实删除行数，如实汇报。
+    // 使用服务端实际删除数量反馈结果。
     const res = await api.post<{ data: { requested: number; deleted: number } }>(
       '/api/questions/batch-delete',
       { ids: selectedIds.value },

@@ -214,13 +214,7 @@ async function run(cmd: DiscoverSection | 'advanced', extra: Record<string, stri
   }
 }
 
-/**
- * 组装当前分类的日期参数。
- *
- * 区间优先：填了合法的起止日期就用区间，不再传单日 --date ——
- * 同时传会让 CLI 行为变得难以预期。区间非法（只填一端 / 结束早于开始）
- * 时静默忽略并退回单日，避免发出必然无结果的请求。
- */
+/** 合法日期区间优先，否则回退到单日参数，避免同时传递两种日期模式。 */
 /** 区间填了一半或首尾颠倒时给出提示，而不是静默按单日跑。 */
 const showRangeHint = computed(() => {
   if (!sectionSupportsRange(activeSection.value)) return false

@@ -16,10 +16,7 @@
     radial-gradient(circle at 94% 8%, rgba(22, 163, 148, 0.09), transparent 20%), var(--bg-page);
 }
 
-/* 「文字档」：上面几个 --lab-* 是填充/描边色，直接当文字只有 2.5~3.7:1（它们多半落在
-   同色 10~13% 的染色底上）。这里给每个色相一个同色相、刚好过 AA 的档位，只在 color: 上
-   用；background / border 仍用原色。跟全局 --accent-text / --*-text 是同一套做法。
-   工作区弹窗会被 teleport 出 .api-workbench，所以两个根都要给（沿用本文件的 :is 写法）。 */
+/* 文字使用独立语义色，填充和描边保留原色；同时覆盖 Teleport 后的弹窗根节点。 */
 :is(.api-workbench, .collection-workspace-modal) {
   --lab-violet-text: #5543fc;
   --lab-green-text: #0f754e;

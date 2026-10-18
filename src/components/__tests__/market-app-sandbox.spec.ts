@@ -1,10 +1,5 @@
 // @vitest-environment happy-dom
-/**
- * 沙箱容器负责把宿主的能力桥接到 iframe，并负责**告诉用户为什么没起来**。
- * 之前 bootstrap 里的异步步骤（拉元数据 / 下载应用包 / 读本地存储快照）全都没有错误出口：
- * 一旦 reject，回包没发出去，沙箱就永远停在「等待 bootstrap」，
- * 用户看到的是一个空白 iframe —— 既没有解释，也没有重试入口。
- */
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, nextTick, type App } from 'vue'
 import { Response as HappyResponse } from 'happy-dom'

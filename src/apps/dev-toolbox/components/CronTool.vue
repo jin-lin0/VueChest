@@ -216,11 +216,7 @@ function fmt(d: Date): string {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  /* 序号圆点：13px 白字压在 --accent(#667eea) 上只有 3.66:1，当填充色够、当文字底不够。
-     底色改用渐变末端 --accent-strong(#764ba2)：同品牌色相，白字 6.37:1。它只在 :root
-     声明、不随主题变，所以深浅两个主题下都成立（换 --accent-text 反而更糟：深色档是
-     浅紫 #9aa9f8，白字只有 2.23:1）。与 PipelineTool 的
-     .choose-files-button:hover 是同一套用法。 */
+  /* 白字使用固定深色背景；随主题变亮的 --accent-text 不适合作为其底色。 */
   background: var(--accent-strong);
   color: var(--accent-contrast);
   font-size: var(--font-size-small);

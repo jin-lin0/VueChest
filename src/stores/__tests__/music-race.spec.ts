@@ -3,22 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import type { Song } from '../music-types'
 
-/**
- * 音乐 store 的**过期响应**竞态。
- *
- * 这 8 个加载函数的形状都是「await 拿数据 → 写进一个 ref」，而 ref 是共享的：
- * 先发的请求不保证先返回。后到的旧响应于是会覆盖新结果，更要命的是它
- * ① 走 catch 时会把新结果清空，② 走 finally 时会把还在加载的 loading 提前熄掉。
- *
- * 用户侧表现是「界面自相矛盾」：
- * - 连按两次回车搜「周杰伦」「林俊杰」→ 输入框和结果标题写的是林俊杰，歌单是周杰伦的；
- * - 连点两个歌单 → 播放队列整个被换成先点的那个；
- * - 快速切分类/语种 → 标签高亮在「摇滚」，列表是「华语」的；
- * - 连点两个歌手 → 头部写着歌手 B，下方作品是歌手 A 的。
- *
- * 这里用手动能决定 resolve 顺序的 promise 把「乱序返回」造出来，
- * 断言**只有最后发起的那次请求**能写结果。
- */
 const mocks = vi.hoisted(() => ({
   storage: new Map<string, unknown>(),
   apiGet: vi.fn(),

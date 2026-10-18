@@ -293,8 +293,7 @@ function clearAll() {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: var(--font-size-control);
   line-height: 1.6;
-  /* 校验错误清单。原来是字面量 #dc2626：白底上 4.83:1 勉强过，深色主题下压在
-     --bg-elevated(#1e293b) 上只有 3.03:1。走语义文字档。 */
+
   color: var(--danger-text);
   white-space: pre-wrap;
   word-break: break-word;

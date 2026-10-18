@@ -37,9 +37,7 @@ const router = useRouter()
 const sandboxAttr = 'allow-scripts allow-forms allow-popups allow-modals'
 const sandboxSrc = `${import.meta.env.BASE_URL}sandbox.html`
 
-// 能力白名单：网络默认拒绝一切域名；能力权限默认全不授予。
-// 运行时从应用元数据（已安装记录或详情）注入其声明的 allowNetwork 与 permissions，
-// 第三方应用必须显式声明、且用户安装时已确认，才会被放行。
+// 默认拒绝网络和扩展能力；仅采用安装时已确认的应用元数据。
 const caps: SandboxCapabilities = { allowNetwork: [], permissions: [] }
 
 let bootstrapped = false
@@ -78,9 +76,7 @@ async function bootstrap() {
     const entry = market.installedApps.find((a) => a.id === Number(props.appId))
     let allowNetwork: string[] = entry?.allowNetwork || []
     let permissions: SandboxPermission[] = normalizePermissions(entry?.permissions)
-    // 只有「记录不存在」或「字段根本没落盘」（旧版本安装的记录）才回源。
-    // 不能按数组为空判断：应用合法地可以「声明了能力权限但不联网」（如 ai-notes），
-    // 那样每次进沙箱都会白拉一次详情。
+    // 空权限数组也是有效配置；只有字段缺失时才回源。
     if (!Array.isArray(entry?.allowNetwork) || !Array.isArray(entry?.permissions)) {
       const detail = await market.fetchAppDetail(Number(props.appId))
       if (!Array.isArray(entry?.allowNetwork)) allowNetwork = detail?.allowNetwork || []

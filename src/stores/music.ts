@@ -242,12 +242,7 @@ export const useMusicStore = defineStore('music', () => {
     saveSearchHistory()
   }
 
-  // ===== 过期响应守卫 =====
-  // 下面这些加载函数的形状都是「await 拿数据 → 写进同一个 ref」，而先发的请求不保证先返回。
-  // 没有守卫时，后到的旧响应会盖掉新结果（或把新结果清空、把 loading 提前熄掉），
-  // 界面就会出现自相矛盾的状态：结果标题写着新关键词、内容却是旧的；标签高亮在「摇滚」、
-  // 列表是「华语」的；头部写着歌手 B、作品是歌手 A 的。
-  // 每个「用户在短时间内可能重复触发、且结果写同一个 ref」的路径各持一张票。
+  // 每类可重入请求独立持有时序守卫，旧响应不得更新结果或 loading。
   const beginSearch = createLatestOnly()
   const beginSuggest = createLatestOnly()
   const beginPlaylistTracks = createLatestOnly()
@@ -403,9 +398,8 @@ export const useMusicStore = defineStore('music', () => {
   const getDefaultGroup = (): FavoriteGroup | null =>
     favoriteGroups.value.find((g) => g.isDefault) || null
 
-  // 登录态：把本地收藏一次性迁移进账号默认组，随后清掉**确实已进账号**的那部分
-  // 每批最多 100 首；仅清理服务端最终列表确认收到的歌曲。
-  // 剩余记录留在发起迁移的账号名下，其他账号不能接手重试。
+  // 收藏每批迁移最多 100 首，仅清理服务端确认收到的歌曲。
+  // 未迁移记录保留账号归属，供该账号重试。
   const migrateLocalFavorites = async (
     groups: FavoriteGroup[],
     storageKey: string,

@@ -33,10 +33,7 @@ export function useListStore<T extends { id: string | number }>(
   const { storageKey, initial, defaultValue, idGen, validate } = options
 
   const fallback = defaultValue ?? initial?.() ?? []
-  // ref<T[]>() 会把元素类型深度解包成 UnwrapRefSimple<T>，于是 push(T) 与
-  // filter 赋值回 T[] 都对不上（TS2345 / TS2322）。这里的 T 都是普通数据结构
-  // （Note / SpecialDay / HistoryRecord…），解包前后同型，显式标回 Ref<T[]> 即可；
-  // 不能用 shallowRef —— update() 是原地替换数组元素，只有深度响应式才会触发持久化 watch。
+  // T 为普通数据对象；保留深度响应式，使原地修改列表项也触发持久化。
   const items = ref<T[]>(getStorage<T[]>(storageKey, fallback) ?? fallback) as unknown as Ref<T[]>
 
   const save = () => {

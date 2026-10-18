@@ -390,10 +390,7 @@ export function useSnakeGame(options: UseSnakeGameOptions) {
     state.items = []
     spawnItems()
 
-    // 倒计时。这里**故意**按回调次数计（而不是按截止时刻算墙钟）：
-    // 标签页被隐藏时浏览器会节流定时器，于是开局倒数会跟着暂停 —— 而这正是想要的，
-    // 玩家没在看屏幕时不该让蛇自己跑起来。健康倒计时应以截止时刻为准，
-    // 参见 src/composables/useCountdown.ts 的说明；此处是刻意的例外。
+    // 开局倒数按回调计时，后台节流时不跳过倒数直接开始游戏。
     const cdTimer = setInterval(() => {
       state.countdown--
       if (state.countdown <= 0) {

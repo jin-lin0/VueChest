@@ -256,11 +256,7 @@ function onDelete(opt: SelectOption) {
   color: var(--danger-text);
 }
 
-/* 选中项是饱和的品牌渐变底（#667eea → #764ba2）。
-   这一层上不能再用语义色或 -text 档：--danger-text(#bf1f1f) / --success-text(#047552) /
-   --accent-text(#4d61cb) 压在渐变上只有 1.47~1.67:1，比不换色还差，而它们都是**深色**，
-   在深底上必然失守。所以选中行统一白色（默认 .85、hover 提亮到 --accent-contrast），
-   用透明度变化给 hover 反馈。 */
+/* 选中行使用深色渐变背景，图标保持白色，以透明度区分悬停状态。 */
 :deep(.option-item.selected) .rl-ico {
   color: rgba(255, 255, 255, 0.85);
 }

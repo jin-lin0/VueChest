@@ -10,10 +10,6 @@ async function loadApi() {
 // 而 JSON.stringify 对数组和对象一视同仁，类型里必须如实写出来。
 type Body = string | unknown[] | Record<string, unknown>
 
-/**
- * 装一个记录调用的 fetch 替身。返回值为字符串时按纯文本响应，
- * 为对象时按 JSON 响应（search/album 等走 res.json()）。
- */
 function installFetch(pick: (url: string, nth: number) => Body) {
   const calls: string[] = []
   const fn = vi.fn(async (input: RequestInfo | URL) => {
@@ -47,8 +43,7 @@ describe('musicApi 缓存', () => {
   })
 
   it('空响应也必须算命中：上游确实会回 200 + 空体', async () => {
-    // 实测 https://meting.mikus.ink/api?server=netease&type=lrc&id=abc
-    // → HTTP 200、0 字节。用数据的真假来判命中，这类结果会被反复重拉。
+    // 空歌词是有效响应，也应被缓存。
     const { musicApi } = await loadApi()
     const calls = installFetch(() => '')
 

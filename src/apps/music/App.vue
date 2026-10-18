@@ -36,9 +36,7 @@ const currentGroup = computed<FavoriteGroup | null>(() => {
   return list.find((g) => g.id === activeGroupId.value) || list[0] || null
 })
 
-// 点开收藏页时，若上次没拉到服务端分组就再试一次。
-// loadFavoriteGroups 失败时 groupsLoaded 保持 false，这里就成了用户最自然的重试入口
-// （否则请求失败一次后，只能刷新整页才能看到账号里的收藏）。
+// 进入收藏页时重试此前失败的分组加载。
 const openFavoritesTab = async () => {
   activeTab.value = 'favorites'
   if (auth.isAuthenticated) await music.ensureFavoriteGroupsLoaded()

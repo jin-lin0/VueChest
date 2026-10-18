@@ -407,10 +407,7 @@ function draw() {
   border-radius: var(--radius-xs);
   font-weight: 600;
 }
-/* 密码强度的四档标签：这几个色**同时**当文字、又被自己染过的底托着。
-   原来的字面色（#ef4444 / #f59e0b / #22c55e / #3b82f6）是配纯白底的，
-   压在同色 12% 的染色底上只有 1.96~3.22:1；深色主题下更糟（深红压深底）。
-   改用语义文字档：它们本身就在自己的染色底上过了 AA，而且是分主题取值的。 */
+
 .strength.weak {
   color: var(--danger-text);
   background: rgba(239, 68, 68, 0.12);

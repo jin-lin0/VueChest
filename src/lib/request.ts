@@ -104,9 +104,7 @@ async function request<T = unknown>(path: string, config: RequestConfig = {}): P
     return json as T
   } catch (error) {
     if (timedOut) throw new ApiError('请求超时，请稍后重试', 'TIMEOUT', 408)
-    // fetch 只在网络层没连上时才 reject（断网、DNS 失败、后端没启动、被 CORS 拦下）。
-    // 此时浏览器给的是英文 TypeError('Failed to fetch')，Safari 甚至是 'Load failed'，
-    // 而调用方普遍是 `showToast('error', e.message)` —— 直接冒泡就是把一句英文丢给用户。
+    // 将 fetch 的网络层 TypeError 转换为统一的用户提示。
     if (error instanceof TypeError) {
       throw new ApiError('网络连接失败，请检查网络或确认服务已启动', 'NETWORK_ERROR', 0)
     }

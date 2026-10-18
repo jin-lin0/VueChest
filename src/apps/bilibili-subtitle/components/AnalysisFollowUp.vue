@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
 import { MessageCircle, Send, Sparkles } from '@lucide/vue'
-// 追问线程只在分析完成、用户开始追问之后才渲染，首帧用不上 markdown 渲染栈（47.7 KB gzip）
+
 import MarkdownView from '@/components/common/MarkdownViewLazy'
 import type { AnalysisQuestionThread } from '../types'
 

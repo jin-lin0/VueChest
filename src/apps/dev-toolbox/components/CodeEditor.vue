@@ -118,9 +118,7 @@ function onKeydown(e: KeyboardEvent) {
 </template>
 
 <style>
-/* 高亮调色：随浅/深色主题切换（限定在 .code-editor 内，避免污染全局）。
-   深色档同时挂在 :root.dark 与 .vc-dark 上，和 tokens.css 的口径保持一致：
-   前者是全站主题开关，后者是任意暗色作用域（主题岛）。 */
+/* 编辑器高亮按主题切换，同时支持全局暗色和 .vc-dark 局部作用域。 */
 .code-editor {
   --jt-fg: #24292e;
   --jt-key: #005cc5;
@@ -214,13 +212,7 @@ function onKeydown(e: KeyboardEvent) {
   box-shadow: 0 0 0 3px var(--jt-accent-soft);
 }
 
-/* highlight.js token 着色。
-   markdown.ts 全局引入了 github-dark 主题，那套 token 颜色是按 #0d1117 深底配的；
-   在浅色主题下编辑器的底是 --bg-input(#fff)，凡是没有被这里接管的 token 就会
-   原样落下来：.hljs-title 的 #d2a8ff 在白底上只有 1.95:1、.hljs-subst /.hljs-strong
-   的 #c9d1d9 基本等于看不见。所以必须把主题里出现的**每一组** token 都接管，
-   漏一组就等于漏一种颜色（curl 的 fetch() 就是这么被抓到的）。
-   下面严格按 github-dark.css 的分组逐组映射到 --jt-*。 */
+/* 覆盖 github-dark 的全部 token 分组，避免浅色编辑器继承深色主题的浅色文字。 */
 .code-editor .hljs {
   color: var(--jt-fg);
   background: transparent;

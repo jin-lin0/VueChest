@@ -7,16 +7,6 @@ import { flattenDocs } from '../../tree'
 
 const HELP_DIR = resolve(process.cwd(), 'src/docs/help')
 
-/**
- * 这组用例守的是**打包体积**，不是功能：
- *
- * 帮助中心原来用 `import x from './x.md?raw'` 把 13 篇文档正文全部内联进
- * Docs 路由 chunk（打包后 `tree-*.js` 29.9 KB gzip / 53.5 KB raw）。
- * 用户打开帮助中心只想看一篇，却要先下完 82 KB 源文本。
- *
- * 改成 `import.meta.glob` 动态导入后，正文只在选中那篇时才下载。
- * 只要有人把某篇改回内联 `content`，第一条用例就会变红。
- */
 describe('帮助中心文档注册表', () => {
   it('正文一律懒加载，不得内联 content', () => {
     const inlined = allHelpDocs.filter((doc) => doc.content !== undefined).map((doc) => doc.id)

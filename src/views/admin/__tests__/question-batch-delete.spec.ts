@@ -2,15 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, nextTick, type App } from 'vue'
 
-/**
- * 后台「批量删除题目」的请求形状与如实汇报。
- *
- * 原来这里是 `Promise.all(selectedIds.map((id) => api.delete(`/api/questions/${id}`)))`：
- * 勾中 N 道就发 N 个 HTTP + N 条 SQL；而且只要有一个 reject 就整体提示「批量删除失败」，
- * 可前面已经删掉的那些是真删了 —— 管理员看到「失败」去重试，列表又少几行。
- *
- * 这里从真实 UI 驱动：勾选复选框 → 点「批量删除」，断言只发一次批量请求，且不再逐个 DELETE。
- */
 
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),

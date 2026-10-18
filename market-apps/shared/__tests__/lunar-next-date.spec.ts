@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { findLunarDate, getLunarMonthDays, lunarToSolar, solarToLunar } from '../lunar'
 
-/**
- * `findLunarDate` 解决的是「农历某月三十」这类**不是每年都有**的日期。
- *
- * 每个农历月只有 29 或 30 天，而 30 日大约只在一半的年份存在（201 年里 12 个月各
- * 70~110 个年份只有 29 天）。`market-apps/special-days` 里「每年重复」的农历纪念日
- * 必须落到一个真实存在的年份上，否则 `lunarToSolar` 会抛错。
- */
 
 const WINDOW = 3
 

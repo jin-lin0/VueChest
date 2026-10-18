@@ -1,18 +1,8 @@
 import type { DocSection, DocItem } from '../types'
 
 /**
- * 帮助中心文档注册表：按分类组织。
- * 新增帮助文档时，在对应分类里追加一项（`id` 必须等于 .md 文件名），
- * 侧边栏与路由会自动同步（Docs.vue 通过 activeTab 切换展示）。
- *
- * 正文走 `import.meta.glob` 的**动态导入**，而不是 `import x from './x.md?raw'`。
- * 后者会把全部帮助文档的正文内联进 Docs 路由 chunk：13 篇合计 82 KB 源文本，
- * 打包后 `tree-*.js` 一个 chunk 就 29.9 KB gzip / 53.5 KB raw，用户打开帮助中心
- * 却只想看其中一篇。改成动态导入后，进页面只下载目录，选中哪篇才下载哪篇。
- *
- * 知识库注册表（`src/docs/knowledge/index.ts`）本来就是这个写法，这里只是对齐。
- * `src/docs/help/__tests__/index.spec.ts` 守着这条线：任何一篇重新变成内联
- * `content` 都会让测试变红。
+ * 帮助文档注册表，id 与 Markdown 文件名一致。
+ * 正文按需加载，避免目录入口打包全部文档。
  */
 const rawLoaders = import.meta.glob('./*.md', {
   query: '?raw',

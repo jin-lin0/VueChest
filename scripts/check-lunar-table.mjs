@@ -1,21 +1,7 @@
 #!/usr/bin/env node
 /**
- * 农历年表闸门（只读）。
- *
- *   node scripts/check-lunar-table.mjs
- *
- * 市场应用 `special-days` 曾把整个 `lunar-javascript`（435KB 单文件 UMD，Rollup 摇不了树）
- * 打进产物，323KB raw / 105.7KB gzip，而它只用到 4 个换算函数。改成
- * `market-apps/shared/lunar.ts` 自带的紧凑年表后产物约 25KB。
- *
- * 这份脚本守住这次改动，分三部分：
- *
- * 1. **逐日差分**：1900-01-31（农历 1900 正月初一）起每一天，自研换算结果必须与
- *    `lunar-javascript` 完全一致（含闰月）。这是「不再需要权威库」这句话的唯一依据。
- * 2. **往返自洽**：遍历每一个合法的 (年, 月, 日, 闰月) 组合，农历→公历→农历必须回到原值；
- *    并抽查「月内没有第 30 天」这类越界输入必须抛错，与权威库行为一致。
- * 3. **产物预算**：若 `dist/market-apps/special-days-app.js` 存在，则它必须不含
- *    权威库独有的能力（八字/运势/星宿……）且 gzip 体积在预算内——防止有人又把整库引回来。
+ * 逐日对照 lunar-javascript，校验农历年表、往返换算和非法输入。
+ * 若市场应用产物存在，同时检查包体预算。
  */
 
 import { createRequire } from 'node:module'
@@ -106,10 +92,7 @@ check(dayCount > 73000, `逐日差分只覆盖了 ${dayCount} 天，明显不足
 check(leapDayCount > 2000, `覆盖到的闰月天数只有 ${leapDayCount}，闰月分支未被充分走到`)
 check(lastLunarYear === 2100, `逐日差分终点落在农历 ${lastLunarYear} 年，应到 2100 年`)
 
-// ── 2. 往返自洽 + 越界输入 ─────────────────────────────────────────────────────
-// 月长以**权威库**为准（逐日试探到它抛错为止），再拿自研年表去比。
-// 反过来的话，一旦年表某个月的位数写错，循环会按错误天数去问权威库，
-// 直接抛栈退出——那样闸门虽然也是红的，却什么也说明不了。
+// 月长以参考库为准，避免错误年表同时决定测试范围与预期值。
 let roundTrips = 0
 let leapMonthsSeen = 0
 let monthLengthChecks = 0
@@ -204,13 +187,7 @@ check(roundTrips > 73000, `往返自洽只跑了 ${roundTrips} 次，覆盖不�
 check(leapMonthsSeen > 70, `只走到 ${leapMonthsSeen} 个闰月，闰月分支覆盖不足`)
 check(monthLengthChecks > 2400, `只核对了 ${monthLengthChecks} 个月长，覆盖不足（应约 2474）`)
 
-// ── 4. 农历日期落点（findLunarDate）─────────────────────────────────────────────
-// 「农历某月三十」不是每年都有，`special-days` 的「每年重复」需要把公历锚点落到之后
-// 第一个真实存在的年份。每个农历月都至少有 29 天，所以只有 30 日可能缺，遍历 30 日即可。
-//
-// 窗口按年表**自己声明的** 1900-2100 裁剪：lunar-javascript 还能算 2101、2102 年，
-// 自研年表到 2100 年为止（`LUNAR_SUPPORTED_RANGE`），超出时 `findLunarDate` 返回 null
-// 是契约行为，不能拿权威库的额外年份当差异。
+// 仅三十可能缺日；搜索窗口限制在本实现支持的年份内。
 const LUNAR_MAX_YEAR = 2100
 let datedWindow = 0
 for (let year = 1900; year <= LUNAR_MAX_YEAR; year += 1) {

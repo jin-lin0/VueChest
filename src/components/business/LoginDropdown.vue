@@ -22,11 +22,7 @@ function closeDropdown() {
   showDropdown.value = false
 }
 
-/**
- * 跳转前先收起面板。
- * 原来菜单容器上挂了 `@click` 兜底关闭，现在何时收起由 Popover 统一负责，
- * 内容区里的跳转需要自己显式关闭。
- */
+/** 导航前显式关闭 Popover。 */
 function goTo(path: string) {
   closeDropdown()
   void router.push(path)

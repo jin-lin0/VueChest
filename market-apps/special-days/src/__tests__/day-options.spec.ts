@@ -1,6 +1,4 @@
 // @vitest-environment happy-dom
-// 上面的 pragma 是必需的：store.ts 会经 `shared/bridge.ts` 读 `window.__VueChest__`，
-// 该模块在顶层就取 window，node 环境下直接 ReferenceError。
 import { describe, expect, it } from 'vitest'
 import {
   getLunarMonthDays,
@@ -16,14 +14,6 @@ import {
   type EditForm,
 } from '../store'
 
-/**
- * `special-days` 的日期换算与选项范围。
- *
- * 缺陷现场：`getMaxLunarDay()` 曾是无参的 `() => 30`，而 `saveDay()` 用「今年」当农历锚点。
- * 农历每个月至多 30 天、且只有约一半的年份有三十 —— **2026 年七月就只有 29 天**，
- * 于是「每年重复 + 农历七月三十」这条完全合理的记录，点保存会抛 RangeError 被
- * 事件处理器吞掉：弹窗不关、没有提示、什么都没发生。
- */
 
 const NOW = new Date(2026, 9, 15) // 2026-10-15，与当前日期一致
 

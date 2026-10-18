@@ -170,14 +170,7 @@ const reorderItems = (items: DisplayItem[]) => {
   workspaceStore.setActiveItems(items.map((item) => ({ appKey: item.appKey })))
 }
 
-/**
- * 键盘调整应用顺序（Alt+↑/↓）。
- *
- * 拖拽是唯一的排序入口对键盘用户不可用——而 `.drag-handle` 本身是个可聚焦按钮，
- * 只响应拖拽、按下去什么都不发生，属于「可聚焦但无动作」的可访问性缺陷
- * （WCAG 2.2 也要求在拖拽排序之外提供非拖拽替代操作，见 src/docs/knowledge/frontend/accessibility.md）。
- * 这里复用拖拽走的同一条更新路径 reorderItems，保证两种入口的结果完全一致。
- */
+/** 键盘排序复用拖拽的数据更新逻辑。 */
 const moveCardByKeyboard = (event: KeyboardEvent, appKey: string, delta: number) => {
   const index = displayItems.value.findIndex((item) => item.appKey === appKey)
   const next = moveWithin(displayItems.value, index, delta)
@@ -1591,9 +1584,7 @@ kbd {
 }
 
 .density-options button.active {
-  /* 选中态改用「强调底 + 品牌文字」，而不是「品牌填充 + 白字」：
-     白字在 #667eea 上只有 3.66:1（差 AA）；而 --accent-text 在深色主题会转亮，
-     只适合当文字色，不能反过来当白字的填充。 */
+  /* 选中态使用强调背景与主题文字色，避免白字压在过亮背景上。 */
   background: var(--accent-bg);
   color: var(--accent-text);
   box-shadow: inset 0 0 0 1px var(--accent-light);

@@ -6,26 +6,13 @@ const cache = new Map<string, unknown>()
 let initialized = false
 let initPromise: Promise<void> | null = null
 
-/**
- * 已经报过的落盘故障指纹。同一处故障只打扰用户一次 ——
- * `setStorage()` 是「每次改动都写一遍」的调用方式（音乐音量、工作区布局、应用市场开关……），
- * 配额打满之后每敲一下都会失败，不去重就是满屏红条把界面糊住。
- */
+/** 同一持久化故障只提示一次，避免高频写入重复报错。 */
 const reportedFaults = new Set<string>()
 
-/**
- * 启动快照是否读取失败。此时只保留内存改动，避免数据库恢复后，
- * 把基于空缓存生成的默认配置覆盖到尚未读出的用户数据上。
- */
+/** 启动读取失败时禁止落盘，避免空缓存覆盖尚未读出的原有数据。 */
 let degraded = false
 
-/**
- * 把落盘故障送到用户眼前。
- *
- * 这些失败原先只进 `console.error`：界面一切正常，刷新之后新数据没了。
- * `useToast()` 在宿主注册前会先排队（见 useToast.ts），所以启动期的失败也送得到。
- * duration 给长一些：这几句话要求用户看懂并采取动作，3 秒读不完。
- */
+/** 启动期故障通过 Toast 队列补发，并延长展示时间。 */
 function reportStorageFault(fingerprint: string, message: string): void {
   if (reportedFaults.has(fingerprint)) return
   reportedFaults.add(fingerprint)
@@ -126,10 +113,7 @@ export const exportAllData = async (): Promise<Record<string, unknown>> => {
 
 export const importAllData = async (data: Record<string, unknown>): Promise<void> => {
   const snapshot = toPlainObject(data)
-  // 先落盘、再改内存缓存 —— 与上面的 applyStoragePatch 是同一条约定。
-  // 反过来（先 cache.clear() 再 await dbImportAll）的后果是：落盘失败时内存里已经是
-  // **从未持久化**的新数据、磁盘上仍是旧数据，而唯一调用方 WorkspaceHome.handleImport()
-  // 只在成功时刷新页面，于是用户会继续在假数据上操作。
+  // 持久化成功后再替换缓存，失败时保留原有内存数据。
   await dbImportAll(snapshot)
   cache.clear()
   Object.entries(snapshot).forEach(([key, value]) => {

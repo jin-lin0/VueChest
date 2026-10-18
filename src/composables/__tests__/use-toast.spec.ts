@@ -1,15 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * 提示通道自己也会「静默丢消息」。
- *
- * `useToast()` 原来写的是 `host?.addToast(...)`：宿主（App.vue 的 onMounted 里注册）还没
- * 挂载时，调用会被无声吞掉 —— 不是延后、不是报错，是**彻底不存在**。
- * 而 `main.ts` 的 `bootstrap()` 在 `app.mount()` 之前就 await 了 `initStorage()`、
- * `initAuth()`，启动期恰好是最需要把「本地数据库打不开」这类话送到用户眼前的时刻。
- *
- * 这些用例锁的是行为本身：注册前发出的提示必须留着，并在注册那一刻按原顺序补发。
- */
 
 beforeEach(() => {
   // 模块级单例（host / pending）跨用例会残留，每个用例都重新加载模块

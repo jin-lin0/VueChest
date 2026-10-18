@@ -1,21 +1,6 @@
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * `dbGetAll()` 必须给出**一致快照**。
- *
- * 旧写法是 `await db.getAllKeys(store)` 再 `await db.getAll(store)` —— 在 idb 里这是
- * **两个独立事务**，各自取一次当前状态。中间只要有一次写入落地，两个数组就会错位：
- *
- *     keys   = [k1, k2, k3, k4, k5]      ← 写入前读的
- *     values = [v0, v1, v2, v3, v4, v5]  ← 写入后读的（多了一条排在最前的 k0）
- *     → { k1: v0, k2: v1, k3: v2, k4: v3, k5: v4 }   每个 key 都拿到了别人的值
- *
- * 这不是理论竞态：同一标签页里 `setStorage()`（音乐播放器音量、工作区配置的 watch、
- * 应用市场开关……）随时可能落库，而 `collectSandboxStorage()` 恰好在打开市场应用时
- * 走 `dbGetAll()`。按 key 前缀切快照的沙箱存储，错位后会把**别的应用的值**注入到
- * 本应用名下，直接破坏 `sandbox-bridge.ts` 开头声明的「应用之间互相读写数据」隔离。
- */
 
 const STORE = 'key-value'
 const DB_NAME = 'vue-chest-db'
@@ -24,12 +9,8 @@ const DB_NAME = 'vue-chest-db'
 const hooks: { beforeValuesRead?: () => Promise<void> } = {}
 
 /**
- * 为什么要 mock `idb`：缺陷本身就是「values 走了一次**单独的** `db.getAll()` 事务」。
- * 这个缝在真实 IndexedDB 上无法从外部精确命中（写入必须恰好落在两次读之间），
- * 所以这里只在 `openDB` 外面套一层代理，把「读完 keys、即将读 values」这一刻暴露出来，
- * 其余 API 全部原样委托给真实实现（fake-indexeddb + idb），不改变被测代码的行为。
- *
- * 修好之后 `dbGetAll` 只走 `db.transaction()`，`db.getAll` 不再被调用 —— 缝自然消失。
+ * 在独立读取 keys 与 values 之间插入写入，其余操作交给真实 idb 和 fake-indexeddb。
+ * 同一事务读取应避免该快照错位。
  */
 vi.mock('idb', async (importOriginal) => {
   const actual = await importOriginal<typeof import('idb')>()

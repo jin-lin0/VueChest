@@ -10,15 +10,7 @@ import { useToast } from '@/composables/useToast'
 import { loadBuiltinAppCommandProviders } from '@/apps/app-commands'
 import type { AppCommandOutcome, AppCommandProvider } from '@/lib/app-command'
 
-/**
- * 命令面板的**重逻辑**部分：命令目录、App 快捷操作、文档检索与键盘导航。
- *
- * 它由 CommandPalette.vue（热键壳）通过 defineAsyncComponent 懒加载，自己不在入口 chunk 里，
- * 因此这里可以放心直接依赖 market / workspace store 与各 App 的 commands 模块。
- *
- * 组件由父级常驻挂载（壳一旦渲染就一直在），开合用 `open` prop 驱动而不是 v-if 挂载/卸载：
- * 这样 `<Transition>` 的入场与离场动画都和「面板本身驻留、只切 isOpen」的老实现完全一致。
- */
+/** 面板异步加载，显隐由父级 open 控制。 */
 const props = defineProps<{ open: boolean; initialQuery: string }>()
 const emit = defineEmits<{ close: [] }>()
 

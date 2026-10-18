@@ -84,12 +84,7 @@ const panelNeedsStock = (panel: ResearchPanel) =>
   panel !== 'overview' && panel !== 'portfolio' && panel !== 'westockDiscover'
 const panelIds = new Set<ResearchPanel>(panelItems.map((item) => item.id))
 
-/**
- * 空态里的快捷选股入口。用户第一次进来往往既没有自选也不知道选什么，
- * 直接给几个含义直白的条件，比让他先开「选股发现」再翻下拉框少两层点击。
- * preset 走 URL query 而不是内存状态：面板是异步组件，内存传值会丢；
- * 而且这样刷新、分享链接都能复现同一个条件。
- */
+/** 选股预设通过 URL query 传递，支持异步面板加载、刷新和分享。 */
 const QUICK_DISCOVER = DISCOVER_QUICK_ENTRIES
 
 /** 跳到选股发现并预选一个条件（走 query，保证异步面板能收到）。 */

@@ -1,15 +1,6 @@
 /**
- * 农历换算 —— 市场应用共享的零依赖实现。
- *
- * 为什么不直接用 `lunar-javascript`：它是单文件 UMD（435KB，`main: index.js`，
- * 既没有 `module`/`exports`，也没有 `sideEffects: false`），Rollup 完全摇不了树。
- * 市场应用 special-days 只用得到下面这 4 个函数，却会把整库（八字、运势、星宿、
- * 数九、节气、节日……）打进产物：323KB raw / 105.7KB gzip，而它是默认安装的应用之一。
- * 换成自带年表后产物约 25KB，且不再需要任何运行时依赖。
- *
- * 年表由 `scripts/generate-lunar-table.mjs` 从 `lunar-javascript` 推算生成，
- * 并由 `scripts/check-lunar-table.mjs` 对 1900-2100 的**每一天**逐日差分校验——
- * 也就是说这份实现与权威库逐日等价，只是不再把权威库发给用户。
+ * 农历 1900—2100 年的紧凑年表实现，避免市场应用加载完整历法库。
+ * 年表由生成脚本从 lunar-javascript 推算，并通过逐日对照校验。
  */
 
 export interface LunarDate {
@@ -242,17 +233,8 @@ export function getLunarMonthDays(year: number, month: number, isLeapMonth = fal
 }
 
 /**
- * 从 `fromYear` 年起，在 `withinYears` 年窗口内找第一个真实存在的农历日期，返回对应的公历日期。
- *
- * 「农历某月三十」不是每年都有：每个农历月只有 29 或 30 天，1900-2100 年间各月都有
- * 70~110 个年份只有 29 天。`special-days` 里「每年重复」的农历纪念日需要一个公历锚点，
- * 直接拿今年去换算会抛错（**2026 年七月就只有 29 天**），所以锚点要落到之后第一个真实
- * 存在的年份。窗口按年计数：`fromYear … fromYear + withinYears - 1`。
- *
- * 越界年份与非法月/日一律返回 `null`，**永不抛错**——调用方是表单选项与保存路径，
- * 不能因为一条脏数据把整块 UI 打崩。窗口只要碰到超出年表范围的年份（年表覆盖
- * 1900-2100，超出时 `monthList` 会抛错）也直接返回 `null`：年份是逐年递增扫描的，
- * 后面的年份同样超范围，没有继续找的意义。
+ * 在 fromYear 起的 withinYears 年内寻找第一个存在的农历日期。
+ * 用于每年重复、但并非每年存在的日期（如某月三十）；非法或越界输入返回 null。
  */
 export function findLunarDate(
   fromYear: number,

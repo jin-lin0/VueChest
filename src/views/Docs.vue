@@ -715,9 +715,7 @@ function onContentClick(e: MouseEvent) {
 .docs-tab:hover {
   color: var(--text-primary);
 }
-/* 选中的标签页是实心品牌底 + 白字。--accent(#667eea) 上白字只有 3.66:1，
-   不满足 14px 正文的 4.5:1；换成渐变末端 --accent-strong(#764ba2) → 6.37:1。
-   底色变深一档，"选中"的视觉语义不变。 */
+/* 选中标签配白字，使用固定深色背景保证对比度。 */
 .docs-tab.active {
   background: var(--accent-strong);
   color: #fff;

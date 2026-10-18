@@ -1,17 +1,4 @@
-/* ============================================================
-   VueChest — 全局设计 Token（Design Tokens）
-   ------------------------------------------------------------
-   用法：所有组件用 var(--xxx) 取代硬编码颜色/圆角/阴影。
-   浅色为默认（:root），深色通过 <html class="dark"> 切换
-   （AdminLayout 已用 documentElement.classList.toggle('dark') 触发）。
-   此外，任何元素加 .vc-dark 即成为「强制暗色作用域」——
-   其子树内全局 token 全部取暗色值，无需逐个组件适配
-   （用于音乐播放器等自带暗色皮肤的模块）。
-
-   词汇沿用项目既有命名（--text-primary / --accent / --bg-card /
-   --border-light / --shadow-sm / --radius-sm …），并在此基础上补全
-   品牌渐变、圆角阶梯、阴影阶梯、间距阶梯。
-   ============================================================ */
+/* 全局设计变量：默认浅色，:root.dark 和 .vc-dark 子树使用暗色。 */
 
 :root {
   /* ---------- 品牌 / 主色 ---------- */
@@ -139,20 +126,10 @@
   --scrollbar-thumb: rgba(15, 23, 42, 0.2);
   --scrollbar-thumb-hover: rgba(15, 23, 42, 0.34);
 
-  /* ---------- 层级（z-index）约定（全局唯一出处，仅此一处定义）----------
-     全局顶层覆盖件的稳定分层。任何弹窗/抽屉/下拉自定义 z-index 都不得越过 --z-confirm。
-     修改变量（修改层级只动这里）：
-       --z-drawer        1000  抽屉 overlay（调用处可用 --vc-drawer-z 覆盖）
-       --z-modal         1100  模态 overlay（调用处可用 --vc-modal-z 覆盖）
-       --z-custom-select 2000  下拉浮层（已 Teleport 到 body）
-       --z-confirm       3000  全局单例确认框 ConfirmDialog（盖在任意 Modal/Drawer 之上）
-       --z-toast         9999  Toast / 路由加载条（非阻塞通知，最高）
-     硬规则：全局确认框独占 --z-confirm(3000) 层。
-       ⚠️ 切勿把 --vc-modal-z / --vc-drawer-z / 下拉浮层设到 ≥3000，否则确认框被压后。
-           事故：数据管理 Modal 在 Home.vue 设 --vc-modal-z:2000 与确认框旧值 2000 打平，
-           Modal 走 Teleport to="body" 后于 #app 子树挂载 → DOM 顺序取胜 → 确认框被盖。
-           现 ConfirmDialog 固定 3000、Modal/Drawer/CustomSelect 改读下方 --z-* 变量，
-           此约定防止复发。 */
+  /*
+   * 覆盖层级统一在此定义。Modal、Drawer 和下拉浮层必须低于 --z-confirm，
+   * 避免全局确认框被 Teleport 内容遮挡；非阻塞 Toast 使用更高层级。
+   */
   --z-drawer: 1000;
   --z-modal: 1100;
   --z-custom-select: 2000;

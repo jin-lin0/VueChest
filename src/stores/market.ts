@@ -175,13 +175,7 @@ interface InstallMeta {
   capabilities: SandboxPermission[]
 }
 
-/**
- * 一次「需要用户确认」的权限请求。
- *
- * 安装时列出应用声明的全部权限；更新时只列出**相对已安装版本新增**的权限。
- * 两者都为空时不会产生请求（见 buildPermissionConsent），因此声明 0 权限的
- * 应用安装 / 更新都不会打扰用户。
- */
+/** 安装时确认全部权限，更新时仅确认新增权限；无权限变更则无需确认。 */
 export interface MarketPermissionConsent {
   appId: number
   appName: string
@@ -197,12 +191,7 @@ export interface MarketPermissionConsent {
   addedCapabilities: SandboxPermission[]
 }
 
-/**
- * 用户在权限弹窗上点了「取消」。
- *
- * 与真正的失败区分开：取消是用户的主动选择，不该在页面上留下红色报错，
- * 也不该在「应用更新」页记一条 updateError。调用方用 instanceof 判断即可。
- */
+/** 用户取消权限确认；调用方应与安装失败区分，不显示错误提示。 */
 export class PermissionCancelledError extends Error {
   constructor(action: 'install' | 'update') {
     super(action === 'update' ? '已取消更新' : '已取消安装')
@@ -227,33 +216,15 @@ export const useMarketStore = defineStore('market', () => {
   const autoUpdateEnabled = ref(getStorage<boolean>(AUTO_UPDATE_KEY, false) === true)
   let updateCheckPromise: Promise<AppUpdateInfo[]> | null = null
 
-  /**
-   * 列表请求的「只认最后一次」守卫。
-   *
-   * 搜索框是边打字边请求的，先发的请求不保证先返回：敲「周」再敲「林」，
-   * 若「周」后到，列表会变回周杰伦的结果，而输入框写的是林俊杰。
-   * 旧请求走 catch 还会把新结果清空、走 finally 会把仍在飞的 loading 提前熄掉。
-   * 因此成功、失败、收尾三条路径都要验票。见 utils/common 的 createLatestOnly。
-   */
+  /** 每次加载独立校验时序，旧请求不得更新结果、错误或 loading。 */
   const beginAppsFetch = createLatestOnly()
 
-  /**
-   * 待用户确认的权限请求。由 store 持有、由全局的 MarketPermissionDialog 渲染。
-   *
-   * 刻意放在 store 而不是各视图里：权限确认必须是「不确认就走不下去」的硬约束。
-   * 之前它只写在应用详情页，结果市场列表页和工作区模板都能绕过弹窗直接授权。
-   */
+  /** 权限确认由 store 统一控制，所有安装入口共用同一流程。 */
   const pendingPermissionConsent = ref<MarketPermissionConsent | null>(null)
   let consentResolver: ((approved: boolean) => void) | null = null
   const consentQueue: { details: MarketPermissionConsent; resolve: (ok: boolean) => void }[] = []
 
-  /**
-   * 挂起当前操作等用户答复；resolvePermissionConsent 负责结算。
-   *
-   * 同一时刻只展示一个弹窗：批量恢复工作区模板、跨设备同步等场景会并发发起
-   * 多个安装，若后来的直接覆盖 resolver，先来的 Promise 就永远挂起；若直接
-   * 拒绝后来的，用户就只确认得上第一个。所以排队，逐个确认。
-   */
+  /** 权限请求排队展示，避免并发安装覆盖已有 resolver。 */
   function requestPermissionConsent(details: MarketPermissionConsent): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
       if (consentResolver) {
@@ -282,13 +253,7 @@ export const useMarketStore = defineStore('market', () => {
     }
   }
 
-  /**
-   * 判断本次操作是否需要用户确认；返回 null 表示无需确认，可直接进行。
-   *
-   * - 安装：应用声明了任何权限（联网域名或能力权限）才确认。
-   *   声明 0 权限的应用不该让用户为一次多余的点击付出代价。
-   * - 更新：只在**新增**了权限时确认 —— 用户当初已经同意了旧版本的权限集。
-   */
+  /** 安装确认全部权限，更新仅确认新增权限；返回 null 表示无需确认。 */
   function buildPermissionConsent(input: {
     appId: number
     meta: InstallMeta
@@ -319,15 +284,7 @@ export const useMarketStore = defineStore('market', () => {
     }
   }
 
-  /**
-   * 安装 / 更新前的权限闸门。不通过就抛错，调用方拿不到 download 对象，
-   * 因此**任何入口都不可能绕过**这一步。
-   *
-   * consent 的两种模式：
-   * - 'ask'  弹窗问用户；拒绝则抛「已取消」。
-   * - 'skip' 不弹窗（后台自动更新等无人值守场景）；需要确认时直接抛错，
-   *          让调用方把「需手动确认」记录到 updateErrors，而不是静默授权。
-   */
+  /** 下载前完成权限检查。ask 模式请求确认；skip 模式遇到新增权限直接失败。 */
   async function ensureConsent(
     appId: number,
     meta: InstallMeta,
@@ -344,12 +301,7 @@ export const useMarketStore = defineStore('market', () => {
     if (!approved) throw new PermissionCancelledError(action)
   }
 
-  /**
-   * 取安装 / 更新所需的元数据，**不下载 bundle**。
-   *
-   * 权限确认必须发生在真正下载之前：用户点了取消就不该白下几百 KB
-   * （最大的内置应用包有 300KB+）。
-   */
+  /** 先读取元数据进行权限确认，确认通过后再下载应用包。 */
   async function fetchInstallMeta(appId: number, versionId?: number): Promise<InstallMeta> {
     const [downloadRes, detail] = await Promise.all([
       api.get<{
@@ -515,15 +467,7 @@ export const useMarketStore = defineStore('market', () => {
     }
   }
 
-  /**
-   * 批量取应用列表项（`GET /api/market/apps?ids=...`）。
-   *
-   * 为什么不用 `fetchAppDetail` 循环：首页每次挂载都走 `refreshInstalledMeta()`，
-   * 那个函数带 `force: true`，会**绕过** 30 分钟的检查间隔，于是每回到首页都重查一遍。
-   * 之前是每个已装应用发一个 `GET /api/market/apps/:id`，装 8 个就是 8 个 HTTP + 8 条 SQL，
-   * 实测墙钟 ~262ms（连接池上限 5，只能分批排队）；一次批量查询只要 ~67ms。
-   * 另外详情接口还带着 readme / screenshots / fileUrl，更新检查一个都用不上。
-   */
+  /** 批量查询已安装应用的更新元信息，避免逐个请求完整详情。 */
   async function fetchAppsByIds(ids: number[]): Promise<MarketAppItem[]> {
     const unique = [...new Set(ids.filter((id) => Number.isInteger(id) && id > 0))]
     const items: MarketAppItem[] = []
@@ -539,9 +483,7 @@ export const useMarketStore = defineStore('market', () => {
     return items
   }
 
-  // 确保指定 app 的 bundle 已缓存到本地；没有则先从服务端下载并缓存。
-  // 供 MarketAppSandbox 在本地无缓存时（如跨设备 / 清过 storage）按需拉取，
-  // 使 /market-installed/:id 深度链接始终可用。
+  // 按需补齐本地应用包缓存，支持跨设备恢复和已安装应用深度链接。
   async function ensureBundle(appId: number): Promise<string | null> {
     const cached = getStorage<string>(`${BUNDLE_KEY_PREFIX}${appId}`, '')
     if (cached) return cached
@@ -598,8 +540,7 @@ export const useMarketStore = defineStore('market', () => {
     const ownerToken = auth.token
     updatingIds.value = [...updatingIds.value, appId]
     try {
-      // 先取元数据 → 权限闸门 → 才下载包。顺序不能颠倒：
-      // 用户点了「取消」就不该白下几百 KB 的 bundle。
+      // 权限确认通过后再下载应用包。
       const meta = await fetchInstallMeta(appId)
       await ensureConsent(appId, meta, 'install', null, 'ask')
       const download = await fetchBundleAndEntry(appId, meta)
@@ -832,14 +773,7 @@ export const useMarketStore = defineStore('market', () => {
     await api.put(`/api/market/apps/${appId}/versions/${versionId}/status`, { status })
   }
 
-  /**
-   * 安装指定版本 / 更新到最新版。
-   *
-   * options.consent:
-   * - 'ask'（默认）弹窗请求用户确认新增权限，拒绝则中止；
-   * - 'skip' 无人值守场景（后台自动更新）用，需要确认时直接失败并写入
-   *   updateErrors，绝不静默授权。
-   */
+  /** 安装或更新版本。ask 模式确认新增权限；skip 模式不弹窗，需确认时失败。 */
   async function replaceVersion(
     appId: number,
     versionId: number | undefined,
@@ -943,7 +877,7 @@ export const useMarketStore = defineStore('market', () => {
         // 一次批量查询代替「每个应用一个请求」，见 fetchAppsByIds 的注释
         details = await fetchAppsByIds(requestedIds)
       } catch {
-        // 整批失败（断网 / 服务端 5xx）与原来「一个都没成功」同义
+        // 批量查询失败时保留已有更新列表和应用元信息。
         updateCheckError.value = '检查更新失败，请确认网络或服务状态后重试'
         return availableUpdates.value
       }
@@ -1011,14 +945,7 @@ export const useMarketStore = defineStore('market', () => {
     return updates
   }
 
-  /**
-   * 跨设备同步：根据服务端的 App ID 列表，下载本地缺失的 App
-   * 并发下载，比串行快很多
-   *
-   * 恢复安装同样要过权限闸门：服务端列表只能证明「这台设备上装过」，
-   * 不能证明当前这台设备确认过权限。声明了权限的应用会逐个弹窗，
-   * 由 consentQueue 保证同时只展示一个。
-   */
+  /** 并发恢复缺失应用；仍需在当前设备逐个确认权限。 */
   async function syncFromServer(serverAppIds: number[]) {
     const auth = useAuthStore()
     const ownerToken = auth.token
@@ -1045,9 +972,7 @@ export const useMarketStore = defineStore('market', () => {
     if (auth.token === ownerToken) syncAuthInstalled()
   }
 
-  // 跨设备同步：以服务端实时列表（GET /api/auth/installed-apps）为唯一真源，
-  // 补齐本地缺失 / 推送本地独有，不再信任 auth_user_info 里的 installedApps 缓存，
-  // 从根上避免因缓存陈旧导致已卸载应用被反复拉回。失败则跳过，不阻塞启动 / 登录。
+  // 以服务端安装列表为准同步差异；失败时跳过，避免阻塞启动。
   async function syncWithServer() {
     const auth = useAuthStore()
     if (!auth.token || !auth.user) return

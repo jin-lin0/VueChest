@@ -441,9 +441,7 @@ onActivated(reloadProfile)
 
 <style scoped>
 .game-center {
-  /* 这一整页是常暗「主题岛」：底色 #0c1019 由本页自己给，没有打 .vc-dark，
-     所以全局的浅色档灰阶在这里是反的。次级文字统一走本岛的这条档位：
-     #8795aa 在最暗的记录卡底（#191e2a）上 5.48:1，原 #75849e 只有 4.40:1。 */
+  /* 本页背景固定为暗色，次级文字使用本页配色，避免继承全局浅色主题值。 */
   --gc-muted: #8795aa;
   position: relative;
   min-height: 100%;

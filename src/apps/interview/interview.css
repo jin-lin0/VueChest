@@ -5,9 +5,7 @@
   --quiz-coral: #f47a69;
   --quiz-amber: #e9a23b;
   --quiz-teal: #168c9a;
-  /* 「文字档」：以上是填充/图标色，直接当文字落在同色 10~13% 的染色底上只有
-     1.9~3.7:1（如题号徽标、「01/JS/AI」这类标签）。这里给每个色相一个同色相、
-     刚好过 AA 的更深档，只在 color: 上用；background / border 仍用上面的原色。 */
+  /* 文字使用独立语义色，以满足染色背景上的对比度；填充和描边保留原色。 */
   --quiz-blue-text: #374cf8;
   --quiz-cyan-text: #16727b;
   --quiz-coral-text: #c7250f;

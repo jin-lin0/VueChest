@@ -64,9 +64,7 @@ for (const app of apps) {
       }
       const dest = join(outputDir, `${app.name}-${file}`)
       writeFileSync(dest, code, 'utf-8')
-      // 尺寸直接取自落盘文件，而不是 code.length：后者是 UTF-16 码元数，而产物里满是
-      // 中文标签与 emoji，一个码元在 UTF-8 下要占 3~4 字节。按 code.length 报会把 CJK 密集的
-      // App 少报 1%~6%（ai-notes 就少报了 6.5%），让「产物到底多大」这个判断失去意义。
+      // 按文件字节数报告体积；字符串 length 计算的是 UTF-16 码元数。
       const bytes = statSync(dest).size
       console.log(`  → ${dest} (${bytes} bytes${cssContent ? '，含内联 CSS' : ''})`)
     }

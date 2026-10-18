@@ -3,16 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { usePomodoroStore } from '../store'
 
-/**
- * 复现 Chrome 88+ 的后台定时器节流：页面隐藏超过 5 分钟、链式回调计数 ≥5、
- * 且页面静音 30 秒后，浏览器对定时器改为**每分钟只检查一次**
- * （见 https://developer.chrome.com/blog/timer-throttling-in-chrome-88）。
- *
- * 手法：只接管 setInterval 的**注册**，回调仍是应用自己那个函数；
- * 墙钟（Date.now）由测试推进，回调按文档所述的频率投递。
- * 于是「墙钟走多久」与「回调被唤醒几次」成为两个独立变量 ——
- * 这正是真实浏览器节流下的处境，而测试完全确定、不依赖机器速度。
- */
+/** 独立推进墙钟和回调次数，模拟后台节流而不依赖真实等待。 */
 let now = 0
 const live = new Set<() => void>()
 let realSetInterval: typeof globalThis.setInterval

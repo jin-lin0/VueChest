@@ -22,7 +22,7 @@ import { getStorage, setStorage, removeStorage } from '@/lib/storage'
 import { copyToClipboard } from '@/utils/clipboard'
 import { downloadFile } from '@/utils/common'
 import CustomSelect from '@/components/common/CustomSelect.vue'
-// 分析结果只会在用户点了「开始分析」之后出现，首帧用不上 markdown 渲染栈（47.7 KB gzip）
+
 import MarkdownView from '@/components/common/MarkdownViewLazy'
 import Tooltip from '@/components/common/Tooltip.vue'
 import { useBilibiliAnalysis } from './composables/useBilibiliAnalysis'
@@ -856,10 +856,7 @@ textarea:focus-visible {
   color: var(--accent-text);
 }
 
-/* 步骤序号是「浅色染色胶囊里的一颗实心品牌药丸」，白字必须落在够深的底上：
-   --accent(#667eea) 只有 3.66:1（字号 10px，够 UI 元件不够文字）。
-   改用渐变末端 --accent-strong(#764ba2)：同品牌色相，白字 6.37:1，
-   且它只在 :root 声明、不随主题变，深浅两个主题下都成立。 */
+/* 实心徽标配白字，使用固定深色背景以保证两种主题下的对比度。 */
 .workflow-status li.active b {
   background: var(--accent-strong);
   color: var(--accent-contrast);
@@ -1471,8 +1468,6 @@ textarea:focus-visible {
   color: var(--accent-text);
 }
 
-/* 同上：外层是 --accent-bg + --accent-text 的浅色胶囊，内层计数是实心药丸，
-   白字压 --accent 只有 3.66:1，同样换成 --accent-strong（6.37:1）。 */
 .analysis-types button.active span {
   background: var(--accent-strong);
   color: var(--accent-contrast);

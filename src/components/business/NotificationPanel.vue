@@ -14,14 +14,7 @@ import {
   type AppNotification,
 } from '@/lib/notification-format'
 
-/**
- * 通知面板内容（头/体/脚三段）。
- *
- * 本身不决定「长什么样、挂在哪」——容器由 NotificationCenter 按视口选择：
- * - `popover`：宽屏下拉浮层，自己带圆角/阴影/宽度，并承担 dialog 语义；
- * - `sheet`：窄屏贴底抽屉的内容，尺寸与 dialog 语义都由外层 Drawer 提供，
- *   这里只负责撑满和内部滚动。
- */
+/** 宽屏以 popover 渲染，窄屏由外层 Drawer 提供尺寸与 dialog 语义。 */
 defineOptions({ name: 'NotificationPanel' })
 
 withDefaults(defineProps<{ variant?: 'popover' | 'sheet' }>(), { variant: 'popover' })
@@ -41,13 +34,7 @@ const previewItems = computed(() => store.items.slice(0, PREVIEW_LIMIT))
 const hasMoreThanPreview = computed(() => store.pagination.total > previewItems.value.length)
 /** 首次打开还没拿到数据时才显示骨架，避免已有内容时闪一下 */
 const showSkeleton = computed(() => store.isLoading && !store.isInitialized)
-/**
- * 只有「首屏拉取失败」才用错误态顶掉空态。
- *
- * 判据绑 `isInitialized` 而不是 `items.length`：`loadError` 挂在共享 store 上，
- * 通知中心页的 loadMore 失败也会写它。若只看列表是否为空，一次陈旧错误就会把
- * 这里本来正确的空态顶掉。真正「一条都没成功拿到过」时才该显示错误。
- */
+/** 仅首次加载失败显示错误态，避免共享 store 的后续请求错误覆盖有效空态。 */
 const showError = computed(() => Boolean(store.loadError) && !store.isInitialized)
 
 /** 面板内联重试：load() 会先清掉 loadError 再重新拉第一页 */

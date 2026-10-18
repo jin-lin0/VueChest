@@ -1,10 +1,5 @@
 // @vitest-environment happy-dom
-/**
- * 沙箱页（`public/sandbox.html`）是宿主与第三方应用之间**唯一**的协议实现，
- * 之前一行测试都没有。这里把那段内联脚本原样取出来、在 happy-dom 里真跑一遍，
- * 覆盖「宿主 → 沙箱」的全部消息，重点是 error：
- * 少一个分支就会把它丢掉，用户看到一个永远空白、没有任何解释的 iframe。
- */
+
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'

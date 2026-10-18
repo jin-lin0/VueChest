@@ -1,19 +1,8 @@
 import { ref, computed, onScopeDispose } from 'vue'
 
 /**
- * 验证码倒计时：点击获取后 N 秒内禁用按钮并逐秒倒数。
- * 返回：
- *  - count：剩余秒数（0 表示未激活）
- *  - active：是否处于倒计时中
- *  - start：以给定秒数启动倒计时（默认 defaultSeconds）
- * 组件/作用域卸载时自动清理定时器。
- *
- * 剩余秒数一律由「截止时刻 − 当前墙钟」算出，而不是每收到一次定时器回调就减 1：
- * 标签页隐藏后浏览器会节流定时器（Chrome 88+ 在隐藏超过 5 分钟、链式回调计数 ≥5
- * 且页面静音 30 秒后，改为每分钟才检查一次，
- * https://developer.chrome.com/blog/timer-throttling-in-chrome-88）。
- * 按回调次数计数，会让「切到邮箱看一眼验证码再回来」的用户发现按钮仍然长时间禁用 ——
- * 服务端早已允许重发，界面却还在拦。同仓 MusicPlayer 的睡眠定时器用的就是这个写法。
+ * 验证码重发倒计时：按截止时刻计算剩余秒数，避免后台节流延长禁用时间。
+ * 组件作用域卸载时清理定时器。
  */
 export function useCountdown(defaultSeconds = 60) {
   const count = ref(0)
