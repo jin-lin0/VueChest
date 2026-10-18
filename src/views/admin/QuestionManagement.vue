@@ -294,13 +294,25 @@ async function deleteQuestion(id: number) {
 async function batchDelete() {
   const ok = await confirm(`确定删除 ${selectedIds.value.length} 道题目？`)
   if (!ok) return
+  const requested = selectedIds.value.length
   try {
-    await Promise.all(selectedIds.value.map((id) => api.delete(`/api/questions/${id}`)))
-    showToast('success', `已删除 ${selectedIds.value.length} 道题目`)
+    // 一次请求删完。原来这里是 `Promise.all(ids.map((id) => api.delete(...)))`：
+    // 除了 N 个 HTTP + N 条 SQL，只要有一个 reject 就整体提示「批量删除失败」，
+    // 可前面已经删掉的那些是真删了 —— 管理员看到「失败」去重试，列表又少几行。
+    // 现在由服务端返回真实删除行数，如实汇报。
+    const res = await api.post<{ data: { requested: number; deleted: number } }>(
+      '/api/questions/batch-delete',
+      { ids: selectedIds.value },
+    )
+    const deleted = res.data?.deleted ?? requested
+    if (deleted === requested) showToast('success', `已删除 ${deleted} 道题目`)
+    else showToast('warning', `已删除 ${deleted} 道题目，另有 ${requested - deleted} 道已不存在`)
     selectedIds.value = []
+  } catch (e) {
+    // 失败也要刷新：服务端可能已经删掉了一部分，界面必须回到真实状态
+    showToast('error', e instanceof Error ? e.message : '批量删除失败')
+  } finally {
     await fetchQuestions()
-  } catch {
-    showToast('error', '批量删除失败')
   }
 }
 </script>
