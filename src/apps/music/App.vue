@@ -210,6 +210,9 @@ onMounted(async () => {
 /* ===== Theme Variables ===== */
 .music-page {
   --accent-light: #a29bfe;
+  /* 主题岛必须自带「品牌色当文字」的档位：这里是常暗底（#141423），
+     若沿用全局浅色档 #4d61cb 只有 3.37:1。紫色 #ada6fe 在本岛各层底上 ≥4.76:1。 */
+  --accent-text: #ada6fe;
   --accent-gradient: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
   --accent-gradient-vivid: linear-gradient(135deg, #6c5ce7 0%, #fd79a8 100%);
   --bg: #141423;

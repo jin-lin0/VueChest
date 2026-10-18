@@ -203,13 +203,15 @@ function swap() {
   border-radius: var(--radius-xs);
   border: 1px solid var(--border-light);
 }
+/* 图例：文字走语义文字档（#16a34a / #dc2626 只按白底算过，分别是 3.30 / 4.83:1，
+   前者不达标）；边框是装饰性的非文字元素，继续用填充档。 */
 .lg.added {
-  color: #16a34a;
-  border-color: #16a34a;
+  color: var(--success-text);
+  border-color: var(--success);
 }
 .lg.removed {
-  color: #dc2626;
-  border-color: #dc2626;
+  color: var(--danger-text);
+  border-color: var(--danger);
 }
 .lg.unchanged {
   color: var(--text-muted);
@@ -241,19 +243,23 @@ function swap() {
 .dline .txt {
   flex: 1;
 }
+/* 差异高亮的「增/删」行：底色是自己染的 12% 同色。
+   原来的字面色（#15803d / #b91c1c / 符号 #16a34a / #dc2626）都只按白底算过，
+   落在染色底上时 #16a34a 只有 2.74:1；深色主题下这些深色更是直接融进底里。
+   统一走语义文字档：在自己的染色底上过 AA，且分主题取值。 */
 .dline.added {
   background: rgba(22, 163, 74, 0.12);
-  color: #15803d;
+  color: var(--success-text);
 }
 .dline.added .sign {
-  color: #16a34a;
+  color: var(--success-text);
 }
 .dline.removed {
   background: rgba(220, 38, 38, 0.12);
-  color: #b91c1c;
+  color: var(--danger-text);
 }
 .dline.removed .sign {
-  color: #dc2626;
+  color: var(--danger-text);
 }
 .dline.unchanged {
   color: var(--text-muted);
@@ -264,11 +270,11 @@ function swap() {
 }
 .seg.added {
   background: rgba(22, 163, 74, 0.16);
-  color: #15803d;
+  color: var(--success-text);
 }
 .seg.removed {
   background: rgba(220, 38, 38, 0.16);
-  color: #b91c1c;
+  color: var(--danger-text);
   text-decoration: line-through;
 }
 .seg.unchanged {
@@ -290,7 +296,7 @@ function swap() {
 }
 .mini:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 @media (max-width: 880px) {
   .cols {

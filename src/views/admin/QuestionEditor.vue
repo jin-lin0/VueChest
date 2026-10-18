@@ -415,7 +415,7 @@ function goBack() {
 }
 
 .required {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .hint {
@@ -430,7 +430,7 @@ function goBack() {
 
 .error-text {
   display: block;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-meta);
   margin-top: 3px;
 }
@@ -455,7 +455,7 @@ function goBack() {
 
 .type-btn:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .type-btn.active {

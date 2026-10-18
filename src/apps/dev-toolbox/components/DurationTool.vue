@@ -299,7 +299,7 @@ function setTargetNow() {
 }
 .mini:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .seg-grid {
   display: grid;
@@ -320,7 +320,7 @@ function setTargetNow() {
 .seg .v {
   font-size: var(--font-size-heading);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .k {
   color: var(--text-muted);
@@ -345,13 +345,13 @@ function setTargetNow() {
   color: var(--text-body);
 }
 .expired {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-body-lg);
   font-weight: 600;
   padding: 0.5rem 0;
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }

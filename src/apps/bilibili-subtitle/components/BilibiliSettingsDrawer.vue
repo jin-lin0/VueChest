@@ -187,7 +187,7 @@ function clearCache() {
   padding: 10px 11px;
   border-radius: 10px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .settings-intro p {
@@ -308,12 +308,12 @@ function clearCache() {
 
 .segmented button.active {
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .setting-warning {
   margin: 0;
-  color: var(--warning);
+  color: var(--warning-text);
   font-size: var(--font-size-caption);
 }
 
@@ -332,7 +332,7 @@ function clearCache() {
   border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border-light));
   border-radius: 8px;
   background: var(--bg-card);
-  color: var(--danger);
+  color: var(--danger-text);
   cursor: pointer;
   font-size: var(--font-size-caption);
   font-weight: 700;

@@ -329,10 +329,10 @@ function useNowDate() {
 }
 .mini:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }

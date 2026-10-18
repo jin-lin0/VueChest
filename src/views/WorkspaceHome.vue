@@ -1060,12 +1060,6 @@ kbd {
   cursor: grabbing;
 }
 
-.workspace-tab.active {
-  background: linear-gradient(135deg, var(--desk-primary), var(--desk-secondary));
-  color: white;
-  box-shadow: 0 5px 14px rgba(102, 126, 234, 0.2);
-}
-
 .workspace-tab-ghost {
   opacity: 0.35;
 }
@@ -1603,9 +1597,12 @@ kbd {
 }
 
 .density-options button.active {
-  background: #667eea;
-  color: white;
-  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.22);
+  /* 选中态改用「强调底 + 品牌文字」，而不是「品牌填充 + 白字」：
+     白字在 #667eea 上只有 3.66:1（差 AA）；而 --accent-text 在深色主题会转亮，
+     只适合当文字色，不能反过来当白字的填充。 */
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  box-shadow: inset 0 0 0 1px var(--accent-light);
 }
 
 .settings-links {
@@ -1620,7 +1617,7 @@ kbd {
   border: 1px solid rgba(102, 126, 234, 0.24);
   border-radius: 8px;
   background: transparent;
-  color: #667eea;
+  color: var(--accent-text);
   cursor: pointer;
   font-weight: 600;
 }
@@ -1898,8 +1895,8 @@ kbd {
 .import-file-btn {
   display: inline-block;
   border: 1px solid rgba(102, 126, 234, 0.3);
-  background: #f5f7fa;
-  color: #667eea;
+  background: var(--bg-page);
+  color: var(--accent-text);
 }
 
 .import-file-btn:hover {
@@ -2187,7 +2184,7 @@ kbd {
 
 .brand-copy small {
   margin-top: 1px;
-  color: #667eea;
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -2259,7 +2256,7 @@ kbd {
 .top-actions .icon-action {
   border: 1px solid rgba(255, 255, 255, 0.8);
   background: var(--bg-glass);
-  color: #667eea;
+  color: var(--accent-text);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -2267,7 +2264,7 @@ kbd {
 .top-actions .icon-action:hover {
   border-color: rgba(102, 126, 234, 0.3);
   background: rgba(102, 126, 234, 0.06);
-  color: #667eea;
+  color: var(--accent-text);
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
 }
 
@@ -2293,18 +2290,18 @@ kbd {
 
 .workspace-tab:hover {
   background: rgba(102, 126, 234, 0.07);
-  color: #667eea;
+  color: var(--accent-text);
 }
 
 .workspace-tab.active {
   background: rgba(102, 126, 234, 0.12);
-  color: #667eea;
+  color: var(--accent-text);
   box-shadow: none;
 }
 
 .add-workspace:hover {
   background: rgba(102, 126, 234, 0.08);
-  color: #667eea;
+  color: var(--accent-text);
 }
 
 .workspace-tools button {
@@ -2312,14 +2309,14 @@ kbd {
   border: 1px solid rgba(102, 126, 234, 0.18);
   border-radius: 9px;
   background: transparent;
-  color: #667eea;
+  color: var(--accent-text);
   font-size: var(--font-size-control);
 }
 
 .workspace-tools button:hover {
   border-color: rgba(102, 126, 234, 0.35);
   background: rgba(102, 126, 234, 0.07);
-  color: #667eea;
+  color: var(--accent-text);
 }
 
 .workspace-tools .primary-tool {

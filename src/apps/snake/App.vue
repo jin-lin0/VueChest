@@ -129,11 +129,11 @@ onMounted(() => {
   font-size: var(--font-size-meta);
   font-weight: 700;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .card-badge.desktop {
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .tips {

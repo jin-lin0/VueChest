@@ -248,14 +248,14 @@ onMounted(async () => {
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: 8px;
   background: var(--bg-glass);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-weight: 600;
 }
 
 .action-message {
   margin-bottom: 0.8rem;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-body);
 }
 
@@ -296,7 +296,7 @@ onMounted(async () => {
   padding: 0.18rem 0.48rem;
   border-radius: 999px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
 }
 
@@ -334,7 +334,7 @@ onMounted(async () => {
 .card-actions .danger,
 .dialog-actions .confirm-danger {
   border-color: var(--danger);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .uninstall-dialog p {

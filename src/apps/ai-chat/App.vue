@@ -1170,7 +1170,7 @@ onUnmounted(() => {
 .suggestion-btn:hover {
   border-color: var(--accent);
   background: var(--accent-bg);
-  color: var(--accent-strong);
+  color: var(--accent-text);
 }
 
 .refresh-btn {
@@ -1191,7 +1191,7 @@ onUnmounted(() => {
 
 .refresh-btn:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-bg);
 }
 
@@ -1297,11 +1297,11 @@ onUnmounted(() => {
 }
 
 .copy-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .copy-btn.copied {
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .copy-btn svg {
@@ -1351,7 +1351,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background: var(--danger-bg);
   border-top: 1px solid var(--border);
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
 }
 
@@ -1362,12 +1362,12 @@ onUnmounted(() => {
 
 .error-bar.warning {
   background: var(--warning-bg);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .error-bar.warning .error-switch {
   border-color: color-mix(in srgb, var(--warning) 35%, transparent);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .error-bar.warning .error-switch:hover {
@@ -1375,7 +1375,7 @@ onUnmounted(() => {
 }
 
 .error-bar.warning .error-dismiss {
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .error-actions {
@@ -1392,7 +1392,7 @@ onUnmounted(() => {
   border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
   border-radius: 7px;
   background: var(--bg-card);
-  color: var(--danger);
+  color: var(--danger-text);
   cursor: pointer;
   font-size: var(--font-size-small);
   line-height: 1.4;
@@ -1407,7 +1407,7 @@ onUnmounted(() => {
 .error-bar .error-dismiss {
   background: none;
   border: none;
-  color: var(--danger);
+  color: var(--danger-text);
   cursor: pointer;
   font-size: var(--font-size-title-lg);
   line-height: 1;
@@ -1467,7 +1467,7 @@ onUnmounted(() => {
   gap: 12px;
   max-width: 800px;
   margin: 0 auto 7px;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-small);
 }
 

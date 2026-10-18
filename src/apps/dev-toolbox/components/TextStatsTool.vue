@@ -134,7 +134,7 @@ const summary = computed(() => statList.value.map((s) => `${s.label}：${s.value
 .stat .v {
   font-size: var(--font-size-4xl);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   line-height: 1.2;
 }
 .stat .k {
@@ -158,7 +158,7 @@ const summary = computed(() => statList.value.map((s) => `${s.label}：${s.value
 }
 .mini:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mini:disabled {
   opacity: 0.5;

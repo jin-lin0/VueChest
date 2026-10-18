@@ -232,7 +232,7 @@ function extract(img: HTMLImageElement) {
 }
 .drop:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .drop:focus-visible {
   outline: 2px solid var(--accent);
@@ -240,7 +240,7 @@ function extract(img: HTMLImageElement) {
 }
 .drop.dragging {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--bg-input);
 }
 .opt {
@@ -272,7 +272,7 @@ function extract(img: HTMLImageElement) {
   margin: 0.6rem 0 0;
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.6rem 0 0;
 }

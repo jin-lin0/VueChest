@@ -512,7 +512,7 @@ const confidenceLabel = (c: number) => {
 }
 .kb-back:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .kb-logo {
   font-size: var(--font-size-5xl);
@@ -603,7 +603,7 @@ const confidenceLabel = (c: number) => {
   width: min(420px, 80%);
 }
 .kb-state.err {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .kb-side {
   width: 230px;
@@ -740,16 +740,16 @@ const confidenceLabel = (c: number) => {
   color: var(--text-muted);
 }
 .kb-conf.lv5 {
-  color: var(--success);
+  color: var(--success-text);
 }
 .kb-conf.lv4 {
-  color: var(--info);
+  color: var(--info-text);
 }
 .kb-conf.lv3 {
-  color: var(--warning);
+  color: var(--warning-text);
 }
 .kb-conf.lv2 {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .kb-conf.lv1 {
   color: var(--text-muted);
@@ -771,7 +771,7 @@ const confidenceLabel = (c: number) => {
 }
 .kb-ctag {
   font-size: var(--font-size-meta);
-  color: var(--accent);
+  color: var(--accent-text);
   background: rgba(var(--accent-rgb), 0.08);
   padding: 1px 6px;
   border-radius: 4px;

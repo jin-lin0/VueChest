@@ -718,8 +718,11 @@ function onContentClick(e: MouseEvent) {
 .docs-tab:hover {
   color: var(--text-primary);
 }
+/* 选中的标签页是实心品牌底 + 白字。--accent(#667eea) 上白字只有 3.66:1，
+   不满足 14px 正文的 4.5:1；换成渐变末端 --accent-strong(#764ba2) → 6.37:1。
+   底色变深一档，"选中"的视觉语义不变。 */
 .docs-tab.active {
-  background: var(--accent);
+  background: var(--accent-strong);
   color: #fff;
   box-shadow: var(--shadow-sm);
 }
@@ -761,7 +764,7 @@ function onContentClick(e: MouseEvent) {
 }
 .docs-context-icon {
   width: 20px;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-title-lg);
   line-height: 1;
   text-align: center;
@@ -802,7 +805,7 @@ function onContentClick(e: MouseEvent) {
 .docs-theme:hover,
 .docs-settings:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .docs-settings {
   width: 36px;
@@ -867,7 +870,7 @@ function onContentClick(e: MouseEvent) {
 }
 .docs-header-btn:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .docs-header-btn svg {
   display: block;
@@ -999,7 +1002,7 @@ function onContentClick(e: MouseEvent) {
   background: var(--bg-hover);
 }
 .docs-toc-item.active .docs-toc-link {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -1033,7 +1036,7 @@ function onContentClick(e: MouseEvent) {
   border-radius: 50%;
   animation: docs-spin 0.8s linear infinite;
 }
-.docs-loading.error { color: var(--danger); }
+.docs-loading.error { color: var(--danger-text); }
 @keyframes docs-spin { to { transform: rotate(360deg); } }
 .docs-donate {
   width: 100%;
@@ -1096,7 +1099,7 @@ function onContentClick(e: MouseEvent) {
   margin: var(--space-1) 0;
 }
 .docs-content :deep(a) {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: var(--transition-fast);
@@ -1151,7 +1154,7 @@ function onContentClick(e: MouseEvent) {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.88em;
   background: var(--bg-subtle);
-  color: var(--accent-strong);
+  color: var(--accent-text);
   padding: 2px 6px;
   border-radius: var(--radius-xs);
 }
@@ -1207,7 +1210,7 @@ function onContentClick(e: MouseEvent) {
   }
   .docs-toc-toggle:hover {
     border-color: var(--accent);
-    color: var(--accent);
+    color: var(--accent-text);
   }
   .docs-toc-icon {
     display: block;

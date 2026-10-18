@@ -220,12 +220,12 @@ header small {
 
 .follow-up-suggestions button:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .follow-up-error {
   margin: 0;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-meta);
 }
 

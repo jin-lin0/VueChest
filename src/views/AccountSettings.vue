@@ -390,7 +390,7 @@ header p,
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: 8px;
   background: var(--bg-glass);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-weight: 600;
 }
@@ -405,7 +405,7 @@ header p,
   border-radius: 10px;
   padding: 0.7rem 0.8rem;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .message button {
@@ -462,7 +462,7 @@ header p,
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
   font-size: var(--font-size-meta);
 }
 
@@ -478,7 +478,7 @@ header p,
 }
 
 .sync-summary strong {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-title);
 }
 
@@ -577,12 +577,12 @@ header p,
 .sensitive-tag {
   margin-left: 0.25rem;
   background: var(--warning-bg);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .cloud-tag {
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
   white-space: nowrap;
 }
 
@@ -607,7 +607,7 @@ header p,
 
 .danger {
   border-color: var(--danger) !important;
-  color: var(--danger) !important;
+  color: var(--danger-text) !important;
 }
 
 button:disabled {

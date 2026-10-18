@@ -585,7 +585,7 @@ watch(
   border-radius: 10px;
   padding: 10px 11px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
   line-height: 1.65;
 }

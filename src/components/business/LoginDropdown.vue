@@ -263,7 +263,7 @@ async function saveName() {
   overflow: hidden;
   border-radius: 50%;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
   cursor: pointer;
   border: 2px solid transparent;
@@ -323,7 +323,7 @@ async function saveName() {
 }
 
 .name-edit-icon:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-bg);
 }
 
@@ -448,11 +448,11 @@ async function saveName() {
 }
 
 .dropdown-item.logout {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .upload-link {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 </style>

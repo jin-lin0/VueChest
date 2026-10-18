@@ -671,7 +671,7 @@ function downloadOutput() {
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn.primary {
   background: var(--gradient-primary);
@@ -785,7 +785,7 @@ function downloadOutput() {
   height: 15px;
 }
 .icon-btn:hover:not(:disabled) {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 .icon-btn:disabled {

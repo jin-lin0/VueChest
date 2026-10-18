@@ -757,7 +757,7 @@ textarea:focus-visible {
 
 .back-button:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .app-identity {
@@ -826,7 +826,7 @@ textarea:focus-visible {
 
 .settings-button:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .workflow-status li {
@@ -852,11 +852,15 @@ textarea:focus-visible {
 
 .workflow-status li.active {
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
+/* 步骤序号是「浅色染色胶囊里的一颗实心品牌药丸」，白字必须落在够深的底上：
+   --accent(#667eea) 只有 3.66:1（字号 10px，够 UI 元件不够文字）。
+   改用渐变末端 --accent-strong(#764ba2)：同品牌色相，白字 6.37:1，
+   且它只在 :root 声明、不随主题变，深浅两个主题下都成立。 */
 .workflow-status li.active b {
-  background: var(--accent);
+  background: var(--accent-strong);
   color: var(--accent-contrast);
 }
 
@@ -900,7 +904,7 @@ textarea:focus-visible {
   place-items: center;
   border-radius: 9px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .setup-summary p {
@@ -942,7 +946,7 @@ textarea:focus-visible {
 
 .setup-summary > button:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .source-card,
@@ -976,7 +980,7 @@ textarea:focus-visible {
   place-items: center;
   border-radius: 10px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .panel-heading h2 {
@@ -1076,7 +1080,7 @@ textarea:focus-visible {
   padding: 9px 11px;
   border-radius: 9px;
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-meta);
   line-height: 1.55;
 }
@@ -1101,7 +1105,7 @@ textarea:focus-visible {
 }
 
 .source-progress > span {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .source-progress > div {
@@ -1131,7 +1135,7 @@ textarea:focus-visible {
   border: 1px solid var(--accent);
   border-radius: 8px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-size: var(--font-size-caption);
   font-weight: 700;
@@ -1180,7 +1184,7 @@ textarea:focus-visible {
   place-items: center;
   border-radius: 7px;
   background: var(--bg-card);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
   font-weight: 800;
 }
@@ -1219,7 +1223,7 @@ textarea:focus-visible {
 }
 
 .section-kicker {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -1245,7 +1249,7 @@ textarea:focus-visible {
   padding: 3px 7px;
   border-radius: 6px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
   font-weight: 700;
 }
@@ -1336,7 +1340,7 @@ textarea:focus-visible {
 }
 
 .page-transcript .page-error {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .page-transcript textarea {
@@ -1383,7 +1387,7 @@ textarea:focus-visible {
   padding: 4px 7px;
   border-radius: 7px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
 }
 
@@ -1463,11 +1467,13 @@ textarea:focus-visible {
 
 .analysis-types button.active {
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
+/* 同上：外层是 --accent-bg + --accent-text 的浅色胶囊，内层计数是实心药丸，
+   白字压 --accent 只有 3.66:1，同样换成 --accent-strong（6.37:1）。 */
 .analysis-types button.active span {
-  background: var(--accent);
+  background: var(--accent-strong);
   color: var(--accent-contrast);
 }
 
@@ -1504,7 +1510,7 @@ textarea:focus-visible {
 
 .model-config-toggle:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .custom-prompt {
@@ -1523,7 +1529,7 @@ textarea:focus-visible {
 
 .cancel-action {
   border-color: var(--danger) !important;
-  color: var(--danger) !important;
+  color: var(--danger-text) !important;
 }
 
 .analysis-progress {
@@ -1564,14 +1570,14 @@ textarea:focus-visible {
 }
 
 .streaming-empty svg {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .streaming-label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--accent) !important;
+  color: var(--accent-text) !important;
 }
 
 .stream-preparing {
@@ -1637,7 +1643,7 @@ textarea:focus-visible {
   padding: 3px 6px;
   border-radius: 6px;
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
   font-size: var(--font-size-caption);
   font-weight: 700;
 }

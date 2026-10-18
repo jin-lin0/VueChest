@@ -316,7 +316,7 @@ function draw() {
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn.primary {
   background: var(--gradient-primary);
@@ -340,7 +340,7 @@ function draw() {
 }
 .mini:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .list {
   list-style: none;
@@ -407,20 +407,24 @@ function draw() {
   border-radius: var(--radius-xs);
   font-weight: 600;
 }
+/* 密码强度的四档标签：这几个色**同时**当文字、又被自己染过的底托着。
+   原来的字面色（#ef4444 / #f59e0b / #22c55e / #3b82f6）是配纯白底的，
+   压在同色 12% 的染色底上只有 1.96~3.22:1；深色主题下更糟（深红压深底）。
+   改用语义文字档：它们本身就在自己的染色底上过了 AA，而且是分主题取值的。 */
 .strength.weak {
-  color: #ef4444;
+  color: var(--danger-text);
   background: rgba(239, 68, 68, 0.12);
 }
 .strength.medium {
-  color: #f59e0b;
+  color: var(--warning-text);
   background: rgba(245, 158, 11, 0.12);
 }
 .strength.strong {
-  color: #22c55e;
+  color: var(--success-text);
   background: rgba(34, 197, 94, 0.12);
 }
 .strength.verystrong {
-  color: #3b82f6;
+  color: var(--info-text);
   background: rgba(59, 130, 246, 0.12);
 }
 .winner {
@@ -428,7 +432,7 @@ function draw() {
   text-align: center;
   font-size: var(--font-size-heading);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 0.8rem;
   background: var(--bg-input);
   border: 1px dashed var(--accent);

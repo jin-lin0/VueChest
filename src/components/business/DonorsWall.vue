@@ -90,8 +90,10 @@ onMounted(load)
   border-radius: var(--radius-md);
 }
 .donors-error {
-  color: var(--danger, #e5484d);
-  border-color: var(--danger, #e5484d);
+  /* 文字走 -text 档：--danger(#dc2626) 压在 --bg-subtle(#f3f4f6) 上只有 4.39:1，
+     低于普通文字要求的 4.5；边框是装饰性的非文字元素，继续用填充档（≥3:1 即可）。 */
+  color: var(--danger-text);
+  border-color: var(--danger);
 }
 .donors-list {
   list-style: none;

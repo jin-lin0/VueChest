@@ -4,11 +4,30 @@
   --quiz-cyan: #24b8c7;
   --quiz-coral: #f47a69;
   --quiz-amber: #e9a23b;
+  --quiz-teal: #168c9a;
+  /* 「文字档」：以上是填充/图标色，直接当文字落在同色 10~13% 的染色底上只有
+     1.9~3.7:1（如题号徽标、「01/JS/AI」这类标签）。这里给每个色相一个同色相、
+     刚好过 AA 的更深档，只在 color: 上用；background / border 仍用上面的原色。 */
+  --quiz-blue-text: #374cf8;
+  --quiz-cyan-text: #16727b;
+  --quiz-coral-text: #c7250f;
+  --quiz-amber-text: #925d10;
+  --quiz-teal-text: #116f7a;
   min-height: 100%;
   padding: 22px 24px 72px;
   background:
     radial-gradient(circle at 4% 8%, rgba(var(--accent-rgb), 0.1), transparent 28%),
     radial-gradient(circle at 92% 18%, rgba(36, 184, 199, 0.08), transparent 22%), var(--bg-page);
+}
+
+/* 深色主题下底色翻成深色，浅色档的「更深」在上面只剩 1.7:1，必须换亮档
+   （跟全局 --*-text 一样按主题分档；上面那组是浅色档） */
+:root.dark .interview-workbench {
+  --quiz-blue-text: #a0aafc;
+  --quiz-cyan-text: #25c0cf;
+  --quiz-coral-text: #f69588;
+  --quiz-amber-text: #e9a036;
+  --quiz-teal-text: #1dc0d4;
 }
 
 .workbench-bar,
@@ -139,7 +158,7 @@ input:focus-visible {
 .text-button:hover,
 .detail-favorite:hover,
 .detail-favorite.active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .hero-panel {
@@ -192,7 +211,7 @@ input:focus-visible {
 .question-label,
 .sidebar-kicker,
 .answer-heading span {
-  color: var(--quiz-cyan);
+  color: var(--quiz-cyan-text);
   font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -371,19 +390,19 @@ button:disabled {
 
 .metric-total .metric-icon {
   background: rgba(91, 108, 249, 0.11);
-  color: var(--quiz-blue);
+  color: var(--quiz-blue-text);
 }
 .metric-learning .metric-icon {
   background: rgba(36, 184, 199, 0.12);
-  color: #168c9a;
+  color: var(--quiz-teal-text);
 }
 .metric-review .metric-icon {
   background: rgba(244, 122, 105, 0.12);
-  color: var(--quiz-coral);
+  color: var(--quiz-coral-text);
 }
 .metric-favorite .metric-icon {
   background: rgba(233, 162, 59, 0.13);
-  color: var(--quiz-amber);
+  color: var(--quiz-amber-text);
 }
 
 .metric-card > div {
@@ -423,7 +442,7 @@ button:disabled {
 }
 
 .section-kicker {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .section-heading h2,
 .catalog-heading h2 {
@@ -480,15 +499,15 @@ button:disabled {
 
 .mode-new .mode-index {
   background: rgba(91, 108, 249, 0.11);
-  color: var(--quiz-blue);
+  color: var(--quiz-blue-text);
 }
 .mode-review .mode-index {
   background: rgba(244, 122, 105, 0.12);
-  color: var(--quiz-coral);
+  color: var(--quiz-coral-text);
 }
 .mode-random .mode-index {
   background: rgba(36, 184, 199, 0.12);
-  color: #168c9a;
+  color: var(--quiz-teal-text);
 }
 
 .mode-copy {
@@ -560,22 +579,22 @@ button:disabled {
   place-items: center;
   border-radius: 13px;
   background: rgba(91, 108, 249, 0.1);
-  color: var(--quiz-blue);
+  color: var(--quiz-blue-text);
   font-size: var(--font-size-caption);
   font-weight: 850;
 }
 
 .tone-1 .category-symbol {
   background: rgba(36, 184, 199, 0.1);
-  color: #168c9a;
+  color: var(--quiz-teal-text);
 }
 .tone-2 .category-symbol {
   background: rgba(244, 122, 105, 0.1);
-  color: var(--quiz-coral);
+  color: var(--quiz-coral-text);
 }
 .tone-3 .category-symbol {
   background: rgba(233, 162, 59, 0.11);
-  color: var(--quiz-amber);
+  color: var(--quiz-amber-text);
 }
 .category-copy {
   display: flex;
@@ -633,7 +652,7 @@ button:disabled {
   min-height: 42px;
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .filter-panel {
@@ -698,7 +717,7 @@ button:disabled {
   padding: 7px 10px;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-size: var(--font-size-meta);
   font-weight: 650;
@@ -734,11 +753,11 @@ button:disabled {
 }
 .status-review .question-number {
   background: rgba(244, 122, 105, 0.11);
-  color: var(--quiz-coral);
+  color: var(--quiz-coral-text);
 }
 .status-mastered .question-number {
   background: rgba(5, 150, 105, 0.1);
-  color: var(--success);
+  color: var(--success-text);
 }
 .question-main {
   min-width: 0;
@@ -758,15 +777,15 @@ button:disabled {
 }
 .difficulty-pill.easy {
   background: rgba(5, 150, 105, 0.11);
-  color: var(--success);
+  color: var(--success-text);
 }
 .difficulty-pill.medium {
   background: rgba(233, 162, 59, 0.13);
-  color: var(--warning);
+  color: var(--quiz-amber-text);
 }
 .difficulty-pill.hard {
   background: rgba(220, 38, 38, 0.1);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .status-dot {
   display: inline-flex;
@@ -804,7 +823,7 @@ button:disabled {
   text-align: left;
 }
 .question-title:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .question-tags {
   display: flex;
@@ -827,7 +846,7 @@ button:disabled {
 .favorite-button:hover,
 .favorite-button.active {
   background: rgba(233, 162, 59, 0.12);
-  color: var(--quiz-amber);
+  color: var(--quiz-amber-text);
 }
 .favorite-button svg {
   width: 17px;
@@ -856,7 +875,7 @@ button:disabled {
 }
 .open-button:hover {
   border-color: var(--accent-light);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .open-button svg {
   width: 14px;
@@ -889,7 +908,7 @@ button:disabled {
   place-items: center;
   border-radius: 50%;
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   font-weight: 800;
 }
 .error-state p {
@@ -974,7 +993,7 @@ button:disabled {
 }
 .question-label {
   margin-top: 46px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .detail-card > h1 {
   max-width: 830px;
@@ -1002,7 +1021,7 @@ button:disabled {
   place-items: center;
   border-radius: 11px;
   background: var(--bg-card);
-  color: #168c9a;
+  color: var(--quiz-teal-text);
 }
 .thinking-icon svg {
   width: 19px;
@@ -1124,7 +1143,7 @@ button:disabled {
   border-radius: 18px;
 }
 .sidebar-kicker {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .current-status {
   display: flex;
@@ -1220,15 +1239,15 @@ button:disabled {
 }
 .rating-icon.review {
   background: rgba(244, 122, 105, 0.12);
-  color: var(--quiz-coral);
+  color: var(--quiz-coral-text);
 }
 .rating-icon.learning {
   background: rgba(91, 108, 249, 0.11);
-  color: var(--quiz-blue);
+  color: var(--quiz-blue-text);
 }
 .rating-icon.mastered {
   background: rgba(5, 150, 105, 0.1);
-  color: var(--success);
+  color: var(--success-text);
 }
 .assessment-actions button > span:last-child {
   display: flex;

@@ -213,7 +213,7 @@ function openItem(item: AppNotification) {
 }
 
 .head-count {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-meta);
   white-space: nowrap;
 }
@@ -229,7 +229,7 @@ function openItem(item: AppNotification) {
   padding: 0;
   border: none;
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
   cursor: pointer;
   white-space: nowrap;
@@ -274,7 +274,7 @@ function openItem(item: AppNotification) {
 .panel-error-text {
   margin: 0;
   min-width: 0;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-meta);
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -286,7 +286,7 @@ function openItem(item: AppNotification) {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   background: var(--bg-card);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -395,7 +395,7 @@ function openItem(item: AppNotification) {
   padding: var(--space-3);
   border: none;
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
   font-weight: 600;
   cursor: pointer;

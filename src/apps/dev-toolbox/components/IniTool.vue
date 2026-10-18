@@ -153,7 +153,7 @@ function onEditorSave() {
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn.primary {
   background: var(--gradient-primary);
@@ -177,7 +177,7 @@ function onEditorSave() {
 }
 .mini:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .inp,
 .plain,
@@ -202,7 +202,7 @@ textarea:focus {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
 }
 .hint {

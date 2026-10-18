@@ -193,7 +193,7 @@ const outputTitle = () =>
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -263,7 +263,7 @@ const outputTitle = () =>
 }
 .err {
   margin: 0.6rem 0 0;
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
 }
 

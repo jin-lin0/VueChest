@@ -323,7 +323,7 @@ function clearAll() {
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -342,14 +342,14 @@ function clearAll() {
 }
 .mini:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mini:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }

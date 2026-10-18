@@ -875,7 +875,7 @@ async function deleteApp(app: MarketAppItem) {
 
 .btn-ghost {
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   border: 1px solid var(--border-light);
   padding: 10px 18px;
   border-radius: 8px;
@@ -894,7 +894,7 @@ async function deleteApp(app: MarketAppItem) {
 
 .btn-danger {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   border: 1px solid var(--danger-bg);
   padding: 10px 18px;
   border-radius: 8px;
@@ -912,7 +912,7 @@ async function deleteApp(app: MarketAppItem) {
 
 .btn-approve {
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
   border: 1px solid var(--success-bg);
   padding: 8px 14px;
   border-radius: 8px;
@@ -930,7 +930,7 @@ async function deleteApp(app: MarketAppItem) {
 
 .btn-reject {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   border: 1px solid var(--danger-bg);
   padding: 8px 14px;
   border-radius: 8px;
@@ -955,15 +955,15 @@ async function deleteApp(app: MarketAppItem) {
 }
 .status-pending {
   background: var(--warning-bg);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 .status-approved {
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 .status-rejected {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .stats-row {
@@ -1057,13 +1057,13 @@ async function deleteApp(app: MarketAppItem) {
 .pending-actions .btn-approve {
   border: 1px solid var(--success);
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .pending-actions .btn-reject {
   border: 1px solid var(--danger);
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .reject-form {
@@ -1109,7 +1109,7 @@ async function deleteApp(app: MarketAppItem) {
   border: 1px solid var(--danger);
   border-radius: 8px;
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   cursor: pointer;
   font-weight: 600;
 }
@@ -1270,7 +1270,7 @@ async function deleteApp(app: MarketAppItem) {
 }
 .category-tag {
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 2px 10px;
   border-radius: 6px;
   font-size: var(--font-size-small);
@@ -1307,7 +1307,7 @@ async function deleteApp(app: MarketAppItem) {
 }
 .page-btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .page-btn:disabled {
   opacity: 0.4;
@@ -1339,7 +1339,7 @@ async function deleteApp(app: MarketAppItem) {
   font-size: var(--font-size-body);
 }
 .required {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .label-optional {
   font-weight: 400;

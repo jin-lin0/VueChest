@@ -984,7 +984,7 @@ watch(
 .status-banner.error {
   border: 1px solid color-mix(in srgb, var(--danger) 24%, transparent);
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .status-banner p {
   flex: 1;
@@ -1331,7 +1331,7 @@ watch(
 }
 .research-source-error {
   margin: 12px 0;
-  color: var(--warning);
+  color: var(--warning-text);
   font-size: var(--font-size-meta);
 }
 .research-disclaimer {

@@ -236,13 +236,13 @@ function onDelete(opt: SelectOption) {
   height: 15px;
 }
 .rl-rename:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .rl-delete:hover {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
 }
 .rl-confirm {
-  color: var(--success, #22c55e);
+  color: var(--success-text);
 }
 .rl-confirm:hover:not(:disabled) {
   background: rgba(34, 197, 94, 0.14);
@@ -252,21 +252,21 @@ function onDelete(opt: SelectOption) {
   cursor: not-allowed;
 }
 .rl-cancel:hover {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
 }
 
-/* 选中项（蓝紫渐变底、白字）下图标默认白色，hover 仍按语义色 */
+/* 选中项是饱和的品牌渐变底（#667eea → #764ba2）。
+   这一层上不能再用语义色或 -text 档：--danger-text(#bf1f1f) / --success-text(#047552) /
+   --accent-text(#4d61cb) 压在渐变上只有 1.47~1.67:1，比不换色还差，而它们都是**深色**，
+   在深底上必然失守。所以选中行统一白色（默认 .85、hover 提亮到 --accent-contrast），
+   用透明度变化给 hover 反馈。 */
 :deep(.option-item.selected) .rl-ico {
   color: rgba(255, 255, 255, 0.85);
 }
-:deep(.option-item.selected) .rl-rename:hover {
-  color: var(--accent);
-}
+:deep(.option-item.selected) .rl-rename:hover,
 :deep(.option-item.selected) .rl-delete:hover,
-:deep(.option-item.selected) .rl-cancel:hover {
-  color: var(--danger, #ef4444);
-}
+:deep(.option-item.selected) .rl-cancel:hover,
 :deep(.option-item.selected) .rl-confirm {
-  color: var(--success, #22c55e);
+  color: var(--accent-contrast);
 }
 </style>

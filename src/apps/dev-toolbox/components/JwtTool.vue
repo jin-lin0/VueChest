@@ -217,7 +217,7 @@ function clearAll() {
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -238,7 +238,7 @@ function clearAll() {
 }
 .mini:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mini:disabled {
   opacity: 0.5;
@@ -312,7 +312,7 @@ function clearAll() {
   color: var(--text-body);
 }
 .v.danger {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-weight: 600;
 }
 .sig {
@@ -322,7 +322,7 @@ function clearAll() {
 }
 .err {
   margin: 0.6rem 0 0;
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
 }
 

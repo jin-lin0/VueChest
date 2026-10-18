@@ -198,7 +198,7 @@ test()
   margin: 0.5rem 0 0;
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }
@@ -214,7 +214,7 @@ test()
 }
 .mini:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mini:disabled {
   opacity: 0.5;
@@ -242,7 +242,7 @@ test()
 }
 .match-val {
   font-size: var(--font-size-body);
-  color: var(--accent);
+  color: var(--accent-text);
   word-break: break-all;
 }
 .groups {

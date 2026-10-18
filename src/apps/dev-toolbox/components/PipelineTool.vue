@@ -743,7 +743,7 @@ function downloadBatch() {
 }
 
 .eyebrow {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-caption);
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -841,7 +841,7 @@ function downloadBatch() {
 
 .privacy-help:hover,
 .privacy-help:focus-visible {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-bg);
 }
@@ -911,7 +911,7 @@ button {
 .step-actions button:hover:not(:disabled),
 .extra-card button:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-bg);
 }
 
@@ -980,7 +980,7 @@ button {
   place-items: center;
   border-radius: 9px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
   font-weight: 800;
 }
@@ -1010,7 +1010,7 @@ button {
 
 .step-actions .danger:hover {
   border-color: var(--danger);
-  color: var(--danger);
+  color: var(--danger-text);
   background: var(--danger-bg);
 }
 
@@ -1104,7 +1104,7 @@ button {
 
 .pipeline-error,
 .failed {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .stage-details {
@@ -1166,7 +1166,7 @@ button {
   place-items: center;
   border-radius: 9px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .extra-card > header > div {
@@ -1304,14 +1304,14 @@ button {
 .extra-card .danger-action:hover:not(:disabled) {
   border-color: var(--danger);
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .extra-card .confirm-action,
 .extra-card .confirm-action:hover:not(:disabled) {
   border-color: var(--success);
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .batch-card {
@@ -1337,7 +1337,7 @@ button {
   place-items: center;
   border-radius: 10px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-title-lg);
   font-weight: 800;
 }
@@ -1408,7 +1408,7 @@ button {
   margin-bottom: 3px;
   border-radius: 11px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-heading);
   font-weight: 800;
 }
@@ -1453,11 +1453,11 @@ button {
 }
 
 .batch-summary p > strong:first-child {
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .download-batch {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .batch-result-list {
@@ -1479,7 +1479,7 @@ button {
   border-radius: 9px;
   padding: 7px 9px;
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .batch-result-list li.failed {

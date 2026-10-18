@@ -489,7 +489,7 @@ onUnmounted(() => {
 
 .select-trigger.active .trigger-arrow {
   transform: rotate(180deg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* 下拉面板（已 Teleport 到 body，按触发器坐标 fixed 定位） */

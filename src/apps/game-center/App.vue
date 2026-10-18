@@ -441,6 +441,10 @@ onActivated(reloadProfile)
 
 <style scoped>
 .game-center {
+  /* 这一整页是常暗「主题岛」：底色 #0c1019 由本页自己给，没有打 .vc-dark，
+     所以全局的浅色档灰阶在这里是反的。次级文字统一走本岛的这条档位：
+     #8795aa 在最暗的记录卡底（#191e2a）上 5.48:1，原 #75849e 只有 4.40:1。 */
+  --gc-muted: #8795aa;
   position: relative;
   min-height: 100%;
   overflow: hidden;
@@ -525,7 +529,7 @@ onActivated(reloadProfile)
   font-size: var(--font-size-title-lg);
 }
 .header-left small {
-  color: #75849e;
+  color: var(--gc-muted);
   font-size: var(--font-size-caption);
 }
 .refresh-button {
@@ -562,7 +566,7 @@ onActivated(reloadProfile)
   flex-direction: column;
 }
 .overview-strip small {
-  color: #75849e;
+  color: var(--gc-muted);
   font-size: var(--font-size-caption);
 }
 .overview-strip strong {
@@ -586,7 +590,7 @@ onActivated(reloadProfile)
   font-size: var(--font-size-heading);
 }
 .section-heading small {
-  color: #75849e;
+  color: var(--gc-muted);
 }
 .game-cards {
   display: grid;
@@ -669,7 +673,7 @@ onActivated(reloadProfile)
 }
 .card-title small,
 .card-body p {
-  color: #8795aa;
+  color: var(--gc-muted);
 }
 .card-title small {
   margin-top: 2px;
@@ -737,7 +741,7 @@ onActivated(reloadProfile)
   flex-direction: column;
 }
 .side-card header small {
-  color: #75849e;
+  color: var(--gc-muted);
   font-size: var(--font-size-caption);
 }
 .challenge-card h2 {
@@ -745,7 +749,7 @@ onActivated(reloadProfile)
   font-size: var(--font-size-heading);
 }
 .challenge-card > p {
-  color: #8795aa;
+  color: var(--gc-muted);
   font-size: var(--font-size-meta);
 }
 .challenge-card > button,
@@ -784,7 +788,7 @@ onActivated(reloadProfile)
   background: rgba(255, 255, 255, 0.035);
 }
 .record-grid small {
-  color: #75849e;
+  color: var(--gc-muted);
   font-size: var(--font-size-caption);
 }
 .record-grid strong {
@@ -809,7 +813,7 @@ onActivated(reloadProfile)
   flex-direction: column;
 }
 .recent-card > button small {
-  color: #75849e;
+  color: var(--gc-muted);
   font-size: var(--font-size-caption);
 }
 .achievement-section {
@@ -842,7 +846,7 @@ onActivated(reloadProfile)
   place-items: center;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.05);
-  color: #75849e;
+  color: var(--gc-muted);
 }
 .achievement-grid article.unlocked > span {
   background: rgba(107, 200, 255, 0.11);
@@ -854,11 +858,11 @@ onActivated(reloadProfile)
   flex-direction: column;
 }
 .achievement-grid small {
-  color: #75849e;
+  color: var(--gc-muted);
   font-size: var(--font-size-caption);
 }
 .achievement-grid b {
-  color: #75849e;
+  color: var(--gc-muted);
   font-size: var(--font-size-caption);
 }
 .achievement-grid .unlocked b {
@@ -897,7 +901,7 @@ onActivated(reloadProfile)
   flex-direction: column;
 }
 .result-history-grid small {
-  color: #75849e;
+  color: var(--gc-muted);
   font-size: var(--font-size-caption);
 }
 .result-history-grid b {
@@ -911,7 +915,7 @@ onActivated(reloadProfile)
   padding: 28px;
   border: 1px dashed rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  color: #75849e;
+  color: var(--gc-muted);
   text-align: center;
 }
 @media (max-width: 1100px) {

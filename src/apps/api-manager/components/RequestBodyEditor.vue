@@ -144,7 +144,7 @@ textarea {
   align-items: center;
 }
 button {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-bg);
   border: 1px solid var(--border-light);
   border-radius: 6px;

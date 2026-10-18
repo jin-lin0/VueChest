@@ -23,6 +23,9 @@
   --accent: #667eea; /* 全站主强调色（覆盖 85 处 #667eea）*/
   --accent-strong: #764ba2; /* 渐变末端 / hover 加深 */
   --accent-contrast: #ffffff; /* 主色上的文字 */
+  /* 品牌色作为「浅底上的文字 / 图标」时的颜色（AA ≥4.5:1）。
+     纯 --accent(#667eea) 在浅底只有 3.2~3.6:1：当填充色够、当文字色不够。 */
+  --accent-text: #4d61cb;
   --accent-bg: #eef2ff; /* 浅色强调底（tab/选中行）*/
   --accent-light: #c7d2fe; /* 浅色描边 / 发光 */
   --accent-rgb: 102, 126, 234; /* 供 rgba(var(--accent-rgb), a) 使用 */
@@ -35,6 +38,12 @@
   --danger: #dc2626; /* 覆盖 #e74c3c/#f44336/#dc2626/#ff6b6b 红系 */
   --danger-bg: #fee2e2;
   --info: #3498db;
+  /* 语义色「文字档」：上面几个是填充/描边色，直接当文字落在 --*-bg 或同色 10~13%
+     的染色底上只有 2.6~3.8:1。跟 --accent-text 同一个道理，文字一律走这一档。 */
+  --success-text: #047552;
+  --warning-text: #985404;
+  --danger-text: #bf1f1f;
+  --info-text: #1d6da2;
 
   /* ---------- 表面 / 背景 ---------- */
   --bg-page: #f5f7fa; /* 公开站默认底（同 body 现状）*/
@@ -48,11 +57,13 @@
   --bg-glass-soft: rgba(255, 255, 255, 0.8); /* 按钮 / tab 玻璃底 */
 
   /* ---------- 文本 ---------- */
+  /* 三级灰阶都要过 AA：二级在浅底 ≥6.5:1、三级 ≥4.65:1（含 --bg-hover / --accent-bg 这类最深浅底）。
+     原先 --text-muted(#9ca3af) 只有 2.3~2.5:1，被当标签文字用时基本看不清。*/
   --text-primary: #2c3e50; /* 标题 / 强文本（覆盖 42 处 #2c3e50）*/
   --text-body: #333333; /* 正文 */
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --text-dim: #7f8c8d;
+  --text-secondary: #4b5563;
+  --text-muted: #646b78;
+  --text-dim: #646b78; /* 与 muted 同级（原 #7f8c8d 在浅底仅 3.4:1）*/
   --text-inverse: #ffffff;
 
   /* ---------- 边框 ---------- */
@@ -158,6 +169,8 @@
 
   --accent-bg: #1e293b;
   --accent-light: #334155;
+  /* 深色底更暗，品牌文字要往亮走才能保住 ≥4.5:1 */
+  --accent-text: #9aa9f8;
 
   --bg-page: #0f172a;
   --bg-card: #1e293b;
@@ -171,9 +184,9 @@
 
   --text-primary: #f1f5f9;
   --text-body: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-dim: #94a3b8;
+  --text-secondary: #c3cddb; /* 三级灰阶同样要过 AA：深底 ≥6.45:1 */
+  --text-muted: #a3b1c6; /* 原 #64748b 在深色 hover 底仅 2.6:1 */
+  --text-dim: #a3b1c6;
 
   --border: #334155;
   --border-light: #334155;
@@ -191,6 +204,11 @@
   --success-bg: #064e3b;
   --warning-bg: #78350f;
   --danger-bg: #450a0a;
+  /* 深色下的语义色文字档：文字大多落在 --bg-card / --bg-hover 上，故要更亮的档位 */
+  --success-text: #34d399;
+  --warning-text: #fbbf24;
+  --danger-text: #fa9292;
+  --info-text: #77b2fb;
 
   /* 滚动条：深色下用浅色 thumb */
   --scrollbar-thumb: rgba(241, 245, 249, 0.22);

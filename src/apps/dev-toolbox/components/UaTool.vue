@@ -150,7 +150,7 @@ parse()
   font-size: var(--font-size-control);
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }
@@ -166,7 +166,7 @@ parse()
 }
 .mini:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mini:disabled {
   opacity: 0.5;

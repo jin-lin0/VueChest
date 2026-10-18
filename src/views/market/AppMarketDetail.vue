@@ -406,7 +406,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
   border-radius: 10px;
   cursor: pointer;
   font-size: var(--font-size-body);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -510,7 +510,7 @@ async function handleVersionStatus(version: MarketAppVersion) {
 .uninstall-btn {
   padding: 0.7rem 2rem;
   background: var(--bg-card);
-  color: var(--danger);
+  color: var(--danger-text);
   border: 1px solid var(--danger);
   border-radius: 10px;
   font-size: var(--font-size-title);
@@ -530,13 +530,13 @@ async function handleVersionStatus(version: MarketAppVersion) {
 
 .action-error {
   margin-top: 0.7rem;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-body);
 }
 
 .action-message {
   margin-top: 0.7rem;
-  color: var(--success);
+  color: var(--success-text);
   font-size: var(--font-size-body);
 }
 
@@ -671,18 +671,18 @@ async function handleVersionStatus(version: MarketAppVersion) {
   padding: 0.12rem 0.42rem;
   border-radius: 999px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
 }
 
 .version-tag.installed {
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .version-tag.yanked {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .version-item p {
@@ -701,13 +701,13 @@ async function handleVersionStatus(version: MarketAppVersion) {
   border: 1px solid rgba(var(--accent-rgb), 0.25);
   border-radius: 7px;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
 }
 
 .version-actions .version-admin-btn {
   border-color: var(--danger);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .detail-section {

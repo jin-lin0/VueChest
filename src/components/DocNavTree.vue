@@ -148,7 +148,7 @@ function openFolderContextMenu(event: MouseEvent, node: DocItem) {
 }
 .doc-nav-item.active {
   background: var(--accent-bg, #eef2ff);
-  color: var(--accent, #4f46e5);
+  color: var(--accent-text, #4d61cb);
   font-weight: 600;
   border-left-color: var(--accent, #4f46e5);
 }

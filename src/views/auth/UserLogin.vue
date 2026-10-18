@@ -182,7 +182,7 @@ async function handleLogin() {
 }
 
 .form-error {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-body);
   margin: 0 0 16px;
   text-align: center;
@@ -224,11 +224,13 @@ async function handleLogin() {
 
 .sep {
   margin: 0 8px;
+  /* 纯装饰分隔符（两个链接之间的「·」），不承载信息，故用最淡的边框色；
+     模板已加 aria-hidden="true"，读屏与对比度审计都会跳过它（WCAG 1.4.3 不适用于装饰）。 */
   color: var(--border);
 }
 
 .link {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: none;
   font-weight: 500;
 }

@@ -182,7 +182,7 @@ function finish(msg: string) {
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mini {
   background: var(--bg-card);
@@ -196,7 +196,7 @@ function finish(msg: string) {
 }
 .mini:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mini:disabled {
   opacity: 0.5;

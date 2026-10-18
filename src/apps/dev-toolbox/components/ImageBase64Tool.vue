@@ -152,7 +152,7 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
 }
 .drop:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .drop:focus-visible {
   outline: 2px solid var(--accent);
@@ -160,7 +160,7 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
 }
 .drop.dragging {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--bg-input);
 }
 .hint {
@@ -169,7 +169,7 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
   margin: 0.6rem 0 0;
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.6rem 0 0;
 }
@@ -221,7 +221,7 @@ const { dragging, inputRef, onFile, onDragOver, onDragLeave, onDrop, openPicker 
 }
 .mini:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .mono {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);

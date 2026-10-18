@@ -204,7 +204,7 @@ function clearAll() {
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -271,17 +271,19 @@ function clearAll() {
   background: var(--bg-subtle);
   color: var(--text-muted);
 }
+/* 校验结果标签：底色是自己染的 15% 同色，字面色必须按这块染色底算。
+   #16a34a / #dc2626 只算了白底（2.79 / 3.81:1），这里是走语义文字档。 */
 .badge.ok {
   background: rgba(22, 163, 74, 0.15);
-  color: #16a34a;
+  color: var(--success-text);
 }
 .badge.bad {
   background: rgba(220, 38, 38, 0.15);
-  color: #dc2626;
+  color: var(--danger-text);
 }
 .err {
   margin: 0.4rem 0 0;
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-body);
   white-space: pre-wrap;
   word-break: break-word;
@@ -291,7 +293,9 @@ function clearAll() {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: var(--font-size-control);
   line-height: 1.6;
-  color: #dc2626;
+  /* 校验错误清单。原来是字面量 #dc2626：白底上 4.83:1 勉强过，深色主题下压在
+     --bg-elevated(#1e293b) 上只有 3.03:1。走语义文字档。 */
+  color: var(--danger-text);
   white-space: pre-wrap;
   word-break: break-word;
 }

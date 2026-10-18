@@ -194,7 +194,7 @@ onMounted(() => {
 
 .back-btn:hover {
   border-color: var(--accent-light);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .head-copy {
@@ -254,13 +254,13 @@ onMounted(() => {
 
 .ghost-btn:hover:not(:disabled) {
   border-color: var(--accent-light);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .ghost-btn.is-active {
   border-color: var(--accent);
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -274,7 +274,7 @@ onMounted(() => {
   padding: var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-meta);
 }
 
@@ -401,7 +401,7 @@ onMounted(() => {
 
 .remove-btn:hover:not(:disabled) {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .remove-btn:disabled {

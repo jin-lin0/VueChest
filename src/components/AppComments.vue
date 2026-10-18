@@ -389,7 +389,7 @@ function toggleReply(id: number) {
 .login-link {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -397,7 +397,7 @@ function toggleReply(id: number) {
 }
 
 .comment-error {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-body);
   margin: 0.5rem 0;
 }
@@ -441,7 +441,7 @@ function toggleReply(id: number) {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--tag-bg);
 }
 
@@ -500,11 +500,11 @@ function toggleReply(id: number) {
 }
 
 .link-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .link-btn.danger:hover {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .replies {
@@ -546,6 +546,6 @@ function toggleReply(id: number) {
 
 .load-more:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 </style>

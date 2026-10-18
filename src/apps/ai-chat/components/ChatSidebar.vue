@@ -250,11 +250,11 @@ onUnmounted(() => {
 }
 
 .session-action:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .session-action.danger:hover {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .load-more {

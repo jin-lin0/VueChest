@@ -242,7 +242,7 @@ async function copyRaw() {
 .ws-state.error {
   border-color: color-mix(in srgb, var(--danger) 30%, transparent);
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .ws-state span {
   width: 36px;

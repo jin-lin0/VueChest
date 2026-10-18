@@ -165,7 +165,7 @@ async function handleUpdate(appId: number) {
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: 9px;
   background: var(--bg-glass);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-weight: 600;
 }
@@ -284,7 +284,7 @@ async function handleUpdate(appId: number) {
 
 .update-error {
   margin-bottom: 0.7rem;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
 }
 

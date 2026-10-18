@@ -122,7 +122,7 @@ header {
   place-items: center;
   border-radius: 10px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .credential-title-row {
@@ -170,7 +170,7 @@ h2 {
 .credential-help > button:hover,
 .credential-help > button:focus-visible {
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .credential-tooltip {
@@ -218,12 +218,12 @@ h2 {
 
 .credential-state.saved {
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .credential-state.pending {
   background: var(--warning-bg);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .credential-field {
@@ -322,6 +322,6 @@ h2 {
 .credential-safety svg {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: var(--success);
+  color: var(--success-text);
 }
 </style>

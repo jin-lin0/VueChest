@@ -586,7 +586,7 @@ onMounted(() => {
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: 8px;
   background: var(--bg-glass);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-weight: 600;
 }
@@ -626,7 +626,7 @@ onMounted(() => {
 
 .error-message {
   margin-bottom: 0.7rem;
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .loading-state {
@@ -681,13 +681,13 @@ onMounted(() => {
 .status-approved,
 .review-approved {
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 
 .status-pending,
 .review-pending {
   background: var(--warning-bg);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .status-rejected,
@@ -695,7 +695,7 @@ onMounted(() => {
 .review-rejected,
 .review-withdrawn {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .app-metrics {
@@ -743,7 +743,7 @@ onMounted(() => {
 }
 
 .review-feedback strong {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
 }
 
@@ -767,7 +767,7 @@ onMounted(() => {
   border: 1px solid rgba(var(--accent-rgb), 0.25);
   border-radius: 7px;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-weight: 600;
 }
@@ -822,7 +822,7 @@ onMounted(() => {
 
 .withdraw-btn {
   border-color: var(--danger);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .analytics {

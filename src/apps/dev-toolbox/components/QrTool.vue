@@ -123,7 +123,7 @@ generate()
   margin: 0.5rem 0 0;
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.5rem 0 0;
 }
@@ -171,7 +171,7 @@ generate()
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn.primary {
   background: var(--gradient-primary);

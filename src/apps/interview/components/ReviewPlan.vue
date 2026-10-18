@@ -74,7 +74,7 @@ progress {
   border-radius: 8px;
   padding: 0.65rem 1rem;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font: inherit;
   font-weight: 600;

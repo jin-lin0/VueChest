@@ -266,7 +266,7 @@ onMounted(() => {
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: 8px;
   background: var(--bg-glass);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-weight: 600;
 }
@@ -287,7 +287,7 @@ onMounted(() => {
 
 .message {
   margin-bottom: 0.7rem;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .share-url {
@@ -380,7 +380,7 @@ onMounted(() => {
 }
 
 .missing-note {
-  color: var(--warning) !important;
+  color: var(--warning-text) !important;
 }
 
 @media (max-width: 680px) {

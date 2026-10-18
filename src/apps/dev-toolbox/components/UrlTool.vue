@@ -148,11 +148,11 @@ function clearAll() {
 }
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .btn.on {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: rgba(102, 126, 234, 0.12);
 }
 .btn.primary {
@@ -232,7 +232,7 @@ function clearAll() {
 }
 .err {
   margin: 0.6rem 0 0;
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
 }
 

@@ -315,7 +315,7 @@ function setNowTs() {
 }
 .mini:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .out {
   display: flex;
@@ -381,7 +381,7 @@ function setNowTs() {
   color: var(--text-body);
 }
 .err {
-  color: var(--danger, #ef4444);
+  color: var(--danger-text);
   font-size: var(--font-size-control);
   margin: 0.3rem 0 0;
 }

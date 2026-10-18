@@ -882,7 +882,7 @@ svg {
 }
 
 .workspace-custom-request-form label b {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .workspace-custom-request-form input,
@@ -916,7 +916,7 @@ svg {
 }
 
 .workspace-custom-request-form label > small {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-meta);
 }
 

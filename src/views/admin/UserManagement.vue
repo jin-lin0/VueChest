@@ -402,7 +402,7 @@ async function toggleStatus(u: UserItem) {
 }
 .btn-danger {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   border: 1px solid var(--danger-bg);
   padding: 10px 18px;
   border-radius: 8px;
@@ -542,11 +542,11 @@ async function toggleStatus(u: UserItem) {
 }
 .role-admin {
   background: var(--warning-bg);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 .role-super_admin {
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .status-dot {
   display: inline-block;
@@ -581,7 +581,7 @@ async function toggleStatus(u: UserItem) {
 }
 .page-btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .page-btn:disabled {
   opacity: 0.4;
@@ -603,7 +603,7 @@ async function toggleStatus(u: UserItem) {
   font-size: var(--font-size-body);
 }
 .required {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .form-input {
   width: 100%;

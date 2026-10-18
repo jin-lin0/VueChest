@@ -86,7 +86,7 @@ async function onClick() {
 }
 .copy-btn:hover:not(.is-disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .copy-btn.is-disabled {
   opacity: 0.5;

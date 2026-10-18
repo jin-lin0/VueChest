@@ -397,7 +397,7 @@ async function batchDelete() {
 .batch-info {
   font-size: var(--font-size-control);
   font-weight: 500;
-  color: var(--accent);
+  color: var(--accent-text);
   flex: 1;
 }
 
@@ -428,7 +428,7 @@ async function batchDelete() {
 
 .btn-danger {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   border: 1px solid var(--danger-bg);
   padding: 8px 16px;
   border-radius: 6px;
@@ -532,22 +532,22 @@ async function batchDelete() {
 }
 .diff-badge.easy {
   background: var(--success-bg);
-  color: var(--success);
+  color: var(--success-text);
 }
 .diff-badge.medium {
   background: var(--warning-bg);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 .diff-badge.hard {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .cat-tag {
   padding: 1px 7px;
   border-radius: 10px;
   background: var(--accent-bg);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-meta);
 }
 
@@ -673,7 +673,7 @@ async function batchDelete() {
 
 .page-btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .page-btn:disabled {
   opacity: 0.35;
@@ -699,7 +699,7 @@ async function batchDelete() {
 
 .page-num:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .page-num.active {

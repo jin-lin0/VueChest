@@ -290,7 +290,7 @@ onMounted(async () => {
   border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: var(--radius-md);
   background: var(--bg-glass);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   font-size: var(--font-size-body);
   font-weight: 600;
@@ -308,7 +308,7 @@ onMounted(async () => {
 }
 
 .update-badge {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -394,7 +394,7 @@ onMounted(async () => {
 }
 
 .rank-no.top {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .rank-icon {
@@ -454,7 +454,7 @@ onMounted(async () => {
   border-radius: var(--radius-md);
   cursor: pointer;
   font-size: var(--font-size-body);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   transition: all var(--transition);
   box-shadow: var(--shadow-sm);
@@ -479,7 +479,7 @@ onMounted(async () => {
 
 .subtitle {
   font-size: var(--font-size-small);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   margin: 0;
   letter-spacing: 0.08em;
@@ -539,7 +539,7 @@ onMounted(async () => {
 
 .search-clear:hover {
   background: rgba(0, 0, 0, 0.05);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .category-tabs {
@@ -563,7 +563,7 @@ onMounted(async () => {
 
 .category-tab:hover {
   border-color: rgba(var(--accent-rgb), 0.4);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .category-tab.active {
@@ -732,7 +732,7 @@ onMounted(async () => {
 
 .install-btn.installed {
   background: var(--bg-subtle);
-  color: var(--success);
+  color: var(--success-text);
   cursor: default;
 }
 

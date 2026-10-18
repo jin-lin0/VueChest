@@ -659,11 +659,11 @@ async function handleSubmit() {
 }
 
 .file-error-text {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .file-zone-link {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -684,7 +684,7 @@ async function handleSubmit() {
 
 .file-name {
   font-weight: 600;
-  color: var(--success);
+  color: var(--success-text);
   font-size: var(--font-size-body);
 }
 
@@ -700,7 +700,7 @@ async function handleSubmit() {
   border: 1px solid var(--success);
   border-radius: 8px;
   background: var(--bg-card);
-  color: var(--success);
+  color: var(--success-text);
   font-size: var(--font-size-control);
   font-weight: 500;
   cursor: pointer;
@@ -752,7 +752,7 @@ async function handleSubmit() {
 
 .meta-version {
   font-size: var(--font-size-small);
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--bg-card);
   padding: 2px 10px;
   border-radius: 6px;
@@ -893,7 +893,7 @@ async function handleSubmit() {
 
 .shot-add:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-bg);
 }
 
@@ -940,7 +940,7 @@ async function handleSubmit() {
   background: var(--danger-bg);
   border: 1px solid var(--danger);
   border-radius: 10px;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-body);
   margin: 0 0 20px;
 }

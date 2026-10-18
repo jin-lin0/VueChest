@@ -448,7 +448,7 @@ function savePosition() {
 }
 
 .remove-position:hover {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .up {

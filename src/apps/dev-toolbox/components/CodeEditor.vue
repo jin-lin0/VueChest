@@ -118,13 +118,18 @@ function onKeydown(e: KeyboardEvent) {
 </template>
 
 <style>
-/* 高亮调色：随浅/深色主题切换（限定在 .code-editor 内，避免污染全局） */
+/* 高亮调色：随浅/深色主题切换（限定在 .code-editor 内，避免污染全局）。
+   深色档同时挂在 :root.dark 与 .vc-dark 上，和 tokens.css 的口径保持一致：
+   前者是全站主题开关，后者是任意暗色作用域（主题岛）。 */
 .code-editor {
   --jt-fg: #24292e;
   --jt-key: #005cc5;
   --jt-str: #032f62;
   --jt-num: #b6015b;
   --jt-kw: #d73a49;
+  --jt-title: #6f42c1;
+  --jt-builtin: #a04100;
+  --jt-name: #22863a;
   --jt-comment: #6a737d;
   --jt-caret: #24292e;
   --jt-accent: #667eea;
@@ -139,12 +144,16 @@ function onKeydown(e: KeyboardEvent) {
   background: var(--bg-input);
   overflow: hidden;
 }
-.dark .code-editor {
+:root.dark .code-editor,
+.vc-dark .code-editor {
   --jt-fg: #c9d1d9;
   --jt-key: #79b8ff;
   --jt-str: #a5d6ff;
   --jt-num: #79c0ff;
   --jt-kw: #ff7b72;
+  --jt-title: #d2a8ff;
+  --jt-builtin: #ffa657;
+  --jt-name: #7ee787;
   --jt-comment: #8b949e;
   --jt-caret: #c9d1d9;
   --jt-accent: #667eea;
@@ -205,16 +214,30 @@ function onKeydown(e: KeyboardEvent) {
   box-shadow: 0 0 0 3px var(--jt-accent-soft);
 }
 
-/* highlight.js token 着色（覆盖 markdown.ts 引入的 github-dark 默认背景） */
+/* highlight.js token 着色。
+   markdown.ts 全局引入了 github-dark 主题，那套 token 颜色是按 #0d1117 深底配的；
+   在浅色主题下编辑器的底是 --bg-input(#fff)，凡是没有被这里接管的 token 就会
+   原样落下来：.hljs-title 的 #d2a8ff 在白底上只有 1.95:1、.hljs-subst /.hljs-strong
+   的 #c9d1d9 基本等于看不见。所以必须把主题里出现的**每一组** token 都接管，
+   漏一组就等于漏一种颜色（curl 的 fetch() 就是这么被抓到的）。
+   下面严格按 github-dark.css 的分组逐组映射到 --jt-*。 */
 .code-editor .hljs {
   color: var(--jt-fg);
   background: transparent;
 }
 .code-editor .hljs-attr,
-.code-editor .hljs-attribute {
+.code-editor .hljs-attribute,
+.code-editor .hljs-meta,
+.code-editor .hljs-operator,
+.code-editor .hljs-selector-attr,
+.code-editor .hljs-selector-class,
+.code-editor .hljs-selector-id,
+.code-editor .hljs-variable {
   color: var(--jt-key);
 }
-.code-editor .hljs-string {
+.code-editor .hljs-string,
+.code-editor .hljs-regexp,
+.code-editor .hljs-meta .hljs-string {
   color: var(--jt-str);
 }
 .code-editor .hljs-number {
@@ -222,14 +245,43 @@ function onKeydown(e: KeyboardEvent) {
 }
 .code-editor .hljs-literal,
 .code-editor .hljs-keyword,
-.code-editor .hljs-built_in {
+.code-editor .hljs-meta .hljs-keyword,
+.code-editor .hljs-doctag,
+.code-editor .hljs-template-tag,
+.code-editor .hljs-template-variable,
+.code-editor .hljs-type {
   color: var(--jt-kw);
 }
-.code-editor .hljs-comment {
+.code-editor .hljs-built_in,
+.code-editor .hljs-symbol {
+  color: var(--jt-builtin);
+}
+.code-editor .hljs-title,
+.code-editor .hljs-title.class_,
+.code-editor .hljs-title.class_.inherited__,
+.code-editor .hljs-title.function_ {
+  color: var(--jt-title);
+}
+.code-editor .hljs-name,
+.code-editor .hljs-quote,
+.code-editor .hljs-selector-pseudo,
+.code-editor .hljs-selector-tag {
+  color: var(--jt-name);
+}
+.code-editor .hljs-comment,
+.code-editor .hljs-code,
+.code-editor .hljs-formula {
   color: var(--jt-comment);
   font-style: italic;
 }
-.code-editor .hljs-punctuation {
+.code-editor .hljs-punctuation,
+.code-editor .hljs-subst,
+.code-editor .hljs-emphasis,
+.code-editor .hljs-strong {
   color: var(--jt-fg);
+}
+.code-editor .hljs-section,
+.code-editor .hljs-bullet {
+  color: var(--jt-key);
 }
 </style>

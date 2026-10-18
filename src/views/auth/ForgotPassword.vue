@@ -283,7 +283,7 @@ async function handleReset() {
   flex-shrink: 0;
   padding: 12px 16px;
   background: var(--bg-card);
-  color: var(--accent);
+  color: var(--accent-text);
   border: 1px solid var(--accent);
   border-radius: 10px;
   font-size: var(--font-size-body);
@@ -311,7 +311,7 @@ async function handleReset() {
 }
 
 .form-error {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-body);
   margin: 0 0 16px;
   text-align: center;
@@ -352,7 +352,7 @@ async function handleReset() {
 }
 
 .link {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: none;
   font-weight: 500;
 }

@@ -297,7 +297,7 @@ async function deleteCategory(id: number) {
 
 .btn-danger {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   border: 1px solid var(--danger-bg);
   padding: 10px 18px;
   border-radius: 8px;
@@ -416,7 +416,7 @@ async function deleteCategory(id: number) {
 }
 
 .required {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .form-input {
@@ -446,7 +446,7 @@ async function deleteCategory(id: number) {
 
 .error-text {
   display: block;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--font-size-small);
   margin-top: 4px;
 }

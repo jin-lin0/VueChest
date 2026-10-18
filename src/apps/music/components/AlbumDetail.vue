@@ -197,7 +197,7 @@ const formatPublishDate = (ms?: number): string => {
 .ad-back:hover {
   background: var(--bg-card-hover);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .ad-topbar-title {
@@ -245,7 +245,7 @@ const formatPublishDate = (ms?: number): string => {
 
 .ad-type {
   font-size: var(--font-size-small);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   letter-spacing: 2px;
 }
@@ -317,7 +317,7 @@ const formatPublishDate = (ms?: number): string => {
   padding: 0;
   border: none;
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--font-size-control);
   cursor: pointer;
   transition: opacity 0.2s;

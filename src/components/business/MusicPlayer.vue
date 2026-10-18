@@ -722,6 +722,8 @@ onUnmounted(() => {
 .lyrics-overlay {
   --accent: #6c5ce7;
   --accent-light: #a29bfe;
+  /* 主题岛自带品牌文字档（本岛是暗底，全局浅色档在暗底上不达标） */
+  --accent-text: #ada6fe;
   --accent-gradient: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
   --accent-gradient-vivid: linear-gradient(135deg, #6c5ce7 0%, #fd79a8 100%);
   --bg-card: rgba(255, 255, 255, 0.06);
@@ -1318,6 +1320,8 @@ onUnmounted(() => {
 .song-item {
   --accent: #6c5ce7;
   --accent-light: #a29bfe;
+  /* 主题岛自带品牌文字档（本岛是暗底，全局浅色档在暗底上不达标） */
+  --accent-text: #ada6fe;
   --bg-card: rgba(255, 255, 255, 0.06);
   --bg-card-hover: rgba(255, 255, 255, 0.1);
   --text: #f0f0f5;
