@@ -567,7 +567,12 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import ReviewPlan from './components/ReviewPlan.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CustomSelect, EmptyState, MarkdownView, Skeleton, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+// 参考答案只在点「查看参考答案」之后才出现，首帧用不上 markdown 渲染栈（47.7 KB gzip）
+import MarkdownView from '@/components/common/MarkdownViewLazy'
+import Skeleton from '@/components/common/Skeleton.vue'
 import { useToast } from '@/composables/useToast'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { api } from '@/lib/request'

@@ -6,7 +6,7 @@ import type { MarketAppItem, MarketAppVersion } from '@/stores/market'
 import { useAuthStore } from '@/stores/auth'
 import { formatFileSize } from '@/utils/common'
 import AppComments from '@/components/AppComments.vue'
-import { Modal } from '@/components'
+import Modal from '@/components/common/Modal.vue'
 import type { MarketReportReason } from '@/stores/market'
 
 const route = useRoute()

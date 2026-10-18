@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useMusicStore } from '@/stores'
-import { Skeleton } from '@/components'
+import Skeleton from '@/components/common/Skeleton.vue'
 import { debounce } from '@/utils/common'
 import FavoriteMenu from './FavoriteMenu.vue'
 

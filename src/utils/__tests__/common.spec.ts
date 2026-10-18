@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { debounce, formatClock } from '../index'
+import { debounce, formatClock, createLatestOnly } from '../common'
 
 /* ----------------------------- 时钟格式化 ----------------------------- */
 describe('formatClock', () => {
@@ -69,5 +69,51 @@ describe('debounce', () => {
     expect(fn).toHaveBeenCalledTimes(2)
     expect(fn).toHaveBeenNthCalledWith(1, 1)
     expect(fn).toHaveBeenNthCalledWith(2, 2)
+  })
+})
+
+/* ----------------------------- 竞态守卫 ----------------------------- */
+describe('createLatestOnly', () => {
+  it('只认最后一次：先前领的票一律作废', () => {
+    const begin = createLatestOnly()
+    const first = begin()
+    const second = begin()
+    expect(first()).toBe(false)
+    expect(second()).toBe(true)
+  })
+
+  it('一次只能有一个有效票，跟结算顺序无关', () => {
+    const begin = createLatestOnly()
+    const first = begin()
+    const second = begin()
+    const third = begin()
+    // 先领的即使最后才验票，也已经是过期的
+    expect(second()).toBe(false)
+    expect(third()).toBe(true)
+    expect(first()).toBe(false)
+  })
+
+  it('同一个判定函数可以反复验票（领票才推进序号）', () => {
+    const begin = createLatestOnly()
+    const first = begin()
+    expect(first()).toBe(true)
+    expect(first()).toBe(true)
+    const second = begin()
+    expect(first()).toBe(false)
+    expect(second()).toBe(true)
+  })
+
+  it('互相独立的守卫互不干扰', () => {
+    const beginA = createLatestOnly()
+    const beginB = createLatestOnly()
+    const a1 = beginA()
+    const b1 = beginB()
+    expect(a1()).toBe(true)
+    expect(b1()).toBe(true)
+    const a2 = beginA()
+    expect(a1()).toBe(false)
+    // B 的票不受 A 影响
+    expect(b1()).toBe(true)
+    expect(a2()).toBe(true)
   })
 })

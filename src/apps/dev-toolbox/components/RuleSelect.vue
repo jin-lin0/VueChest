@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { CustomSelect, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
 
 interface Rule {
   name: string

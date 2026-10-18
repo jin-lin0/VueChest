@@ -4,7 +4,8 @@ import { RouterLink, useRoute } from 'vue-router'
 import { isWestockAuthError, westockCommand, westockExec } from '@/stores/westock'
 import type { WestockResult as WestockResultData } from '@/stores/westock'
 import { useStockStore } from '@/stores/stock'
-import { CustomSelect, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
 import { useToast } from '@/composables/useToast'
 import {
   CATALOG_SPECS,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue'
-import { Modal } from '@/components'
+import Modal from '@/components/common/Modal.vue'
 import type { CloudSyncDownloadPreview } from '@/stores/cloudSync'
 import { useRouter } from 'vue-router'
 import {

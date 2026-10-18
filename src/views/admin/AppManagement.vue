@@ -382,7 +382,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { CustomSelect, Modal, Toast, EmptyState, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
+import Modal from '@/components/common/Modal.vue'
+import Toast from '@/components/common/Toast.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
 

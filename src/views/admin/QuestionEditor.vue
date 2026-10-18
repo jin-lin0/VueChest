@@ -100,7 +100,8 @@
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import type { ToolbarNames } from 'md-editor-v3'
-import { CustomSelect, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
 import type { Question, Category, Difficulty } from '@/types/interview'
 import { api } from '@/lib/request'
 

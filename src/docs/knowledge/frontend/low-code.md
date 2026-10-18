@@ -37,7 +37,9 @@ order: 31
   </component>
 </template>
 <script setup>
-import { Input, Button, Form } from '@/components'
+import Input from './materials/Input.vue'
+import Button from './materials/Button.vue'
+import Form from './materials/Form.vue'
 const compMap = { Input, Button, Form }
 </script>
 ```
@@ -54,7 +56,7 @@ const compMap = { Input, Button, Form }
 
 ## 五、与 VueChest 的衔接
 
-- 现有 `src/components`（common/business）即天然"物料库"，统一 `import {X} from '@/components'` 便于低代码注册。
+- 现有通用组件与业务组件可作为物料库；低代码注册表按具体模块导入组件。聚合导出能否裁剪取决于副作用与构建配置，本项目通过 ESLint 限制聚合入口，防止可选功能及样式被连带加载。
 - `tokens.css` 提供主题变量，搭建出的页面天然支持暗色（见 `design-token.md`）。
 - 市场 App 的某些配置化场景（如应用信息表单）可用 Schema 描述，降低重复开发。
 

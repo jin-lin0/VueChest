@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce, downloadFile } from '@/utils/common'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'HexDumpTool' })

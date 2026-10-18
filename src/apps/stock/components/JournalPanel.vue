@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { CustomSelect, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
 import { useStockStore } from '@/stores/stock'
 import { useToast } from '@/composables/useToast'
 import { formatPrice } from '../data-quality'

@@ -2,7 +2,16 @@
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   // env.d.ts 与 src/*.d.ts 提供 vue SFC、lunar-javascript 等模块声明，
   // 测试项目也要纳入，否则会误报 TS7016
-  "include": ["env.d.ts", "src/**/*.d.ts", "src/**/__tests__/**/*", "vitest.config.ts"],
+  // market-apps 的用例一并纳入：与 src 的用例同款隔离（不进应用类型检查），
+  // 但在这里能被 vue-tsc --build 看到，跑测试的同时也守住类型。
+  "include": [
+    "env.d.ts",
+    "src/**/*.d.ts",
+    "src/**/__tests__/**/*",
+    "market-apps/**/__tests__/**/*",
+    "scripts/**/__tests__/**/*",
+    "vitest.config.ts"
+  ],
   "exclude": [],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo",

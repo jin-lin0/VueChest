@@ -2,7 +2,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/lib/request'
-import { CustomSelect, EmptyState, TrendChart } from '@/components'
+import CustomSelect from '@/components/common/CustomSelect.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import TrendChart from '@/components/common/TrendChart.vue'
 import { formatFileSize } from '@/utils/common'
 
 interface VersionReview {

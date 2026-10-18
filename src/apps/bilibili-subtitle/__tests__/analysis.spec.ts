@@ -88,17 +88,44 @@ describe('subtitle analysis request ownership', () => {
 
   it('keeps workers active after a partial failure and retries only unfinished parts', async () => {
     const slow = deferred<AnalysisResponse>()
-    stream
-      .mockRejectedValueOnce(new Error('Part one failed'))
-      .mockImplementationOnce(() => slow.promise)
-      .mockResolvedValueOnce(response('Third'))
+    // ⚠️ mock 的行为必须按「是哪个分 P」分发，**不能按调用顺序**：
+    // analyzeSource 会先 `await digestText()`（真实的 crypto.subtle.digest，完成顺序不保证），
+    // 两个 worker 谁先发出请求取决于该异步操作的完成次序，负载下会反过来。
+    // 按调用顺序绑行为会让「拒绝」落到别的分 P 上 —— 结果数组仍严格按分 P 排序，
+    // 于是表现为 analysisResults[0].error 变 undefined（本用例曾因此偶发变红）。
+    const byPart: Record<string, 'reject' | 'slow' | 'ok'> = {
+      'Subtitle 1': 'reject',
+      'Subtitle 2': 'slow',
+      'Subtitle 3': 'ok',
+    }
+    stream.mockImplementation((_path, body) => {
+      switch (byPart[(body as { text: string }).text]) {
+        case 'reject':
+          return Promise.reject(new Error('Part one failed'))
+        case 'slow':
+          return slow.promise
+        default:
+          return Promise.resolve(response('Third'))
+      }
+    })
+
     const analysis = await setup(3)
     const first = analysis.runAnalysis()
     await vi.waitFor(() => expect(stream).toHaveBeenCalledTimes(3))
+    // 守卫：三个分 P 都必须真的被请求过，否则下面的断言会空转通过
+    expect(new Set(stream.mock.calls.map((call) => (call[1] as { text: string }).text))).toEqual(
+      new Set(['Subtitle 1', 'Subtitle 2', 'Subtitle 3']),
+    )
     expect(analysis.analyzing.value).toBe(true)
     slow.resolve(response('Second'))
     await first
     expect(analysis.analysisDone.value).toBe(3)
+    // 结果数组严格按分 P 顺序（与 worker 的完成顺序无关）
+    expect(analysis.analysisResults.value.map((item) => item.id)).toEqual([
+      'BVtest:1',
+      'BVtest:2',
+      'BVtest:3',
+    ])
     expect(analysis.analysisResults.value[0].error).toBe('Part one failed')
     stream.mockResolvedValueOnce(response('First recovered'))
     await analysis.runAnalysis(true)

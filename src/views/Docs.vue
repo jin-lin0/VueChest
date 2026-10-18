@@ -17,15 +17,12 @@ import type { DocItem, DocSection } from '../docs/types'
 import { isFolder } from '../docs/types'
 import { useTheme } from '../composables/useTheme'
 import { renderMarkdown, extractToc } from '@/lib/markdown'
-import {
-  CustomSelect,
-  DonatePanel,
-  DonorsWall,
-  DocNavTree,
-  DOC_EXPANDED_KEY,
-  Modal,
-  type SelectOption,
-} from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
+import DonatePanel from '@/components/business/DonatePanel.vue'
+import DonorsWall from '@/components/business/DonorsWall.vue'
+import DocNavTree, { DOC_EXPANDED_KEY } from '@/components/DocNavTree.vue'
+import Modal from '@/components/common/Modal.vue'
 import { useAuthStore } from '@/stores'
 import { getStorage, setStorage } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/config/storage-keys'

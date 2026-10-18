@@ -26,14 +26,7 @@ const initialCss = styles.map((path) => ({ path, ...size(path) }))
 const jsGzip = initialJs.reduce((sum, item) => sum + item.gzip, 0)
 const cssGzip = initialCss.reduce((sum, item) => sum + item.gzip, 0)
 const budgets = {
-  // 入口预算 31KB：新增「通知中心」时由 30KB 上调。
-  // 上调前入口已经贴到 30663 / 30720，只剩 57 字节余量，而在这个应用里
-  // 单是「注册一条懒加载路由」的固定开销就超过它（路由记录 + __vite__mapDeps 条目约 230 字节 raw，
-  // 因为 35 条路由全部集中写在 router/index.ts 里，都算入口成本）。
-  // 通知 store 已经改成动态导入（见 src/App.vue、stores/notifications.ts），
-  // 能挪的都挪了；再不抬这个数，预算就从「防回归」变成了「禁止新增页面」。
-  // 后续入口增长仍应优先靠「把非关键逻辑移出入口」解决，而不是继续抬这个数字。
-  entryGzip: 31 * 1024,
+  entryGzip: 29 * 1024,
   initialJsGzip: 100 * 1024,
   initialCssGzip: 12 * 1024,
   modulePreloads: 1,
@@ -41,8 +34,7 @@ const budgets = {
 const errors = []
 if (initialJs[0].gzip > budgets.entryGzip)
   errors.push(`入口 JS gzip ${initialJs[0].gzip} > ${budgets.entryGzip}`)
-if (jsGzip > budgets.initialJsGzip)
-  errors.push(`首屏 JS gzip ${jsGzip} > ${budgets.initialJsGzip}`)
+if (jsGzip > budgets.initialJsGzip) errors.push(`首屏 JS gzip ${jsGzip} > ${budgets.initialJsGzip}`)
 if (cssGzip > budgets.initialCssGzip)
   errors.push(`首屏 CSS gzip ${cssGzip} > ${budgets.initialCssGzip}`)
 if (preloads.length > budgets.modulePreloads)

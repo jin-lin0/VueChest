@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { compareVersions, useMarketStore, type MarketAppItem } from '@/stores/market'
 import { extractMetaFromBundle } from '@/lib/app-loader'
 import { api } from '@/lib/request'
-import { CustomSelect, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
 import type { MarketAppMeta } from '@/lib/app-loader'
 
 const router = useRouter()

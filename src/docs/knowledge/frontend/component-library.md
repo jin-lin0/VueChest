@@ -133,7 +133,7 @@ const theme = inject('theme', ref('light')) // 第二参是默认值
 
 ```ts
 // 替代 window.confirm —— ConfirmDialog + useConfirm()
-import { useConfirm } from '@/components'
+import { useConfirm } from '@/composables/useConfirm'
 const { confirm } = useConfirm()
 const ok = await confirm('确定删除？')
 if (ok) {
@@ -154,7 +154,11 @@ toastRef.value.addToast('success', '保存成功')
 3. **可组合**：用插槽把「数据」与「渲染」解耦，而不是写死内部结构。
 4. **层级集中**：z-index 一律走 `tokens.css`，不散落硬编码。
 5. **禁用原生弹窗**：alert/confirm 全部组件化。
-6. **统一出口**：对外 `import { X } from '@/components'`，内部文件结构对使用者透明。
+6. **按路径显式导入**：对外 `import Modal from '@/components/common/Modal.vue'`，**不要**做 `src/components/index.ts` 聚合桶，也不要从桶导入。
+
+   > 聚合导出本身并不必然破坏 tree shaking，但组件样式等副作用可能使可选依赖留在产物中。本项目采用具体模块导入，避免基础组件连带引入 Markdown 渲染等可选功能。
+   >
+   > ESLint 的 `no-restricted-imports` 禁止组件和工具聚合入口；规则解析真实导入语句，不会把注释中的示例误判为依赖。
 
 ## 九、透传属性与原生能力
 

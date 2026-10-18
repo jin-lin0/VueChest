@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { diffLines, diffWords } from 'diff'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 
 defineOptions({ name: 'DiffTool' })
 

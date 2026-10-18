@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { CustomSelect, type SelectOption, CopyButton } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'TimezoneTool' })

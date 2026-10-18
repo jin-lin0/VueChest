@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { debounce } from '@/utils/common'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 import { XMLParser, XMLBuilder } from 'fast-xml-parser'
 import CodeEditor from './CodeEditor.vue'

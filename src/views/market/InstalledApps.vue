@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMarketStore, type InstalledApp } from '@/stores/market'
 import { clearSandboxStorage, inspectSandboxStorage } from '@/lib/sandbox-bridge'
 import { useConfirm } from '@/composables/useConfirm'
-import { EmptyState, Modal } from '@/components'
+import EmptyState from '@/components/common/EmptyState.vue'
+import Modal from '@/components/common/Modal.vue'
 import { formatFileSize } from '@/utils/common'
 
 const route = useRoute()

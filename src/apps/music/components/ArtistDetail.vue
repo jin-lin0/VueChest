@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useMusicStore, type Album } from '@/stores'
-import { Skeleton } from '@/components'
+import Skeleton from '@/components/common/Skeleton.vue'
 import FavoriteMenu from './FavoriteMenu.vue'
 
 defineOptions({ name: 'ArtistDetail' })

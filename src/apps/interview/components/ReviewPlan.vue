@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CustomSelect } from '@/components'
+import CustomSelect from '@/components/common/CustomSelect.vue'
 import { computed } from 'vue'
 const props = defineProps<{ goal: number; completed: number; due: number; busy: boolean }>()
 const emit = defineEmits<{ 'update:goal': [value: number]; review: [] }>()

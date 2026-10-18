@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils/common'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 import * as punycode from 'punycode'
 

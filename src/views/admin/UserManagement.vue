@@ -154,7 +154,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { CustomSelect, Modal, Toast, EmptyState, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
+import Modal from '@/components/common/Modal.vue'
+import Toast from '@/components/common/Toast.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
 import { roleText } from '@/utils/common'

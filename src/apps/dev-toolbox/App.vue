@@ -11,7 +11,7 @@ import {
 } from 'vue'
 import type { Component } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Drawer } from '@/components'
+import Drawer from '@/components/common/Drawer.vue'
 // 外壳自身的侧栏列表保持同步：它和 dev-toolbox 一起进场，拆出去只会多一次请求
 import ToolList from './components/ToolList.vue'
 import { REALTIME_KEY, REGISTER_KEY } from './composables/useRealtime'

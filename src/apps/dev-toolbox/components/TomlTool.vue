@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { debounce, downloadFile } from '@/utils/common'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml'
 import CodeEditor from './CodeEditor.vue'

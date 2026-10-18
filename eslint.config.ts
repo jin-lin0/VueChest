@@ -25,4 +25,18 @@ export default defineConfigWithVueTs(
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
   skipFormatting,
+  {
+    files: ['src/**/*.{ts,tsx,vue}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['@/components', '@/utils'].map((name) => ({
+            name,
+            message: '请直接导入具体模块，避免入口连带加载可选功能及样式。',
+          })),
+        },
+      ],
+    },
+  },
 )

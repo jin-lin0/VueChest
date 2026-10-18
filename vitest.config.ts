@@ -18,6 +18,16 @@ export default defineConfig({
     testTimeout: 15_000,
     // 测试统一放在同层 __tests__/ 下：tsconfig.app.json 已排除该目录，
     // 避免 vitest 的类型被拉进应用类型检查（npm run build 会跑 type-check）。
-    include: ['src/**/__tests__/**/*.spec.ts'],
+    //
+    // market-apps 也纳入：市场应用此前**完全没有测试通道**（tsconfig.app.json 排除
+    // market-apps/**，这里的 include 又只收 src/**），于是「特殊日子把整个
+    // lunar-javascript 打进产物」「番茄钟按 tick 计数导致后台慢 60 倍」这类缺陷
+    // 谁也不会发现 —— 包体与计时逻辑都没有任何回归保护。
+    // 各市场应用没有自己的 node_modules，依赖都解析到本仓根目录，可直接复用这套 vitest。
+    include: [
+      'src/**/__tests__/**/*.spec.ts',
+      'market-apps/**/__tests__/**/*.spec.ts',
+      'scripts/**/__tests__/**/*.spec.ts',
+    ],
   },
 })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { debounce } from '@/utils/common'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 import { useRealtime } from '../composables/useRealtime'
 

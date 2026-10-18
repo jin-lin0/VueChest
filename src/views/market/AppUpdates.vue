@@ -2,7 +2,7 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMarketStore } from '@/stores/market'
-import { EmptyState } from '@/components'
+import EmptyState from '@/components/common/EmptyState.vue'
 
 const router = useRouter()
 const market = useMarketStore()

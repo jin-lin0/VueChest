@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Modal } from '@/components'
+import Modal from '@/components/common/Modal.vue'
 import { PLAYER_COLORS } from '../types'
 import type { StatItem } from '../types'
 

@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { UAParser } from 'ua-parser-js'
 import { debounce } from '@/utils/common'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 
 defineOptions({ name: 'UaTool' })

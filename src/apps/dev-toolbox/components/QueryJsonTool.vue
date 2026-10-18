@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { debounce, downloadFile } from '@/utils/common'
 import { autoType } from '@/utils/devtoolbox'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 import CodeEditor from './CodeEditor.vue'
 import { useRealtime } from '../composables/useRealtime'

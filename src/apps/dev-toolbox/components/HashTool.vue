@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRealtime } from '../composables/useRealtime'
 import { debounce } from '@/utils/common'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 import { useToast } from '@/composables/useToast'
 // @ts-expect-error spark-md5 未提供类型声明，运行期由依赖提供
 import SparkMD5 from 'spark-md5'

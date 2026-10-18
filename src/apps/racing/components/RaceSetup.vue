@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { CustomSelect, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
 import { Flag, Gauge, Gamepad2, Settings, Shuffle, Timer, Trophy, Zap } from '@lucide/vue'
 import {
   MODE_LABELS,

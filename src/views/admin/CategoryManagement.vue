@@ -91,7 +91,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Modal, Toast } from '@/components'
+import Modal from '@/components/common/Modal.vue'
+import Toast from '@/components/common/Toast.vue'
 import { api } from '@/lib/request'
 import { useConfirm } from '@/composables/useConfirm'
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { CopyButton } from '@/components'
+import CopyButton from '@/components/common/CopyButton.vue'
 
 defineOptions({ name: 'TextStatsTool' })
 

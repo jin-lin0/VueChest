@@ -70,7 +70,7 @@ import logoUrl from '@/assets/logo.png?url'
 import Worker from './heavy.worker.ts?worker'
 
 // 4. 普通导入 —— 被打包进产物（JS/TS 模块）
-import { format } from '@/utils'
+import { format } from '@/utils/common'
 ```
 
 > VueChest 文档中心（`src/docs`）正是用 `import xxx from './xxx.md?raw'` 把每篇 markdown 读成字符串，再交给 `marked` + `highlight.js` 渲染（见 `css-effects` 文末说明）。`public/tokens.css` 也通过 `?raw` 读取做主题注入。

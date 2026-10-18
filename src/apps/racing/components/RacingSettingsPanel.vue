@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { CustomSelect, Modal, type SelectOption } from '@/components'
+import type { SelectOption } from '@/components/common/CustomSelect.vue'
+import CustomSelect from '@/components/common/CustomSelect.vue'
+import Modal from '@/components/common/Modal.vue'
 import { DEFAULT_KEY_BINDINGS, type RacingSettings } from '../game'
 
 const props = defineProps<{ open: boolean; settings: RacingSettings }>()
