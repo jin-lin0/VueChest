@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { PermissionCancelledError, useMarketStore } from '@/stores/market'
 import Skeleton from '@/components/common/Skeleton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import { formatFileSize } from '@/utils/common'
+import { debounce, formatFileSize } from '@/utils/common'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/lib/request'
 
@@ -40,6 +40,8 @@ const showRanking = computed(
 )
 
 function loadApps() {
+  // 请求一发出去就由 store 的 isLoading 表达等待，防抖窗口的标记到此结束
+  searchPending.value = false
   return market.fetchApps({
     category: activeCategory.value !== '全部' ? activeCategory.value : undefined,
     keyword: searchQuery.value.trim() || undefined,
@@ -48,12 +50,45 @@ function loadApps() {
   })
 }
 
+/**
+ * 搜索框走防抖。
+ *
+ * `@input` 是**每敲一个字符**触发一次，不防抖就会「敲一个字符发一次请求」：
+ * 敲「周杰伦」就是 3 个 HTTP + 3 条 SQL，白烧流量和数据库。
+ *
+ * 与 `onSearch`（立即路径）的分工：类目切换、清空搜索、重新加载都是**离散动作**，
+ * 点一下就该立刻出结果，不该再等 300ms。同 `interview` / `stock` 两处的写法。
+ */
+const debouncedSearch = debounce(() => {
+  void loadApps()
+}, 300)
+
+/**
+ * 防抖窗口内的等待标记。
+ *
+ * 原本每个字符都立刻发请求，`market.isLoading` 会同步变真，界面显示骨架屏。
+ * 加了防抖后，那 300ms 里没有任何请求在飞、`isLoading` 仍是假，而 `filteredApps`
+ * 会拿**刚敲进去的完整关键字**去过滤**上一轮的结果** —— 几乎必然过滤成空，
+ * 于是「暂无应用」会闪一下。用这个标记把防抖窗口也算作等待态，回到「搜索时显示骨架」。
+ *
+ * 请求一旦发出就交还给 `market.isLoading`：`fetchApps` 在第一个 await 之前就置位，
+ * `loadApps` 又是同步调用它，因此两者之间没有会被渲染出来的空隙。
+ */
+const searchPending = ref(false)
+
+function onSearchInput() {
+  currentPage.value = 1
+  searchPending.value = true
+  debouncedSearch()
+}
+
 function onCategoryClick(cat: string) {
   activeCategory.value = cat
   currentPage.value = 1
   loadApps()
 }
 
+/** 立即搜索：清空关键字、点「重新加载」这类离散动作走这条。 */
 function onSearch() {
   currentPage.value = 1
   loadApps()
@@ -146,7 +181,7 @@ onMounted(async () => {
             type="text"
             placeholder="搜索应用..."
             class="search-input"
-            @input="onSearch"
+            @input="onSearchInput"
           />
           <button v-if="searchQuery" class="search-clear" @click="clearSearch">✕</button>
         </div>
@@ -194,7 +229,7 @@ onMounted(async () => {
       </ol>
     </section>
 
-    <div v-if="market.isLoading" class="loading-state market-skel">
+    <div v-if="market.isLoading || searchPending" class="loading-state market-skel">
       <div class="skel-grid">
         <div v-for="n in 8" :key="n" class="skel-card">
           <Skeleton :width="72" :height="72" :radius="16" />

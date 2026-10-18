@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getStorage, setStorage, applyStoragePatch } from '@/lib/storage'
 import { api } from '@/lib/request'
+import { createLatestOnly } from '@/utils/common'
 import { useAuthStore } from '@/stores/auth'
 import { addedNetworkPermissions, sha256Hex, verifyBundleIntegrity } from '@/lib/bundle-integrity'
 import {
@@ -225,6 +226,16 @@ export const useMarketStore = defineStore('market', () => {
   const lastUpdateCheckAt = ref(0)
   const autoUpdateEnabled = ref(getStorage<boolean>(AUTO_UPDATE_KEY, false) === true)
   let updateCheckPromise: Promise<AppUpdateInfo[]> | null = null
+
+  /**
+   * 列表请求的「只认最后一次」守卫。
+   *
+   * 搜索框是边打字边请求的，先发的请求不保证先返回：敲「周」再敲「林」，
+   * 若「周」后到，列表会变回周杰伦的结果，而输入框写的是林俊杰。
+   * 旧请求走 catch 还会把新结果清空、走 finally 会把仍在飞的 loading 提前熄掉。
+   * 因此成功、失败、收尾三条路径都要验票。见 utils/common 的 createLatestOnly。
+   */
+  const beginAppsFetch = createLatestOnly()
 
   /**
    * 待用户确认的权限请求。由 store 持有、由全局的 MarketPermissionDialog 渲染。
@@ -457,6 +468,7 @@ export const useMarketStore = defineStore('market', () => {
     page?: number
     limit?: number
   }) {
+    const isCurrent = beginAppsFetch()
     isLoading.value = true
     fetchError.value = ''
     try {
@@ -469,12 +481,14 @@ export const useMarketStore = defineStore('market', () => {
       const { data } = await api.get<{
         data: { items: MarketAppItem[] }
       }>(`/api/market/apps?${query}`, { auth: false })
+      if (!isCurrent()) return
       availableApps.value = data.items
     } catch (e) {
       console.error('Failed to fetch market apps:', e)
+      if (!isCurrent()) return
       fetchError.value = e instanceof Error ? e.message : '应用市场加载失败'
     } finally {
-      isLoading.value = false
+      if (isCurrent()) isLoading.value = false
     }
   }
 
@@ -499,6 +513,30 @@ export const useMarketStore = defineStore('market', () => {
       console.error('Failed to fetch app detail:', e)
       return null
     }
+  }
+
+  /**
+   * 批量取应用列表项（`GET /api/market/apps?ids=...`）。
+   *
+   * 为什么不用 `fetchAppDetail` 循环：首页每次挂载都走 `refreshInstalledMeta()`，
+   * 那个函数带 `force: true`，会**绕过** 30 分钟的检查间隔，于是每回到首页都重查一遍。
+   * 之前是每个已装应用发一个 `GET /api/market/apps/:id`，装 8 个就是 8 个 HTTP + 8 条 SQL，
+   * 实测墙钟 ~262ms（连接池上限 5，只能分批排队）；一次批量查询只要 ~67ms。
+   * 另外详情接口还带着 readme / screenshots / fileUrl，更新检查一个都用不上。
+   */
+  async function fetchAppsByIds(ids: number[]): Promise<MarketAppItem[]> {
+    const unique = [...new Set(ids.filter((id) => Number.isInteger(id) && id > 0))]
+    const items: MarketAppItem[] = []
+    // 服务端每次最多接受 100 个 ID，不能把更多已装应用静默截掉。
+    for (let offset = 0; offset < unique.length; offset += 100) {
+      const batch = unique.slice(offset, offset + 100)
+      const res = await api.get<{ data: { items: MarketAppItem[] } }>(
+        `/api/market/apps?ids=${batch.join(',')}`,
+        { auth: false },
+      )
+      items.push(...(res.data.items || []))
+    }
+    return items
   }
 
   // 确保指定 app 的 bundle 已缓存到本地；没有则先从服务端下载并缓存。
@@ -899,17 +937,27 @@ export const useMarketStore = defineStore('market', () => {
     updateCheckError.value = ''
     try {
       const requestedIds = installedApps.value.map((item) => item.id)
-      const results = await Promise.allSettled(requestedIds.map((id) => fetchAppDetail(id)))
+
+      let details: MarketAppItem[]
+      try {
+        // 一次批量查询代替「每个应用一个请求」，见 fetchAppsByIds 的注释
+        details = await fetchAppsByIds(requestedIds)
+      } catch {
+        // 整批失败（断网 / 服务端 5xx）与原来「一个都没成功」同义
+        updateCheckError.value = '检查更新失败，请确认网络或服务状态后重试'
+        return availableUpdates.value
+      }
+
+      const installedIds = new Set(installedApps.value.map((item) => item.id))
       const nextLatest: Record<number, MarketAppItem> = { ...latestApps.value }
       let successCount = 0
 
-      results.forEach((result, index) => {
-        if (result.status !== 'fulfilled' || !result.value) return
-        const detail = result.value
-        if (!installedApps.value.some((item) => item.id === requestedIds[index])) return
+      for (const detail of details) {
+        // 等待期间应用可能已被卸载：只认仍在本地的那些（与改动前一致的防重入）
+        if (!detail || !installedIds.has(detail.id)) continue
         successCount += 1
         nextLatest[detail.id] = detail
-      })
+      }
 
       if (successCount === 0) {
         updateCheckError.value = '检查更新失败，请确认网络或服务状态后重试'

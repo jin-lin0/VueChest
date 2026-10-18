@@ -66,6 +66,12 @@ const latest: MarketAppItem = {
 
 function mockMarketApi() {
   mocks.apiGet.mockImplementation((path: string) => {
+    // 批量：/api/market/apps?ids=1,2,3 —— 刷新已装应用元信息走这条（一次拿完）
+    const batch = /^\/api\/market\/apps\?ids=([\d,]+)$/.exec(path)
+    if (batch) {
+      const ids = batch[1].split(',').map(Number)
+      return Promise.resolve({ data: { items: ids.map((id) => ({ ...latest, id })) } })
+    }
     const detail = /^\/api\/market\/apps\/(\d+)$/.exec(path)
     if (detail) return Promise.resolve({ data: { ...latest, id: Number(detail[1]) } })
     const download = /^\/api\/market\/apps\/(\d+)\/download$/.exec(path)
@@ -118,6 +124,100 @@ beforeEach(() => {
 })
 
 describe('market app updates', () => {
+  it('超过 100 个已装应用时分批检查，不遗漏后面的更新', async () => {
+    mocks.storage.set(
+      'market_installed_apps',
+      Array.from({ length: 205 }, (_, i) => ({ ...installed, id: i + 1 })),
+    )
+    const store = useMarketStore()
+    store.initInstalledApps()
+    await store.checkForUpdates({ force: true })
+
+    const requests = mocks.apiGet.mock.calls
+      .map(([path]) => String(path))
+      .filter((path) => path.startsWith('/api/market/apps?ids='))
+    expect(requests.map((path) => path.split('=')[1].split(',').length)).toEqual([100, 100, 5])
+    expect(store.availableUpdates).toHaveLength(205)
+    expect(store.updateCheckError).toBe('')
+  })
+
+  /**
+   * N+1 门禁。
+   *
+   * 首页每次挂载都会 `refreshInstalledMeta()`，它 `force: true` 绕过 30 分钟间隔，
+   * 所以这条路径每回到首页都跑一遍。改动前是「每个已装应用一个 GET /api/market/apps/:id」，
+   * 装 8 个应用就是 8 个 HTTP + 8 条 SQL（实测 ~262ms，连接池上限 5 只能分批排队），
+   * 而一次批量查询 ~67ms。这里把「只发一次批量请求」钉住。
+   */
+  it('刷新多个已装应用时只发一次批量请求，而不是每个应用一次', async () => {
+    mocks.storage.set('market_installed_apps', [
+      { ...installed, id: 1 },
+      { ...installed, id: 2 },
+      { ...installed, id: 3 },
+    ])
+    const store = useMarketStore()
+    store.initInstalledApps()
+    await store.checkForUpdates({ force: true })
+
+    const appRequests = mocks.apiGet.mock.calls
+      .map((call) => call[0] as string)
+      .filter((path) => path.startsWith('/api/market/apps'))
+    expect(appRequests).toEqual(['/api/market/apps?ids=1,2,3'])
+
+    // 批量结果要真的被逐个采用，而不是「请求少了但功能坏了」
+    expect(store.availableUpdates.map((item) => item.installed.id).sort()).toEqual([1, 2, 3])
+    expect(store.installedApps.every((item) => item.description === '新版本')).toBe(true)
+  })
+
+  it('批量结果缺少某个应用时只提示部分失败，其余照常采用', async () => {
+    mocks.storage.set('market_installed_apps', [
+      { ...installed, id: 1 },
+      { ...installed, id: 2 },
+      { ...installed, id: 3 },
+    ])
+    mocks.apiGet.mockImplementation((path: string) => {
+      const batch = /^\/api\/market\/apps\?ids=([\d,]+)$/.exec(path)
+      if (batch) {
+        // 服务端没回 2 号（例如已被下架）
+        const ids = batch[1]
+          .split(',')
+          .map(Number)
+          .filter((id) => id !== 2)
+        return Promise.resolve({ data: { items: ids.map((id) => ({ ...latest, id })) } })
+      }
+      return Promise.reject(new Error(`unexpected path: ${path}`))
+    })
+    const store = useMarketStore()
+    store.initInstalledApps()
+    await store.checkForUpdates({ force: true })
+
+    expect(store.updateCheckError).toBe('有 1 个应用暂时无法检查更新')
+    expect(store.availableUpdates.map((item) => item.installed.id).sort()).toEqual([1, 3])
+  })
+
+  it('批量请求整批失败时保留原状态并提示重试', async () => {
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/api/market/apps?ids=')) return Promise.reject(new Error('网络断了'))
+      return Promise.reject(new Error(`unexpected path: ${path}`))
+    })
+    const store = useMarketStore()
+    store.initInstalledApps()
+    await store.checkForUpdates({ force: true })
+
+    expect(store.updateCheckError).toBe('检查更新失败，请确认网络或服务状态后重试')
+    expect(store.installedApps[0].description).toBe('旧版本')
+    expect(store.hasUpdate(1)).toBe(false)
+  })
+
+  it('只装一个应用时批量请求也只带一个 id', async () => {
+    const store = useMarketStore()
+    store.initInstalledApps()
+    await store.checkForUpdates({ force: true })
+
+    expect(mocks.apiGet.mock.calls.map((call) => call[0])).toEqual(['/api/market/apps?ids=1'])
+    expect(store.hasUpdate(1)).toBe(true)
+  })
+
   it('keeps displayed metadata unchanged when saving refreshed app information fails', async () => {
     const store = useMarketStore()
     store.initInstalledApps()
