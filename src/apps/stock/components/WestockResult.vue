@@ -161,7 +161,11 @@ async function copyRaw() {
                   v-for="(row, i) in rows"
                   :key="i"
                   :class="{ clickable: !!rowCodes[i] }"
+                  :tabindex="rowCodes[i] ? 0 : undefined"
+                  :aria-label="rowCodes[i] ? `打开 ${row[columns[0]] ?? ''} 的研究视图` : undefined"
                   @click="selectRow(i)"
+                  @keydown.enter.self.prevent="selectRow(i)"
+                  @keydown.space.self.prevent="selectRow(i)"
                 >
                   <td
                     v-for="col in columns"
@@ -357,6 +361,11 @@ async function copyRaw() {
 .ws-table tbody tr.clickable:hover td:first-child {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+/* 键盘 Tab 到可点行时给出明确焦点，Enter / 空格可直接进入研究 */
+.ws-table tbody tr.clickable:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: -2px;
 }
 .ws-table td.num {
   text-align: right;

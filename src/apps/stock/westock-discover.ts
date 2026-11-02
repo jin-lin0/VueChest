@@ -244,6 +244,63 @@ export function findItemName(groups: CatalogGroup[], id: string): string {
   return id
 }
 
+// ── 选股条件记忆 ────────────────────────────────────────────
+
+/** 选股发现面板需要跨挂载保留的表单状态（切 tab / 刷新后恢复）。 */
+export interface DiscoverFormState {
+  section: DiscoverSection
+  sel: Record<string, string>
+  commonDate: string
+  dateStart: string
+  dateEnd: string
+  asset: 'stock' | 'etf'
+  market: 'hs' | 'hk' | 'us'
+  order: 'asc' | 'desc'
+}
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+const DISCOVER_SECTION_IDS = new Set(DISCOVER_SECTIONS.map((item) => item.id))
+const SELECTION_KEYS = ['strategy', 'ranking', 'filter', 'label', 'event', 'search'] as const
+
+/**
+ * 把本地存储里读到的任意值收敛成合法表单状态。
+ * 存储可能来自旧版本、被手动改过或已损坏，直接信任它会让下拉框出现
+ * 一个不存在、也无法重新选中的幽灵值，所以这里逐项校验，非法项退回默认。
+ */
+export function sanitizeDiscoverFormState(raw: unknown): DiscoverFormState | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const input = raw as Record<string, unknown>
+  const section = DISCOVER_SECTION_IDS.has(input.section as DiscoverSection)
+    ? (input.section as DiscoverSection)
+    : 'strategy'
+
+  const savedSel =
+    input.sel && typeof input.sel === 'object' && !Array.isArray(input.sel)
+      ? (input.sel as Record<string, unknown>)
+      : {}
+  const sel: Record<string, string> = {}
+  for (const key of SELECTION_KEYS) {
+    const value = savedSel[key]
+    sel[key] = typeof value === 'string' && value.length <= 64 ? value : ''
+  }
+
+  const date = (value: unknown) => (typeof value === 'string' && DATE_ONLY.test(value) ? value : '')
+  const asset = input.asset === 'etf' ? 'etf' : 'stock'
+  const market = input.market === 'hk' || input.market === 'us' ? input.market : ('hs' as const)
+  const order = input.order === 'asc' ? 'asc' : 'desc'
+
+  return {
+    section,
+    sel,
+    commonDate: date(input.commonDate),
+    dateStart: date(input.dateStart),
+    dateEnd: date(input.dateEnd),
+    asset,
+    market,
+    order,
+  }
+}
+
 // ── 结果表 → 个股研究的桥接 ──────────────────────────────────
 
 /** 交易所前缀 + 6 位数字，如 sh600178 / sz000001 / bj430047。 */

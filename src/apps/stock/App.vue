@@ -112,6 +112,68 @@ function hideSearchResults(event: FocusEvent) {
   }, 160)
 }
 
+// ── 搜索框键盘操作 ────────────────────────────────────────────
+// 输入即出结果，但原先只能点鼠标或按回车打开第一条；候选多时效率很低。
+// 这里补齐 ↑↓ 选择、Enter 打开当前项、Esc 收起，以及页面级 `/` 聚焦。
+const searchInput = ref<HTMLInputElement | null>(null)
+const searchActiveIndex = ref(-1)
+
+watch(
+  () => stock.searchResults,
+  () => {
+    searchActiveIndex.value = -1
+  },
+)
+
+function closeSearchResults() {
+  stock.showSearchResults = false
+  searchActiveIndex.value = -1
+}
+
+function moveSearchActive(delta: number) {
+  const total = stock.searchResults.length
+  if (!total) return
+  stock.showSearchResults = true
+  // 还没选中任何项时：↓ 从第一条开始，↑ 直接落到最后一条
+  if (searchActiveIndex.value < 0) {
+    searchActiveIndex.value = delta > 0 ? 0 : total - 1
+    return
+  }
+  searchActiveIndex.value = (searchActiveIndex.value + delta + total) % total
+}
+
+async function chooseActiveSearchResult() {
+  const active = stock.searchResults[searchActiveIndex.value]
+  if (active) {
+    await chooseSearchResult(active)
+    searchActiveIndex.value = -1
+    return
+  }
+  await runSearch()
+}
+
+/** `/` 聚焦搜索、Esc 收起结果；在输入控件内不劫持按键。 */
+function onGlobalShortcut(event: KeyboardEvent) {
+  if (event.defaultPrevented || event.isComposing) return
+  if (event.key === 'Escape') {
+    closeSearchResults()
+    return
+  }
+  const target = event.target as HTMLElement | null
+  const typing =
+    !!target &&
+    (target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable)
+  if (typing || event.metaKey || event.ctrlKey || event.altKey) return
+  if (event.key === '/') {
+    event.preventDefault()
+    searchInput.value?.focus()
+    searchInput.value?.select()
+  }
+}
+
 async function openStock(code: InstrumentInput, preservePanel = activePanel.value === 'portfolio') {
   if (!preservePanel) activePanel.value = 'overview'
   await stock.loadStock(code, activePeriod.value)
@@ -133,6 +195,12 @@ async function openFromDiscover(code: string) {
 
 let routeCommandsReady = false
 let handledRouteCommand = ''
+/** 正在执行 URL 命令（含加载行情），期间暂停反向同步 URL。 */
+let applyingRoute = 0
+
+/** URL 中只接受这三个周期，其他值忽略而不是让页面进入非法状态。 */
+const PERIODS: KlinePeriod[] = ['day', 'week', 'month']
+
 async function applyRouteCommand() {
   if (!routeCommandsReady) return
   const code = typeof route.query.code === 'string' ? route.query.code : ''
@@ -140,20 +208,77 @@ async function applyRouteCommand() {
     typeof route.query.panel === 'string' && panelIds.has(route.query.panel as ResearchPanel)
       ? (route.query.panel as ResearchPanel)
       : null
+  const requestedPeriod =
+    typeof route.query.period === 'string' && PERIODS.includes(route.query.period as KlinePeriod)
+      ? (route.query.period as KlinePeriod)
+      : null
   // preset 参与去重键：同一条命令重复点（command 相同）不该重复处理，
   // 但换个 preset 复用同一个 command 时间戳时必须能再次生效。
-  const commandKey = `${code}|${requestedPanel || ''}|${String(route.query.preset || '')}|${String(route.query.command || '')}`
+  const commandKey = `${code}|${requestedPanel || ''}|${requestedPeriod || ''}|${String(route.query.preset || '')}|${String(route.query.command || '')}`
   if ((!code && !requestedPanel) || commandKey === handledRouteCommand) return
   handledRouteCommand = commandKey
 
-  if (/^(sh|sz)\d{6}$/i.test(code)) {
-    await openStock(code, requestedPanel === 'portfolio')
-  }
-  if (commandKey !== handledRouteCommand) return
-  if (requestedPanel && (!panelNeedsStock(requestedPanel) || stock.result)) {
-    activePanel.value = requestedPanel
+  // 应用命令期间先别把状态写回 URL：openStock 会先把面板切到 overview 再加载，
+  // 若此时同步 URL，会触发一次「面板=overview」的伪命令，把本次要恢复的面板顶掉
+  // （表现为带 panel 参数的链接刷新后停在行情研判）。等命令执行完再统一写回。
+  applyingRoute++
+  try {
+    if (/^(sh|sz)\d{6}$/i.test(code)) {
+      // 目标与当前一致时直接跳过加载，避免同一次选择重复请求行情。
+      const sameView =
+        code.toLowerCase() === stock.formattedCode.toLowerCase() &&
+        (!requestedPanel || requestedPanel === activePanel.value) &&
+        (!requestedPeriod || requestedPeriod === activePeriod.value)
+      if (!sameView) {
+        if (requestedPeriod) activePeriod.value = requestedPeriod
+        await openStock(code, requestedPanel === 'portfolio')
+      }
+    }
+    // 加载期间若用户发起了更新的导航，本次命令作废。
+    if (commandKey !== handledRouteCommand) return
+    if (requestedPanel && (!panelNeedsStock(requestedPanel) || stock.result)) {
+      activePanel.value = requestedPanel
+    }
+  } finally {
+    applyingRoute--
+    if (!applyingRoute) syncRouteState()
   }
 }
+
+/**
+ * 把当前工作台状态写回 URL。
+ * 刷新、分享链接、浏览器前进后退都能回到同一只股票、同一个面板和周期；
+ * 用 replace 而非 push，避免切面板时把历史记录塞满。
+ *
+ * preset / command 是一次性意图：离开选股页就清掉，防止以后再次进入时
+ * 被旧条件覆盖。仍停留在选股页时保留，交给面板消费。
+ */
+function syncRouteState() {
+  if (applyingRoute) return
+  const query: Record<string, string> = {}
+  for (const [key, value] of Object.entries(route.query)) {
+    if (typeof value === 'string' && key !== 'command' && key !== 'preset') query[key] = value
+  }
+  if (activePanel.value === 'westockDiscover') {
+    if (typeof route.query.preset === 'string') query.preset = route.query.preset
+    if (typeof route.query.command === 'string') query.command = route.query.command
+  }
+  if (stock.formattedCode) query.code = stock.formattedCode
+  else delete query.code
+  query.panel = activePanel.value
+  query.period = activePeriod.value
+
+  const dirty =
+    query.code !== route.query.code ||
+    query.panel !== route.query.panel ||
+    query.period !== route.query.period ||
+    query.preset !== route.query.preset ||
+    query.command !== route.query.command
+  if (!dirty) return
+  void router.replace({ path: '/stock', query })
+}
+
+watch([activePanel, activePeriod, () => stock.formattedCode], syncRouteState)
 
 async function chooseSearchResult(item: SearchResult) {
   stock.clearSearch()
@@ -231,10 +356,12 @@ onMounted(() => {
   void stock.refreshData()
   portfolioRefreshTimer = setInterval(refreshVisibleData, 60_000)
   document.addEventListener('visibilitychange', refreshVisibleData)
+  window.addEventListener('keydown', onGlobalShortcut)
 })
 onUnmounted(() => {
   if (portfolioRefreshTimer) clearInterval(portfolioRefreshTimer)
   document.removeEventListener('visibilitychange', refreshVisibleData)
+  window.removeEventListener('keydown', onGlobalShortcut)
 })
 
 watch(
@@ -254,7 +381,13 @@ watch(
 )
 
 watch(
-  () => [route.query.code, route.query.panel, route.query.preset, route.query.command],
+  () => [
+    route.query.code,
+    route.query.panel,
+    route.query.period,
+    route.query.preset,
+    route.query.command,
+  ],
   () => void applyRouteCommand(),
 )
 </script>
@@ -310,27 +443,34 @@ watch(
       <aside class="research-sidebar">
         <section class="search-card" @focusout="hideSearchResults">
           <h2>股票查询</h2>
-          <p>输入名称或 6 位代码</p>
+          <p>输入名称或 6 位代码 <kbd>/</kbd> 快速聚焦</p>
           <div class="stock-search">
             <span>⌕</span>
             <input
+              ref="searchInput"
               v-model="stock.searchQuery"
               type="search"
               placeholder="贵州茅台 / 600519"
               aria-label="搜索股票"
               @input="debouncedSearch"
               @focus="stock.showSearchResults = true"
-              @keydown.enter.prevent="runSearch"
+              @keydown.down.prevent="moveSearchActive(1)"
+              @keydown.up.prevent="moveSearchActive(-1)"
+              @keydown.esc.prevent="closeSearchResults"
+              @keydown.enter.prevent="chooseActiveSearchResult"
             />
             <button type="button" :disabled="stock.isSearching" @click="runSearch">
               {{ stock.isSearching ? '···' : '查询' }}
             </button>
           </div>
           <div v-if="stock.showSearchResults && stock.searchResults.length" class="search-results">
+            <small class="search-hint">↑↓ 选择 · Enter 打开</small>
             <button
-              v-for="item in stock.searchResults"
+              v-for="(item, index) in stock.searchResults"
               :key="`${item.market}-${item.code}`"
               type="button"
+              :class="{ active: index === searchActiveIndex }"
+              @mouseenter="searchActiveIndex = index"
               @click="chooseSearchResult(item)"
             >
               <span
@@ -856,6 +996,25 @@ watch(
 }
 .search-results button:hover {
   background: var(--bg-hover);
+}
+.search-results button.active {
+  background: var(--bg-hover);
+  box-shadow: inset 3px 0 0 #0f766e;
+}
+.search-hint {
+  display: block;
+  padding: 2px 10px 5px;
+  letter-spacing: 0.02em;
+}
+.search-card kbd {
+  margin-left: 2px;
+  padding: 1px 5px;
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--font-size-caption);
 }
 .search-results button span {
   display: flex;

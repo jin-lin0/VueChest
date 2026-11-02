@@ -11,6 +11,7 @@ import {
   parseResultPage,
   pickRowSymbol,
   pickRowName,
+  sanitizeDiscoverFormState,
   SECTION_DATE_CAPABILITY,
   sectionSupportsDate,
   sectionSupportsRange,
@@ -273,5 +274,62 @@ describe('discovery instrument identity', () => {
     expect(pickRowSymbol({ code: 'bj430047', 名称: '北交所' })).toBeNull()
     expect(pickRowSymbol({ code: '000001', market: 'hk' })).toBeNull()
     expect(pickRowSymbol({ code: '113000' })).toBeNull()
+  })
+})
+
+// ── 选股条件记忆 ──────────────────────────────────────────────
+describe('sanitizeDiscoverFormState', () => {
+  it('非法或空的存储值返回 null，让面板使用默认状态', () => {
+    expect(sanitizeDiscoverFormState(null)).toBeNull()
+    expect(sanitizeDiscoverFormState('oops')).toBeNull()
+    expect(sanitizeDiscoverFormState([])).toBeNull()
+  })
+
+  it('保留合法分类、条件与筛选器', () => {
+    expect(
+      sanitizeDiscoverFormState({
+        section: 'label',
+        sel: { label: 'fin_high_roettm', strategy: 'macd_golden', ranking: 42 },
+        commonDate: '2026-10-30',
+        dateStart: '2026-10-01',
+        dateEnd: '2026-10-31',
+        asset: 'etf',
+        market: 'hk',
+        order: 'asc',
+      }),
+    ).toEqual({
+      section: 'label',
+      sel: {
+        strategy: 'macd_golden',
+        ranking: '',
+        filter: '',
+        label: 'fin_high_roettm',
+        event: '',
+        search: '',
+      },
+      commonDate: '2026-10-30',
+      dateStart: '2026-10-01',
+      dateEnd: '2026-10-31',
+      asset: 'etf',
+      market: 'hk',
+      order: 'asc',
+    })
+  })
+
+  it('未知分类 / 市场 / 排序 / 日期格式回退到安全默认值', () => {
+    const state = sanitizeDiscoverFormState({
+      section: 'not-a-section',
+      sel: { strategy: 'x'.repeat(80) },
+      commonDate: '2026/10/30',
+      asset: 'bond',
+      market: 'us-market',
+      order: 'random',
+    })!
+    expect(state.section).toBe('strategy')
+    expect(state.sel.strategy).toBe('')
+    expect(state.commonDate).toBe('')
+    expect(state.asset).toBe('stock')
+    expect(state.market).toBe('hs')
+    expect(state.order).toBe('desc')
   })
 })

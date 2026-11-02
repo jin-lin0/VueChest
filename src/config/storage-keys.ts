@@ -7,6 +7,8 @@ export const STORAGE_KEYS = {
   STOCK_NOTES: 'stock-notes',
   STOCK_RECENT: 'stock-recent',
   STOCK_POSITIONS: 'stock-positions',
+  // 选股发现面板上次使用的分类、条件与筛选器（切 tab / 刷新后恢复）
+  STOCK_DISCOVER_STATE: 'stock-discover-state',
   MUSIC_VOLUME: 'music-volume',
   MUSIC_SEARCH_HISTORY: 'music-search-history',
   MUSIC_FAVORITES: 'music-favorites',

@@ -4,6 +4,8 @@ import { RouterLink, useRoute } from 'vue-router'
 import { isWestockAuthError, westockCommand, westockExec } from '@/stores/westock'
 import type { WestockResult as WestockResultData } from '@/stores/westock'
 import { useStockStore } from '@/stores/stock'
+import { getStorage, setStorage } from '@/lib/storage'
+import { STORAGE_KEYS } from '@/config'
 import type { SelectOption } from '@/components/common/CustomSelect.vue'
 import CustomSelect from '@/components/common/CustomSelect.vue'
 import { useToast } from '@/composables/useToast'
@@ -17,6 +19,7 @@ import {
   isRangeValid,
   parseCatalog,
   parseResultPage,
+  sanitizeDiscoverFormState,
   sectionSupportsDate,
   sectionSupportsRange,
   type CatalogGroup,
@@ -116,6 +119,100 @@ const orderOptions: SelectOption[] = [
 ]
 const order = ref<string | number>('desc')
 
+// ── 条件记忆 ─────────────────────────────────────────────────
+// 面板被切走就会卸载，原先每次回来条件都回到默认值，用户得重新翻下拉框。
+// 这里记住分类、条件与筛选器；只恢复表单，不自动发请求，避免白白消耗一次查询。
+const savedForm = sanitizeDiscoverFormState(
+  getStorage<unknown>(STORAGE_KEYS.STOCK_DISCOVER_STATE, null),
+)
+if (savedForm) {
+  activeSection.value = savedForm.section
+  Object.assign(sel, savedForm.sel)
+  commonDate.value = savedForm.commonDate
+  dateStart.value = savedForm.dateStart
+  dateEnd.value = savedForm.dateEnd
+  asset.value = savedForm.asset
+  market.value = savedForm.market
+  order.value = savedForm.order
+}
+const restoredFromStorage = ref(!!savedForm)
+
+/** 某个分类的默认选项：优先热门项，其次目录第一项。 */
+function defaultSelection(key: 'strategy' | 'ranking' | 'filter' | 'event' | 'label'): string {
+  const hot = HOT_ITEMS[key]?.find((it) =>
+    catalogs[key]?.some((g) => g.items.some((i) => i.id === it.id)),
+  )
+  return hot?.id || catalogs[key]?.[0]?.items[0]?.id || ''
+}
+
+/** 存储里记的条件可能已被上游下架，目录到位后把它收敛回可用值。 */
+function reconcileSavedSelections() {
+  for (const key of ['strategy', 'ranking', 'filter', 'event', 'label'] as const) {
+    if (!catalogs[key]?.length || !sel[key]) continue
+    if (!catalogs[key].some((g) => g.items.some((i) => i.id === sel[key]))) {
+      sel[key] = defaultSelection(key)
+    }
+  }
+}
+
+/**
+ * 当前表单是不是「什么都没改」的初始状态。
+ * 目录就绪后会自动补上热门项，如果照抄落盘，用户明明没动过条件，
+ * 下次进来也会看到「已恢复上次条件」。所以只有真正偏离默认值才保存。
+ * 关键词输入属于临时动作，不参与判断。
+ */
+function isPristineConditions(state: {
+  section: DiscoverSection
+  sel: Record<string, string>
+  commonDate: string
+  dateStart: string
+  dateEnd: string
+  asset: 'stock' | 'etf'
+  market: 'hs' | 'hk' | 'us'
+  order: string | number
+}): boolean {
+  if (state.section !== 'strategy') return false
+  if (state.commonDate || state.dateStart || state.dateEnd) return false
+  if (state.asset !== 'stock' || state.market !== 'hs' || state.order !== 'desc') return false
+  return (['strategy', 'ranking', 'filter', 'event', 'label'] as const).every(
+    (key) => !state.sel[key] || state.sel[key] === defaultSelection(key),
+  )
+}
+
+watch(
+  () => ({
+    section: activeSection.value,
+    sel: { ...sel },
+    commonDate: commonDate.value,
+    dateStart: dateStart.value,
+    dateEnd: dateEnd.value,
+    asset: asset.value,
+    market: market.value,
+    order: order.value,
+  }),
+  (state) => {
+    setStorage(STORAGE_KEYS.STOCK_DISCOVER_STATE, isPristineConditions(state) ? null : state)
+  },
+  { deep: true },
+)
+
+/** 恢复默认：分类与筛选条件一起回到初始状态。 */
+function resetConditions() {
+  activeSection.value = 'strategy'
+  for (const key of Object.keys(sel)) sel[key] = ''
+  for (const key of ['strategy', 'ranking', 'filter', 'event', 'label'] as const) {
+    sel[key] = defaultSelection(key)
+  }
+  commonDate.value = ''
+  dateStart.value = ''
+  dateEnd.value = ''
+  asset.value = 'stock'
+  market.value = 'hs'
+  order.value = 'desc'
+  restoredFromStorage.value = false
+  setStorage(STORAGE_KEYS.STOCK_DISCOVER_STATE, null)
+}
+
 async function loadCatalogs() {
   catalogLoading.value = true
   catalogError.value = null
@@ -127,6 +224,7 @@ async function loadCatalogs() {
   const cached = readCatalogCache()
   if (cached) {
     Object.assign(catalogs, cached)
+    reconcileSavedSelections()
     catalogFromCache.value = true
     catalogLoading.value = false
     return
@@ -166,6 +264,7 @@ async function loadCatalogs() {
       writeCatalogCache(fetched)
     }
   } finally {
+    reconcileSavedSelections()
     catalogLoading.value = false
   }
 }
@@ -182,11 +281,7 @@ watch(
   () => {
     for (const key of ['strategy', 'ranking', 'filter', 'event', 'label'] as const) {
       if (sel[key]) continue
-      const hot = HOT_ITEMS[key]?.find((it) =>
-        catalogs[key]?.some((g) => g.items.some((i) => i.id === it.id)),
-      )
-      const first = catalogs[key]?.[0]?.items[0]
-      sel[key] = hot?.id || first?.id || ''
+      sel[key] = defaultSelection(key)
     }
   },
   { deep: true },
@@ -413,17 +508,23 @@ function applyPreset() {
   presetHandled = preset.value
   activeSection.value = section
   sel[section] = preset.value
+  restoredFromStorage.value = false
   runCurrent()
 }
 
 onMounted(loadCatalogs)
 
-// 面板被 v-if 卸载后重新挂载时会重跑 onMounted；preset 也要跟着重新消费，
-// 否则从「选股发现」切去别的 tab 再回来，条件就丢了。
-watch(preset, () => {
-  if (catalogLoading.value) return
-  applyPreset()
-})
+// 目录就绪后再消费 preset。
+// 首次挂载时 preset 已经在 URL 里，普通 watch 不会触发；而目录加载期间 preset
+// 变化时也必须等目录到位，否则 resolveSectionOf 找不到归属，快捷入口会没反应。
+watch(
+  [catalogLoading, preset],
+  () => {
+    if (catalogLoading.value) return
+    applyPreset()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -432,6 +533,10 @@ watch(preset, () => {
       <span class="ws-eyebrow">选股发现</span>
       <h2>从条件直接筛出候选股票</h2>
       <p>{{ sectionMeta.hint }}。点结果任意一行即可进入该股票的行情、财务与公告研究。</p>
+      <p v-if="restoredFromStorage" class="ws-restored">
+        已恢复上次使用的分类与筛选条件
+        <button type="button" @click="resetConditions">恢复默认</button>
+      </p>
     </header>
 
     <nav class="ws-tabs" aria-label="发现类型">
@@ -625,6 +730,29 @@ watch(preset, () => {
 .ws-disc-head p {
   color: var(--text-secondary);
   font-size: var(--font-size-small);
+}
+.ws-restored {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #0f766e 8%, transparent);
+  color: #0f766e;
+  font-size: var(--font-size-caption);
+}
+.ws-restored button {
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, #0f766e 30%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+}
+.ws-restored button:hover {
+  background: color-mix(in srgb, #0f766e 12%, transparent);
 }
 .ws-tabs {
   display: flex;
