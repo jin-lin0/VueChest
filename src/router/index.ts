@@ -235,6 +235,12 @@ const router = createRouter({
           component: () => import('../views/admin/UserManagement.vue'),
           meta: { title: '用户管理', requiresSuperAdmin: true },
         },
+        {
+          path: 'checkins',
+          name: 'admin-checkins',
+          component: () => import('../views/admin/CheckinManagement.vue'),
+          meta: { title: '自动签到', requiresSuperAdmin: true },
+        },
       ],
     },
     {

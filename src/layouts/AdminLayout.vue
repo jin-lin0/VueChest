@@ -122,6 +122,7 @@ const menuItems = computed(() => {
   ]
   if (authStore.isSuperAdmin) {
     items.push({ path: '/admin/users', name: '用户管理', icon: '👥' })
+    items.push({ path: '/admin/checkins', name: '自动签到', icon: '🔄' })
   }
   return items
 })
