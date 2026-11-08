@@ -71,7 +71,11 @@
               </p>
             </div>
             <div class="task-actions">
+              <span v-if="task.executor === 'worker'" class="worker-hint">
+                由 GitHub Actions 执行
+              </span>
               <button
+                v-else
                 class="btn-secondary btn-sm"
                 :disabled="!task.configured || runningIds.has(task.id)"
                 :title="task.todayCompleted ? '忽略当日幂等，重新请求上游' : '执行一次签到'"
@@ -400,6 +404,7 @@ interface TaskItem {
   name: string
   description?: string
   timeZone: string
+  executor: 'server' | 'worker'
   credentialFields: CredentialField[]
   configured: boolean
   running: boolean
@@ -848,9 +853,19 @@ function formatDate(value?: string | null) {
 
 .task-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
+
+.worker-hint {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: var(--font-size-small);
+}
+
 
 .task-meta {
   display: grid;
