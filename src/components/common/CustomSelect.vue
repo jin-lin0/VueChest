@@ -2,7 +2,7 @@
   <div
     class="custom-select"
     :class="{ open: isOpen, disabled, block: props.block, [`size-${props.size}`]: true }"
-    :style="props.width ? { width: props.width } : undefined"
+    :style="props.width ? { width: props.width, minWidth: `min(${props.width}, 100%)` } : undefined"
     ref="selectRef"
   >
     <div
@@ -24,7 +24,9 @@
     >
       <span class="trigger-content">
         <span class="trigger-icon" v-if="selectedOption?.icon">{{ selectedOption.icon }}</span>
-        <span class="trigger-text">{{ selectedOption?.label || placeholder }}</span>
+        <span class="trigger-text" :class="{ 'is-placeholder': !selectedOption }">
+          {{ selectedOption?.label || placeholder }}
+        </span>
       </span>
       <span class="trigger-arrow">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -143,7 +145,7 @@ const props = withDefaults(
     size: 'md',
     block: false,
     width: '',
-    dropdownMinWidth: 200,
+    dropdownMinWidth: 0,
   },
 )
 
@@ -287,7 +289,7 @@ function handleSearchKeydown(event: KeyboardEvent) {
   handleKeyboard(event)
 }
 
-// 根据触发器和可视视口计算 fixed 定位；窄触发器保留可读宽度，垂直空间不足时自动翻转/限高
+// 根据触发器和可视视口计算 fixed 定位；面板默认与触发器等宽，垂直空间不足时自动翻转/限高
 function positionDropdown() {
   const el = selectRef.value
   if (!el) return
@@ -387,8 +389,16 @@ onUnmounted(() => {
   box-sizing: border-box;
   min-width: min(150px, 100%);
   max-width: 100%;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(
+    --font-sans,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif
+  );
 }
 
 .select-trigger {
@@ -396,31 +406,34 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   box-sizing: border-box;
-  height: 42px;
-  padding: 0 14px;
+  height: 38px;
+  padding: 0 12px;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
   user-select: none;
   font-size: var(--font-size-body);
+  line-height: 1;
 }
 
-.select-trigger:hover {
-  border-color: var(--accent-light);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.12);
+.custom-select:not(.disabled) .select-trigger:hover {
+  border-color: color-mix(in srgb, var(--border-color) 55%, var(--text-muted));
 }
 
 .select-trigger.active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.14);
 }
 
 .select-trigger:focus-visible {
   border-color: var(--accent);
-  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
 }
 
 .custom-select.disabled .select-trigger {
@@ -431,10 +444,9 @@ onUnmounted(() => {
 
 /* 紧凑尺寸：表格操作列、气泡内等空间有限处 */
 .custom-select.size-sm .select-trigger {
-  height: 34px;
-  padding: 0 0.85rem;
-  border-width: 1px;
-  border-radius: var(--radius-sm);
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
   font-size: var(--font-size-body);
 }
 .custom-select.size-sm .trigger-text {
@@ -447,9 +459,9 @@ onUnmounted(() => {
 
 /* 大尺寸：强调场景（如筛选栏主分类） */
 .custom-select.size-lg .select-trigger {
-  height: 48px;
-  padding: 0 16px;
-  border-radius: 12px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
   font-size: var(--font-size-body-lg);
 }
 
@@ -468,7 +480,7 @@ onUnmounted(() => {
 }
 
 .trigger-icon {
-  font-size: var(--font-size-title-lg);
+  font-size: var(--font-size-body-lg);
   flex-shrink: 0;
 }
 
@@ -479,9 +491,13 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 
+.trigger-text.is-placeholder {
+  color: var(--text-muted);
+}
+
 .trigger-arrow {
   color: var(--text-muted);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.15s ease;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -498,37 +514,41 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
-  border-radius: 16px;
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.12),
-    0 2px 10px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
   z-index: var(--z-custom-select, 2000);
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--border-light);
 }
 
 /* 搜索框 */
 .dropdown-search {
   flex-shrink: 0;
-  padding: 12px;
+  padding: 8px;
   border-bottom: 1px solid var(--border-light);
 }
 
 .search-input {
   width: 100%;
-  padding: 8px 12px;
-  border: 2px solid var(--border-light);
-  border-radius: 10px;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
   font-size: var(--font-size-body);
+  color: var(--text-body);
   outline: none;
-  transition: all 0.3s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
   background: var(--bg-subtle);
 }
 
 .search-input:focus {
   border-color: var(--accent);
   background: var(--bg-card);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
 }
 
 .search-input::placeholder {
@@ -541,10 +561,10 @@ onUnmounted(() => {
   min-height: 0;
   max-height: 280px;
   overflow-y: auto;
-  padding: 6px;
+  padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
 }
 
 .dropdown-options.has-search {
@@ -555,26 +575,29 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
   position: relative;
 }
 
 .option-item:hover,
 .option-item.keyboard-active {
-  background: linear-gradient(135deg, var(--accent-bg) 0%, var(--accent-light) 100%);
+  background: var(--bg-hover);
 }
 
 .option-item.selected {
-  background: var(--gradient-primary);
-  color: white;
+  background: var(--accent-bg);
+  color: var(--accent-text);
 }
 
 .option-item.selected:hover,
 .option-item.selected.keyboard-active {
-  background: var(--gradient-primary);
+  background: var(--accent-bg);
 }
 
 .option-item.disabled {
@@ -587,22 +610,22 @@ onUnmounted(() => {
 }
 
 .option-icon {
-  font-size: var(--font-size-title-lg);
+  font-size: var(--font-size-body-lg);
   flex-shrink: 0;
-  width: 24px;
+  width: 18px;
   text-align: center;
 }
 
 .option-label {
   flex: 1;
-  font-size: var(--font-size-body-lg);
+  font-size: var(--font-size-body);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .option-check {
-  color: white;
+  color: var(--accent-text);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -611,41 +634,33 @@ onUnmounted(() => {
 /* 行内操作（删除/改名/编辑态）由调用方通过 #option 插槽自定义，样式亦由调用方提供 */
 
 .no-options {
-  padding: 20px;
+  padding: 16px 12px;
   text-align: center;
   color: var(--text-muted);
   font-size: var(--font-size-body);
 }
 
 /* 下拉动画 */
-.dropdown-enter-active {
-  animation: dropdown-in 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
+.dropdown-enter-active,
 .dropdown-leave-active {
-  animation: dropdown-out 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
 }
 
-@keyframes dropdown-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.96);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
 }
 
-@keyframes dropdown-out {
-  0% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.96);
-  }
+.select-dropdown[data-placement='bottom'].dropdown-enter-from,
+.select-dropdown[data-placement='bottom'].dropdown-leave-to {
+  transform: translateY(-4px);
+}
+
+.select-dropdown[data-placement='top'].dropdown-enter-from,
+.select-dropdown[data-placement='top'].dropdown-leave-to {
+  transform: translateY(4px);
 }
 
 .select-dropdown[data-placement='top'] {

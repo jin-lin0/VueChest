@@ -35,7 +35,7 @@ function isRouteActive(path: string) {
 
 <template>
   <div class="admin-sidebar" :class="{ 'dark-mode': isDark }">
-    <div class="sidebar-header">
+    <div class="sidebar-header" :class="{ 'is-collapsed': collapsed }">
       <div class="logo">
         <span class="logo-icon">⚙️</span>
         <span v-if="!collapsed" class="logo-text">VueChest 后台</span>
@@ -66,7 +66,7 @@ function isRouteActive(path: string) {
       </router-link>
     </nav>
 
-    <div class="sidebar-footer">
+    <div class="sidebar-footer" :class="{ 'is-collapsed': collapsed }">
       <div class="user-info" v-if="user">
         <label class="user-avatar" title="更换头像">
           <img v-if="user.avatar" :src="user.avatar" alt="用户头像" />
@@ -114,6 +114,17 @@ function isRouteActive(path: string) {
   justify-content: space-between;
   padding: 20px 16px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+/* 收起态侧边栏只有 72px：隐藏 Logo，仅保留居中的展开按钮，避免按钮与图标互相挤压 */
+.sidebar-header.is-collapsed {
+  justify-content: center;
+  padding: 10px 8px;
+  min-height: 72px;
+}
+
+.sidebar-header.is-collapsed .logo {
+  display: none;
 }
 
 .dark-mode .sidebar-header {
@@ -259,6 +270,19 @@ function isRouteActive(path: string) {
 .sidebar-footer {
   padding: 12px 16px;
   border-top: 1px solid #e5e7eb;
+}
+
+/* 收起态：头像与操作按钮改成纵向居中，避免横向挤爆 72px */
+.sidebar-footer.is-collapsed {
+  padding: 12px 8px;
+}
+
+.sidebar-footer.is-collapsed .user-info {
+  justify-content: center;
+}
+
+.sidebar-footer.is-collapsed .footer-actions {
+  flex-direction: column;
 }
 
 .dark-mode .sidebar-footer {

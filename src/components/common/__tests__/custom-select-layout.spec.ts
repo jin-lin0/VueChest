@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { getHorizontalDropdownLayout, getVerticalDropdownLayout } from '../custom-select-layout'
 
 describe('CustomSelect dropdown layout', () => {
-  it('为窄触发器保留可读的浮层宽度', () => {
-    expect(getHorizontalDropdownLayout(74, 120, 938)).toEqual({ left: 74, width: 200 })
+  it('窄触发器下浮层与触发器等宽', () => {
+    expect(getHorizontalDropdownLayout(74, 120, 938)).toEqual({ left: 74, width: 120 })
   })
 
   it('触发器足够宽时保持原宽度和位置', () => {
@@ -19,12 +19,19 @@ describe('CustomSelect dropdown layout', () => {
   })
 
   it('窄屏下把最小宽度限制在安全区域内', () => {
-    expect(getHorizontalDropdownLayout(4, 40, 180)).toEqual({ left: 8, width: 164 })
+    expect(getHorizontalDropdownLayout(4, 40, 180)).toEqual({ left: 8, width: 40 })
   })
 
   it('支持长选项场景自定义更大的最小宽度', () => {
     expect(getHorizontalDropdownLayout(700, 120, 1000, 8, 320)).toEqual({
       left: 672,
+      width: 320,
+    })
+  })
+
+  it('自定义最小宽度不会超过视口安全区域', () => {
+    expect(getHorizontalDropdownLayout(900, 120, 400, 8, 320)).toEqual({
+      left: 72,
       width: 320,
     })
   })

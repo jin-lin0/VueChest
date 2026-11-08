@@ -226,8 +226,8 @@
           <CustomSelect
             v-model="logTask"
             :options="taskFilterOptions"
+            :searchable="taskFilterSearchable"
             width="190px"
-            searchable
             aria-label="按站点筛选执行日志"
             @change="fetchLogs(1)"
           />
@@ -306,8 +306,8 @@
           <CustomSelect
             v-model="auditTask"
             :options="taskFilterOptions"
+            :searchable="taskFilterSearchable"
             width="190px"
-            searchable
             aria-label="按站点筛选操作记录"
             @change="fetchAudits(1)"
           />
@@ -449,6 +449,7 @@ const taskFilterOptions = computed<SelectOption[]>(() => [
   { value: '', label: '全部站点' },
   ...tasks.value.map((task) => ({ value: task.id, label: task.name })),
 ])
+const taskFilterSearchable = computed(() => tasks.value.length > 6)
 const resultFilterOptions: SelectOption[] = [
   { value: '', label: '全部结果' },
   { value: 'true', label: '成功' },

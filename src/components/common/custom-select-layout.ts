@@ -14,7 +14,7 @@ export function getHorizontalDropdownLayout(
   triggerWidth: number,
   viewportWidth: number,
   viewportPadding = 8,
-  dropdownMinWidth = 200,
+  dropdownMinWidth = 0,
 ): HorizontalDropdownLayout {
   const availableWidth = Math.max(0, viewportWidth - viewportPadding * 2)
   const width = Math.min(Math.max(0, triggerWidth, dropdownMinWidth), availableWidth)
