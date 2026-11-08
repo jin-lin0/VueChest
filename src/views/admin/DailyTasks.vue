@@ -1,10 +1,10 @@
 <template>
-  <div class="checkin-management">
+  <div class="daily-tasks">
     <div class="page-header">
       <div>
-        <h1>🔄 自动签到</h1>
+        <h1>🗓️ 每日任务</h1>
         <p class="page-desc">
-          配置你本人的站点凭据、手动执行并查看自己的签到与操作记录，多个超管互不影响
+          配置签到凭据、查看每日定时任务的执行记录；股票日报等全局任务也在同一页手动触发
         </p>
       </div>
       <button class="btn-secondary" :disabled="loadingTasks" @click="loadTasks">
@@ -17,7 +17,7 @@
       <div class="summary-card">
         <span class="summary-label">已配置任务</span>
         <strong class="summary-value">{{ configuredCount }}</strong>
-        <span class="summary-sub">共 {{ tasks.length }} 个签到站点</span>
+        <span class="summary-sub">共 {{ tasks.length }} 个任务</span>
       </div>
       <div class="summary-card">
         <span class="summary-label">今日已完成</span>
@@ -53,12 +53,12 @@
       <EmptyState
         v-else-if="tasks.length === 0"
         icon="🔌"
-        title="暂无已注册的签到站点"
-        description="在 services/checkins 中实现适配器并注册到任务清单后即可在这里配置"
+        title="暂无已注册的任务"
+        description="在 services/daily 中实现适配器并注册到任务清单后即可在这里配置"
       />
 
       <div v-else class="task-list">
-        <article v-for="task in tasks" :key="task.id" class="task-card">
+        <article v-for="task in tasks" :key="task.id" class="task-card" :class="{ paused: task.enabled === false }">
           <header class="task-head">
             <div class="task-title-wrap">
               <div class="task-title-row">
@@ -71,6 +71,18 @@
               </p>
             </div>
             <div class="task-actions">
+              <label
+                class="task-switch"
+                :title="task.enabled === false ? '已暂停：定时轮次与 worker 都会跳过' : '定时执行中'"
+              >
+                <input
+                  type="checkbox"
+                  :checked="task.enabled !== false"
+                  :disabled="togglingIds.has(task.id) || (task.requiresCredentials !== false && !task.configured)"
+                  @change="toggleTask(task, $event)"
+                />
+                <span class="task-switch-track"></span>
+              </label>
               <span v-if="task.executor === 'worker'" class="worker-hint">
                 由 GitHub Actions 执行
               </span>
@@ -91,6 +103,7 @@
                 }}
               </button>
               <button
+                v-if="task.requiresCredentials !== false"
                 class="btn-danger btn-sm"
                 :disabled="!task.configured || runningIds.has(task.id)"
                 @click="clearCredentials(task)"
@@ -136,7 +149,7 @@
             {{ task.lastRun.detail }}
           </p>
 
-          <div class="credential-block">
+          <div v-if="task.requiresCredentials !== false" class="credential-block">
             <div class="block-title">
               <span>凭据配置</span>
               <span v-if="task.configured" class="configured-hint">
@@ -405,6 +418,8 @@ interface TaskItem {
   description?: string
   timeZone: string
   executor: 'server' | 'worker'
+  requiresCredentials?: boolean
+  enabled: boolean
   credentialFields: CredentialField[]
   configured: boolean
   running: boolean
@@ -463,6 +478,7 @@ const resultFilterOptions: SelectOption[] = [
 const loadingTasks = ref(false)
 const savingIds = reactive(new Set<string>())
 const runningIds = reactive(new Set<string>())
+const togglingIds = reactive(new Set<string>())
 const credentialValues = reactive<Record<string, Record<string, string>>>({})
 const jsonValues = reactive<Record<string, string>>({})
 const visibleFields = reactive(new Set<string>())
@@ -496,7 +512,7 @@ async function loadTasks() {
   loadingTasks.value = true
   try {
     const { data } = await api.get<{ data: { items: TaskItem[] } }>(
-      '/api/checkins/admin/tasks',
+      '/api/daily/admin/tasks',
     )
     tasks.value = data.items
     for (const task of data.items) {
@@ -570,7 +586,7 @@ async function saveCredentials(task: TaskItem) {
 
   savingIds.add(task.id)
   try {
-    await api.put(`/api/checkins/admin/credentials/${encodeURIComponent(task.id)}`, payload)
+    await api.put(`/api/daily/admin/credentials/${encodeURIComponent(task.id)}`, payload)
     for (const key of Object.keys(credentialValues[task.id])) credentialValues[task.id][key] = ''
     jsonValues[task.id] = ''
     showToast('success', `${task.name} 凭据已保存`)
@@ -584,21 +600,26 @@ async function saveCredentials(task: TaskItem) {
 
 async function runNow(task: TaskItem) {
   const force = task.todayCompleted
+  const isDigest = task.requiresCredentials === false
   const ok = await confirm(
-    force
-      ? `${task.name} 今日已完成。重新执行会忽略当日幂等并再次请求上游，确定继续吗？`
-      : `确定立即执行 ${task.name} 的签到吗？`,
+    isDigest
+      ? force
+        ? `${task.name} 今天已经发过。确定再生成并发送一次吗？`
+        : `确定立即生成 ${task.name} 并发送邮件吗？`
+      : force
+        ? `${task.name} 今日已完成。重新执行会忽略当日幂等并再次请求上游，确定继续吗？`
+        : `确定立即执行 ${task.name} 的签到吗？`,
   )
   if (!ok) return
 
   runningIds.add(task.id)
   try {
     const { data } = await api.post<{ data: { success: boolean; results: RunResult[] } }>(
-      `/api/checkins/admin/tasks/${encodeURIComponent(task.id)}/run`,
+      `/api/daily/admin/tasks/${encodeURIComponent(task.id)}/run`,
       { force },
     )
     const result = data.results[0]
-    const statusTextValue = statusLabel(result?.status)
+    const statusTextValue = statusLabel(result?.status, isDigest)
     showToast(
       data.success ? 'success' : 'error',
       `${task.name}：${statusTextValue}${result?.summary ? ` · ${result.summary}` : ''}`,
@@ -612,6 +633,26 @@ async function runNow(task: TaskItem) {
   }
 }
 
+async function toggleTask(task: TaskItem, event: Event) {
+  const enabled = (event.target as HTMLInputElement).checked
+  togglingIds.add(task.id)
+  try {
+    await api.put(`/api/daily/admin/tasks/${encodeURIComponent(task.id)}/enabled`, {
+      enabled,
+    })
+    task.enabled = enabled
+    showToast(
+      'success',
+      enabled ? `${task.name} 已恢复定时执行` : `${task.name} 已暂停，定时轮次会跳过`,
+    )
+  } catch (error) {
+    showToast('error', error instanceof Error ? error.message : '切换任务开关失败')
+    await loadTasks()
+  } finally {
+    togglingIds.delete(task.id)
+  }
+}
+
 async function clearCredentials(task: TaskItem) {
   const ok = await confirm(
     `确定清除 ${task.name} 的凭据吗？清除后该站点会跳过后续定时签到，直到重新录入。`,
@@ -620,7 +661,7 @@ async function clearCredentials(task: TaskItem) {
 
   savingIds.add(task.id)
   try {
-    await api.delete(`/api/checkins/admin/credentials/${encodeURIComponent(task.id)}`)
+    await api.delete(`/api/daily/admin/credentials/${encodeURIComponent(task.id)}`)
     showToast('success', `${task.name} 凭据已清除`)
     await loadTasks()
   } catch (error) {
@@ -640,7 +681,7 @@ async function fetchLogs(page: number) {
     if (logTask.value) params.set('task', logTask.value)
     if (logSuccess.value) params.set('success', logSuccess.value)
     const { data } = await api.get<{ data: PagedData<LogRecord> }>(
-      `/api/checkins/admin/logs?${params}`,
+      `/api/daily/admin/logs?${params}`,
     )
     logs.value = data.items
     logTotal.value = data.total
@@ -661,7 +702,7 @@ async function fetchAudits(page: number) {
     })
     if (auditTask.value) params.set('task', auditTask.value)
     const { data } = await api.get<{ data: PagedData<LogRecord> }>(
-      `/api/checkins/admin/audits?${params}`,
+      `/api/daily/admin/audits?${params}`,
     )
     audits.value = data.items
     auditTotal.value = data.total
@@ -679,6 +720,7 @@ function taskName(id: string) {
 
 function statusClass(task: TaskItem) {
   if (task.running) return 'badge-info'
+  if (task.enabled === false) return 'badge-muted'
   if (!task.configured) return 'badge-muted'
   if (task.todayCompleted) return 'badge-success'
   return 'badge-warning'
@@ -686,14 +728,16 @@ function statusClass(task: TaskItem) {
 
 function statusText(task: TaskItem) {
   if (task.running) return '执行中'
+  if (task.enabled === false) return '已暂停'
+  if (task.requiresCredentials === false) return task.todayCompleted ? '今日已执行' : '待执行'
   if (!task.configured) return '未配置'
   if (task.todayCompleted) return '今日已完成'
   return '已配置'
 }
 
-function statusLabel(status?: string) {
+function statusLabel(status?: string, isDigest = false) {
   const labels: Record<string, string> = {
-    success: '签到成功',
+    success: isDigest ? '执行成功' : '签到成功',
     already_done: '今日已签',
     inactive: '活动未开放',
     unconfigured: '未配置凭据',
@@ -713,7 +757,7 @@ function formatDate(value?: string | null) {
 </script>
 
 <style scoped>
-.checkin-management {
+.daily-tasks {
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -730,6 +774,61 @@ function formatDate(value?: string | null) {
   margin: 0;
   font-size: var(--font-size-5xl);
   color: var(--text-primary);
+}
+
+.task-card.paused {
+  opacity: 0.72;
+}
+
+.task-switch {
+  position: relative;
+  display: inline-flex;
+  width: 34px;
+  height: 20px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.task-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.task-switch-track {
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--border-color, #d1d5db);
+  transition: background 0.18s ease;
+}
+
+.task-switch-track::after {
+  content: '';
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 2px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  transition: transform 0.18s ease;
+}
+
+.task-switch input:checked + .task-switch-track {
+  background: var(--primary-color, #6366f1);
+}
+
+.task-switch input:checked + .task-switch-track::after {
+  transform: translateX(14px);
+}
+
+.task-switch input:disabled + .task-switch-track {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .page-desc {
