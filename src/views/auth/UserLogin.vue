@@ -18,7 +18,7 @@
               type="text"
               placeholder="输入用户名或邮箱"
               class="form-input"
-              :disabled="authStore.isLoading"
+              :disabled="submitting"
               autocomplete="username"
             />
           </div>
@@ -30,16 +30,16 @@
               type="password"
               placeholder="输入密码"
               class="form-input"
-              :disabled="authStore.isLoading"
+              :disabled="submitting"
               autocomplete="current-password"
             />
           </div>
 
           <p v-if="authStore.error" class="form-error">{{ authStore.error }}</p>
 
-          <button type="submit" class="submit-btn" :disabled="authStore.isLoading">
-            <span v-if="authStore.isLoading" class="vc-btn-spinner"></span>
-            {{ authStore.isLoading ? '登录中...' : '登录' }}
+          <button type="submit" class="submit-btn" :disabled="submitting">
+            <span v-if="submitting" class="vc-btn-spinner"></span>
+            {{ submitting ? '登录中...' : '登录' }}
           </button>
         </form>
 
@@ -70,25 +70,32 @@ const marketStore = useMarketStore()
 
 const username = ref('')
 const password = ref('')
+const submitting = ref(false)
 
 async function handleLogin() {
+  if (submitting.value) return
   if (!username.value || !password.value) return
 
-  const result = await authStore.login({
-    username: username.value,
-    password: password.value,
-  })
+  submitting.value = true
+  try {
+    const result = await authStore.login({
+      username: username.value,
+      password: password.value,
+    })
 
-  if (result.success) {
-    // 登录后跨设备同步：以服务端实时列表为唯一真源对账，不再依赖登录响应里的 installedApps 缓存
-    await marketStore.syncWithServer()
+    if (!result.success) return
+
+    // 跨设备对账是后台任务：可能要从服务端下载缺失的应用包，耗时数秒，不能阻塞进入主界面
+    void marketStore.syncWithServer()
 
     const redirect = route.query.redirect
     const safeRedirect =
       typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
         ? redirect
         : '/'
-    router.push(safeRedirect)
+    await router.push(safeRedirect)
+  } finally {
+    submitting.value = false
   }
 }
 </script>

@@ -86,9 +86,13 @@
           <p v-if="error" class="form-error">{{ error }}</p>
           <p v-if="authStore.error && !error" class="form-error">{{ authStore.error }}</p>
 
-          <button type="submit" class="submit-btn" :disabled="authStore.isLoading || !isFormValid">
-            <span v-if="authStore.isLoading" class="vc-btn-spinner"></span>
-            {{ authStore.isLoading ? '注册中...' : '注册' }}
+          <button
+            type="submit"
+            class="submit-btn"
+            :disabled="authStore.isLoading || submitting || !isFormValid"
+          >
+            <span v-if="submitting" class="vc-btn-spinner"></span>
+            {{ submitting ? '注册中...' : '注册' }}
           </button>
         </form>
 
@@ -122,6 +126,7 @@ const error = ref('')
 // 验证码倒计时
 const { count: countdown, start: startCountdown } = useCountdown(60)
 const sendingCode = ref(false)
+const submitting = ref(false)
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -162,6 +167,8 @@ const isFormValid = computed(
 )
 
 async function handleRegister() {
+  if (submitting.value) return
+
   error.value = ''
 
   if (username.value.length < 3) {
@@ -189,22 +196,23 @@ async function handleRegister() {
     return
   }
 
-  const result = await authStore.register({
-    username: username.value,
-    password: password.value,
-    email: email.value,
-    code: code.value,
-  })
+  submitting.value = true
+  try {
+    const result = await authStore.register({
+      username: username.value,
+      password: password.value,
+      email: email.value,
+      code: code.value,
+    })
 
-  if (result.success) {
-    await syncInitialApps()
-    router.push('/')
+    if (!result.success) return
+
+    // 把本地已安装的 App 补给服务端是后台任务，不阻塞进入主界面
+    void marketStore.syncToServer()
+    await router.push('/')
+  } finally {
+    submitting.value = false
   }
-}
-
-async function syncInitialApps() {
-  // 注册后把本地已安装的 App 同步到服务端
-  await marketStore.syncToServer()
 }
 </script>
 
