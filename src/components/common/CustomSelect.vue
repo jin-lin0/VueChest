@@ -135,7 +135,6 @@ const props = withDefaults(
     size?: 'sm' | 'md' | 'lg'
     block?: boolean
     width?: string
-    dropdownMinWidth?: number
   }>(),
   {
     placeholder: '请选择',
@@ -145,7 +144,6 @@ const props = withDefaults(
     size: 'md',
     block: false,
     width: '',
-    dropdownMinWidth: 0,
   },
 )
 
@@ -305,7 +303,6 @@ function positionDropdown() {
     r.width,
     viewportWidth,
     viewportPadding,
-    props.dropdownMinWidth,
   )
   const dd = dropdownRef.value
   const { top, maxHeight, placement } = getVerticalDropdownLayout(

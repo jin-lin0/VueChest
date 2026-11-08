@@ -22,20 +22,6 @@ describe('CustomSelect dropdown layout', () => {
     expect(getHorizontalDropdownLayout(4, 40, 180)).toEqual({ left: 8, width: 40 })
   })
 
-  it('支持长选项场景自定义更大的最小宽度', () => {
-    expect(getHorizontalDropdownLayout(700, 120, 1000, 8, 320)).toEqual({
-      left: 672,
-      width: 320,
-    })
-  })
-
-  it('自定义最小宽度不会超过视口安全区域', () => {
-    expect(getHorizontalDropdownLayout(900, 120, 400, 8, 320)).toEqual({
-      left: 72,
-      width: 320,
-    })
-  })
-
   it('底部空间足够时向下展开', () => {
     expect(getVerticalDropdownLayout(80, 120, 240, 0, 800)).toEqual({
       top: 128,

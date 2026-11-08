@@ -783,7 +783,6 @@ onUnmounted(() => {
           <CustomSelect
             v-model="selectedModel"
             :options="modelOptions"
-            :dropdown-min-width="320"
             size="sm"
           />
         </div>
